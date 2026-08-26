@@ -13,6 +13,7 @@ import dev.cannoli.scorza.ui.viewmodel.SettingsViewModel
 import dev.cannoli.ui.components.OsdController
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -33,33 +34,76 @@ class CoreUpdateController @Inject constructor(
     private val installedCoreService: InstalledCoreService,
     private val coreDownloadService: CoreDownloadService,
     private val settingsViewModel: SettingsViewModel,
+    private val settings: dev.cannoli.scorza.settings.SettingsRepository,
     private val osdController: OsdController,
 ) {
     private var job: Job? = null
 
     /**
-     * The cost, stated before anything downloads. A fresh build is close enough in size to the one
-     * on disk that summing what is installed answers it without touching the network.
+     * Keeps an overlay up long enough to be read. Both of these used to take seconds of network and
+     * now often take none: the check is one index request, and a pass where every core matches
+     * replaces nothing. Shown and dismissed inside a couple of frames they read as a flicker rather
+     * than as an answer. Only the remainder is waited, so work that genuinely takes time is never
+     * slowed down.
+     */
+    private suspend fun holdOverlay(startedAt: Long) {
+        val elapsed = System.currentTimeMillis() - startedAt
+        if (elapsed < MIN_OVERLAY_MILLIS) delay(MIN_OVERLAY_MILLIS - elapsed)
+    }
+
+    private companion object {
+        const val MIN_OVERLAY_MILLIS = 900L
+    }
+
+    /**
+     * The cost, stated before anything downloads, and measured rather than estimated. The buildbot
+     * publishes a CRC of each core's binary, so comparing it against what was recorded at install
+     * time says exactly which cores differ, and a HEAD on those says what they weigh.
+     *
+     * Nothing to fetch is reported and nothing is shown: a pass that would replace no bytes used to
+     * open a progress dialog and close it a few frames later, which read as a flicker.
      */
     fun confirm() {
         val installed = installedCoreService.embeddedCores()
         if (installed.isEmpty()) return
-        nav.dialogState.value = DialogState.UpdateCoresConfirm(
-            cores = installed.size,
-            bytes = coreDownloadService.estimatedBytes(installed),
-        )
+        if (job?.isActive == true) return
+        nav.dialogState.value = DialogState.CheckingCores
+        job = ioScope.launch {
+            val startedAt = System.currentTimeMillis()
+            val pre = coreDownloadService.preflight(installed)
+            holdOverlay(startedAt)
+            withContext(Dispatchers.Main) {
+                job = null
+                if (pre.stale.isEmpty()) {
+                    nav.dialogState.value = DialogState.None
+                    osdController.show(context.getString(R.string.osd_cores_current))
+                    settings.lastCoreUpdate = java.time.LocalDate.now().toString()
+                    settings.lastCoreUpdateCompleted = true
+                    settingsViewModel.refreshItemsAndSettings()
+                } else {
+                    nav.dialogState.value = DialogState.UpdateCoresConfirm(
+                        cores = pre.stale.size,
+                        bytes = pre.bytes,
+                    )
+                }
+            }
+        }
     }
 
     /**
-     * Nothing is compared locally: each request carries the etag recorded at install time, so an
-     * unchanged build answers 304 and transfers nothing.
+     * Revalidates every installed core, not just the ones the pre-flight named. The pre-flight
+     * answers what to tell the user; the pass still checks each core for itself, so a core that
+     * changed between the two, or one the index said nothing about, is not skipped on the strength
+     * of a message written a moment earlier.
      */
     fun start() {
         val installed = installedCoreService.embeddedCores()
         if (installed.isEmpty() || job?.isActive == true) return
         nav.dialogState.value = DialogState.UpdatingCores
         job = ioScope.launch {
+            val startedAt = System.currentTimeMillis()
             val summary = coreDownloadService.updateAll(installed)
+            holdOverlay(startedAt)
             withContext(Dispatchers.Main) {
                 job = null
                 nav.dialogState.value = DialogState.None
@@ -75,6 +119,8 @@ class CoreUpdateController @Inject constructor(
      * broken. The last-run date is not recorded, since the run did not finish.
      */
     fun cancel() {
+        // Covers the pre-flight as well as the run: both use the same slot, and back during the
+        // check has to leave as cleanly as back during the download.
         job?.cancel()
         job = null
         nav.dialogState.value = DialogState.None
