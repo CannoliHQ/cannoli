@@ -122,6 +122,7 @@ object RetroArchAutoconfigImporter {
                 productId = entry.productId ?: device.productId.takeIf { it != 0 },
                 androidBuildModel = entry.buildModel,
                 builtin = entry.builtin,
+                aliases = entry.deviceAliases,
             ),
             bindings = bindings,
             menuConfirm = confirm,

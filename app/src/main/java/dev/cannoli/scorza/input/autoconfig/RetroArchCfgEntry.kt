@@ -32,6 +32,7 @@ data class RetroArchCfgEntry(
     // Null means the key is absent, so the importer injects the platform menu defaults; an empty
     // list means the user cleared the menu. RA's menu_toggle_btn can express neither.
     val cannoliMenuKeycodes: List<Int>? = null,
+    val deviceAliases: List<String> = emptyList(),
     val fileName: String? = null,
     val unmodeledLines: List<String> = emptyList(),
 ) {
@@ -84,6 +85,7 @@ data class RetroArchCfgEntry(
                     "cannoli_build_model",
                     "cannoli_source_mask",
                     "cannoli_menu_keycodes",
+                    DeviceAliases.KEY,
                 )
             )
         }

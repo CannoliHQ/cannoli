@@ -309,4 +309,23 @@ class RetroArchCfgParserTest {
             input_menu_toggle_btn_label = "Back"
         """.trimIndent()
     }
+
+    @Test
+    fun `parses the device alias list`() {
+        val entry = RetroArchCfgParser.parse(
+            """
+            input_device = "GameSir-Pocket 1"
+            cannoli_device_aliases = "GameSir-Pocket 1 Keyboard|GameSir-Pocket 1 Consumer Control"
+            """.trimIndent()
+        )
+        assertEquals(
+            listOf("GameSir-Pocket 1 Keyboard", "GameSir-Pocket 1 Consumer Control"),
+            entry.deviceAliases,
+        )
+    }
+
+    @Test
+    fun `device aliases default to empty`() {
+        assertEquals(emptyList<String>(), RetroArchCfgParser.parse("input_device = \"Pad\"").deviceAliases)
+    }
 }

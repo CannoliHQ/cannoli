@@ -23,6 +23,7 @@ object RetroArchCfgParser {
         var builtin: Boolean? = null
         var defaultControllerType: Int? = null
         var cannoliMenuKeycodes: List<Int>? = null
+        var deviceAliases: List<String> = emptyList()
         val bindings = mutableMapOf<String, Int>()
         val axes = mutableMapOf<String, AxisRef>()
         val hats = mutableMapOf<String, HatRef>()
@@ -101,6 +102,7 @@ object RetroArchCfgParser {
                 prefix == "cannoli" && key == "build_model" -> buildModel = value
                 prefix == "cannoli" && key == "source_mask" -> sourceMask = value.toIntOrNull()
                 prefix == "cannoli" && key == "default_controller_type" -> defaultControllerType = value.toIntOrNull()
+                prefix == "cannoli" && key == "device_aliases" -> deviceAliases = DeviceAliases.parse(value)
                 prefix == "cannoli" && key == "menu_keycodes" -> cannoliMenuKeycodes =
                     if (value.isEmpty()) emptyList() else value.split(",").mapNotNull { it.trim().toIntOrNull() }
             }
@@ -108,7 +110,8 @@ object RetroArchCfgParser {
         return RetroArchCfgEntry(
             deviceName, vendorId, productId, bindings, axes, hats,
             displayName, buildModel, sourceMask, confirmButton, glyphStyle,
-            excludeFromGameplay, cannoliUser, provenance, builtin, defaultControllerType, cannoliMenuKeycodes, fileName,
+            excludeFromGameplay, cannoliUser, provenance, builtin, defaultControllerType, cannoliMenuKeycodes,
+            deviceAliases, fileName,
             unmodeledLines
         )
     }

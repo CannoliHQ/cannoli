@@ -105,6 +105,8 @@ object RetroArchCfgWriter {
         line("cannoli_exclude_from_gameplay", mapping.excludeFromGameplay.toString())
         mapping.defaultControllerTypeId?.let { line("cannoli_default_controller_type", it.toString()) }
         mapping.match.androidBuildModel?.let { line("cannoli_build_model", it) }
+        mapping.match.aliases.takeIf { it.isNotEmpty() }
+            ?.let { line(DeviceAliases.KEY, DeviceAliases.format(it)) }
         mapping.match.sourceMask?.let { line("cannoli_source_mask", it.toString()) }
         // input_menu_toggle_btn is lossy by design (one keycode, defaults stripped), so a user's
         // menu edit is kept verbatim here or the importer would inject the defaults back over it.

@@ -389,4 +389,19 @@ class RetroArchCfgWriterTest {
         assertTrue(cfg.contains("input_r_x_plus_axis = \"+2\""))
         assertTrue(cfg.contains("input_l2_axis = \"+8\""))
     }
+
+    @Test
+    fun `writes the device alias list`() {
+        val base = sampleMapping()
+        val mapping = base.copy(match = base.match.copy(aliases = listOf("8BitDo Pro 2 Keyboard")))
+        assertTrue(
+            RetroArchCfgWriter.write(mapping, debugBuild = true)
+                .contains("cannoli_device_aliases = \"8BitDo Pro 2 Keyboard\"")
+        )
+    }
+
+    @Test
+    fun `omits the device alias key when there are none`() {
+        assertFalse(RetroArchCfgWriter.write(sampleMapping(), debugBuild = true).contains("cannoli_device_aliases"))
+    }
 }
