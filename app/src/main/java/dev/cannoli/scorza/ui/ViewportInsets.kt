@@ -7,8 +7,7 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.dp
-import dev.cannoli.ui.computeScreenGeometryRect
+import dev.cannoli.ui.computeScreenGeometryPadding
 
 data class ViewportInsetsPx(
     val geometryWidthPct: Int = 100,
@@ -25,23 +24,21 @@ val LocalViewportInsets = compositionLocalOf { ViewportInsetsPx() }
 fun effectiveViewportPadding(): PaddingValues {
     val insets = LocalViewportInsets.current
     val config = LocalConfiguration.current
-    val portrait = config.orientation == Configuration.ORIENTATION_PORTRAIT
-    val rect = computeScreenGeometryRect(
-        surfaceWidth = config.screenWidthDp,
-        surfaceHeight = config.screenHeightDp,
+    // The launcher never draws over the game, so it has no reason to measure the surface and stays
+    // on dp. Passing no pixel size selects the shared function's dp branch, which is exactly what
+    // this file used to reimplement: the in-game overlays pass real pixels and get the tighter
+    // region that matches the viewport.
+    return computeScreenGeometryPadding(
+        surfaceWidthPx = 0,
+        surfaceHeightPx = 0,
+        surfaceWidthDp = config.screenWidthDp,
+        surfaceHeightDp = config.screenHeightDp,
         widthPct = insets.geometryWidthPct,
         heightPct = insets.geometryHeightPct,
         xPct = insets.geometryXPct,
         yPct = insets.geometryYPct,
+        portraitMarginPx = insets.portraitMarginPx,
+        portrait = config.orientation == Configuration.ORIENTATION_PORTRAIT,
+        density = LocalDensity.current,
     )
-    val bottomMargin = if (portrait) insets.portraitMarginPx else 0
-    val density = LocalDensity.current
-    return with(density) {
-        PaddingValues(
-            start = rect.x.dp,
-            top = rect.y.dp,
-            end = (config.screenWidthDp - rect.x - rect.w).coerceAtLeast(0).dp,
-            bottom = (config.screenHeightDp - rect.y - rect.h).coerceAtLeast(0).dp + bottomMargin.toDp(),
-        )
-    }
 }
