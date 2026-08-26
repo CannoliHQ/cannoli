@@ -602,6 +602,14 @@ fun AppNavGraph(
     // Must resolve inside the provider so they match what PillRow actually renders.
     val listVerticalPadding = pillVerticalPadding()
     val itemHeight = pillItemHeight(listLineHeight, listVerticalPadding)
+    val settingsState = settingsViewModel.state.collectAsState().value
+    // The margin preview marks the band the game will NOT draw into, so it has to measure the whole
+    // screen. Drawn inside the padded box below it would measure an area the margin has already been
+    // subtracted from, and at a large margin the band collapses to cover everything.
+    val onPortraitMarginRow = currentScreen is LauncherScreen.Settings
+        && settingsState.activeCategory == "display"
+        && settingsState.items.getOrNull(settingsState.selectedIndex)?.key == "portrait_margin"
+    Box(modifier = Modifier.fillMaxSize()) {
     BoxWithConstraints(modifier = Modifier.fillMaxSize().displayCutoutPadding().padding(effectiveViewportPadding())) {
     // Solved once here so the title spacer, the row spacing and the footer reservation all come from
     // the same division of the screen; every list screen lays out inside these same bounds.
@@ -2129,13 +2137,6 @@ fun AppNavGraph(
         }
         if (inRomm) RommBorderFrame()
     }
-    val settingsState = settingsViewModel.state.collectAsState().value
-    val onPortraitMarginRow = currentScreen is LauncherScreen.Settings
-        && settingsState.activeCategory == "display"
-        && settingsState.items.getOrNull(settingsState.selectedIndex)?.key == "portrait_margin"
-    if (onPortraitMarginRow && appSettings.portraitMarginPx > 0) {
-        PortraitMarginOverlay(marginPx = appSettings.portraitMarginPx)
-    }
     val onScreenGeometryRow = currentScreen is LauncherScreen.Settings && settingsState.activeCategory == "screen_geometry"
     val geometryIsDefault = appSettings.screenGeometryWidth == 100 && appSettings.screenGeometryHeight == 100 &&
         appSettings.screenGeometryX == 0 && appSettings.screenGeometryY == 0
@@ -2143,6 +2144,10 @@ fun AppNavGraph(
         Box(modifier = Modifier.fillMaxSize().border(2.dp, cannoliColors.accent))
     }
     OsdHost(controller = osdController)
+    }
+    }
+    if (onPortraitMarginRow && appSettings.portraitMarginPx > 0) {
+        PortraitMarginOverlay(marginPx = appSettings.portraitMarginPx)
     }
     }
     }
