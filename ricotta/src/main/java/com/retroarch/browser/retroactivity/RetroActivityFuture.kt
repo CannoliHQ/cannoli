@@ -15,6 +15,8 @@ import android.view.WindowManager
 import android.widget.Toast
 import dev.cannoli.ricotta.EmbeddedRetroArchBridge
 import dev.cannoli.ricotta.RicottaOsdEvent
+import dev.cannoli.ricotta.ViewportController
+import dev.cannoli.ricotta.ViewportSettings
 import dev.cannoli.ui.R
 import java.io.File
 
@@ -24,6 +26,7 @@ class RetroActivityFuture : RetroActivityCamera() {
     private lateinit var mDecorView: View
     private var igmOverlay: IGMOverlay? = null
     private var osdOverlay: OsdOverlay? = null
+    private var viewportController: ViewportController? = null
 
     // The OSD sits beside the IGM, so it must resolve strings in the launcher's chosen
     // language rather than the system one, exactly as IGMOverlay's uiContext does.
@@ -85,10 +88,10 @@ class RetroActivityFuture : RetroActivityCamera() {
                 pillScale = dev.cannoli.ui.components.pillScaleFor(fontSizeSp),
                 scaleFactor = fontSizeSp / 22f,
                 portraitMarginPx = ds?.portraitMarginPx ?: 0,
-                geometryWidthPct = 100,
-                geometryHeightPct = 100,
-                geometryXPct = 0,
-                geometryYPct = 0,
+                geometryWidthPct = ds?.geometryWidthPct ?: 100,
+                geometryHeightPct = ds?.geometryHeightPct ?: 100,
+                geometryXPct = ds?.geometryXPct ?: 0,
+                geometryYPct = ds?.geometryYPct ?: 0,
                 showWifi = ds?.showWifi ?: true,
                 showBluetooth = ds?.showBluetooth ?: true,
                 showVpn = ds?.showVpn ?: false,
@@ -105,6 +108,20 @@ class RetroActivityFuture : RetroActivityCamera() {
             val bridge = EmbeddedRetroArchBridge(
                 stateBasePath, params?.hardcoreInEffect ?: false, cannoliRoot, platformTag, romBaseName,
                 params?.coreId ?: "",
+            )
+            viewportController = ViewportController(
+                coreGeometry = { bridge.coreGeometry() },
+                applyViewport = bridge::applyViewport,
+                clearViewport = bridge::clearViewport,
+                readAspectIdx = bridge::raAspectIndex,
+                readIntegerScale = bridge::raIntegerScale,
+                settings = ViewportSettings(
+                    portraitMarginPx = ds?.portraitMarginPx ?: 0,
+                    geometryWidthPct = ds?.geometryWidthPct ?: 100,
+                    geometryHeightPct = ds?.geometryHeightPct ?: 100,
+                    geometryXPct = ds?.geometryXPct ?: 0,
+                    geometryYPct = ds?.geometryYPct ?: 0,
+                ),
             )
             igmOverlay = IGMOverlay(
                 this, bridge, stateBasePath, gameTitle, hostConfig, cannoliRoot, platformTag, platformName,
@@ -131,6 +148,7 @@ class RetroActivityFuture : RetroActivityCamera() {
             igmOverlay?.onWindowAttached = { osd.raise() }
             bridge.onOsdEvent = { type, slot ->
                 osd.showMessage(osdEventText(type, slot))
+                refreshViewport()
                 // A save is queued, not written, when the IGM asks for it. The slot on disk only
                 // changes once RetroArch reports back, so the polaroid is stale until then.
                 if (type == RicottaOsdEvent.SAVE_STATE ||
@@ -217,6 +235,26 @@ class RetroActivityFuture : RetroActivityCamera() {
         sendUiMessage(HANDLER_WHAT_TOGGLE_IMMERSIVE, hasFocus)
 
         if (autoMouseGrab) inputGrabMouse(hasFocus)
+    }
+
+    private fun refreshViewport() {
+        val v = mDecorView ?: return
+        val w = v.width
+        val h = v.height
+        if (w > 0 && h > 0)
+            viewportController?.refresh(w, h)
+    }
+
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        refreshViewport()
+    }
+
+    // The surface is (re)created after the core loads, so this also carries the core-load
+    // trigger: RetroArch has no Kotlin-visible hook for "content is running" here.
+    override fun surfaceChanged(holder: android.view.SurfaceHolder, format: Int, width: Int, height: Int) {
+        super.surfaceChanged(holder, format, width, height)
+        viewportController?.refresh(width, height)
     }
 
     private fun sendUiMessage(what: Int, state: Boolean) {
