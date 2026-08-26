@@ -810,6 +810,12 @@ class LaunchManager(
             // whole point of the save and load rows.
             appendLine("savestate_thumbnail_enable = \"true\"")
             appendLine("config_save_on_exit = \"false\"")
+            // Android defaults this on, and the config is rewritten every launch, so the
+            // last-extracted version never matches and RetroArch unpacks the APK's assets again on
+            // every run. Its completion callback issues a full driver reinit, which cost a visible
+            // hitch about a second in. Nothing reads the extracted copies: assets_directory below
+            // points elsewhere and the unpack lands in the app data dir.
+            appendLine("bundle_assets_extract_enable = \"false\"")
             // Cannoli composes the override tiers itself; RetroArch's own auto-override loading
             // would layer a second, uncontrolled copy on top of what was just composed.
             appendLine("auto_overrides_enable = \"false\"")

@@ -19,6 +19,12 @@ class MinimalConfigSaveDirsTest {
             ?.trim()
             ?.trim('"')
 
+    // The regression this guards: Android defaults bundle extraction on, and because the config is
+    // rewritten every launch the last-extracted version never matches, so RetroArch unpacks the
+    // APK's assets on every run and its completion callback reinitialises every driver.
+    @Test fun `the apk bundle is never extracted`() =
+        assertEquals("false", valueOf("bundle_assets_extract_enable"))
+
     @Test fun `saves sort by content directory`() =
         assertEquals("true", valueOf("sort_savefiles_by_content_enable"))
 
