@@ -68,6 +68,55 @@ class CoreDownloadService @Inject constructor(
         return installed.sumOf { File(dir, "${it}_android.so").length() }
     }
 
+    /** What a pass would actually fetch. [bytes] is 0 when nothing needs downloading. */
+    data class Preflight(val stale: List<String>, val bytes: Long, val indexUsable: Boolean)
+
+    /**
+     * Answers what an update would cost before asking the user to approve it, so the confirmation
+     * can state a real number rather than the size of what is already installed.
+     *
+     * Two steps, because neither alone is both cheap and correct. The index is one request for the
+     * whole catalogue and narrows 29 cores to a handful of candidates without touching the network
+     * again. Each candidate is then confirmed with a conditional HEAD, which is the buildbot's own
+     * statement about the exact bytes on offer and also reports their size.
+     *
+     * The second step is not belt and braces. The index can disagree with the archive it indexes:
+     * a core whose published CRC does not match the `.so` inside its own zip is reported stale on
+     * every check, because downloading it records the real checksum and that still will not match.
+     * The etag settles it, and costs one bodyless request per candidate.
+     *
+     * When the index is unreachable every core becomes a candidate, which is the behaviour before
+     * any of this existed: correct, just slower to answer.
+     */
+    suspend fun preflight(installed: Collection<String>): Preflight = withContext(Dispatchers.IO) {
+        val published = EmbeddedCoreDownloader.fetchPublishedCrcs()
+        val dir = EmbeddedCoreDownloader.coresDir(context)
+
+        val candidates = if (published.isEmpty()) installed.toList() else installed.filter { coreId ->
+            val url = EmbeddedCoreDownloader.soUrlFor(coreId)
+            val installedCrc = DownloadStamps.crcFor(context.filesDir, url)
+            val publishedCrc = published[EmbeddedCoreDownloader.archiveNameFor(coreId)]
+            // Anything unknown is a candidate: a core absent from the index or never stamped has
+            // to be asked about rather than assumed current. There is deliberately no check for
+            // the file being gone, because a core with no file is not in `installed` at all:
+            // embeddedCores() lists the directory, so deleting a core uninstalls it rather than
+            // making it stale.
+            publishedCrc == null || installedCrc == null || publishedCrc != installedCrc
+        }
+
+        var bytes = 0L
+        val stale = candidates.filter { coreId ->
+            val url = EmbeddedCoreDownloader.soUrlFor(coreId)
+            val onDisk = File(dir, "${coreId}_android.so").isFile
+            // A core that is not on disk cannot be revalidated: nothing to compare, so fetch it.
+            val etag = if (onDisk) DownloadStamps.etagFor(context.filesDir, url) else null
+            val availability = EmbeddedCoreDownloader.checkAvailability(coreId, etag)
+            if (availability.stale) bytes += availability.bytes
+            availability.stale
+        }
+        Preflight(stale, bytes, published.isNotEmpty())
+    }
+
     /**
      * Revalidate every installed core, and the system files that came with them.
      *
@@ -75,9 +124,12 @@ class CoreDownloadService @Inject constructor(
      * carry an older build than the one fetched, but the next update corrects it, and refusing to
      * update the fifteen most-used cores to avoid that window is the worse trade.
      *
-     * Nothing is compared locally. Each request carries the etag recorded at install time and the
-     * server answers 304 when there is nothing new, so a pass over an up-to-date install transfers
-     * no bytes at all.
+     * Two things decide whether a core is fetched. The buildbot's published CRC of the inner `.so`
+     * is compared against the one recorded at install time, and a match skips the core without any
+     * request at all: a zip embeds a build timestamp, so the etag changes nightly whether or not
+     * the binary did, and on 2026-08-26, 130 of 148 rebuilt cores were byte-identical. Anything the
+     * CRC cannot vouch for still goes through the conditional request, which answers 304 and
+     * transfers nothing when there is genuinely nothing new.
      *
      * Cancelling stops before the next core. Nothing is rolled back, which is safe because each
      * core is staged and renamed, so a cancelled run leaves some cores newer and none broken.
@@ -89,9 +141,14 @@ class CoreDownloadService @Inject constructor(
         val weights = installed.associateWith { File(dir, "${it}_android.so").length().coerceAtLeast(1L) }
         val bytesTotal = weights.values.sum()
 
-        // Once per pass, not once per core: info.zip covers every core, so a second fetch would
-        // re-download the same file for nothing.
-        var infoRefreshed = false
+        // Once per pass, and not conditional on a core having changed: upstream edits the info
+        // files on its own clock, so tying them to a binary replacement left them stale on every
+        // night where nothing was rebuilt. Conditional, so an unchanged set costs no body.
+        EmbeddedCoreDownloader.refreshInfo(context)
+        // Same reasoning, and the reason this pass is cheap at all: one index names the CRC of
+        // every core's binary, so a core whose rebuild changed nothing is skipped without any
+        // request of its own. Empty when the index is unreachable, which falls back to etags.
+        val publishedCrcs = EmbeddedCoreDownloader.fetchPublishedCrcs()
         var updated = 0
         var failed = 0
         var done = 0
@@ -104,7 +161,7 @@ class CoreDownloadService @Inject constructor(
             val weight = weights[coreId] ?: 1L
             _progress.value = UpdateProgress(bytesBase, bytesTotal)
             val result = EmbeddedCoreDownloader.download(
-                context, coreId, conditional = true,
+                context, coreId, conditional = true, publishedCrcs = publishedCrcs,
                 onBytes = { read, total ->
                     val within = if (total > 0L) (read * weight / total) else 0L
                     _progress.value = UpdateProgress(bytesBase + within, bytesTotal)
@@ -114,10 +171,6 @@ class CoreDownloadService @Inject constructor(
                 failed++
             } else {
                 if (result.changed) updated++
-                if (result.changed && !infoRefreshed) {
-                    infoRefreshed = true
-                    EmbeddedCoreDownloader.refreshInfo(context)
-                }
                 val system = EmbeddedCoreDownloader.installRemoteSystemFiles(
                     context, coreId, conditional = true
                 ) { paths.biosFor(it) }

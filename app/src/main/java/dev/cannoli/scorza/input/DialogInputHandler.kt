@@ -1120,6 +1120,7 @@ class DialogInputHandler @Inject constructor(
                 nav.dialogState.value = DialogState.None
             }
             is DialogState.UpdateCoresConfirm -> nav.dialogState.value = DialogState.None
+            is DialogState.CheckingCores -> coreUpdateController.cancel()
             is DialogState.UpdatingCores -> coreUpdateController.cancel()
             is DialogState.MissingCore,
             is DialogState.MissingApp,

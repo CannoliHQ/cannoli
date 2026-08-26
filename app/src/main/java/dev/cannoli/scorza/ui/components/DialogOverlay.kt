@@ -1043,9 +1043,18 @@ fun DialogOverlay(
             confirmLabel = stringResource(R.string.label_quit),
         )
 
+        is DialogState.CheckingCores -> dev.cannoli.ui.components.ProgressOverlay(
+            title = stringResource(R.string.osd_checking_cores),
+            subtitle = "",
+            progress = null,
+            error = null,
+            buttonStyle = buttonStyle,
+        )
+
         is DialogState.UpdateCoresConfirm -> ConfirmOverlay(
-            message = stringResource(
-                R.string.dialog_update_cores_confirm,
+            message = pluralStringResource(
+                R.plurals.dialog_update_cores_confirm,
+                dialogState.cores,
                 dialogState.cores,
                 android.text.format.Formatter.formatShortFileSize(
                     androidx.compose.ui.platform.LocalContext.current, dialogState.bytes

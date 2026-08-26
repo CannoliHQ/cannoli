@@ -220,6 +220,10 @@ sealed interface DialogState {
      * About to replace every installed core. The cost is stated before it starts, because cores are
      * rebuilt nightly and this normally means downloading all of them.
      */
+    /** Working out what an update would cost, before asking. One index request and a HEAD per
+     *  differing core, so it is brief but not instant. */
+    data object CheckingCores : DialogState
+
     data class UpdateCoresConfirm(val cores: Int, val bytes: Long) : DialogState
 
     /** A run in progress. The figures come from the service, not from here. */
