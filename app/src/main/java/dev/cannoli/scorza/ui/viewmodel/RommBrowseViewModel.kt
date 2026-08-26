@@ -237,10 +237,13 @@ class RommBrowseViewModel(
 
     data class RommFirmwareRow(val firmware: RommFirmware, val present: Boolean)
 
+    // Missing files first, which is the order the screen's two sections draw in. The list the
+    // input handler indexes to toggle a row is this one, so any other order checks the wrong file.
     suspend fun loadFirmware(platformId: Int, tag: String): List<RommFirmwareRow> = withContext(Dispatchers.IO) {
         val biosDir = biosDirFor(tag)
         firmwareFor(platformId)
             .map { RommFirmwareRow(it, java.io.File(biosDir, it.fileName).exists()) }
+            .sortedBy { it.present }
     }
 
     fun isMultiSelect(): Boolean = _multiSelect.value
