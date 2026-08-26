@@ -9,6 +9,8 @@
     <string name="label_save">SAVE</string>
     <string name="label_load">LOAD</string>
     <string name="label_change">CHANGE</string>
+    <!-- Legend for the shoulder buttons on numeric rows, where they step by a large amount. -->
+    <string name="label_jump">JUMP</string>
     <string name="label_firmware">FIRMWARE</string>
     <string name="label_choose">CHOOSE</string>
     <string name="label_close">CLOSE</string>

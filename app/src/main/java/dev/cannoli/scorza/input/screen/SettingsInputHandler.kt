@@ -81,6 +81,18 @@ class SettingsInputHandler @Inject constructor(
         }
     }
 
+    // The shoulders travel, the D-pad places. Only meaningful on rows that take a coarse step;
+    // elsewhere cycleSelected ignores it and the row behaves as it does under Left and Right.
+    override fun onL1() {
+        if (settingsViewModel.state.value.inSubList)
+            settingsViewModel.cycleSelected(-1, repeatCount = nav.lastKeyRepeatCount, coarse = true)
+    }
+
+    override fun onR1() {
+        if (settingsViewModel.state.value.inSubList)
+            settingsViewModel.cycleSelected(1, repeatCount = nav.lastKeyRepeatCount, coarse = true)
+    }
+
     override fun onRight() {
         if (settingsViewModel.state.value.inSubList) {
             settingsViewModel.cycleSelected(1, repeatCount = nav.lastKeyRepeatCount)

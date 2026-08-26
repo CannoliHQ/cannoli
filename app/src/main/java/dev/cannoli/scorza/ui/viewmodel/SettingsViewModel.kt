@@ -452,7 +452,7 @@ class SettingsViewModel @Inject constructor(
         return true
     }
 
-    fun cycleSelected(direction: Int, repeatCount: Int = 0) {
+    fun cycleSelected(direction: Int, repeatCount: Int = 0, coarse: Boolean = false) {
         val current = _state.value
         if (!current.inSubList) return
         val item = current.items.getOrNull(current.selectedIndex) ?: return
@@ -546,30 +546,33 @@ class SettingsViewModel @Inject constructor(
             "main_menu_quit" -> settings.mainMenuQuit = !settings.mainMenuQuit
             "always_save_on_quit" -> settings.alwaysSaveOnQuit = !settings.alwaysSaveOnQuit
             "portrait_margin" -> {
+                // The D-pad stays precise and the shoulders do the travelling: this is measured in
+                // pixels, so crossing a few hundred of them one repeat at a time is hopeless, and a
+                // ramp fast enough to cover it is too coarse to land on a value.
                 val step = when {
+                    coarse -> if (repeatCount == 0) 50 else 100
                     repeatCount == 0 -> 1
-                    repeatCount < 10 -> 10
-                    else -> 25
+                    else -> 5
                 }
                 settings.portraitMarginPx = (settings.portraitMarginPx + direction * step).coerceAtLeast(0)
             }
             "screen_geo_width" -> {
-                val step = if (repeatCount == 0) 1 else 5
+                val step = if (coarse) 10 else if (repeatCount == 0) 1 else 5
                 settings.screenGeometryWidth = (settings.screenGeometryWidth + direction * step).coerceIn(50, 100)
                 reclampGeometryOffsets()
             }
             "screen_geo_height" -> {
-                val step = if (repeatCount == 0) 1 else 5
+                val step = if (coarse) 10 else if (repeatCount == 0) 1 else 5
                 settings.screenGeometryHeight = (settings.screenGeometryHeight + direction * step).coerceIn(50, 100)
                 reclampGeometryOffsets()
             }
             "screen_geo_x" -> {
-                val step = if (repeatCount == 0) 1 else 5
+                val step = if (coarse) 10 else if (repeatCount == 0) 1 else 5
                 val maxX = (100 - settings.screenGeometryWidth) / 2
                 settings.screenGeometryX = (settings.screenGeometryX + direction * step).coerceIn(-maxX, maxX)
             }
             "screen_geo_y" -> {
-                val step = if (repeatCount == 0) 1 else 5
+                val step = if (coarse) 10 else if (repeatCount == 0) 1 else 5
                 val maxY = (100 - settings.screenGeometryHeight) / 2
                 settings.screenGeometryY = (settings.screenGeometryY + direction * step).coerceIn(-maxY, maxY)
             }

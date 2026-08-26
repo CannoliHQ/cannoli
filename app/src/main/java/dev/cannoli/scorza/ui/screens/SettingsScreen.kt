@@ -22,6 +22,7 @@ import dev.cannoli.scorza.R
 import dev.cannoli.scorza.ui.viewmodel.SettingsViewModel
 import dev.cannoli.ui.ButtonStyle
 import dev.cannoli.ui.DPAD_HORIZONTAL
+import dev.cannoli.ui.SHOULDERS
 import dev.cannoli.ui.components.BottomBar
 import dev.cannoli.ui.components.List
 import dev.cannoli.ui.components.PillRowKeyValue
@@ -108,8 +109,17 @@ fun SettingsScreen(
             val isEditableItem = selectedItem?.isEditable == true
             val isFghCollection = selectedItem?.key == "fgh_collection"
             val showChange = selectedItem?.canCycle != false && selectedItem?.disabled != true && (!isEditableItem || isFghCollection)
+            // Rows measured in pixels or percent take a coarse step on the shoulders, so the D-pad
+            // can stay on single units. Advertised only on those rows; elsewhere the shoulders do
+            // nothing and a legend entry would be a lie.
+            val takesCoarseStep = selectedItem?.key == "portrait_margin" ||
+                selectedItem?.key?.startsWith("screen_geo_") == true
             val leftItems = if (showChange) {
-                listOf(buttonStyle.back to stringResource(R.string.label_back), DPAD_HORIZONTAL to stringResource(R.string.label_change))
+                buildList {
+                    add(buttonStyle.back to stringResource(R.string.label_back))
+                    add(DPAD_HORIZONTAL to stringResource(R.string.label_change))
+                    if (takesCoarseStep) add(SHOULDERS to stringResource(R.string.label_jump))
+                }
             } else {
                 listOf(buttonStyle.back to stringResource(R.string.label_back))
             }
