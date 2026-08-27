@@ -94,6 +94,7 @@ class DialogInputHandler @Inject constructor(
     private val slotManager: dev.cannoli.scorza.romm.sync.SlotManager,
     private val saveSlotsHandler: dev.cannoli.scorza.input.screen.SaveSlotsInputHandler,
     private val coreUpdateController: CoreUpdateController,
+    private val shaderUpdateController: ShaderUpdateController,
     private val syncHistoryStore: dev.cannoli.scorza.romm.sync.SyncHistoryStore,
     private val pendingConflictStore: dev.cannoli.scorza.romm.sync.PendingConflictStore,
     private val saveSyncStatusHolder: dev.cannoli.scorza.romm.sync.SaveSyncStatusHolder,
@@ -477,6 +478,7 @@ class DialogInputHandler @Inject constructor(
                 refreshInstalledCores()
             }
             is DialogState.UpdateCoresConfirm -> coreUpdateController.start()
+            is DialogState.UpdateShadersConfirm -> shaderUpdateController.start()
             is DialogState.MissingCore -> openEmulatorRecovery(ds.platformTag, ds.romId)
             is DialogState.UnsupportedContent -> openEmulatorRecovery(ds.platformTag, ds.romId)
             is DialogState.NoEmulatorSet -> openEmulatorRecovery(ds.platformTag, ds.romId)
@@ -1138,6 +1140,7 @@ class DialogInputHandler @Inject constructor(
             is DialogState.UninstallCoreConfirm,
             is DialogState.RemoveUnusedCoresConfirm -> nav.dialogState.value = DialogState.None
             is DialogState.UpdateCoresConfirm -> nav.dialogState.value = DialogState.None
+            is DialogState.UpdateShadersConfirm -> nav.dialogState.value = DialogState.None
             is DialogState.CheckingCores -> coreUpdateController.cancel()
             is DialogState.UpdatingCores -> coreUpdateController.cancel()
             is DialogState.MissingCore,

@@ -279,6 +279,7 @@ object RommModule {
                 romm(DownloadKind.MANUAL),
                 romm(DownloadKind.FIRMWARE),
                 dev.cannoli.scorza.launcher.CoreDownloadHandler(context),
+                dev.cannoli.scorza.launcher.ShaderDownloadHandler(context, settings),
             ),
             lanes = listOf(
                 // Cores get their own lane rather than a share of the RomM one: installing a core
@@ -286,6 +287,12 @@ object RommModule {
                 // a rom that may be gigabytes. Two workers, because picking several cores in a row
                 // is the normal way to use the picker and they are small enough to overlap.
                 Downloader.Lane(setOf(DownloadKind.CORE)) { 2 },
+                // Its own lane and a single worker. Tens of megabytes must not crowd out a core
+                // someone needs to launch, and one at a time keeps the extraction to one writer:
+                // two of them hammering a FUSE-mounted card at once is what makes the launcher
+                // stutter, and the download finishing sooner is worth less than the menu staying
+                // responsive while it runs.
+                Downloader.Lane(setOf(DownloadKind.SHADER)) { 1 },
                 Downloader.Lane(
                     setOf(DownloadKind.ROM, DownloadKind.MANUAL, DownloadKind.FIRMWARE)
                 ) { settings.concurrentDownloads },

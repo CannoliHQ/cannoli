@@ -230,6 +230,11 @@ sealed interface DialogState {
     data object CheckingCores : DialogState
 
     data class UpdateCoresConfirm(val cores: Int, val bytes: Long) : DialogState
+    /**
+     * [bytes] is what comes down the wire and [installedBytes] what it becomes on the card. The
+     * second is the one that matters on a handheld: the archives expand about twelvefold.
+     */
+    data class UpdateShadersConfirm(val bytes: Long, val installedBytes: Long) : DialogState
 
     /** A run in progress. The figures come from the service, not from here. */
     data object UpdatingCores : DialogState

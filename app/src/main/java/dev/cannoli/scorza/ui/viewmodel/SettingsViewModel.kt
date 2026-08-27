@@ -937,6 +937,16 @@ class SettingsViewModel @Inject constructor(
                 canCycle = false,
             ))
             add(SettingsItem(
+                "update_shaders",
+                R.string.setting_update_shaders,
+                valueText = settings.lastShaderUpdate.takeIf { it.isNotBlank() }?.let {
+                    context.getString(R.string.setting_update_shaders_last, it)
+                } ?: context.getString(R.string.setting_update_shaders_never),
+                isEditable = true,
+                isAction = true,
+                canCycle = false,
+            ))
+            add(SettingsItem(
                 "installed_cores",
                 R.string.setting_installed_cores,
                 isEditable = true,

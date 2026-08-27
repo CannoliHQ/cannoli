@@ -60,6 +60,7 @@ class SettingsInputHandler @Inject constructor(
     private val permissionsInputHandler: PermissionsInputHandler,
     private val osdController: dev.cannoli.ui.components.OsdController,
     private val coreUpdateController: dev.cannoli.scorza.input.CoreUpdateController,
+    private val shaderUpdateController: dev.cannoli.scorza.input.ShaderUpdateController,
 ) : ScreenInputHandler {
 
     override fun onUp() {
@@ -148,6 +149,7 @@ class SettingsInputHandler @Inject constructor(
                 Intent(android.provider.Settings.ACTION_HOME_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             )
             "update_cores" -> coreUpdateController.confirm()
+            "update_shaders" -> shaderUpdateController.confirm()
             "installed_cores" -> nav.push(emulatorMappingBuilder.buildInstalledCores())
             "manage_tools" -> openAppPicker("tools")
             "manage_ports" -> openAppPicker("ports")

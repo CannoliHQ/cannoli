@@ -454,6 +454,11 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         get() = jsonRead { optBoolean(KEY_LAST_CORE_UPDATE_DONE, true) }
         set(value) = jsonWrite { put(KEY_LAST_CORE_UPDATE_DONE, value) }
 
+    /** When the user last pulled the shader database, as an ISO date. Empty means never. */
+    var lastShaderUpdate: String
+        get() = jsonRead { optString(KEY_LAST_SHADER_UPDATE, "") }
+        set(value) = jsonWrite { put(KEY_LAST_SHADER_UPDATE, value) }
+
     var raHardcore: Boolean
         get() = jsonRead { optBoolean(KEY_RA_HARDCORE, false) }
         set(value) = jsonWrite { put(KEY_RA_HARDCORE, value) }
@@ -561,6 +566,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         private const val KEY_ALWAYS_SAVE_ON_QUIT = "always_save_on_quit"
         private const val KEY_LAST_CORE_UPDATE = "lastCoreUpdate"
         private const val KEY_LAST_CORE_UPDATE_DONE = "lastCoreUpdateCompleted"
+        private const val KEY_LAST_SHADER_UPDATE = "lastShaderUpdate"
         private const val KEY_RA_HARDCORE = "ra_hardcore"
         private const val KEY_PORTRAIT_MARGIN_PX = "portrait_margin_px"
         private const val KEY_SCREEN_GEOMETRY_WIDTH = "screen_geometry_width"

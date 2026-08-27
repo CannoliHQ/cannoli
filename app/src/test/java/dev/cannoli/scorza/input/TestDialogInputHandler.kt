@@ -69,6 +69,7 @@ internal fun testDialogInputHandler(
     osdController = mockk(relaxed = true),
     rommDevicePairing = mockk(relaxed = true),
     coreUpdateController = mockk(relaxed = true),
+    shaderUpdateController = mockk(relaxed = true),
 )
 
 // A relaxed mock answers queue.state.value with a bare Object, which blows up on the List cast the

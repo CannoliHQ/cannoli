@@ -23,6 +23,8 @@
     <string name="label_toggle">TOGGLE</string>
     <string name="label_new">NEW</string>
     <string name="label_settings">SETTINGS</string>
+    <!-- Drops this game's own overlay or shader so its platform's applies again. -->
+    <string name="label_use_platform">USE PLATFORM</string>
     <string name="label_resume">RESUME</string>
     <string name="label_continue">CONTINUE</string>
     <string name="label_new_folder">NEW</string>
@@ -259,6 +261,11 @@
     <!-- Screen title. %s is the emulator app name (e.g. RetroArch). -->
     <!-- Settings row that refreshes every installed core. -->
     <string name="setting_update_cores">Update Cores</string>
+    <string name="setting_update_shaders">Update Shaders</string>
+    <string name="download_shader_database">Shader Database (%1$s)</string>
+    <string name="setting_update_shaders_last">Last run %1$s</string>
+    <string name="setting_update_shaders_never">Never run</string>
+    <string name="dialog_update_shaders_confirm">Download the libretro shader database?\nThis download is about %1$s and uses about %2$s when extracted.</string>
     <!-- Value on that row. %1$s = an ISO date. -->
     <string name="setting_update_cores_last">Last run %1$s</string>
     <string name="setting_update_cores_never">Never run</string>
@@ -910,6 +917,8 @@
     <!-- In-game settings category showing read-only facts about the running emulator core. -->
     <string name="igm_info">Info</string>
     <string name="igm_overlay">Overlay</string>
+    <string name="igm_shader">Shader</string>
+    <string name="label_pause">PAUSE</string>
     <!-- Info row label. The value is the emulator core's name, for example "Nestopia". -->
     <string name="igm_info_core">Core</string>
     <!-- Info row label. The value is the emulator core's version number. -->

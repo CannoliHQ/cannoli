@@ -15,7 +15,7 @@ sealed interface DownloadStatus {
     data class Failed(val reason: String) : DownloadStatus
 }
 
-enum class DownloadKind { ROM, MANUAL, FIRMWARE, CORE }
+enum class DownloadKind { ROM, MANUAL, FIRMWARE, CORE, SHADER }
 
 data class DownloadItem(
     /** Unique while queued. Two enqueues with the same key are one item, not two transfers. */

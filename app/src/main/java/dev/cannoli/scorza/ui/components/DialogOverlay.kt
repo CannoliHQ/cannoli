@@ -73,6 +73,18 @@ import dev.cannoli.ui.components.screenPadding
 import dev.cannoli.ui.theme.Spacing
 
 
+/**
+ * A size to warn someone with, rounded up to a whole unit.
+ *
+ * The exact figure is a guess built from a file count and a cluster size, so rendering it as
+ * "0.96 GB" claims a precision it does not have and reads as smaller than it is. Rounding up keeps
+ * the warning honest in the direction that matters, and the threshold sits below a gigabyte because
+ * that is the point where "nearly a gigabyte" is what a person would say.
+ */
+private fun roundedUpSize(bytes: Long): String =
+    if (bytes >= 900_000_000L) "${kotlin.math.ceil(bytes / 1_000_000_000.0).toInt()} GB"
+    else "${kotlin.math.ceil(bytes / 1_000_000.0).toInt()} MB"
+
 @Composable
 fun DialogOverlay(
     dialogState: DialogState,
@@ -1079,6 +1091,18 @@ fun DialogOverlay(
             progress = null,
             error = null,
             buttonStyle = buttonStyle,
+        )
+
+        is DialogState.UpdateShadersConfirm -> ConfirmOverlay(
+            message = stringResource(
+                R.string.dialog_update_shaders_confirm,
+                android.text.format.Formatter.formatShortFileSize(
+                    androidx.compose.ui.platform.LocalContext.current, dialogState.bytes
+                ),
+                roundedUpSize(dialogState.installedBytes),
+            ),
+            buttonStyle = buttonStyle,
+            confirmLabel = stringResource(R.string.label_update),
         )
 
         is DialogState.UpdateCoresConfirm -> ConfirmOverlay(

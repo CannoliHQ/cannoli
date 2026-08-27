@@ -37,4 +37,5 @@ internal fun testSettingsInputHandler(
     permissionsInputHandler = mockk(relaxed = true),
     osdController = mockk(relaxed = true),
     coreUpdateController = mockk(relaxed = true),
+    shaderUpdateController = mockk(relaxed = true),
 )
