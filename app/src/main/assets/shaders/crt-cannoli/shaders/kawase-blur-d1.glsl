@@ -49,17 +49,17 @@ precision mediump float;
 #endif
 
 uniform COMPAT_PRECISION vec2 TextureSize;
-uniform sampler2D Source;
+uniform sampler2D Texture;
 COMPAT_VARYING vec2 vTexCoord;
 
 void main() {
     vec2 texelSize = 1.0 / TextureSize;
     vec2 step1 = KAWASE_DISTANCE * texelSize;
-    vec4 color = COMPAT_TEXTURE(Source, vTexCoord + step1) * 0.25;
-    color += COMPAT_TEXTURE(Source, vTexCoord - step1) * 0.25;
+    vec4 color = COMPAT_TEXTURE(Texture, vTexCoord + step1) * 0.25;
+    color += COMPAT_TEXTURE(Texture, vTexCoord - step1) * 0.25;
     vec2 step2 = vec2(step1.x, -step1.y);
-    color += COMPAT_TEXTURE(Source, vTexCoord + step2) * 0.25;
-    color += COMPAT_TEXTURE(Source, vTexCoord - step2) * 0.25;
+    color += COMPAT_TEXTURE(Texture, vTexCoord + step2) * 0.25;
+    color += COMPAT_TEXTURE(Texture, vTexCoord - step2) * 0.25;
     FragColor = color;
 }
 

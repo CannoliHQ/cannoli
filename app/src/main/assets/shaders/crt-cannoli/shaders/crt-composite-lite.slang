@@ -1,3 +1,5 @@
+#version 450
+
 // Cannoli CRT Lite — single-pass, bilinear sampling
 // Curvature, scanlines, aperture mask, phosphor sweep
 // No Lanczos, no glow, no noise, no gamma, no vignette
@@ -10,77 +12,48 @@
 #pragma parameter sweep_period "Sweep Period (frames)" 600.0 60.0 3600.0 60.0
 #pragma parameter bright_boost "Brightness" 1.2 1.0 2.0 0.01
 
-#if defined(VERTEX)
+layout(push_constant) uniform Push
+{
+    vec4 SourceSize;
+    vec4 OriginalSize;
+    vec4 OutputSize;
+    uint FrameCount;
+} params;
 
-#if __VERSION__ >= 130
-#define COMPAT_VARYING out
-#define COMPAT_ATTRIBUTE in
-#else
-#define COMPAT_VARYING varying
-#define COMPAT_ATTRIBUTE attribute
-#endif
+layout(std140, set = 0, binding = 0) uniform UBO
+{
+    mat4 MVP;
+    float curvature;
+    float scanline_strength;
+    float mask_strength;
+    float sweep;
+    float sweep_bright;
+    float sweep_period;
+    float bright_boost;
+} global;
 
-#ifdef GL_ES
-#define COMPAT_PRECISION mediump
-#else
-#define COMPAT_PRECISION
-#endif
+#define curvature global.curvature
+#define scanline_strength global.scanline_strength
+#define mask_strength global.mask_strength
+#define sweep global.sweep
+#define sweep_bright global.sweep_bright
+#define sweep_period global.sweep_period
+#define bright_boost global.bright_boost
 
-COMPAT_ATTRIBUTE vec4 VertexCoord;
-COMPAT_ATTRIBUTE vec4 TexCoord;
-COMPAT_VARYING vec2 vTexCoord;
-
-uniform mat4 MVPMatrix;
+#pragma stage vertex
+layout(location = 0) in vec4 Position;
+layout(location = 1) in vec2 TexCoord;
+layout(location = 0) out vec2 vTexCoord;
 
 void main() {
-    gl_Position = MVPMatrix * VertexCoord;
-    vTexCoord = TexCoord.xy;
+    gl_Position = global.MVP * Position;
+    vTexCoord = TexCoord;
 }
 
-#elif defined(FRAGMENT)
-
-#if __VERSION__ >= 130
-#define COMPAT_VARYING in
-#define COMPAT_TEXTURE texture
-out vec4 FragColor;
-#else
-#define COMPAT_VARYING varying
-#define COMPAT_TEXTURE texture2D
-#define FragColor gl_FragColor
-#endif
-
-#ifdef GL_ES
-precision highp float;
-#define COMPAT_PRECISION highp
-#else
-#define COMPAT_PRECISION
-#endif
-
-uniform COMPAT_PRECISION vec2 OutputSize;
-uniform COMPAT_PRECISION vec2 TextureSize;
-uniform COMPAT_PRECISION int FrameCount;
-
-uniform sampler2D Texture;
-
-#ifdef PARAMETER_UNIFORM
-uniform COMPAT_PRECISION float curvature;
-uniform COMPAT_PRECISION float scanline_strength;
-uniform COMPAT_PRECISION float mask_strength;
-uniform COMPAT_PRECISION float sweep;
-uniform COMPAT_PRECISION float sweep_bright;
-uniform COMPAT_PRECISION float sweep_period;
-uniform COMPAT_PRECISION float bright_boost;
-#else
-#define curvature 1.7
-#define scanline_strength 0.65
-#define mask_strength 0.2
-#define sweep 1.0
-#define sweep_bright 0.35
-#define sweep_period 600.0
-#define bright_boost 1.2
-#endif
-
-COMPAT_VARYING vec2 vTexCoord;
+#pragma stage fragment
+layout(location = 0) in vec2 vTexCoord;
+layout(location = 0) out vec4 FragColor;
+layout(set = 0, binding = 2) uniform sampler2D Source;
 
 vec2 Warp(vec2 pos) {
     pos = pos * 2.0 - 1.0;
@@ -97,17 +70,17 @@ void main() {
         return;
     }
 
-    vec3 col = COMPAT_TEXTURE(Texture, xy).rgb;
+    vec3 col = texture(Source, xy).rgb;
 
     // Scanlines — triangle wave, no transcendental functions
-    float scan_y = fract(xy.y * TextureSize.y);
+    float scan_y = fract(xy.y * params.SourceSize.y);
     float scan = abs(scan_y * 2.0 - 1.0); // triangle [0,1], peak at row center
     float scan_weight = 1.0 - (1.0 - scan) * scanline_strength;
     col *= scan_weight;
 
     // RGB aperture mask (vertical trinitron stripes)
     float m = 1.0 - mask_strength;
-    float px = mod(floor(xy.x * OutputSize.x), 3.0);
+    float px = mod(floor(xy.x * params.OutputSize.x), 3.0);
     vec3 mask_w = vec3(
         mix(1.0, m, step(1.0, px)),
         mix(m, mix(1.0, m, step(2.0, px)), step(1.0, px)),
@@ -117,8 +90,8 @@ void main() {
 
     // Phosphor sweep
     // vTexCoord.y 0 is the top of the picture in both backends, so a rising
-    // phase sweeps downward. Same expression in the .slang; see the report.
-    float sweepPhase = fract(float(FrameCount) / sweep_period);
+    // phase sweeps downward. Same expression in the .glsl; see the report.
+    float sweepPhase = fract(float(params.FrameCount) / sweep_period);
     float band = smoothstep(0.04, 0.0, abs(xy.y - sweepPhase));
     col *= 1.0 + band * sweep_bright * sweep;
 
@@ -132,5 +105,3 @@ void main() {
 
     FragColor = vec4(col * bright_boost, 1.0);
 }
-
-#endif

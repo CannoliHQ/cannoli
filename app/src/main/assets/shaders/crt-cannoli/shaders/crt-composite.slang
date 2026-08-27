@@ -1,3 +1,5 @@
+#version 450
+
 // Cannoli CRT — hybrid shader
 // CRT base: EasyMode by EasyMode (GPL)
 // Curvature, sweep, vignette, glow, noise: Cannoli
@@ -21,108 +23,78 @@
 #pragma parameter sweep_period "Sweep Period (frames)" 600.0 60.0 3600.0 60.0
 #pragma parameter noise_amount "Noise" 0.15 0.0 1.0 0.05
 
-#if defined(VERTEX)
+layout(push_constant) uniform Push
+{
+    vec4 SourceSize;
+    vec4 OriginalSize;
+    vec4 OutputSize;
+    uint FrameCount;
+} params;
 
-#if __VERSION__ >= 130
-#define COMPAT_VARYING out
-#define COMPAT_ATTRIBUTE in
-#else
-#define COMPAT_VARYING varying
-#define COMPAT_ATTRIBUTE attribute
-#endif
+layout(std140, set = 0, binding = 0) uniform UBO
+{
+    mat4 MVP;
+    float curvature;
+    float scanline_strength;
+    float mask_strength;
+    float mask_size;
+    float mask_dot_width;
+    float mask_dot_height;
+    float mask_stagger;
+    float sharpness_h;
+    float sharpness_v;
+    float gamma_input;
+    float gamma_output;
+    float bright_boost;
+    float vignette;
+    float glow_strength;
+    float sweep;
+    float sweep_bright;
+    float sweep_period;
+    float noise_amount;
+} global;
 
-#ifdef GL_ES
-#define COMPAT_PRECISION mediump
-#else
-#define COMPAT_PRECISION
-#endif
+#define curvature global.curvature
+#define scanline_strength global.scanline_strength
+#define mask_strength global.mask_strength
+#define mask_size global.mask_size
+#define mask_dot_width global.mask_dot_width
+#define mask_dot_height global.mask_dot_height
+#define mask_stagger global.mask_stagger
+#define sharpness_h global.sharpness_h
+#define sharpness_v global.sharpness_v
+#define gamma_input global.gamma_input
+#define gamma_output global.gamma_output
+#define bright_boost global.bright_boost
+#define vignette global.vignette
+#define glow_strength global.glow_strength
+#define sweep global.sweep
+#define sweep_bright global.sweep_bright
+#define sweep_period global.sweep_period
+#define noise_amount global.noise_amount
 
-COMPAT_ATTRIBUTE vec4 VertexCoord;
-COMPAT_ATTRIBUTE vec4 TexCoord;
-COMPAT_VARYING vec2 vTexCoord;
-
-uniform mat4 MVPMatrix;
+#pragma stage vertex
+layout(location = 0) in vec4 Position;
+layout(location = 1) in vec2 TexCoord;
+layout(location = 0) out vec2 vTexCoord;
 
 void main() {
-    gl_Position = MVPMatrix * VertexCoord;
-    vTexCoord = TexCoord.xy;
+    gl_Position = global.MVP * Position;
+    vTexCoord = TexCoord;
 }
 
-#elif defined(FRAGMENT)
-
-#if __VERSION__ >= 130
-#define COMPAT_VARYING in
-#define COMPAT_TEXTURE texture
-out vec4 FragColor;
-#else
-#define COMPAT_VARYING varying
-#define COMPAT_TEXTURE texture2D
-#define FragColor gl_FragColor
-#endif
-
-#ifdef GL_ES
-precision highp float;
-#define COMPAT_PRECISION highp
-#else
-#define COMPAT_PRECISION
-#endif
-
-uniform COMPAT_PRECISION vec2 OutputSize;
-uniform COMPAT_PRECISION vec2 TextureSize;
-uniform COMPAT_PRECISION vec2 OrigTextureSize;
-uniform COMPAT_PRECISION int FrameCount;
-
-uniform sampler2D Texture;
-uniform sampler2D OrigTexture;
-
-#ifdef PARAMETER_UNIFORM
-uniform COMPAT_PRECISION float curvature;
-uniform COMPAT_PRECISION float scanline_strength;
-uniform COMPAT_PRECISION float mask_strength;
-uniform COMPAT_PRECISION float mask_size;
-uniform COMPAT_PRECISION float mask_dot_width;
-uniform COMPAT_PRECISION float mask_dot_height;
-uniform COMPAT_PRECISION float mask_stagger;
-uniform COMPAT_PRECISION float sharpness_h;
-uniform COMPAT_PRECISION float sharpness_v;
-uniform COMPAT_PRECISION float gamma_input;
-uniform COMPAT_PRECISION float gamma_output;
-uniform COMPAT_PRECISION float bright_boost;
-uniform COMPAT_PRECISION float vignette;
-uniform COMPAT_PRECISION float glow_strength;
-uniform COMPAT_PRECISION float sweep;
-uniform COMPAT_PRECISION float sweep_bright;
-uniform COMPAT_PRECISION float sweep_period;
-uniform COMPAT_PRECISION float noise_amount;
-#else
-#define curvature 1.7
-#define scanline_strength 0.75
-#define mask_strength 0.3
-#define mask_size 1.0
-#define mask_dot_width 1.0
-#define mask_dot_height 1.0
-#define mask_stagger 0.0
-#define sharpness_h 0.5
-#define sharpness_v 1.0
-#define gamma_input 2.0
-#define gamma_output 1.8
-#define bright_boost 1.2
-#define vignette 0.5
-#define glow_strength 0.25
-#define sweep 1.0
-#define sweep_bright 0.35
-#define sweep_period 600.0
-#define noise_amount 0.15
-#endif
-
-COMPAT_VARYING vec2 vTexCoord;
+#pragma stage fragment
+layout(location = 0) in vec2 vTexCoord;
+layout(location = 0) out vec4 FragColor;
+layout(set = 0, binding = 2) uniform sampler2D Source;
+layout(set = 0, binding = 3) uniform sampler2D Original;
 
 #define FIX(c) max(abs(c), 1e-5)
 #define PI 3.141592653589
 // Wrap the frame counter before it reaches the hash: a large float loses the
 // resolution the noise needs, and an integer step would just scroll the field.
 #define NOISE_PERIOD 256.0
-#define TEX2D(c) COMPAT_TEXTURE(OrigTexture, c)
+#define TEX2D(c) texture(Original, c)
 
 vec2 Warp(vec2 pos) {
     pos = pos * 2.0 - 1.0;
@@ -154,8 +126,8 @@ float rand(vec2 co) {
 }
 
 void main() {
-    vec2 origSize = OrigTextureSize;
-    vec2 origPx = 1.0 / origSize;
+    vec2 origSize = params.OriginalSize.xy;
+    vec2 origPx = params.OriginalSize.zw;
     vec2 xy = mix(vTexCoord, Warp(vTexCoord), curvature);
 
     if (xy.x < 0.0 || xy.x > 1.0 || xy.y < 0.0 || xy.y > 1.0) {
@@ -186,7 +158,7 @@ void main() {
     float scan_weight = 1.0 - pow(cos(xy.y * 2.0 * PI * origSize.y) * 0.5 + 0.5, scan_beam) * scanline_strength;
 
     float mask = 1.0 - mask_strength;
-    vec2 mod_fac = floor(xy * OutputSize * origSize / (origSize * vec2(mask_size, mask_dot_height * mask_size)));
+    vec2 mod_fac = floor(xy * params.OutputSize.xy * origSize / (origSize * vec2(mask_size, mask_dot_height * mask_size)));
     int dot_no = int(mod((mod_fac.x + mod(mod_fac.y, 2.0) * mask_stagger) / mask_dot_width, 3.0));
     vec3 mask_weight;
     if      (dot_no == 0) mask_weight = vec3(1.0,  mask, mask);
@@ -204,12 +176,12 @@ void main() {
     col *= mix(1.0, vx * vy, vignette);
 
     // vTexCoord.y 0 is the top of the picture in both backends, so a rising
-    // phase sweeps downward. Same expression in the .slang; see the report.
-    float sweepPhase = fract(float(FrameCount) / sweep_period);
+    // phase sweeps downward. Same expression in the .glsl; see the report.
+    float sweepPhase = fract(float(params.FrameCount) / sweep_period);
     float band = smoothstep(0.04, 0.0, abs(xy.y - sweepPhase));
     col *= 1.0 + band * sweep_bright * sweep;
 
-    vec3 glow = COMPAT_TEXTURE(Texture, xy).rgb;
+    vec3 glow = texture(Source, xy).rgb;
     col = 1.0 - (1.0 - col) * (1.0 - glow * glow_strength);
 
     if (curvature > 0.01) {
@@ -219,12 +191,10 @@ void main() {
             col = vec3(0.0);
     }
 
-    float ntime = mod(float(FrameCount), NOISE_PERIOD) * (1000.0 / NOISE_PERIOD);
-    vec2 seed = floor(vTexCoord * OutputSize) + vec2(ntime, ntime * 1.7);
+    float ntime = mod(float(params.FrameCount), NOISE_PERIOD) * (1000.0 / NOISE_PERIOD);
+    vec2 seed = floor(vTexCoord * params.OutputSize.xy) + vec2(ntime, ntime * 1.7);
     float n = (rand(seed) - 0.5) * 0.2 * noise_amount;
     col += vec3(n);
 
     FragColor = vec4(col * bright_boost, 1.0);
 }
-
-#endif
