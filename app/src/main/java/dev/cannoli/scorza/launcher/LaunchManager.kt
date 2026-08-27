@@ -18,6 +18,7 @@ import dev.cannoli.scorza.launcher.toIgmInputMapping
 import dev.cannoli.scorza.config.PlatformConfig
 import dev.cannoli.core.SaveSlotStore
 import dev.cannoli.core.config.RetroArchConfigComposer
+import dev.cannoli.core.shader.ShaderIndex
 import dev.cannoli.scorza.model.App
 import dev.cannoli.scorza.model.LaunchTarget
 import dev.cannoli.scorza.model.Rom
@@ -33,6 +34,11 @@ import java.security.MessageDigest
 
 // Matches the line ricotta_ra_save_override writes on the tiers it owns, so every generated
 // override file says the same thing about who wrote it and where a user's own keys belong.
+private const val ASSET_SHADERS = "shaders"
+// The name Nonna's Kitchen already skips when listing a resource folder, so a stamp does not
+// show up as a file someone put there.
+private const val BUNDLED_STAMP = ".bundled_version"
+
 private const val TIER_BANNER =
     "# DO NOT EDIT - Cannoli writes this from your menu choices. Your own keys go in custom.cfg\n"
 
@@ -80,6 +86,97 @@ class LaunchManager(
                 fontDest.outputStream().use { input.copyTo(it) }
             }
         } catch (_: IOException) {}
+    }
+
+    /**
+     * Copies Cannoli's own shader presets onto the card.
+     *
+     * Only what Cannoli authored ships in the APK; everything else comes from the libretro shader
+     * database through Update Shaders. Both formats are copied because which one loads depends on
+     * the video driver a platform is running, and only the menu knows that.
+     *
+     * Keyed on the app's version rather than on the files existing, so an upgrade carrying a fixed
+     * preset actually replaces the old one. It copies rather than syncs: anything downloaded or
+     * hand-placed beside it is left alone, since this owns its own folders and nothing else.
+     */
+    fun syncBundledShaders(root: File) {
+        val dest = CannoliPaths(root).shadersDir
+        val stamp = File(dest, BUNDLED_STAMP)
+        val digest = assetDigest(ASSET_SHADERS) ?: return
+        if (try { stamp.readText().trim() } catch (_: IOException) { null } == digest) return
+        if (!copyAssetTree(ASSET_SHADERS, dest)) return
+        try {
+            stamp.writeText(digest)
+        } catch (_: IOException) {
+        }
+    }
+
+    /**
+     * Fingerprint of the shipped shader assets.
+     *
+     * Keyed on the files rather than on the app's version, because the version does not change
+     * between development builds: an edited preset would sit in the APK while the card kept the
+     * copy from the first install, and the card's copy is the one RetroArch loads. A hash notices
+     * any edit, and costs a read of about seventy kilobytes once per boot.
+     */
+    private fun assetDigest(assetPath: String): String? = try {
+        val md = MessageDigest.getInstance("SHA-256")
+        digestAssetTree(assetPath, md)
+        md.digest().joinToString("") { "%02x".format(it) }
+    } catch (_: Exception) {
+        null
+    }
+
+    private fun digestAssetTree(assetPath: String, md: MessageDigest) {
+        val children = context.assets.list(assetPath)
+        if (children.isNullOrEmpty()) {
+            md.update(assetPath.toByteArray())
+            context.assets.open(assetPath).use { input ->
+                val buf = ByteArray(16 * 1024)
+                while (true) {
+                    val n = input.read(buf)
+                    if (n < 0) break
+                    md.update(buf, 0, n)
+                }
+            }
+        } else {
+            // Sorted, so the same tree hashes the same however the platform happens to list it.
+            children.sorted().forEach { digestAssetTree("$assetPath/$it", md) }
+        }
+    }
+
+    /**
+     * Builds the shader index if the tree has one to describe and does not already have it.
+     *
+     * Normally an extraction writes it, but a tree that predates the index, or one assembled by
+     * hand, would otherwise make the browser walk thousands of folders on every level. Cheap when
+     * the index exists, which is the usual case, and the walk itself happens once.
+     */
+    fun ensureShaderIndex(root: File) {
+        val dir = CannoliPaths(root).shadersDir
+        if (!dir.isDirectory) return
+        if (ShaderIndex.file(dir).isFile) return
+        ShaderIndex.build(dir)
+    }
+
+    // Returns false on the first failure rather than leaving a half-copied preset stamped as done,
+    // which would then be skipped on every later boot.
+    private fun copyAssetTree(assetPath: String, dest: File): Boolean {
+        val children = try { context.assets.list(assetPath) } catch (_: IOException) { null }
+        return if (children.isNullOrEmpty()) {
+            try {
+                dest.parentFile?.mkdirs()
+                context.assets.open(assetPath).use { input ->
+                    dest.outputStream().use { input.copyTo(it) }
+                }
+                true
+            } catch (_: IOException) {
+                false
+            }
+        } else {
+            dest.mkdirs()
+            children.all { copyAssetTree("$assetPath/$it", File(dest, it)) }
+        }
     }
 
     /**

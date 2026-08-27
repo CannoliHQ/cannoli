@@ -107,6 +107,8 @@ class BootInitializer @Inject constructor(
             // be served the listing taken before any cfg was on disk.
             autoconfigRepository.invalidate()
             launchManager.syncRetroArchAssets(root)
+            launchManager.syncBundledShaders(root)
+            launchManager.ensureShaderIndex(root)
             launchManager.writeRunnerConfig(root)
             // Strip any RetroAchievements session key left in a persisted config by an old build, so
             // the fresh per-launch injection is the only copy on disk and nothing stale layers back.
