@@ -124,7 +124,7 @@ fun DialogOverlay(
                     val parts = option.split("\t", limit = 2)
                     if (parts.size == 2) {
                         PillRowKeyValue(
-                            label = parts[0],
+                            label = menuOptionLabel(parts[0]),
                             value = parts[1],
                             isSelected = isSelected,
                             fontSize = listFontSize,
@@ -133,7 +133,7 @@ fun DialogOverlay(
                         )
                     } else {
                         PillRowText(
-                            label = option,
+                            label = menuOptionLabel(option),
                             isSelected = isSelected,
                             fontSize = listFontSize,
                             lineHeight = listLineHeight,
@@ -160,7 +160,7 @@ fun DialogOverlay(
                     itemHeight = itemHeight
                 ) { _, option, isSelected ->
                     PillRowText(
-                        label = option,
+                        label = menuOptionLabel(option),
                         isSelected = isSelected,
                         fontSize = listFontSize,
                         lineHeight = listLineHeight,
@@ -1524,3 +1524,12 @@ private fun formatsThatFit(all: List<String>, budget: Int): Int {
     }
     return 1
 }
+
+/**
+ * The label for a context menu row. Options carry a stable key so the handlers can compare them, so
+ * this is where the key becomes words. Anything with no entry is passed through: menus that build
+ * their own rows from already-translated text share this renderer.
+ */
+@Composable
+private fun menuOptionLabel(key: String): String =
+    dev.cannoli.scorza.input.MENU_LABELS[key]?.let { stringResource(it) } ?: key

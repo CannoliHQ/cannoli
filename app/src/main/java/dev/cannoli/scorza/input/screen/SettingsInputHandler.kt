@@ -300,14 +300,17 @@ class SettingsInputHandler @Inject constructor(
         val installed = getInstalledLauncherApps()
         val allApps = buildList {
             if (type == "tools" && context.packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK)) {
-                add("Android TV Settings" to ApkLauncher.VIRTUAL_TV_SETTINGS_PACKAGE)
+                add(context.getString(dev.cannoli.ui.R.string.app_android_tv_settings) to ApkLauncher.VIRTUAL_TV_SETTINGS_PACKAGE)
             }
             addAll(installed)
         }
         val appType = if (type == "tools") AppType.TOOL else AppType.PORT
         val existing = appsRepository.all(appType).map { it.packageName }.toSet()
         val initialChecked = allApps.indices.filter { allApps[it].second in existing }.toSet()
-        val title = if (type == "tools") "Manage Tools" else "Manage Ports"
+        val title = context.getString(
+            if (type == "tools") dev.cannoli.ui.R.string.title_manage_tools
+            else dev.cannoli.ui.R.string.title_manage_ports
+        )
         nav.push(LauncherScreen.AppPicker(
             type = type,
             title = title,

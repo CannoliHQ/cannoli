@@ -9,6 +9,8 @@ import dev.cannoli.scorza.input.DeviceMapping
 class MappingResolver(
     private val diskRepository: AutoconfigRepository,
     private val bundledRetroArchEntries: BundledAutoconfigEntries,
+    /** Carried through to the fallback factory, which has no Context to look it up with. */
+    private val genericControllerName: String = "Generic Controller",
 ) {
 
     /**
@@ -34,6 +36,6 @@ class MappingResolver(
             ?.first
 
         return best?.let { RetroArchAutoconfigImporter.import(it, device) }
-            ?: AndroidDefaultMappingFactory().create(device)
+            ?: AndroidDefaultMappingFactory(genericName = genericControllerName).create(device)
     }
 }

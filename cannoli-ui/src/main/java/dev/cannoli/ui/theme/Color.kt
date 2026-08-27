@@ -5,6 +5,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
+import dev.cannoli.ui.R
 
 val Black = Color(0xFF000000)
 val White = Color(0xFFFFFFFF)
@@ -39,25 +40,26 @@ val LocalScaleFactor = staticCompositionLocalOf { 1f }
 // keep the default's proportions instead of drowning small text in fixed padding.
 val LocalPillScale = staticCompositionLocalOf { 1f }
 
-data class ColorPreset(val name: String, val color: Long)
+/** [nameRes] rather than a name: the picker draws it, so it has to be translatable. */
+data class ColorPreset(@androidx.annotation.StringRes val nameRes: Int, val color: Long)
 
 val COLOR_PRESETS = listOf(
-    ColorPreset("Black", 0xFF000000),
-    ColorPreset("Dark Grey", 0xFF3A3A3C),
-    ColorPreset("Light Grey", 0xFFC0BFBE),
-    ColorPreset("White", 0xFFFFFFFF),
-    ColorPreset("Flame Red", 0xFFCC1A1A),
-    ColorPreset("Crimson", 0xFFB8002A),
-    ColorPreset("Berry", 0xFFC0336B),
-    ColorPreset("Coral", 0xFFE8604A),
-    ColorPreset("Spice", 0xFFE86A10),
-    ColorPreset("Dandelion", 0xFFF5C400),
-    ColorPreset("Kiwi", 0xFF5AB820),
-    ColorPreset("Teal", 0xFF00897B),
-    ColorPreset("Neon Blue", 0xFF0AB9E6),
-    ColorPreset("Indigo", 0xFF3D4DB5),
-    ColorPreset("Grape", 0xFF7B3FA0),
-    ColorPreset("Midnight Purple", 0xFF4A1A6E)
+    ColorPreset(R.string.color_black, 0xFF000000),
+    ColorPreset(R.string.color_dark_grey, 0xFF3A3A3C),
+    ColorPreset(R.string.color_light_grey, 0xFFC0BFBE),
+    ColorPreset(R.string.color_white, 0xFFFFFFFF),
+    ColorPreset(R.string.color_flame_red, 0xFFCC1A1A),
+    ColorPreset(R.string.color_crimson, 0xFFB8002A),
+    ColorPreset(R.string.color_berry, 0xFFC0336B),
+    ColorPreset(R.string.color_coral, 0xFFE8604A),
+    ColorPreset(R.string.color_spice, 0xFFE86A10),
+    ColorPreset(R.string.color_dandelion, 0xFFF5C400),
+    ColorPreset(R.string.color_kiwi, 0xFF5AB820),
+    ColorPreset(R.string.color_teal, 0xFF00897B),
+    ColorPreset(R.string.color_neon_blue, 0xFF0AB9E6),
+    ColorPreset(R.string.color_indigo, 0xFF3D4DB5),
+    ColorPreset(R.string.color_grape, 0xFF7B3FA0),
+    ColorPreset(R.string.color_midnight_purple, 0xFF4A1A6E)
 )
 
 fun colorToHex(color: Color): String {

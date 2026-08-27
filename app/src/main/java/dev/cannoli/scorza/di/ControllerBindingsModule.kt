@@ -66,9 +66,11 @@ object ControllerBindingsModule {
     fun provideMappingResolver(
         diskRepository: AutoconfigRepository,
         bundled: BundledAutoconfigEntries,
+        @ApplicationContext context: android.content.Context,
     ): MappingResolver = MappingResolver(
         diskRepository = diskRepository,
         bundledRetroArchEntries = bundled,
+        genericControllerName = context.getString(dev.cannoli.ui.R.string.controller_generic),
     )
 
     @Provides

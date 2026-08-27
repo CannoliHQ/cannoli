@@ -271,6 +271,50 @@
         <item quantity="other">Newer builds are available.\n\n%1$d cores \u00b7 %2$s</item>
     </plurals>
     <!-- Progress overlay while cores are being replaced. -->
+    <string name="osd_game_list_updated">Game list updated</string>
+    <string name="title_manage_tools">Manage Tools</string>
+    <string name="title_manage_ports">Manage Ports</string>
+    <string name="app_android_tv_settings">Android TV Settings</string>
+    <!-- Fallback name for a controller that reports none of its own. -->
+    <string name="controller_generic">Generic Controller</string>
+    <!-- Colour picker swatch names, shown as the label for the selected colour. -->
+    <string name="color_black">Black</string>
+    <string name="color_dark_grey">Dark Grey</string>
+    <string name="color_light_grey">Light Grey</string>
+    <string name="color_white">White</string>
+    <string name="color_flame_red">Flame Red</string>
+    <string name="color_crimson">Crimson</string>
+    <string name="color_berry">Berry</string>
+    <string name="color_coral">Coral</string>
+    <string name="color_spice">Spice</string>
+    <string name="color_dandelion">Dandelion</string>
+    <string name="color_kiwi">Kiwi</string>
+    <string name="color_teal">Teal</string>
+    <string name="color_neon_blue">Neon Blue</string>
+    <string name="color_indigo">Indigo</string>
+    <string name="color_grape">Grape</string>
+    <string name="color_midnight_purple">Midnight Purple</string>
+    <!-- Game and shortcut context menu rows. The key is identity; this is the label. -->
+    <string name="menu_rename">Rename</string>
+    <string name="menu_delete">Delete</string>
+    <string name="menu_delete_game">Delete Game</string>
+    <string name="menu_delete_art">Delete Art</string>
+    <string name="menu_manage_collections">Manage Collections</string>
+    <string name="menu_emulator_override">Emulator Override</string>
+    <string name="menu_remove_from_collection">Remove From Collection</string>
+    <string name="menu_child_collections">Child Collections</string>
+    <string name="menu_ra_game_id">RA Game ID</string>
+    <string name="menu_force_softcore">Force Softcore</string>
+    <string name="menu_preload_achievements">Preload Achievements</string>
+    <string name="menu_add_favorite">Add To Favorites</string>
+    <string name="menu_remove_favorite">Remove From Favorites</string>
+    <string name="menu_remove_shortcut">Remove Shortcut</string>
+    <string name="menu_remove_from_recents">Remove From Recently Played</string>
+    <string name="menu_download_art">Download Missing Art</string>
+    <string name="menu_save_slots">Save Slots</string>
+    <string name="menu_restore_backup">Restore from Backup</string>
+    <string name="menu_romm_saves">RomM Saves</string>
+    <string name="menu_guides">Guides</string>
     <string name="setting_installed_cores">Installed Cores</string>
     <!-- Confirm removing one core. %1$s = its name, %2$s = a size like "12 MB". -->
     <string name="dialog_uninstall_core_confirm">Remove %1$s?\n\nIt can be downloaded again from the emulator picker.\n\n%2$s</string>

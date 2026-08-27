@@ -180,7 +180,7 @@ class GameListViewModel @Inject constructor(
             }
             if (!result.silent) {
                 withContext(Dispatchers.Main) {
-                    osdController.show("Game list updated")
+                    osdController.show(context.getString(dev.cannoli.ui.R.string.osd_game_list_updated))
                 }
             }
         }

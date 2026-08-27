@@ -10,6 +10,12 @@ import dev.cannoli.scorza.input.legend.LegendResolver
 
 class AndroidDefaultMappingFactory(
     private val legendResolver: LegendResolver = LegendResolver(),
+    /**
+     * Shown for a pad that reports no name of its own, so it reaches the controllers list and the
+     * connected OSD. Passed in rather than read here: this class has no Context and the tests build
+     * it bare, so the caller that has one supplies the translated string.
+     */
+    private val genericName: String = "Generic Controller",
 ) {
 
     private val DEFAULT_BINDINGS: Map<CanonicalButton, List<Int>> = mapOf(
@@ -46,7 +52,7 @@ class AndroidDefaultMappingFactory(
         }
         return DeviceMapping(
             id = safeId,
-            displayName = device.name.ifEmpty { "Generic Controller" },
+            displayName = device.name.ifEmpty { genericName },
             match = DeviceMatchRule(
                 name = device.name.ifEmpty { null },
                 vendorId = device.vendorId.takeIf { it != 0 },

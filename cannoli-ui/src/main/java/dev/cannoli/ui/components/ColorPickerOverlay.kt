@@ -39,9 +39,11 @@ import dev.cannoli.ui.theme.Spacing
 
 const val COLOR_GRID_COLS = 4
 
+/** Composable because a preset's name is a resource now; a colour off the grid keeps its hex. */
+@Composable
 private fun colorDisplayName(argb: Long): String {
     val preset = COLOR_PRESETS.firstOrNull { it.color == argb }
-    if (preset != null) return preset.name
+    if (preset != null) return stringResource(preset.nameRes)
     val rgb = argb and 0xFFFFFF
     return "#%06X".format(rgb)
 }
