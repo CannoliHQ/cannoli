@@ -78,6 +78,9 @@ fun CannoliIGM(
     slotOccupied: List<Boolean>,
     undoLabel: String?,
     settingsItems: List<IGMSettingsItem>,
+    previewTitle: String = "",
+    previewItems: List<String> = emptyList(),
+    overlayImage: String? = null,
     cheatItems: List<IGMController.CheatItem>,
     cheatVisibleItems: List<IGMController.CheatItem>,
     cheatFilter: CheatFilter,
@@ -93,13 +96,15 @@ fun CannoliIGM(
     onGuideScrollChanged: (y: Int, x: Int) -> Unit = { _, _ -> },
 ) {
     val isGuideScreen = screen is IGMScreen.Guide
+    // The picker judges what is on screen, so nothing of Cannoli's may sit over the game.
+    val isPreviewScreen = screen is IGMScreen.PreviewPicker
     val igmFontSize = config.fontSizeSp.sp
     val igmLineHeight = config.lineHeightSp.sp
     val igmPillScale = config.pillScale
     val igmScaleFactor = config.scaleFactor
     val igmTypography = buildCannoliTypography(baseSizeSp = config.fontSizeSp, fontFamily = LocalCannoliFont.current)
     val labels = ButtonStyle(config.buttonLabelSet, config.confirmButton)
-    val statusBarEnabled = (config.showWifi || config.showBluetooth || config.showClock || config.batteryDisplay != BatteryDisplayMode.HIDE || config.showVpn) && !isGuideScreen
+    val statusBarEnabled = (config.showWifi || config.showBluetooth || config.showClock || config.batteryDisplay != BatteryDisplayMode.HIDE || config.showVpn) && !isGuideScreen && !isPreviewScreen
     val statusBarLeftEdge = remember { mutableIntStateOf(Int.MAX_VALUE) }
 
     val configuration = LocalConfiguration.current
@@ -133,8 +138,19 @@ fun CannoliIGM(
             modifier = Modifier
                 .fillMaxSize()
                 .onSizeChanged { surfaceSize.value = it }
-                .padding(viewportPadding)
         ) {
+            // Outside the viewport padding, and outside the when. A bezel frames the whole display
+            // rather than sitting inside the usable area, and it belongs to the game rather than to
+            // any one screen, so it stays put while screens come and go and while none is shown.
+            // Inside the padding it also visibly resized, because that padding derives from a
+            // surface size that is zero until the first layout resolves.
+            OverlayLayer(
+                path = overlayImage,
+                widthPx = surfaceSize.value.width,
+                heightPx = surfaceSize.value.height,
+            )
+
+            Box(modifier = Modifier.fillMaxSize().padding(viewportPadding)) {
             when (screen) {
                 is IGMScreen.Menu -> {
                     InGameMenu(
@@ -200,6 +216,17 @@ fun CannoliIGM(
                         }
                     }
                 }
+                is IGMScreen.PreviewPicker -> {
+                    LivePreviewPicker(
+                        title = previewTitle,
+                        items = previewItems,
+                        index = screen.selectedIndex,
+                        labels = labels,
+                        fontSize = igmFontSize,
+                        lineHeight = igmLineHeight,
+                    )
+                }
+
                 is IGMScreen.ProviderSettings, is IGMScreen.SettingsExitPrompt -> {
                     val description = (screen as? IGMScreen.ProviderSettings)?.description
                     val descriptionScroll = (screen as? IGMScreen.ProviderSettings)?.descriptionScroll ?: 0
@@ -482,7 +509,7 @@ fun CannoliIGM(
                     )
                 }
             }
+            }
         }
     }
 }
-

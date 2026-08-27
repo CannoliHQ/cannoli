@@ -117,4 +117,8 @@ object CuratedCatalog {
     const val CATEGORY_ADVANCED = "advanced"
     const val CATEGORY_EMULATOR = "emulator"
     const val CATEGORY_INFO = "info"
+
+    // Cannoli's own, not a RetroArch settings screen. Like CATEGORY_INFO it belongs to both
+    // menus, and like it the provider answers the key before the curated/all branch.
+    const val CATEGORY_OVERLAY = "overlay"
 }

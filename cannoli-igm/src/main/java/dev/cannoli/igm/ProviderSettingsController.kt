@@ -43,6 +43,8 @@ class ProviderSettingsController(private val provider: IgmSettingsProvider) {
 
     fun setOnChanged(callback: () -> Unit) = provider.setOnChanged(callback)
 
+    fun markChangedExternally(keys: Set<String>) = provider.markChangedExternally(keys)
+
     fun enter(): State {
         levels.clear()
         prompt = null

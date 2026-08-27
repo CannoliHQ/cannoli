@@ -18,6 +18,7 @@ data class RaOptionStrings(
         CuratedCatalog.CATEGORY_EMULATOR to "Emulator",
         CuratedCatalog.CATEGORY_ADVANCED to "Advanced",
         CuratedCatalog.CATEGORY_INFO to "Info",
+        CuratedCatalog.CATEGORY_OVERLAY to "Overlay",
     ),
     val curatedRowLabels: Map<String, String> = mapOf(
         "curated_screen_scaling" to "Screen Scaling",

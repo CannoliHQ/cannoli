@@ -3,6 +3,10 @@ package dev.cannoli.ricotta
 import android.os.Handler
 import android.os.Looper
 import dev.cannoli.core.StateSlotPaths
+import dev.cannoli.core.config.OverrideTiers
+import dev.cannoli.core.config.RetroArchConfigComposer
+import dev.cannoli.core.overlay.OverlayCatalog
+import java.io.File
 import dev.cannoli.igm.AchievementInfo
 import dev.cannoli.igm.RetroArchBridge
 import dev.cannoli.igm.RaOverrideScope
@@ -14,9 +18,9 @@ import dev.cannoli.igm.RaSettingsHost
 class EmbeddedRetroArchBridge(
     private val stateBasePath: String,
     private val hardcoreInEffect: Boolean,
-    cannoliRoot: String,
-    platformTag: String,
-    romBaseName: String,
+    private val cannoliRoot: String,
+    private val platformTag: String,
+    private val romBaseName: String,
     coreId: String,
 ) : RetroArchBridge, RaSettingsHost {
 
@@ -166,7 +170,7 @@ class EmbeddedRetroArchBridge(
         nativeCoreOptionKeys()?.map { entry ->
             val parts = entry.split('|', limit = 3)
             dev.cannoli.igm.CoreOptionRef(
-                key = "$CORE_OPTION_PREFIX${parts[0]}",
+                key = parts[0],
                 categoryKey = parts.getOrNull(1).orEmpty(),
                 categoryLabel = parts.getOrNull(2).orEmpty(),
             )
@@ -178,6 +182,25 @@ class EmbeddedRetroArchBridge(
             arr.getOrNull(0)?.takeIf { it.isNotEmpty() }?.let { add(raStrings.infoCore to it) }
             arr.getOrNull(1)?.takeIf { it.isNotEmpty() }?.let { add(raStrings.infoCoreVersion to it) }
         }
+    }
+
+    // Listing is what folders a loose image left by v1, so it happens here rather than at launch.
+    private var overlayNames: List<String>? = null
+
+    /**
+     * Cached because the settings root asks for this every time it is composed, and the scan walks
+     * the card and may move files: v1's loose images are foldered here. SD listings are slow and
+     * never cache themselves, so doing it per render put that on the menu's critical path.
+     * [rescanOverlays] is the way to see a folder added mid-session.
+     */
+    override fun overlays(): List<String> = overlayNames ?: rescanOverlays()
+
+    fun rescanOverlays(): List<String> {
+        val names =
+            if (cannoliRoot.isEmpty()) emptyList()
+            else OverlayCatalog.list(OverlayCatalog.platformDir(File(cannoliRoot), platformTag))
+        overlayNames = names
+        return names
     }
 
     override fun raGetSetting(key: String): RaSetting? {
@@ -234,8 +257,74 @@ class EmbeddedRetroArchBridge(
             else RaScreenRow(key = f[0], label = f[1], isMenu = f[2] == "1")
         }
 
+    // Spelled out rather than taken from the enum ordinal, so reordering the enum cannot silently
+    // retarget where an override lands. ricotta_bridge.c decodes it the same way.
+    /**
+     * The overlay a person picked, by folder name, stored in the core-independent tier because a
+     * bezel is the same choice whichever core runs the platform. Cannoli draws it, so this is not a
+     * RetroArch setting and never reaches RetroArch's config.
+     */
+    var cannoliOverlayName: String? = null
+
+    /** Set by the host, which owns what is drawn: the bridge only knows how to store the name. */
+    var onCannoliSaved: (() -> Unit)? = null
+    var onCannoliRevert: (() -> Unit)? = null
+
+    override fun revertCannoliOverride() { onCannoliRevert?.invoke() }
+
+    override fun saveCannoliOverride(scope: RaOverrideScope, changed: Set<String>) {
+        // Only when this visit actually moved the overlay. Otherwise saving any setting at platform
+        // scope would copy a game's bezel onto the whole platform.
+        if (KEY_OVERLAY !in changed) return
+        if (cannoliRoot.isEmpty()) return
+        val root = File(cannoliRoot)
+        val tier = when (scope) {
+            RaOverrideScope.GAME ->
+                if (romBaseName.isEmpty()) return
+                else File(File(File(root, OverrideTiers.GAMES_DIR), platformTag), romBaseName)
+            RaOverrideScope.SYSTEM -> File(File(root, OverrideTiers.SYSTEMS_DIR), platformTag)
+        }
+        writeSharedTier(File(tier, "${OverrideTiers.SHARED}.cfg"))
+        onCannoliSaved?.invoke()
+    }
+
+    // Merged rather than rewritten: the tier is shared with anything else core-independent, and a
+    // shader will land in the same file.
+    private fun writeSharedTier(file: File) {
+        val existing = try {
+            if (file.isFile) RetroArchConfigComposer.parse(file.readText()) else emptyMap()
+        } catch (_: Exception) { emptyMap() }
+        val merged = LinkedHashMap(existing)
+        val name = cannoliOverlayName
+        if (name.isNullOrEmpty()) merged.remove(KEY_OVERLAY) else merged[KEY_OVERLAY] = name
+        try {
+            file.parentFile?.mkdirs()
+            if (merged.isEmpty()) {
+                file.delete()
+            } else {
+                file.writeText(merged.entries.joinToString("\n") { "${it.key} = \"${it.value}\"" } + "\n")
+            }
+        } catch (_: Exception) {
+        }
+    }
+
+    /** The stored overlay for this game, game scope winning, or null when none is set. */
+    fun storedOverlayName(): String? {
+        if (cannoliRoot.isEmpty()) return null
+        val root = File(cannoliRoot)
+        val game = File(File(File(File(root, OverrideTiers.GAMES_DIR), platformTag), romBaseName), "${OverrideTiers.SHARED}.cfg")
+        val system = File(File(File(root, OverrideTiers.SYSTEMS_DIR), platformTag), "${OverrideTiers.SHARED}.cfg")
+        return sequenceOf(game, system)
+            .mapNotNull { f ->
+                try { if (f.isFile) RetroArchConfigComposer.parse(f.readText())[KEY_OVERLAY] else null }
+                catch (_: Exception) { null }
+            }
+            .firstOrNull { it.isNotBlank() }
+    }
+
     override fun raSaveOverride(scope: RaOverrideScope, keys: Set<String>) {
-        nativeRaSaveOverride(if (scope == RaOverrideScope.GAME) 1 else 0, encodeOverrideKeys(keys))
+        val encoded = if (scope == RaOverrideScope.GAME) 1 else 0
+        nativeRaSaveOverride(encoded, encodeOverrideKeys(keys))
     }
 
     private var onRaAppliedCallback: ((String, String) -> Unit)? = null
@@ -330,9 +419,7 @@ class EmbeddedRetroArchBridge(
     private external fun nativeRaIntegerScale(): Boolean
 
     companion object {
-        // Matches RICOTTA_CORE_OPT_PREFIX in ricotta_bridge.c.
-        const val CORE_OPTION_PREFIX = "core::"
-
+        private const val KEY_OVERLAY = "cannoli_overlay"
         // The save state rows go only when this launch is really in hardcore. The launcher decides
         // that once (LaunchManager.hardcoreInEffect, folding in global hardcore and per-game
         // force-softcore) and carries it across the parcel, so the gate agrees with the launcher's

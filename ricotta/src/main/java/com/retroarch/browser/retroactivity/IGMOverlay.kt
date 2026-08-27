@@ -34,6 +34,10 @@ import dev.cannoli.igm.GuideOverlayContract
 import dev.cannoli.igm.IGMController
 import dev.cannoli.igm.IGMHostConfig
 import dev.cannoli.igm.CuratedCatalog
+import dev.cannoli.core.overlay.OverlayCatalog
+import java.io.File
+import dev.cannoli.igm.IGMSettingsItem
+import dev.cannoli.igm.RaValueCycler
 import dev.cannoli.igm.RaOptionStrings
 import dev.cannoli.ui.R
 import dev.cannoli.ui.theme.CannoliColors
@@ -194,6 +198,7 @@ class IGMOverlay(
                 CuratedCatalog.CATEGORY_EMULATOR to uiContext.getString(R.string.igm_emulator),
                 CuratedCatalog.CATEGORY_ADVANCED to uiContext.getString(R.string.igm_advanced),
                 CuratedCatalog.CATEGORY_INFO to uiContext.getString(R.string.igm_info),
+                CuratedCatalog.CATEGORY_OVERLAY to uiContext.getString(R.string.igm_overlay),
             ),
             curatedRowLabels = mapOf(
                 "curated_screen_scaling" to uiContext.getString(R.string.igm_curated_screen_scaling),
@@ -222,6 +227,7 @@ class IGMOverlay(
             controller.attachGuides(GuideManager(cannoliRoot, platformTag, romBaseName))
             controller.attachCheats(CheatManager(cannoliRoot, platformTag, romBaseName))
         }
+        attachOverlayPicker()
         controller.openGuideExternally = ::showGuideOnSecondDisplay
         controller.onCheatsRestored = { count ->
             onOsdMessage?.invoke(
@@ -259,6 +265,11 @@ class IGMOverlay(
             }
         }
         composeView = view
+        // A stored bezel has to reach the screen without anyone opening the menu, but a panel window
+        // cannot be added yet: panelParams needs the activity's window token, and during onCreate the
+        // decor view has none, so addView throws and the attach is silently lost. Posting to the
+        // decor view runs this once the host window is attached and the token exists.
+        activity.window.decorView.post { showOverlayLayer() }
     }
 
     // The overlay is a started service in the launcher's process, so the guide stays on the panel
@@ -284,10 +295,12 @@ class IGMOverlay(
 
     private var attached = false
 
-    private fun attachIfNeeded(view: ComposeView): Boolean {
+    // A bezel attaches this window before any menu exists, and it must not take input from the
+    // game to do it. showWindow raises focus when the menu actually opens.
+    private fun attachIfNeeded(view: ComposeView, focusable: Boolean = true): Boolean {
         if (attached) return true
         attached = runCatching {
-            activity.windowManager.addView(view, panelParams(focusable = true))
+            activity.windowManager.addView(view, panelParams(focusable = focusable))
         }.isSuccess
         // Sibling panel windows stack in the order they were added, so the OSD, added first, is
         // under this one until the host puts it back on top.
@@ -347,6 +360,9 @@ class IGMOverlay(
         bridge.pause()
         bridge.setIGMVisible(true)
         composeView?.let { v ->
+            // A bezel keeps this window up and correct between menus, so there is no stale frame to
+            // hide and the reveal below would only flash it away and back.
+            val alreadyDrawing = v.visibility == View.VISIBLE
             if (!attachIfNeeded(v)) return@let
             // The surface still holds the last frame drawn before the menu was hidden, and the
             // compositor shows it the moment the window is up: without this the previous
@@ -354,9 +370,11 @@ class IGMOverlay(
             // that frame is about to land.
             v.visibility = View.VISIBLE
             runCatching {
-                activity.windowManager.updateViewLayout(v, panelParams(focusable = true, alpha = 0f))
+                activity.windowManager.updateViewLayout(
+                    v, panelParams(focusable = true, alpha = if (alreadyDrawing) 1f else 0f),
+                )
             }
-            revealOnceDrawn(v)
+            if (!alreadyDrawing) revealOnceDrawn(v)
             v.requestFocus()
             ViewCompat.getWindowInsetsController(v)?.apply {
                 hide(WindowInsetsCompat.Type.systemBars())
@@ -402,11 +420,92 @@ class IGMOverlay(
         composeView?.let { v ->
             if (!attached) return@let
             runCatching { activity.windowManager.updateViewLayout(v, panelParams(focusable = false)) }
-            v.visibility = View.GONE
+            // A bezel outlives the menu, so the view only goes away when there is nothing to draw.
+            v.visibility =
+                if (controller.overlayPicker.activeImage.value != null) View.VISIBLE else View.GONE
         }
     }
 
     fun isVisible(): Boolean = showing
+
+    /**
+     * Cannoli owns which overlay is in force, so the picker drives RetroArch directly, then stages
+     * the keys it touched into the settings tree's existing dirty set. Persistence and the choice
+     * between platform and game both come from the save prompt on the way out, so an overlay is
+     * scoped exactly like every other setting rather than having a path of its own.
+     *
+     * The list carries a leading None so switching the bezel off is a move like any other rather
+     * than a separate action, which is why every index below is offset by one.
+     */
+    private companion object {
+        // Not a RetroArch setting, so the native writer skips it; staging it is purely what
+        // marks the tree dirty so the save prompt appears and offers platform or game.
+        const val STAGED_OVERLAY_KEY = "cannoli_overlay"
+    }
+
+    /**
+     * The window stays attached while the game runs and only its content view is hidden, so a
+     * bezel needs that view shown even with no menu up. It is already non-focusable and
+     * non-touchable in that state, so nothing reaches it and input still goes to the game.
+     */
+    private fun showOverlayLayer() {
+        if (showing) return
+        composeView?.let { v ->
+            if (!attachIfNeeded(v, focusable = false)) return@let
+            v.visibility = if (controller.overlayPicker.activeImage.value != null) View.VISIBLE else View.GONE
+        }
+    }
+
+    // What was in force when the settings tree was entered, so Discard can put it back. The tree is
+    // the unit of undo here, not the picker: leaving the picker is plain navigation.
+    private var overlayBeforeEdit: String? = null
+
+    private fun attachOverlayPicker() {
+        val picker = controller.overlayPicker
+        // A bezel outlives the session it was chosen in, so the stored pick is drawn from the start
+        // rather than waiting for someone to open the menu.
+        bridge.storedOverlayName()?.let { name ->
+            picker.activeImage.value = overlayImageFor(name)
+            bridge.cannoliOverlayName = name
+        }
+        overlayBeforeEdit = bridge.cannoliOverlayName
+        showOverlayLayer()
+
+        // Staged so the change joins the save prompt on the way out of the settings tree, which is
+        // what gives an overlay the same platform-or-game scope every other setting has.
+        picker.stagedKeys = setOf(STAGED_OVERLAY_KEY)
+
+        bridge.onCannoliSaved = { overlayBeforeEdit = bridge.cannoliOverlayName }
+        bridge.onCannoliRevert = {
+            bridge.cannoliOverlayName = overlayBeforeEdit
+            picker.activeImage.value = overlayBeforeEdit?.let { overlayImageFor(it) }
+            showOverlayLayer()
+        }
+
+        picker.onRefresh = {
+            val none = uiContext.getString(dev.cannoli.ui.R.string.value_none)
+            // Opening the picker is the one moment worth paying for a fresh scan, so a folder
+            // added mid-session shows up without relaunching.
+            picker.items.value = listOf(none) + bridge.rescanOverlays()
+            picker.selected.value = picker.items.value.drop(1)
+                .firstOrNull { overlayImageFor(it) == picker.activeImage.value } ?: none
+        }
+
+        // Cannoli draws the bezel, so choosing one is a state change and nothing more: no setting to
+        // write, no runloop to wake, no pause to fight. Compose redraws and it is on screen.
+        picker.onPreview = { index ->
+            val name = picker.items.value.getOrNull(index)?.takeIf { index > 0 }
+            bridge.cannoliOverlayName = name
+            picker.activeImage.value = name?.let { overlayImageFor(it) }
+            showOverlayLayer()
+        }
+
+    }
+
+    private fun overlayImageFor(name: String): String? =
+        if (cannoliRoot.isEmpty()) null
+        else OverlayCatalog.resolveImage(File(OverlayCatalog.platformDir(File(cannoliRoot), platformTag), name))
+            ?.absolutePath
 
     @Composable
     private fun IGMContent() {
@@ -431,6 +530,9 @@ class IGMOverlay(
                     slotOccupied = controller.slotOccupied.value,
                     undoLabel = controller.undoLabel.value,
                     settingsItems = controller.settingsItems.value,
+                    previewTitle = uiContext.getString(R.string.igm_overlay),
+                    previewItems = controller.overlayPicker.items.value,
+                    overlayImage = controller.overlayPicker.activeImage.value,
                     cheatItems = controller.cheatItems.value,
                     cheatVisibleItems = controller.cheatVisibleItems.value,
                     cheatFilter = controller.cheatFilter.value,

@@ -66,6 +66,13 @@ class RaIgmSettingsProvider(
     // side drops any key that is not a live RA setting. Cleared whenever the dirty flag is.
     private val changedKeys = mutableSetOf<String>()
 
+    // What each changed key held before the first edit of this visit, so Discard can put it back.
+    // Captured before the write, since afterwards the old value is gone, and first capture wins,
+    // so cycling a row four times still restores what it held on the way in. Only user edits are
+    // recorded: adoptFirstPresetIfUnmatched normalises on load and never dirties, so the value it
+    // replaces is not something Discard should bring back.
+    private val priorValues = mutableMapOf<String, String>()
+
     // The settings of the category currently being shown, cached so cycle() has the
     // rich RaSetting (type/min/max/options) the generic Choice row does not carry.
     private var currentCategory: String? = null
@@ -86,6 +93,10 @@ class RaIgmSettingsProvider(
         path.first() == EMULATOR_CATEGORY -> emulatorScreen(path.getOrNull(1))
         // Info describes the running core rather than any setting, so it belongs in both menus.
         path.first() == CuratedCatalog.CATEGORY_INFO -> infoScreen()
+        // Cannoli's own screen, so the row only marks the way in: the controller swaps to the
+        // live preview picker on seeing this path and never renders what is returned here.
+        path.first() == CuratedCatalog.CATEGORY_OVERLAY ->
+            GenericIgmSettingsScreen(curatedTitle(CuratedCatalog.CATEGORY_OVERLAY), emptyList())
         curated -> curatedCategoryScreen(path.first())
         // RetroArch's tree is arbitrarily deep, so the screen is whatever the path last entered.
         else -> raScreen(path.last())
@@ -151,6 +162,7 @@ class RaIgmSettingsProvider(
                     curatedTitle(CuratedCatalog.CATEGORY_EMULATOR),
                 ))
             }
+            addOverlayCategory()
             if (host.systemInfo().isNotEmpty()) {
                 add(GenericIgmSettingsItem.Category(
                     CuratedCatalog.CATEGORY_INFO,
@@ -159,6 +171,16 @@ class RaIgmSettingsProvider(
             }
         }
         return GenericIgmSettingsScreen(strings.rootTitle, items)
+    }
+
+    // Absent rather than empty when the platform has no overlay folders, the same rule the core
+    // options and info rows follow. Called from both roots so the two menus cannot drift.
+    private fun MutableList<GenericIgmSettingsItem>.addOverlayCategory() {
+        if (host.overlays().isEmpty()) return
+        add(GenericIgmSettingsItem.Category(
+            CuratedCatalog.CATEGORY_OVERLAY,
+            curatedTitle(CuratedCatalog.CATEGORY_OVERLAY),
+        ))
     }
 
     // Read-only rows: nothing here is a setting, so the keys are positional and cycle() ignores them.
@@ -200,6 +222,7 @@ class RaIgmSettingsProvider(
         // reachability rule that let this row exist without it.
         for ((key, value) in preset.values) {
             if (!curatedValues.containsKey(key)) continue
+            snapshot(key)
             if (!host.raSetSetting(key, value)) continue
             curatedValues[key] = value
             changedKeys.add(key)
@@ -251,6 +274,7 @@ class RaIgmSettingsProvider(
                 ))
             }
             addAll(raRows(""))
+            addOverlayCategory()
             if (host.systemInfo().isNotEmpty()) {
                 add(GenericIgmSettingsItem.Category(
                     CuratedCatalog.CATEGORY_INFO,
@@ -335,6 +359,7 @@ class RaIgmSettingsProvider(
         val s = currentSettings[i]
         val newValue = RaValueCycler.next(s, direction) ?: return
         if (newValue == s.value) return
+        snapshot(s.key)
         if (host.raSetSetting(s.key, newValue)) {
             dirty = true
             changedKeys.add(s.key)
@@ -375,6 +400,19 @@ class RaIgmSettingsProvider(
 
     override fun activate(itemKey: String): IgmSettingsExit.Prompt? = null
 
+    // The live preview picker writes its setting straight to RetroArch, so nothing here saw the
+    // change. Joining the same changed set is what puts an overlay in the save prompt beside the
+    // rows, and is what gives it the per-game scope it would not otherwise have.
+    override fun markChangedExternally(keys: Set<String>) {
+        if (keys.isEmpty()) return
+        // Called before the caller applies its change, which is what makes this the value from
+        // before the edit rather than after it.
+        keys.forEach(::snapshot)
+        changedKeys.addAll(keys)
+        dirty = true
+        onChanged?.invoke()
+    }
+
     override fun exitPrompt(): IgmSettingsExit =
         if (!dirty) IgmSettingsExit.Close
         else IgmSettingsExit.Prompt(
@@ -382,8 +420,21 @@ class RaIgmSettingsProvider(
             options = listOf(strings.savePlatform, strings.saveGame, strings.dontSave),
         ) { choice ->
             when (choice) {
-                0 -> host.raSaveOverride(RaOverrideScope.SYSTEM, overrideKeys())
-                1 -> host.raSaveOverride(RaOverrideScope.GAME, overrideKeys())
+                0 -> {
+                    host.raSaveOverride(RaOverrideScope.SYSTEM, overrideKeys())
+                    host.saveCannoliOverride(RaOverrideScope.SYSTEM, overrideKeys())
+                }
+                1 -> {
+                    host.raSaveOverride(RaOverrideScope.GAME, overrideKeys())
+                    host.saveCannoliOverride(RaOverrideScope.GAME, overrideKeys())
+                }
+                // Discard puts the running game back as it was. Without this it only dropped the
+                // write, so a change stayed live until the next launch recomposed the config from
+                // tiers it had never reached, which reads as the button having done nothing.
+                else -> {
+                    restorePriorValues()
+                    host.revertCannoliOverride()
+                }
             }
             clearDirty()
         }
@@ -394,9 +445,25 @@ class RaIgmSettingsProvider(
     // depth, dropping any that reached the changed set before it crosses to the native writer.
     private fun overrideKeys(): Set<String> = changedKeys - CheevosSessionKeys.ALL
 
+    private fun snapshot(key: String) {
+        if (priorValues.containsKey(key)) return
+        val before = if (curated && curatedValues.containsKey(key)) curatedValues[key]
+        else host.raGetSetting(key)?.rawValue
+        before?.let { priorValues[key] = it }
+    }
+
+    private fun restorePriorValues() {
+        for ((key, value) in priorValues) {
+            host.raSetSetting(key, value)
+            if (curatedValues.containsKey(key)) curatedValues[key] = value
+        }
+        onChanged?.invoke()
+    }
+
     private fun clearDirty() {
         dirty = false
         changedKeys.clear()
+        priorValues.clear()
     }
 }
 

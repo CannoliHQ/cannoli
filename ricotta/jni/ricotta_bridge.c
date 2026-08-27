@@ -872,8 +872,10 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeCoreOptionKeys(
    if (!out)
       return NULL;
 
-   /* "optionKey|categoryKey|categoryLabel". Cores that declare no categories leave the last two
-    * empty and the caller shows one flat list. */
+   /* "optionKey|categoryKey|categoryLabel", the key already carrying the prefix that marks it a
+    * core option rather than a RetroArch setting. Emitting it here rather than having Kotlin
+    * prepend it keeps the prefix defined once, next to the five sites that strip it back off.
+    * Cores that declare no categories leave the last two empty and the caller shows one flat list. */
    for (i = 0, n = 0; i < opt->size; i++)
    {
       char entry[512];
@@ -893,7 +895,8 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeCoreOptionKeys(
             break;
          }
       }
-      snprintf(entry, sizeof(entry), "%s|%s|%s", opt->opts[i].key, cat_key, cat_desc);
+      snprintf(entry, sizeof(entry), "%s%s|%s|%s",
+            RICOTTA_CORE_OPT_PREFIX, opt->opts[i].key, cat_key, cat_desc);
       (*env)->SetObjectArrayElement(env, out, (jsize)n++,
             (*env)->NewStringUTF(env, entry));
    }
@@ -971,6 +974,11 @@ static void ricotta_ra_apply(const char *key, const char *value)
             break;
          case ST_STRING:
          case ST_STRING_OPTIONS:
+         /* A path is a string target like the two above. Falling to default dropped the write and
+          * returned before the change handler, so setting input_overlay did nothing at all and the
+          * overlay that handler then reloaded was whatever was there before. */
+         case ST_PATH:
+         case ST_DIR:
             strlcpy(s->value.target.string, value, s->size);
             break;
          default:
@@ -1088,14 +1096,18 @@ static void ricotta_ra_save_override(int scope, const char *keys)
    config_file_t *opt_conf;
    const char *p;
 
+   /* Non-zero selects the game tier over the system one. Values Cannoli owns rather than
+    * RetroArch are written by the Kotlin side straight into its own tier, not through here. */
+   const int is_game = scope != 0;
+
    if (!keys || !*keys)
       return;
    if (!*g_cannoli_root || !*g_platform_tag || !*g_core_id)
       return;
-   if (scope == 1 && !*g_rom_base_name)
+   if (is_game && !*g_rom_base_name)
       return;
 
-   if (scope == 1)
+   if (is_game)
       snprintf(override_path, sizeof(override_path),
             "%s/Config/Overrides/Games/%s/%s/%s.cfg",
             g_cannoli_root, g_platform_tag, g_rom_base_name, g_core_id);

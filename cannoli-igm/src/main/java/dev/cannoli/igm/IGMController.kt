@@ -42,6 +42,8 @@ class IGMController(
     // preserve the public API that ricotta/IGMOverlay.kt reads (controller.guideFiles.value,
     // controller.guideScrollDir.intValue, ...). cannoli-igm is a source dependency of the ricotta
     // fork; do not inline or rename these without updating ricotta.
+    val overlayPicker = OverlayPickerController()
+
     private val guideController = GuideController()
     val guideFiles get() = guideController.guideFiles
     val guidePageCount get() = guideController.guidePageCount
@@ -583,6 +585,7 @@ class IGMController(
             is IGMScreen.CheatsHardcoreWarning -> handleCheatsHardcoreWarningKey(screen, normalized)
             is IGMScreen.Achievements -> handleAchievementsKey(screen, normalized)
             is IGMScreen.AchievementDetail -> handleAchievementDetailKey(screen, normalized)
+            is IGMScreen.PreviewPicker -> handlePreviewPickerKey(screen, normalized)
             is IGMScreen.ProviderSettings -> handleProviderKey(normalized)
             is IGMScreen.SettingsExitPrompt -> handleProviderKey(normalized)
         }
@@ -702,6 +705,17 @@ class IGMController(
     private fun renderProviderState(state: ProviderSettingsController.State) {
         when (state) {
             is ProviderSettingsController.State.Menu -> {
+                // Cannoli's own screen wears a settings row so it appears in both menus, but it is
+                // not a settings screen: entering the category swaps to the picker rather than
+                // rendering the empty screen the provider returns for it.
+                if (state.path.lastOrNull() == CuratedCatalog.CATEGORY_OVERLAY) {
+                    // Staging a change re-renders the provider, which lands back here. Push only on
+                    // the way in, or every value cycled stacks another picker to back out of.
+                    if (currentScreen !is IGMScreen.PreviewPicker) {
+                        push(IGMScreen.PreviewPicker(selectedIndex = overlayPicker.refresh()))
+                    }
+                    return
+                }
                 val screen = IGMScreen.ProviderSettings(state.selectedIndex, state.path, state.title, state.description, state.descriptionScroll)
                 if (currentScreen is IGMScreen.ProviderSettings || currentScreen is IGMScreen.SettingsExitPrompt) {
                     replaceTop(screen)
@@ -726,6 +740,31 @@ class IGMController(
         is GenericIgmSettingsItem.Category -> IGMSettingsItem(item.label)
         is GenericIgmSettingsItem.Action -> IGMSettingsItem(item.label)
         is GenericIgmSettingsItem.Choice -> IGMSettingsItem(item.label, item.value, item.hint, item.description)
+    }
+
+    /**
+     * Left and Right are the whole interface. A move applies at once and stages its key, exactly as
+     * cycling a settings row does, so Back is plain navigation and the save prompt leaving the tree
+     * decides platform, game, or neither. There is nothing to configure: how a bezel looks is a
+     * property of the artwork, not a menu.
+     */
+    private fun handlePreviewPickerKey(screen: IGMScreen.PreviewPicker, keycode: Int) {
+        when (keycode) {
+            21, 22 -> {
+                val dir = if (keycode == 21) -1 else 1
+                val stage = { providerNav?.markChangedExternally(overlayPicker.stagedKeys); Unit }
+                replaceTop(screen.copy(selectedIndex = overlayPicker.cycle(screen.selectedIndex, dir, stage)))
+            }
+            97, 4 -> {
+                // The category push that led here left a level on the provider's own stack. Popping
+                // only this screen would leave it there, and the next Back would spend itself
+                // unwinding that instead of leaving the settings tree.
+                pop()
+                val nav = providerNav
+                if (nav != null) renderProviderState(nav.onNav(ProviderSettingsController.Nav.BACK))
+                else if (screenStack.isEmpty()) onClose?.invoke()
+            }
+        }
     }
 
     private fun handleProviderKey(keycode: Int) {
