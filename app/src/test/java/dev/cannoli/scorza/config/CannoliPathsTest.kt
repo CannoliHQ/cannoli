@@ -33,6 +33,21 @@ class CannoliPathsTest {
     }
 
     @Test
+    fun sharedCfgs_sitBesideTheCoreKeyedOnesAndDoNotNameACore() {
+        val paths = CannoliPaths("/root")
+        assertEquals(
+            paths.systemOverrideCfg("NES", "nestopia").parentFile,
+            paths.systemSharedCfg("NES").parentFile,
+        )
+        assertEquals(
+            paths.gameOverrideCfg("NES", "Super Mario Bros", "nestopia").parentFile,
+            paths.gameSharedCfg("NES", "Super Mario Bros").parentFile,
+        )
+        assertEquals("cannoli.cfg", paths.systemSharedCfg("NES").name)
+        assertEquals("cannoli.cfg", paths.gameSharedCfg("NES", "Super Mario Bros").name)
+    }
+
+    @Test
     fun gameOverrideCfg_isKeyedByCoreInsideTheGameDirectory() {
         assertEquals(
             File("/sd/Config/Overrides/Games/NES/Super Mario Bros/nestopia.cfg"),

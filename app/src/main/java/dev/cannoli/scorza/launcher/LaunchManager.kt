@@ -113,19 +113,23 @@ class LaunchManager(
         val baseConfig = try { File(base).readText() } catch (_: IOException) { return null }
         val paths = CannoliPaths(settings.sdCardRoot)
         val romName = normalizedRomName(rom)
-        // The preference stack, weakest to strongest: global, then this platform on this core,
-        // then this one game on this core, then the user's own custom.cfg. The plumbing band
-        // applied below always wins over all four - see applyOverrides below and #36 in the launch
-        // config design. Both middle tiers are keyed by core because the values that differ
-        // between cores are exactly the ones worth overriding: run-ahead compensates a specific
-        // core's internal latency, and a core-agnostic tier sitting above a core-specific one
-        // would let the wrong value win.
+        // The preference stack, weakest to strongest: global, this platform, this one game, then
+        // the user's own custom.cfg. The plumbing band applied below always wins over all of them -
+        // see applyOverrides below and #36 in the launch config design. Each of the two middle
+        // scopes is a pair: a core-independent tier under the core-keyed one. Keying by core is
+        // right for values that describe how a core behaves, since run-ahead compensates a specific
+        // core's internal latency, and it is wrong for values that describe how a platform or game
+        // should look - an overlay is the same choice whichever core runs it, so a core-keyed tier
+        // would silently drop it on a remap. Core-specific sits above core-independent within a
+        // scope because it is the narrower statement of the two.
         writeGlobalDefaults(paths)
         val preferenceBase = RetroArchConfigComposer.compose(
             baseConfig,
             listOf(
                 readOverrideLayer(paths.globalOverrideCfg),
+                readOverrideLayer(paths.systemSharedCfg(rom.platformTag)),
                 readOverrideLayer(paths.systemOverrideCfg(rom.platformTag, core)),
+                readOverrideLayer(paths.gameSharedCfg(rom.platformTag, romName)),
                 readOverrideLayer(paths.gameOverrideCfg(rom.platformTag, romName, core)),
                 readOverrideLayer(paths.customCfg),
             ),

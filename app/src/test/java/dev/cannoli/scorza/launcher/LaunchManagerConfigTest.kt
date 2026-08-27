@@ -43,6 +43,52 @@ class LaunchManagerConfigTest : LaunchConfigHarness() {
         assertNotEquals("true", cfg["rewind_enable"])
     }
 
+    // The whole point of the core-independent tier: an overlay chosen for a platform is the same
+    // choice whichever core runs it, so remapping the core must not silently drop it.
+    @Test fun `a shared system override survives a core it was not written under`() {
+        val root = tmp.newFolder()
+        val paths = CannoliPaths(root.absolutePath)
+        write(paths.systemSharedCfg("GBA"), "cannoli_overlay = \"Fancy Bezel\"")
+        val cfg = launchedConfig(root, rom(root, "Roms/GBA/Game.gba", "GBA"))
+        assertEquals("Fancy Bezel", cfg["cannoli_overlay"])
+    }
+
+    @Test fun `a shared game override survives a core it was not written under`() {
+        val root = tmp.newFolder()
+        val paths = CannoliPaths(root.absolutePath)
+        write(paths.gameSharedCfg("GBA", "Game"), "cannoli_overlay = \"CRT Frame\"")
+        val cfg = launchedConfig(root, rom(root, "Roms/GBA/Game.gba", "GBA"))
+        assertEquals("CRT Frame", cfg["cannoli_overlay"])
+    }
+
+    @Test fun `a shared game override outranks the shared system override`() {
+        val root = tmp.newFolder()
+        val paths = CannoliPaths(root.absolutePath)
+        write(paths.systemSharedCfg("GBA"), "cannoli_overlay = \"System Pick\"")
+        write(paths.gameSharedCfg("GBA", "Game"), "cannoli_overlay = \"Game Pick\"")
+        val cfg = launchedConfig(root, rom(root, "Roms/GBA/Game.gba", "GBA"))
+        assertEquals("Game Pick", cfg["cannoli_overlay"])
+    }
+
+    // Core-specific is the narrower statement, so it wins inside its own scope.
+    @Test fun `a core-keyed system override outranks the shared one`() {
+        val root = tmp.newFolder()
+        val paths = CannoliPaths(root.absolutePath)
+        write(paths.systemSharedCfg("GBA"), "rewind_enable = \"false\"")
+        write(paths.systemOverrideCfg("GBA", launchCore), "rewind_enable = \"true\"")
+        val cfg = launchedConfig(root, rom(root, "Roms/GBA/Game.gba", "GBA"))
+        assertEquals("true", cfg["rewind_enable"])
+    }
+
+    @Test fun `a shared game override outranks the core-keyed system override`() {
+        val root = tmp.newFolder()
+        val paths = CannoliPaths(root.absolutePath)
+        write(paths.systemOverrideCfg("GBA", launchCore), "rewind_enable = \"false\"")
+        write(paths.gameSharedCfg("GBA", "Game"), "rewind_enable = \"true\"")
+        val cfg = launchedConfig(root, rom(root, "Roms/GBA/Game.gba", "GBA"))
+        assertEquals("true", cfg["rewind_enable"])
+    }
+
     @Test fun `a game override outranks the system override for the same core`() {
         val root = tmp.newFolder()
         val paths = CannoliPaths(root.absolutePath)

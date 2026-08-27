@@ -1,5 +1,7 @@
 package dev.cannoli.scorza.config
 
+import dev.cannoli.core.config.OverrideTiers
+import dev.cannoli.core.overlay.OverlayCatalog
 import java.io.File
 
 class CannoliPaths(val root: File) {
@@ -18,7 +20,7 @@ class CannoliPaths(val root: File) {
     val wallpapersDir: File get() = File(root, "Wallpapers")
     val romsDir: File get() = File(root, "Roms")
     val shadersDir: File get() = File(root, "Shaders")
-    val overlaysDir: File get() = File(root, "Overlays")
+    val overlaysDir: File get() = File(root, OverlayCatalog.DIR)
     val logsDir: File get() = File(root, "Logs")
     val mediaDir: File get() = File(root, "Media")
     val mediaScreenshotsDir: File get() = File(mediaDir, "Screenshots")
@@ -36,8 +38,8 @@ class CannoliPaths(val root: File) {
     val configAssets: File get() = File(configInternal, "Assets")
 
     val configOverrides: File get() = File(configDir, "Overrides")
-    val configOverridesSystems: File get() = File(configOverrides, "Systems")
-    val configOverridesGames: File get() = File(configOverrides, "Games")
+    val configOverridesSystems: File get() = File(root, OverrideTiers.SYSTEMS_DIR)
+    val configOverridesGames: File get() = File(root, OverrideTiers.GAMES_DIR)
     val configScanner: File get() = File(configDir, "Scanner")
     val configFonts: File get() = File(configDir, "Fonts")
     val configLaunchScripts: File get() = File(configDir, "Launch Scripts")
@@ -90,7 +92,7 @@ class CannoliPaths(val root: File) {
     fun guidesFor(tag: String): File = File(guidesDir, tag)
 
     fun cheatsFor(tag: String): File = File(cheatsDir, tag)
-    fun overlaysFor(tag: String): File = File(overlaysDir, tag)
+    fun overlaysFor(tag: String): File = OverlayCatalog.platformDir(root, tag)
     fun romsFor(tag: String): File = File(romsDir, tag)
 
     // Per-game helpers
@@ -135,6 +137,15 @@ class CannoliPaths(val root: File) {
     fun gameOverrideCfg(tag: String, base: String, core: String): File =
         File(gameOverrideDir(tag, base), "$core.cfg")
 
+    // Core-independent siblings of the two tiers above. A value that describes how a platform or a
+    // game should look rather than how a core behaves belongs here: an overlay or a shader is the
+    // same choice whichever core runs it, so keying it by core would drop it on a remap.
+    fun systemSharedCfg(tag: String): File =
+        File(File(configOverridesSystems, tag), "${OverrideTiers.SHARED}.cfg")
+
+    fun gameSharedCfg(tag: String, base: String): File =
+        File(gameOverrideDir(tag, base), "${OverrideTiers.SHARED}.cfg")
+
     // Core options are a separate RetroArch subsystem with its own file, so they get a sibling of
     // the .cfg rather than keys inside it, tiered the same way.
     fun systemOverrideOpt(tag: String, core: String): File =
@@ -148,4 +159,5 @@ class CannoliPaths(val root: File) {
 
     // Logs
     fun coreLogDir(coreName: String): File = File(logsDir, coreName)
+
 }
