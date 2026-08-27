@@ -192,7 +192,7 @@ fun EditButtonsScreen(
                     Text(
                         text = targetLabel2,
                         style = MaterialTheme.typography.bodyLarge.copy(
-                            fontSize = 24.sp,
+                            fontSize = listFontSize * 1.1f,
                             color = colors.text,
                         ),
                     )
@@ -205,7 +205,7 @@ fun EditButtonsScreen(
                     Text(
                         text = stringResource(promptRes),
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            fontSize = 16.sp,
+                            fontSize = listFontSize * 0.73f,
                             color = colors.text.copy(alpha = 0.6f),
                         ),
                     )

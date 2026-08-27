@@ -337,7 +337,7 @@ fun CannoliIGM(
                                 text = stringResource(dev.cannoli.ui.R.string.cheats_hardcore_warning),
                                 style = TextStyle(
                                     fontFamily = LocalCannoliFont.current,
-                                    fontSize = 18.sp,
+                                    fontSize = (18 * igmScaleFactor).sp,
                                     color = Color.White,
                                     textAlign = TextAlign.Center
                                 ),
@@ -415,7 +415,7 @@ fun CannoliIGM(
                                     style = TextStyle(
                                         fontFamily = LocalCannoliFont.current,
                                         fontWeight = FontWeight.Bold,
-                                        fontSize = 24.sp,
+                                        fontSize = (24 * igmScaleFactor).sp,
                                         color = Color.White,
                                         textAlign = TextAlign.Center
                                     )
@@ -425,7 +425,7 @@ fun CannoliIGM(
                                     text = unlockText,
                                     style = TextStyle(
                                         fontFamily = LocalCannoliFont.current,
-                                        fontSize = 16.sp,
+                                        fontSize = (16 * igmScaleFactor).sp,
                                         color = Color.White
                                     )
                                 )
@@ -434,7 +434,7 @@ fun CannoliIGM(
                                     text = stringResource(dev.cannoli.ui.R.string.ach_points, ach.points),
                                     style = TextStyle(
                                         fontFamily = LocalCannoliFont.current,
-                                        fontSize = 16.sp,
+                                        fontSize = (16 * igmScaleFactor).sp,
                                         color = Color.White
                                     )
                                 )
@@ -443,7 +443,7 @@ fun CannoliIGM(
                                     text = ach.description,
                                     style = TextStyle(
                                         fontFamily = LocalCannoliFont.current,
-                                        fontSize = 18.sp,
+                                        fontSize = (18 * igmScaleFactor).sp,
                                         color = Color.White,
                                         textAlign = TextAlign.Center
                                     )
@@ -486,23 +486,3 @@ fun CannoliIGM(
     }
 }
 
-@Composable
-private fun InfoRow(label: String, value: String, modifier: Modifier = Modifier) {
-    val colors = LocalCannoliColors.current
-    Column(modifier = modifier) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyMedium.copy(
-                fontSize = 14.sp,
-                color = colors.text.copy(alpha = 0.6f)
-            )
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyMedium.copy(
-                fontSize = 18.sp,
-                color = Color.White
-            )
-        )
-    }
-}

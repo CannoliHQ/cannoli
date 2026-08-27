@@ -951,8 +951,11 @@ fun AppNavGraph(
                         if (currentScreen.firmware.isEmpty()) {
                             Text(
                                 text = stringResource(R.string.value_no_firmware),
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = cannoliColors.text.copy(alpha = 0.6f),
+                                style = MaterialTheme.typography.bodyLarge.copy(
+                                    fontSize = listFontSize,
+                                    lineHeight = listLineHeight,
+                                ),
+                                color = cannoliColors.text,
                                 modifier = Modifier.padding(start = 14.dp, top = 6.dp)
                             )
                         } else {
@@ -1037,8 +1040,13 @@ fun AppNavGraph(
                     if (currentScreen.overrides.isEmpty()) {
                         Text(
                             text = stringResource(R.string.value_no_overrides),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = cannoliColors.text.copy(alpha = 0.6f),
+                            // bodyLarge carries a fixed 22sp, so an empty state left on it ignored
+                            // the text size the user chose and sat dimmer than every row around it.
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                fontSize = listFontSize,
+                                lineHeight = listLineHeight,
+                            ),
+                            color = cannoliColors.text,
                             modifier = Modifier.padding(start = 14.dp)
                         )
                     } else {
@@ -1093,8 +1101,13 @@ fun AppNavGraph(
                     if (currentScreen.rows.isEmpty()) {
                         Text(
                             text = stringResource(R.string.value_no_installed_cores),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = cannoliColors.text.copy(alpha = 0.6f),
+                            // bodyLarge carries a fixed 22sp, so an empty state left on it ignored
+                            // the text size the user chose and sat dimmer than every row around it.
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                fontSize = listFontSize,
+                                lineHeight = listLineHeight,
+                            ),
+                            color = cannoliColors.text,
                             modifier = Modifier.padding(start = 14.dp)
                         )
                     } else {
@@ -1176,8 +1189,13 @@ fun AppNavGraph(
                     if (currentScreen.collectionIds.isEmpty()) {
                         Text(
                             text = stringResource(R.string.no_collections),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = cannoliColors.text.copy(alpha = 0.6f),
+                            // bodyLarge carries a fixed 22sp, so an empty state left on it ignored
+                            // the text size the user chose and sat dimmer than every row around it.
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                fontSize = listFontSize,
+                                lineHeight = listLineHeight,
+                            ),
+                            color = cannoliColors.text,
                             modifier = Modifier.padding(start = 14.dp)
                         )
                     } else {
@@ -1221,8 +1239,13 @@ fun AppNavGraph(
                     if (currentScreen.collectionIds.isEmpty()) {
                         Text(
                             text = stringResource(R.string.no_collections),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = cannoliColors.text.copy(alpha = 0.6f),
+                            // bodyLarge carries a fixed 22sp, so an empty state left on it ignored
+                            // the text size the user chose and sat dimmer than every row around it.
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                fontSize = listFontSize,
+                                lineHeight = listLineHeight,
+                            ),
+                            color = cannoliColors.text,
                             modifier = Modifier.padding(start = 14.dp)
                         )
                     } else {
@@ -1332,7 +1355,7 @@ fun AppNavGraph(
                             Text(
                                 text = actionName,
                                 style = MaterialTheme.typography.bodyLarge.copy(
-                                    fontSize = 24.sp,
+                                    fontSize = listFontSize * 1.1f,
                                     color = colors.text
                                 )
                             )
@@ -1341,7 +1364,7 @@ fun AppNavGraph(
                                 text = if (currentScreen.heldKeys.isEmpty()) stringResource(R.string.shortcut_hold_prompt)
                                 else currentScreen.heldKeys.joinToString(" + ") { shortcutKeyLabel(it) },
                                 style = MaterialTheme.typography.bodyMedium.copy(
-                                    fontSize = 16.sp,
+                                    fontSize = listFontSize * 0.73f,
                                     color = colors.text.copy(alpha = 0.6f)
                                 )
                             )

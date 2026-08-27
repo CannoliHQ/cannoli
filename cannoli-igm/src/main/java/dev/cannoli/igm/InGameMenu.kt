@@ -265,7 +265,12 @@ fun PolaroidFrame(
                         text = stringResource(dev.cannoli.ui.R.string.igm_slot_auto).uppercase(),
                         style = MaterialTheme.typography.labelSmall.copy(
                             fontWeight = FontWeight.Bold,
-                            fontSize = 10.sp,
+                            // The smallest type in the app, so it has to follow the size setting
+                            // rather than stay at 10sp for someone who turned it up to read it.
+                            // Recovered from the scaled typography, which is provided by both the
+                            // in-game menu and the launcher, so all three callers of this frame get
+                            // it without a new parameter.
+                            fontSize = (10 * autoSlotScale()).sp,
                             color = when {
                                 autoSelected -> Color.White
                                 autoOccupied -> Color.Black
@@ -320,3 +325,8 @@ private fun igmMenuLabel(action: IgmMenuAction): String = stringResource(
         IgmMenuAction.QUIT -> dev.cannoli.ui.R.string.igm_quit
     }
 )
+
+/** The text scale in force, recovered from the typography: bodyLarge is 22sp at scale 1. */
+@Composable
+private fun autoSlotScale(): Float =
+    dev.cannoli.ui.theme.LocalCannoliTypography.current.bodyLarge.fontSize.value / 22f
