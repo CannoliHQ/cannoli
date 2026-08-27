@@ -26,6 +26,8 @@ static long long get_time_ms(void)
 #define RLOG(...) __android_log_print(ANDROID_LOG_DEBUG, RTAG, __VA_ARGS__)
 
 #include "../../../../retroarch.h"
+#include "../../../../gfx/video_shader_parse.h"
+#include "../../../../audio/audio_driver.h"
 #include "../../../../command.h"
 #include "../../../../configuration.h"
 #include <file/file_path.h>
@@ -105,6 +107,9 @@ static volatile int g_menu_poll_active = 0;
 #define RICOTTA_QCMD_OSD_EVENT        -7
 #define RICOTTA_QCMD_OSD_ACHIEVEMENT  -8
 #define RICOTTA_QCMD_VIEWPORT_SET     -9
+#define RICOTTA_QCMD_SHADER_SET       -10
+#define RICOTTA_QCMD_MUTE             -11
+#define RICOTTA_QCMD_LIVE_PREVIEW     -12
 typedef struct
 {
    int   cmd;
@@ -383,6 +388,52 @@ void ricotta_bridge_poll_commands(void)
             ricotta_ra_apply(entry.ra_key, entry.ra_value);
          free(entry.ra_key);
          free(entry.ra_value);
+         continue;
+      }
+      if (entry.cmd == RICOTTA_QCMD_LIVE_PREVIEW)
+      {
+         /* Letting the game run while a menu is up takes two things, in this order.
+          *
+          * pause_nonactive makes RetroArch pause itself whenever its own window is not
+          * focused, and the menu holds focus, so it re-pauses every iteration and an unpause
+          * on its own is undone immediately. It is set here rather than through the settings
+          * path because a write that cannot resolve the key is dropped in silence, and this
+          * has to be certain. */
+         settings_t *settings = config_get_ptr();
+         if (settings)
+            configuration_set_bool(settings, settings->bools.pause_nonactive,
+                  entry.slot ? false : true);
+         command_event(entry.slot ? CMD_EVENT_UNPAUSE : CMD_EVENT_PAUSE, NULL);
+         continue;
+      }
+      if (entry.cmd == RICOTTA_QCMD_MUTE)
+      {
+         /* Set outright rather than through CMD_EVENT_AUDIO_MUTE_TOGGLE, which is stateful
+          * and raises an on-screen message a settings menu has no business showing. */
+         audio_driver_state_t *audio_st = audio_state_get_ptr();
+         if (audio_st)
+            audio_st->mute_enable = entry.slot ? true : false;
+         continue;
+      }
+      if (entry.cmd == RICOTTA_QCMD_SHADER_SET)
+      {
+         /* Writing video_shader into the config loads nothing: a preset is compiled and
+          * installed into the render chain by this call, which is what RetroArch's own
+          * "Apply Changes" ends up in. An empty path clears the chain instead. */
+         settings_t *settings = config_get_ptr();
+         const char *path     = entry.ra_key;
+         if (settings)
+         {
+            /* message = true: RetroArch says whether the preset loaded, and names the failure when
+             * it does not. A shader that silently does nothing is indistinguishable from one that
+             * is subtle, so the frontend has no way to tell the user which happened. */
+            if (path && *path)
+               video_shader_apply_shader(settings,
+                     video_shader_parse_type(path), path, true);
+            else
+               video_shader_apply_shader(settings, RARCH_SHADER_NONE, "", true);
+         }
+         free(entry.ra_key);
          continue;
       }
       if (entry.cmd == RICOTTA_QCMD_VIEWPORT_SET)
@@ -1949,6 +2000,42 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeRaIntegerScale(
    settings_t *settings = config_get_ptr();
    (void)env; (void)obj;
    return (settings && settings->bools.video_scale_integer) ? JNI_TRUE : JNI_FALSE;
+}
+
+JNIEXPORT void JNICALL
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSetLivePreview(
+      JNIEnv *env, jobject obj, jboolean live)
+{
+   ricotta_cmd_entry entry = {0};
+   (void)env; (void)obj;
+   entry.cmd  = RICOTTA_QCMD_LIVE_PREVIEW;
+   entry.slot = live ? 1 : 0;
+   ricotta_enqueue_entry(entry);
+}
+
+JNIEXPORT void JNICALL
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSetAudioMuted(
+      JNIEnv *env, jobject obj, jboolean muted)
+{
+   ricotta_cmd_entry entry = {0};
+   (void)env; (void)obj;
+   entry.cmd  = RICOTTA_QCMD_MUTE;
+   entry.slot = muted ? 1 : 0;
+   ricotta_enqueue_entry(entry);
+}
+
+JNIEXPORT void JNICALL
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSetShaderPreset(
+      JNIEnv *env, jobject obj, jstring jpath)
+{
+   ricotta_cmd_entry entry = {0};
+   const char *path = jpath ? (*env)->GetStringUTFChars(env, jpath, NULL) : NULL;
+   (void)obj;
+   entry.cmd    = RICOTTA_QCMD_SHADER_SET;
+   entry.ra_key = path ? strdup(path) : strdup("");
+   if (path)
+      (*env)->ReleaseStringUTFChars(env, jpath, path);
+   ricotta_enqueue_entry(entry);
 }
 
 JNIEXPORT void JNICALL

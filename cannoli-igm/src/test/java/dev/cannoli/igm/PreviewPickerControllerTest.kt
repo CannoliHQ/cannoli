@@ -4,14 +4,14 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class OverlayPickerControllerTest {
+class PreviewPickerControllerTest {
 
     private fun controller(
         items: List<String> = listOf("None", "Fancy Bezel", "CRT Frame"),
         selected: String? = "Fancy Bezel",
-    ): Pair<OverlayPickerController, MutableList<Int>> {
+    ): Pair<PreviewPickerController, MutableList<Int>> {
         val applied = mutableListOf<Int>()
-        val c = OverlayPickerController().apply {
+        val c = PreviewPickerController().apply {
             this.items.value = items
             this.selected.value = selected
             onPreview = { applied.add(it) }

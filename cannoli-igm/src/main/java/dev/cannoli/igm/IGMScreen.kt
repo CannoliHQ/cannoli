@@ -13,8 +13,17 @@ sealed class IGMScreen {
         val descriptionScroll: Int = 0,
     ) : IGMScreen()
     data class SettingsExitPrompt(override val selectedIndex: Int = 0) : IGMScreen()
-    /** Cannoli's live preview picker. [selectedIndex] indexes the asset list. */
-    data class PreviewPicker(override val selectedIndex: Int = 0) : IGMScreen()
+    /**
+     * Cannoli's live preview picker. [selectedIndex] indexes the asset list.
+     *
+     * [unwindOnBack] says whether leaving must also step the settings navigator up a level. Entering
+     * through a category pushed one, so it must; arriving from a row that fired an action did not,
+     * and unwinding then would drop the browser above the folder it was showing.
+     */
+    data class PreviewPicker(
+        override val selectedIndex: Int = 0,
+        val unwindOnBack: Boolean = false,
+    ) : IGMScreen()
     data class Achievements(override val selectedIndex: Int = 0, val achievements: List<AchievementInfo> = emptyList(), val filter: Int = 0, val status: String = "") : IGMScreen()
     data class AchievementDetail(override val selectedIndex: Int = 0, val achievement: AchievementInfo, val parentIndex: Int = 0) : IGMScreen()
     data class GuidePicker(override val selectedIndex: Int = 0) : IGMScreen()

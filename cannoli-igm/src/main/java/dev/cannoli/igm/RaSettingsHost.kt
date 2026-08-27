@@ -22,7 +22,13 @@ interface RaSettingsHost {
      */
     fun saveCannoliOverride(scope: RaOverrideScope, changed: Set<String>) {}
 
-    /** Puts those same values back, for Discard. */
+    /**
+     * Puts back anything the host applied by means other than writing a setting.
+     *
+     * Rewriting a value is not always enough to undo it. A shader is compiled into the render chain
+     * by a separate call, so restoring video_shader leaves the old one still running: the config
+     * would say one thing and the screen show another.
+     */
     fun revertCannoliOverride() {}
 
     /**
@@ -37,6 +43,49 @@ interface RaSettingsHost {
      * owns these rather than RetroArch, so they are a host question rather than a setting.
      */
     fun overlays(): List<String> = emptyList()
+
+    /**
+     * One level of the shader browser, folders first then presets, already filtered to what the
+     * running video driver can load. [path] is empty for the root.
+     */
+    fun shaderEntries(path: List<String>): List<dev.cannoli.core.shader.ShaderEntry> = emptyList()
+
+    /**
+     * Whether the shader tree has anything the running driver can load. Separate from
+     * [shaderEntries] because the root asks this on every render and the answer must not cost a
+     * walk of the database to produce.
+     */
+    fun hasShaders(): Boolean = false
+
+    /**
+     * Applies the preset [name] from [path] and returns the RetroArch keys it wrote, so the caller
+     * can stage them into the save prompt without knowing what a shader is.
+     *
+     * Applied on a press rather than as the highlight moves: a shader compiles when it loads, so
+     * previewing every row on the way past would stall the list.
+     */
+    fun applyShaderPreset(path: List<String>, name: String): Set<String> = emptySet()
+
+    /** Absolute path of the preset in force, so the browser can say which row is applied. */
+    fun appliedShaderPreset(): String? = null
+
+    /** Whether the shader in force is this game's own choice rather than its platform's. */
+    fun shaderOverriddenAtGame(): Boolean = false
+
+    /**
+     * Drops this game's shader override and loads what the platform says instead, returning the
+     * keys it staged. Absent at platform scope, where there is nothing above to fall back to.
+     */
+    fun restoreShaderDefault(): Set<String> = emptySet()
+
+    /**
+     * Lets the game run while a menu is open, so a change to the picture can actually be seen.
+     *
+     * The menu pauses emulation and a paused RetroArch presents no frames, so a shader applied here
+     * would not appear until the menu closed. Muted while it runs, and the host restores both the
+     * pause and the previous mute when this goes off.
+     */
+    fun setLivePreview(on: Boolean) {}
 
     /** One RetroArch settings screen. An empty label is the root. */
     fun raScreenRows(label: String): List<RaScreenRow> = emptyList()

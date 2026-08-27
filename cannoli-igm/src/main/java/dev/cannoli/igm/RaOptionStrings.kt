@@ -11,6 +11,7 @@ data class RaOptionStrings(
     // The core options row. Every other All Settings title comes from RetroArch itself.
     val emulator: String = "Emulator",
     val custom: String = "Custom",
+    val shaderApplied: String = "Applied",
     val infoCore: String = "Core",
     val infoCoreVersion: String = "Core Version",
     val curatedCategoryTitles: Map<String, String> = mapOf(
@@ -19,6 +20,7 @@ data class RaOptionStrings(
         CuratedCatalog.CATEGORY_ADVANCED to "Advanced",
         CuratedCatalog.CATEGORY_INFO to "Info",
         CuratedCatalog.CATEGORY_OVERLAY to "Overlay",
+        CuratedCatalog.CATEGORY_SHADER to "Shader",
     ),
     val curatedRowLabels: Map<String, String> = mapOf(
         "curated_screen_scaling" to "Screen Scaling",

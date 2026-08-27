@@ -6,6 +6,9 @@ import dev.cannoli.core.StateSlotPaths
 import dev.cannoli.core.config.OverrideTiers
 import dev.cannoli.core.config.RetroArchConfigComposer
 import dev.cannoli.core.overlay.OverlayCatalog
+import dev.cannoli.core.shader.ShaderCatalog
+import dev.cannoli.core.shader.ShaderEntry
+import dev.cannoli.core.shader.ShaderIndex
 import java.io.File
 import dev.cannoli.igm.AchievementInfo
 import dev.cannoli.igm.RetroArchBridge
@@ -34,6 +37,7 @@ class EmbeddedRetroArchBridge(
         // The IGM's "Save for game/platform" rows write to Cannoli's own override tiers, which are
         // keyed by these. Set before the IGM is interactive so no save can precede it.
         nativeSetCannoliContext(cannoliRoot, platformTag, romBaseName, coreId)
+        applyStoredShader()
     }
 
     fun destroy() {
@@ -159,12 +163,16 @@ class EmbeddedRetroArchBridge(
     var shadowedSettingsProvider: () -> Map<String, String> = { emptyMap() }
     override fun shadowedSettings(): Map<String, String> = shadowedSettingsProvider()
 
-    override fun settingsProvider(): dev.cannoli.igm.IgmSettingsProvider =
-        dev.cannoli.igm.RaIgmSettingsProvider(
+    override fun settingsProvider(): dev.cannoli.igm.IgmSettingsProvider {
+        // A fresh provider per open is what resets the dirty state, so this is the moment the
+        // settings tree begins and the right place to latch what Discard should return to.
+        latchShaderForEdit()
+        return dev.cannoli.igm.RaIgmSettingsProvider(
             host = this,
             strings = raStrings,
             curated = curatedSettings,
         )
+    }
 
     override fun coreOptions(): List<dev.cannoli.igm.CoreOptionRef> =
         nativeCoreOptionKeys()?.map { entry ->
@@ -185,6 +193,92 @@ class EmbeddedRetroArchBridge(
     }
 
     // Listing is what folders a loose image left by v1, so it happens here rather than at launch.
+    private var shaderPresence: Boolean? = null
+
+    /**
+     * Answered once per session from a single listing, with no recursion.
+     *
+     * The settings root asks this every time it is composed. Walking the tree to answer it made the
+     * whole menu crawl: the database is thousands of files across hundreds of folders, and proving
+     * a preset exists somewhere under them meant statting most of it, on a card where that is slow.
+     * A file the driver can load at the top, or any folder at all, is enough to offer the row; the
+     * browser itself is what finds out whether a particular folder leads anywhere.
+     */
+    override fun hasShaders(): Boolean = shaderPresence ?: run {
+        val present = if (cannoliRoot.isEmpty()) false else {
+            val ext = ShaderCatalog.presetExtension(videoDriver())
+            ShaderCatalog.shadersDir(File(cannoliRoot)).listFiles()?.any { child ->
+                child.isDirectory || child.extension.equals(ext, ignoreCase = true)
+            } ?: false
+        }
+        shaderPresence = present
+        present
+    }
+
+    /**
+     * The database is thousands of files, so a level is read on demand rather than cached: the
+     * browser asks for one folder at a time and each is small, where holding the whole tree would
+     * cost far more than the listing it saves.
+     */
+    /**
+     * A path is real directories followed by at most one family name.
+     *
+     * A family is a group of presets sharing a name stem, not a folder on disk, so descending into
+     * one leaves the filesystem behind. Each family row carries its full stem, so the last segment
+     * that is not a directory is the family and everything before it is the path to read.
+     */
+    override fun shaderEntries(path: List<String>): List<ShaderEntry> {
+        if (cannoliRoot.isEmpty()) return emptyList()
+        val root = ShaderCatalog.shadersDir(File(cannoliRoot))
+        return ShaderCatalog.list(root, path, videoDriver(), shaderIndex(root))
+    }
+
+    override fun applyShaderPreset(path: List<String>, name: String): Set<String> {
+        val preset = shaderPresetPath(path, name) ?: return emptySet()
+        // See pickOverlay: choosing again is asking to override again.
+        cleared.remove(KEY_SHADER)
+        // The config value alone loads nothing: the native call is what compiles the preset into
+        // the render chain. The setting is written too, so the tier persists what is running.
+        nativeSetShaderPreset(preset)
+        // Only the enable flag is RetroArch's. There is no video_shader config key: RetroArch keeps
+        // the loaded preset in a runtime path and finds it again by looking for an auto-shader named
+        // after the content, so a chosen preset has nowhere in its config to live. Cannoli stores
+        // the path in its own tier instead, the way it already does for a bezel.
+        raSetSetting(SHADER_ENABLE_KEY, "true")
+        appliedShader = preset
+        return setOf(KEY_SHADER, SHADER_ENABLE_KEY)
+    }
+
+    private var appliedShader: String? = null
+
+    /** Absolute path of the preset in force, so the browser can mark the row that is applied. */
+    override fun appliedShaderPreset(): String? = appliedShader
+
+    private var loadedIndex: ShaderIndex.Index? = null
+    private var indexLoaded = false
+
+    // Read once and kept: it is a few thousand short lines, and the browser asks for it on every
+    // level. A missing one is remembered as missing rather than retried per render.
+    private fun shaderIndex(dir: File): ShaderIndex.Index? {
+        if (!indexLoaded) {
+            loadedIndex = ShaderIndex.load(dir)
+            indexLoaded = true
+        }
+        return loadedIndex
+    }
+
+    fun shaderPresetPath(path: List<String>, name: String): String? {
+        if (cannoliRoot.isEmpty()) return null
+        val root = ShaderCatalog.shadersDir(File(cannoliRoot))
+        return ShaderCatalog.presetFile(root, path, name, videoDriver())
+            .takeIf { it.isFile }
+            ?.absolutePath
+    }
+
+    // What RetroArch is running right now, not what a config asked for: a hardware-rendered core
+    // overrides the driver at load, and a preset the running driver cannot parse simply fails.
+    private fun videoDriver(): String = raGetSetting("video_driver")?.value.orEmpty()
+
     private var overlayNames: List<String>? = null
 
     /**
@@ -270,57 +364,179 @@ class EmbeddedRetroArchBridge(
     var onCannoliSaved: (() -> Unit)? = null
     var onCannoliRevert: (() -> Unit)? = null
 
-    override fun revertCannoliOverride() { onCannoliRevert?.invoke() }
+    override fun revertCannoliOverride() {
+        // The shader in force when the tree was entered, reloaded rather than merely rewritten.
+        // Without this a discarded audition stays on screen: nothing was saved, but what you are
+        // looking at is the last preset you tried.
+        shaderBeforeEdit.let { before ->
+            if (before != appliedShader) {
+                nativeSetShaderPreset(before.orEmpty())
+                appliedShader = before
+            }
+        }
+        cleared.clear()
+        onCannoliRevert?.invoke()
+    }
+
+    /** What was loaded when the settings tree was entered, so Discard has something to go back to. */
+    private var shaderBeforeEdit: String? = null
+
+    fun latchShaderForEdit() {
+        shaderBeforeEdit = appliedShaderPreset()
+    }
 
     override fun saveCannoliOverride(scope: RaOverrideScope, changed: Set<String>) {
-        // Only when this visit actually moved the overlay. Otherwise saving any setting at platform
-        // scope would copy a game's bezel onto the whole platform.
-        if (KEY_OVERLAY !in changed) return
+        // Only the keys this visit actually moved. Otherwise saving any setting at platform scope
+        // would copy a game's bezel, or its shader, onto the whole platform.
+        val mine = CANNOLI_KEYS.filter { it in changed }
+        if (mine.isEmpty() && cleared.isEmpty()) return
         if (cannoliRoot.isEmpty()) return
-        val root = File(cannoliRoot)
-        val tier = when (scope) {
-            RaOverrideScope.GAME ->
-                if (romBaseName.isEmpty()) return
-                else File(File(File(root, OverrideTiers.GAMES_DIR), platformTag), romBaseName)
-            RaOverrideScope.SYSTEM -> File(File(root, OverrideTiers.SYSTEMS_DIR), platformTag)
-        }
-        writeSharedTier(File(tier, "${OverrideTiers.SHARED}.cfg"))
+        val target = tierFile(scope) ?: return
+        // Dropping the game's override and saving a value are independent answers to different
+        // questions, so both are honoured: asking a game to stop overriding stays true even when
+        // the same visit saves what is now showing onto the platform.
+        writeSharedTier(target, mine.filterNot { it in cleared })
+        if (cleared.isNotEmpty()) gameTier()?.let { clearFromTier(it, cleared) }
+        cleared.clear()
         onCannoliSaved?.invoke()
     }
 
-    // Merged rather than rewritten: the tier is shared with anything else core-independent, and a
-    // shader will land in the same file.
-    private fun writeSharedTier(file: File) {
-        val existing = try {
-            if (file.isFile) RetroArchConfigComposer.parse(file.readText()) else emptyMap()
-        } catch (_: Exception) { emptyMap() }
-        val merged = LinkedHashMap(existing)
-        val name = cannoliOverlayName
-        if (name.isNullOrEmpty()) merged.remove(KEY_OVERLAY) else merged[KEY_OVERLAY] = name
+    /**
+     * Keys this game has been asked to stop overriding, cleared from its tier when the visit saves.
+     *
+     * Written as a removal rather than an empty value, because the two mean different things here:
+     * empty is an explicit off that masks the platform, and absent is the game having no opinion.
+     * Without the second there is no way back once a game has been switched off, which is the
+     * direction the explicit off broke.
+     */
+    private val cleared = mutableSetOf<String>()
+
+    /**
+     * Whether this game overrides [key] at all, which is the only case worth offering to undo.
+     *
+     * A clear staged this visit already counts as not overriding, even though the file still says
+     * otherwise until the save. Reading the file alone would keep offering an undo for something
+     * already undone.
+     */
+    fun overridesAtGame(key: String): Boolean =
+        key !in cleared && gameTier()?.let { tierValue(it, key) } != null
+
+    override fun shaderOverriddenAtGame(): Boolean = overridesAtGame(KEY_SHADER)
+
+    override fun restoreShaderDefault(): Set<String> {
+        val inherited = clearGameOverride(KEY_SHADER)
+        // Loaded, not merely recorded: applying is the only thing that installs a preset, and an
+        // empty path is what clears the chain when the platform has nothing to fall back to.
+        nativeSetShaderPreset(inherited.orEmpty())
+        appliedShader = inherited
+        return setOf(KEY_SHADER)
+    }
+
+    /** Drops this game's override of [key], returning what it will inherit instead. */
+    private fun clearGameOverride(key: String): String? {
+        cleared.add(key)
+        return systemTier()?.let { tierValue(it, key) }?.takeIf { it.isNotBlank() }
+    }
+
+    /**
+     * Chooses a bezel, cancelling any staged clear.
+     *
+     * Picking after dropping the override is asking to override again, so the two cannot both stand:
+     * leaving the clear staged would throw the pick away at save time and look like the choice never
+     * took.
+     */
+    fun pickOverlay(name: String?) {
+        cleared.remove(KEY_OVERLAY)
+        cannoliOverlayName = name
+    }
+
+    /** Drops this game's bezel override, returning the platform's for the host to draw. */
+    fun restoreOverlayDefault(): String? {
+        val inherited = clearGameOverride(KEY_OVERLAY)
+        cannoliOverlayName = inherited
+        return inherited
+    }
+
+    // Merged rather than rewritten: the tier is shared with anything else core-independent, and the
+    // overlay and the shader land in the same file.
+    private fun writeSharedTier(file: File, keys: List<String>) {
+        if (keys.isEmpty()) return
+        // None is written as an empty value rather than removed, so that a game can switch off an
+        // overlay its platform sets. Removing the key would mean "inherit", which is a different
+        // thing and is why turning one off at game scope used to bring the platform's back.
+        editTier(file) { merged ->
+            for (key in keys) merged[key] = when (key) {
+                KEY_OVERLAY -> cannoliOverlayName.orEmpty()
+                else -> appliedShader.orEmpty()
+            }
+        }
+    }
+
+    private fun clearFromTier(file: File, keys: Set<String>) {
+        if (!file.isFile) return
+        editTier(file) { merged -> keys.forEach { merged.remove(it) } }
+    }
+
+    private fun editTier(file: File, edit: (LinkedHashMap<String, String>) -> Unit) {
+        val merged = LinkedHashMap(readTier(file))
+        edit(merged)
         try {
             file.parentFile?.mkdirs()
-            if (merged.isEmpty()) {
-                file.delete()
-            } else {
-                file.writeText(merged.entries.joinToString("\n") { "${it.key} = \"${it.value}\"" } + "\n")
-            }
+            file.writeText(merged.entries.joinToString("\n") { "${it.key} = \"${it.value}\"" } + "\n")
         } catch (_: Exception) {
         }
     }
 
-    /** The stored overlay for this game, game scope winning, or null when none is set. */
-    fun storedOverlayName(): String? {
-        if (cannoliRoot.isEmpty()) return null
-        val root = File(cannoliRoot)
-        val game = File(File(File(File(root, OverrideTiers.GAMES_DIR), platformTag), romBaseName), "${OverrideTiers.SHARED}.cfg")
-        val system = File(File(File(root, OverrideTiers.SYSTEMS_DIR), platformTag), "${OverrideTiers.SHARED}.cfg")
-        return sequenceOf(game, system)
-            .mapNotNull { f ->
-                try { if (f.isFile) RetroArchConfigComposer.parse(f.readText())[KEY_OVERLAY] else null }
-                catch (_: Exception) { null }
-            }
-            .firstOrNull { it.isNotBlank() }
+    private fun readTier(file: File): Map<String, String> = try {
+        if (file.isFile) RetroArchConfigComposer.parse(file.readText()) else emptyMap()
+    } catch (_: Exception) { emptyMap() }
+
+    private fun tierValue(file: File, key: String): String? = readTier(file)[key]
+
+    private fun gameTier(): File? {
+        if (cannoliRoot.isEmpty() || romBaseName.isEmpty()) return null
+        val platform = File(File(File(cannoliRoot), OverrideTiers.GAMES_DIR), platformTag)
+        return File(File(platform, romBaseName), "${OverrideTiers.SHARED}.cfg")
     }
+
+    private fun systemTier(): File? {
+        if (cannoliRoot.isEmpty()) return null
+        val platform = File(File(File(cannoliRoot), OverrideTiers.SYSTEMS_DIR), platformTag)
+        return File(platform, "${OverrideTiers.SHARED}.cfg")
+    }
+
+    private fun tierFile(scope: RaOverrideScope): File? = when (scope) {
+        RaOverrideScope.GAME -> gameTier()
+        RaOverrideScope.SYSTEM -> systemTier()
+    }
+
+    /** The stored overlay for this game, game scope winning, or null when none is set. */
+    fun storedOverlayName(): String? = storedTierValue(KEY_OVERLAY)?.takeIf { it.isNotBlank() }
+
+    /**
+     * Loads the shader this game was saved with, because nothing else will.
+     *
+     * Applying is what installs a preset into the render chain, and only the menu ever applies one,
+     * so a saved choice sits in the tier doing nothing until someone opens the menu and picks it
+     * again. Queued rather than called: it lands on the runloop once video is up.
+     */
+    private fun applyStoredShader() {
+        val stored = storedTierValue(KEY_SHADER)?.takeIf { it.isNotBlank() } ?: return
+        // A preset that has been deleted since, or a card that moved: applying it would clear the
+        // chain to nothing, which looks like the shader having been forgotten rather than missing.
+        if (!File(stored).isFile) return
+        nativeSetShaderPreset(stored)
+        appliedShader = stored
+    }
+
+    /**
+     * What the nearest tier says about [key], game scope winning.
+     *
+     * The nearest tier that mentions the key wins, even when what it says is empty. A tier that does
+     * not mention it at all is silent, and the next one out is asked instead.
+     */
+    private fun storedTierValue(key: String): String? =
+        listOfNotNull(gameTier(), systemTier()).firstNotNullOfOrNull { tierValue(it, key) }
 
     override fun raSaveOverride(scope: RaOverrideScope, keys: Set<String>) {
         val encoded = if (scope == RaOverrideScope.GAME) 1 else 0
@@ -410,6 +626,9 @@ class EmbeddedRetroArchBridge(
     private external fun nativeCheatHardcoreActive(): Boolean
     private external fun nativeRaGetSetting(key: String): Array<String>?
     private external fun nativeRaSetSetting(key: String, value: String): Boolean
+    private external fun nativeSetShaderPreset(path: String)
+    private external fun nativeSetAudioMuted(muted: Boolean)
+    private external fun nativeSetLivePreview(live: Boolean)
     private external fun nativeRaSaveOverride(scope: Int, keys: String)
     private external fun nativeCoreGeometry(): IntArray?
     private external fun nativeApplyViewport(x: Int, y: Int, w: Int, h: Int): Boolean
@@ -419,7 +638,22 @@ class EmbeddedRetroArchBridge(
     private external fun nativeRaIntegerScale(): Boolean
 
     companion object {
-        private const val KEY_OVERLAY = "cannoli_overlay"
+        /**
+         * Not a RetroArch setting, so its native writer skips it. Staging it is purely what marks
+         * the settings tree dirty, so the save prompt appears and offers platform or game.
+         */
+        const val KEY_OVERLAY = "cannoli_overlay"
+
+        /**
+         * Cannoli's own, for the same reason as the overlay: RetroArch has no config key naming the
+         * preset in force, so there is nothing of its own to write into.
+         */
+        const val KEY_SHADER = "cannoli_shader"
+
+        private val CANNOLI_KEYS = listOf(KEY_OVERLAY, KEY_SHADER)
+        // Real RetroArch settings: a shader is a pass in its render chain, so unlike the bezel
+        // this genuinely belongs to RetroArch.
+        private const val SHADER_ENABLE_KEY = "video_shader_enable"
         // The save state rows go only when this launch is really in hardcore. The launcher decides
         // that once (LaunchManager.hardcoreInEffect, folding in global hardcore and per-game
         // force-softcore) and carries it across the parcel, so the gate agrees with the launcher's

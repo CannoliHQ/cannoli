@@ -12,4 +12,15 @@ interface IgmSettingsProvider {
      * way out. A tree that has no such surface leaves this alone.
      */
     fun markChangedExternally(keys: Set<String>) {}
+
+    /**
+     * Whether this level holds a choice the game overrides, and so has one worth offering to drop.
+     *
+     * Drives the legend, which makes the offer double as the answer to where the value came from:
+     * the action appears only when the game is the one deciding.
+     */
+    fun canRestoreDefault(path: List<String>): Boolean = false
+
+    /** Drops that override and applies what the platform says instead. */
+    fun restoreDefault(path: List<String>): Set<String> = emptySet()
 }

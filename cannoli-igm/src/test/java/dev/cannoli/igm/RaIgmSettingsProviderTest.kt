@@ -28,6 +28,15 @@ private class FakeRaHost : RaSettingsHost {
     }
     override fun setOnRaSettingApplied(callback: (String, String) -> Unit) { appliedCb = callback }
     fun fireApplied(key: String, value: String) { appliedCb?.invoke(key, value) }
+
+    var shaderIsGameOwned = false
+    var shaderRestored = 0
+    override fun shaderOverriddenAtGame(): Boolean = shaderIsGameOwned
+    override fun restoreShaderDefault(): Set<String> {
+        shaderRestored++
+        shaderIsGameOwned = false
+        return setOf("cannoli_shader")
+    }
 }
 
 private fun host(): FakeRaHost = FakeRaHost().apply {
@@ -264,5 +273,44 @@ class RaIgmSettingsProviderTest {
         val row = p.screen(listOf("video_output_settings")).items
             .filterIsInstance<GenericIgmSettingsItem.Choice>().firstOrNull { it.key == "video_threaded" }
         assertEquals(RaOptionStrings().restartHint, row?.hint)
+    }
+
+    // The offer is the answer to where the shader came from, so it must appear only where the game
+    // is the one deciding, and nowhere outside the shader tree.
+    @Test
+    fun `dropping the game's shader is offered only where there is one to drop`() {
+        val h = host()
+        val p = provider(h)
+
+        assertFalse(p.canRestoreDefault(listOf(CuratedCatalog.CATEGORY_SHADER)))
+        h.shaderIsGameOwned = true
+        assertTrue(p.canRestoreDefault(listOf(CuratedCatalog.CATEGORY_SHADER)))
+        assertFalse(p.canRestoreDefault(listOf(LATENCY)))
+        assertFalse(p.canRestoreDefault(emptyList()))
+    }
+
+    @Test
+    fun `dropping it stages the key so the save prompt decides, and does nothing when not offered`() {
+        val h = host()
+        val p = provider(h)
+        h.shaderIsGameOwned = true
+
+        assertEquals(setOf("cannoli_shader"), p.restoreDefault(listOf(CuratedCatalog.CATEGORY_SHADER)))
+        assertEquals(1, h.shaderRestored)
+        assertTrue(p.exitPrompt() is IgmSettingsExit.Prompt)
+
+        // Already dropped, so a second press is not an offer any more.
+        assertEquals(emptySet<String>(), p.restoreDefault(listOf(CuratedCatalog.CATEGORY_SHADER)))
+        assertEquals(1, h.shaderRestored)
+    }
+
+    @Test
+    fun `a level outside the shader tree never drops anything`() {
+        val h = host()
+        val p = provider(h)
+        h.shaderIsGameOwned = true
+
+        assertEquals(emptySet<String>(), p.restoreDefault(listOf(LATENCY)))
+        assertEquals(0, h.shaderRestored)
     }
 }

@@ -31,6 +31,9 @@ class IGMController(
     var undoLabel = mutableStateOf<String?>(null)
     val settingsItems = mutableStateOf<List<IGMSettingsItem>>(emptyList())
 
+    /** Whether the settings level on screen has a game override to drop. Drives the legend. */
+    val settingsCanRestore = mutableStateOf(false)
+
     private var inputTranslator = IgmInputTranslator(null)
 
     /** Supply the active Cannoli device mapping so raw host keycodes are normalized. */
@@ -42,7 +45,7 @@ class IGMController(
     // preserve the public API that ricotta/IGMOverlay.kt reads (controller.guideFiles.value,
     // controller.guideScrollDir.intValue, ...). cannoli-igm is a source dependency of the ricotta
     // fork; do not inline or rename these without updating ricotta.
-    val overlayPicker = OverlayPickerController()
+    val overlayPicker = PreviewPickerController()
 
     private val guideController = GuideController()
     val guideFiles get() = guideController.guideFiles
@@ -703,8 +706,16 @@ class IGMController(
     }
 
     private fun renderProviderState(state: ProviderSettingsController.State) {
+        settingsCanRestore.value = providerNav?.canRestoreDefault() ?: false
         when (state) {
             is ProviderSettingsController.State.Menu -> {
+                // Applying a preset echoes back and re-renders the tree it was chosen from. The
+                // picker is already on top by then, so pushing that render would bury it under the
+                // browser the instant it opened. Keep the rows current and leave the stack alone.
+                if (currentScreen is IGMScreen.PreviewPicker) {
+                    settingsItems.value = state.items.map(::toProviderRenderItem)
+                    return
+                }
                 // Cannoli's own screen wears a settings row so it appears in both menus, but it is
                 // not a settings screen: entering the category swaps to the picker rather than
                 // rendering the empty screen the provider returns for it.
@@ -712,7 +723,10 @@ class IGMController(
                     // Staging a change re-renders the provider, which lands back here. Push only on
                     // the way in, or every value cycled stacks another picker to back out of.
                     if (currentScreen !is IGMScreen.PreviewPicker) {
-                        push(IGMScreen.PreviewPicker(selectedIndex = overlayPicker.refresh()))
+                        push(IGMScreen.PreviewPicker(
+                            selectedIndex = overlayPicker.refresh(),
+                            unwindOnBack = true,
+                        ))
                     }
                     return
                 }
@@ -749,26 +763,61 @@ class IGMController(
      * property of the artwork, not a menu.
      */
     private fun handlePreviewPickerKey(screen: IGMScreen.PreviewPicker, keycode: Int) {
+        val picker = overlayPicker
         when (keycode) {
             21, 22 -> {
                 val dir = if (keycode == 21) -1 else 1
-                val stage = { providerNav?.markChangedExternally(overlayPicker.stagedKeys); Unit }
-                replaceTop(screen.copy(selectedIndex = overlayPicker.cycle(screen.selectedIndex, dir, stage)))
+                val stage = { providerNav?.markChangedExternally(picker.stagedKeys); Unit }
+                replaceTop(screen.copy(selectedIndex = picker.cycle(screen.selectedIndex, dir, stage)))
+            }
+            // Offered only while this game overrides the platform, so the action and the answer to
+            // where the value came from are the same thing. Staged like a move: the save prompt on
+            // the way out is still what decides, and Discard still puts the override back.
+            99 -> if (picker.canRestore.value) {
+                providerNav?.markChangedExternally(picker.stagedKeys)
+                picker.onRestoreDefault?.invoke()
+                replaceTop(screen.copy(selectedIndex = picker.indexOf(picker.selected.value)))
             }
             97, 4 -> {
-                // The category push that led here left a level on the provider's own stack. Popping
-                // only this screen would leave it there, and the next Back would spend itself
-                // unwinding that instead of leaving the settings tree.
                 pop()
                 val nav = providerNav
-                if (nav != null) renderProviderState(nav.onNav(ProviderSettingsController.Nav.BACK))
-                else if (screenStack.isEmpty()) onClose?.invoke()
+                // Only when a category push led here. See PreviewPicker.unwindOnBack.
+                if (screen.unwindOnBack && nav != null) {
+                    renderProviderState(nav.onNav(ProviderSettingsController.Nav.BACK))
+                } else if (screenStack.isEmpty()) {
+                    onClose?.invoke()
+                }
             }
         }
     }
 
+    /** Whether the game is being left to run so a shader can be seen. Off outside the tree. */
+    val livePreview = mutableStateOf(false)
+
+    /** Set by the host: lets the game run while the menu is up, muted. */
+    var onLivePreview: ((Boolean) -> Unit)? = null
+
+    private fun setLivePreview(on: Boolean) {
+        if (livePreview.value == on) return
+        livePreview.value = on
+        onLivePreview?.invoke(on)
+    }
+
+    private fun inShaderTree(): Boolean =
+        (currentScreen as? IGMScreen.ProviderSettings)?.path?.firstOrNull() ==
+            CuratedCatalog.CATEGORY_SHADER
+
     private fun handleProviderKey(keycode: Int) {
         val nav = providerNav ?: return
+        // Only in the shader tree, where nothing else claims this button and seeing the picture is
+        // the whole point of the screen.
+        if (keycode == 100 && inShaderTree()) {
+            setLivePreview(!livePreview.value)
+            return
+        }
+        // Nothing else claims this button in the tree, and the legend only offers it where there is
+        // an override to drop, so a press elsewhere is a no-op rather than a surprise.
+        if (keycode == 99 && !settingsCanRestore.value) return
         val button = when (keycode) {
             19 -> ProviderSettingsController.Nav.UP
             20 -> ProviderSettingsController.Nav.DOWN
@@ -776,10 +825,14 @@ class IGMController(
             22 -> ProviderSettingsController.Nav.RIGHT
             96 -> ProviderSettingsController.Nav.CONFIRM
             97, 4 -> ProviderSettingsController.Nav.BACK
+            99 -> ProviderSettingsController.Nav.WEST
             100 -> ProviderSettingsController.Nav.NORTH
             else -> return
         }
         renderProviderState(nav.onNav(button))
+        // Leaving the tree always gives the pause back, so play never outlives the screen that
+        // asked for it.
+        if (!inShaderTree()) setLivePreview(false)
     }
 
     private fun selectMenuItem(index: Int) {

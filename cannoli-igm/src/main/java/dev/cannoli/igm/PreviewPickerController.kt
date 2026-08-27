@@ -3,7 +3,11 @@ package dev.cannoli.igm
 import androidx.compose.runtime.mutableStateOf
 
 /**
- * State behind the live preview picker.
+ * State behind one live preview picker.
+ *
+ * One instance per thing being picked. Overlays and shaders both use this shape but hold entirely
+ * different lists and callbacks, and sharing a single instance between them meant whichever was
+ * opened last left the other showing its entries and unable to re-read its own.
  *
  * Cannoli draws the artwork itself, so a move changes what is on screen directly rather than asking
  * the emulator for anything. Nothing is persisted here either: a move stages its key the same way
@@ -11,7 +15,10 @@ import androidx.compose.runtime.mutableStateOf
  * whether it is written for the platform, for the game, or not at all. That is what gives an
  * overlay the same two scopes every other setting has, rather than a persistence path of its own.
  */
-class OverlayPickerController {
+class PreviewPickerController {
+
+    /** What this picker is picking, shown on the strip. Set by whoever opens it. */
+    val title = mutableStateOf("")
 
     val items = mutableStateOf<List<String>>(emptyList())
 
@@ -26,6 +33,17 @@ class OverlayPickerController {
 
     /** Applies an entry to the running emulator. Index is into [items]. */
     var onPreview: ((Int) -> Unit)? = null
+
+    /**
+     * Whether this game overrides the platform, and so has an override worth dropping.
+     *
+     * Drives the legend, which makes the offer double as the answer to where the current value came
+     * from: the action appears only when the game is the one deciding.
+     */
+    val canRestore = mutableStateOf(false)
+
+    /** Drops the game's override and shows what the platform says instead. Set by the host. */
+    var onRestoreDefault: (() -> Unit)? = null
 
     /**
      * Reads the live state the picker shows. Deferred to open time on purpose: RetroArch has no

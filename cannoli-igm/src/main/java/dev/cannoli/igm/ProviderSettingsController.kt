@@ -2,7 +2,7 @@ package dev.cannoli.igm
 
 class ProviderSettingsController(private val provider: IgmSettingsProvider) {
 
-    enum class Nav { UP, DOWN, LEFT, RIGHT, CONFIRM, BACK, NORTH }
+    enum class Nav { UP, DOWN, LEFT, RIGHT, CONFIRM, BACK, NORTH, WEST }
 
     sealed interface State {
         data class Menu(
@@ -45,6 +45,10 @@ class ProviderSettingsController(private val provider: IgmSettingsProvider) {
 
     fun markChangedExternally(keys: Set<String>) = provider.markChangedExternally(keys)
 
+    /** Whether the level on screen has an override to drop, so the legend can offer it. */
+    fun canRestoreDefault(): Boolean =
+        levels.lastOrNull()?.let { provider.canRestoreDefault(it.path) } ?: false
+
     fun enter(): State {
         levels.clear()
         prompt = null
@@ -64,6 +68,17 @@ class ProviderSettingsController(private val provider: IgmSettingsProvider) {
         level.cursor = level.cursor.coerceIn(0, (screen.items.size - 1).coerceAtLeast(0))
         val description = if (showingDescription) descriptionOf(screen.items, level.cursor) else null
         return State.Menu(level.path, screen.title, level.cursor, screen.items, description, descriptionScroll)
+    }
+
+    // Rows per jump. Fixed rather than the viewport height, which this does not know: the screen
+    // owns layout and the navigator owns the cursor, and a constant keeps that boundary.
+    private val PAGE = 10
+
+    // Clamped rather than wrapped: paging is for crossing a long list, and wrapping from the top to
+    // the end makes it impossible to reach the start by holding a direction.
+    private fun pageBy(level: Level, delta: Int, count: Int): State {
+        if (count > 0) level.cursor = (level.cursor + delta).coerceIn(0, count - 1)
+        return state()
     }
 
     fun onNav(button: Nav): State {
@@ -87,8 +102,16 @@ class ProviderSettingsController(private val provider: IgmSettingsProvider) {
         when (button) {
             Nav.UP -> if (count > 0) level.cursor = (level.cursor - 1 + count) % count
             Nav.DOWN -> if (count > 0) level.cursor = (level.cursor + 1) % count
+            // Clamped rather than wrapped: a page jump is for crossing a long list, and wrapping
+            // from the top to the end makes it impossible to reach the start by holding a shoulder.
+            // A shader category can hold a hundred presets, which is the reason this exists.
+
             Nav.LEFT, Nav.RIGHT -> {
-                val item = items.getOrNull(level.cursor) as? GenericIgmSettingsItem.Choice ?: return state()
+                // Left and Right cycle a row that has a value, and page the list when the row has
+                // none. A shader browser is folders and presets, so nothing there cycles and paging
+                // is what the D-pad means everywhere else in the app.
+                val item = items.getOrNull(level.cursor) as? GenericIgmSettingsItem.Choice
+                    ?: return pageBy(level, if (button == Nav.LEFT) -PAGE else PAGE, count)
                 provider.cycle(item.key, if (button == Nav.LEFT) -1 else 1)
                 // RetroArch's rows are conditional, so this cycle can add or remove rows above the
                 // one being edited: Aspect Ratio reveals Config Aspect Ratio, Custom reveals the
@@ -114,6 +137,7 @@ class ProviderSettingsController(private val provider: IgmSettingsProvider) {
                 showingDescription = true
                 descriptionScroll = 0
             }
+            Nav.WEST -> provider.restoreDefault(level.path)
             Nav.BACK -> if (levels.size > 1) levels.removeLast() else return exit()
         }
         return state()

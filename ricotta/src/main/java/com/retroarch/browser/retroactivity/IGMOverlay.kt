@@ -199,6 +199,7 @@ class IGMOverlay(
                 CuratedCatalog.CATEGORY_ADVANCED to uiContext.getString(R.string.igm_advanced),
                 CuratedCatalog.CATEGORY_INFO to uiContext.getString(R.string.igm_info),
                 CuratedCatalog.CATEGORY_OVERLAY to uiContext.getString(R.string.igm_overlay),
+                CuratedCatalog.CATEGORY_SHADER to uiContext.getString(R.string.igm_shader),
             ),
             curatedRowLabels = mapOf(
                 "curated_screen_scaling" to uiContext.getString(R.string.igm_curated_screen_scaling),
@@ -437,12 +438,6 @@ class IGMOverlay(
      * The list carries a leading None so switching the bezel off is a move like any other rather
      * than a separate action, which is why every index below is offset by one.
      */
-    private companion object {
-        // Not a RetroArch setting, so the native writer skips it; staging it is purely what
-        // marks the tree dirty so the save prompt appears and offers platform or game.
-        const val STAGED_OVERLAY_KEY = "cannoli_overlay"
-    }
-
     /**
      * The window stays attached while the game runs and only its content view is hidden, so a
      * bezel needs that view shown even with no menu up. It is already non-focusable and
@@ -462,6 +457,7 @@ class IGMOverlay(
 
     private fun attachOverlayPicker() {
         val picker = controller.overlayPicker
+        picker.title.value = uiContext.getString(R.string.igm_overlay)
         // A bezel outlives the session it was chosen in, so the stored pick is drawn from the start
         // rather than waiting for someone to open the menu.
         bridge.storedOverlayName()?.let { name ->
@@ -473,16 +469,31 @@ class IGMOverlay(
 
         // Staged so the change joins the save prompt on the way out of the settings tree, which is
         // what gives an overlay the same platform-or-game scope every other setting has.
-        picker.stagedKeys = setOf(STAGED_OVERLAY_KEY)
+        picker.stagedKeys = setOf(EmbeddedRetroArchBridge.KEY_OVERLAY)
 
-        bridge.onCannoliSaved = { overlayBeforeEdit = bridge.cannoliOverlayName }
+        controller.onLivePreview = { on -> bridge.setLivePreview(on) }
+        bridge.onCannoliSaved = {
+            overlayBeforeEdit = bridge.cannoliOverlayName
+            picker.canRestore.value = bridge.overridesAtGame(EmbeddedRetroArchBridge.KEY_OVERLAY)
+        }
         bridge.onCannoliRevert = {
             bridge.cannoliOverlayName = overlayBeforeEdit
             picker.activeImage.value = overlayBeforeEdit?.let { overlayImageFor(it) }
+            picker.canRestore.value = bridge.overridesAtGame(EmbeddedRetroArchBridge.KEY_OVERLAY)
+            showOverlayLayer()
+        }
+
+        picker.onRestoreDefault = {
+            // The platform's answer, which is what this game will show once it stops giving its own.
+            val inherited = bridge.restoreOverlayDefault()
+            picker.activeImage.value = inherited?.let { overlayImageFor(it) }
+            picker.selected.value = inherited ?: uiContext.getString(dev.cannoli.ui.R.string.value_none)
+            picker.canRestore.value = false
             showOverlayLayer()
         }
 
         picker.onRefresh = {
+            picker.canRestore.value = bridge.overridesAtGame(EmbeddedRetroArchBridge.KEY_OVERLAY)
             val none = uiContext.getString(dev.cannoli.ui.R.string.value_none)
             // Opening the picker is the one moment worth paying for a fresh scan, so a folder
             // added mid-session shows up without relaunching.
@@ -495,7 +506,7 @@ class IGMOverlay(
         // write, no runloop to wake, no pause to fight. Compose redraws and it is on screen.
         picker.onPreview = { index ->
             val name = picker.items.value.getOrNull(index)?.takeIf { index > 0 }
-            bridge.cannoliOverlayName = name
+            bridge.pickOverlay(name)
             picker.activeImage.value = name?.let { overlayImageFor(it) }
             showOverlayLayer()
         }
@@ -530,8 +541,11 @@ class IGMOverlay(
                     slotOccupied = controller.slotOccupied.value,
                     undoLabel = controller.undoLabel.value,
                     settingsItems = controller.settingsItems.value,
-                    previewTitle = uiContext.getString(R.string.igm_overlay),
+                    previewTitle = controller.overlayPicker.title.value,
                     previewItems = controller.overlayPicker.items.value,
+                    previewCanRestore = controller.overlayPicker.canRestore.value,
+                    settingsCanRestore = controller.settingsCanRestore.value,
+                    livePreview = controller.livePreview.value,
                     overlayImage = controller.overlayPicker.activeImage.value,
                     cheatItems = controller.cheatItems.value,
                     cheatVisibleItems = controller.cheatVisibleItems.value,

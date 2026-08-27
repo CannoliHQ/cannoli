@@ -7,6 +7,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -54,14 +55,21 @@ fun IGMSettingsScreen(
     description: String? = null,
     descriptionScroll: Int = 0,
     fontSize: TextUnit = 22.sp,
-    lineHeight: TextUnit = 32.sp
+    lineHeight: TextUnit = 32.sp,
+    /**
+     * How much of the game to hide. A list of shaders is judged by what the shader does to the
+     * picture, so that list gets a narrow, barely dimmed panel and leaves the rest of the frame
+     * visible. Everything else covers the screen as before.
+     */
+    dimAlpha: Float = 0.85f,
+    widthFraction: Float = 1f,
 ) {
     val typo = LocalCannoliTypography.current
     val verticalPadding = pillVerticalPadding()
     val itemHeight = pillItemHeight(lineHeight, verticalPadding)
     val colors = LocalCannoliColors.current
 
-    ScreenBackground(backgroundImagePath = null, backgroundAlpha = 0.85f, backgroundColor = Color.Black) {
+    ScreenBackground(backgroundImagePath = null, backgroundAlpha = dimAlpha, backgroundColor = Color.Black) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -101,8 +109,10 @@ fun IGMSettingsScreen(
                 }
             } else {
                 Column(
+                    // Narrowed here rather than around the whole screen, so the legend below still
+                    // spans the display and its right-hand item stays on the right.
                     modifier = Modifier
-                        .fillMaxWidth()
+                        .fillMaxWidth(widthFraction)
                         .padding(bottom = footerReservation())
                 ) {
                     ScreenTitle(
@@ -153,7 +163,9 @@ fun IGMSettingsScreen(
             }
 
             BottomBar(
-                modifier = Modifier.align(Alignment.BottomCenter),
+                // Outside the narrowed column: the legend spans the screen even when the list
+                // steps aside, or its right-hand item lands in the middle of the display.
+                modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
                 leftItems = bottomBarLeft,
                 rightItems = if (description != null) emptyList() else bottomBarRight
             )

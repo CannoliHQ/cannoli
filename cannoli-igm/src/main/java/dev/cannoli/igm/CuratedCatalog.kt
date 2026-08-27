@@ -121,4 +121,8 @@ object CuratedCatalog {
     // Cannoli's own, not a RetroArch settings screen. Like CATEGORY_INFO it belongs to both
     // menus, and like it the provider answers the key before the curated/all branch.
     const val CATEGORY_OVERLAY = "overlay"
+
+    // Also Cannoli's own, and a tree rather than a screen: the database is thousands of presets
+    // in folders, so the rows below it are browsed with the same path stack every category uses.
+    const val CATEGORY_SHADER = "shader"
 }

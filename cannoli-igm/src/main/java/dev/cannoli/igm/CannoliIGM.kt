@@ -80,6 +80,9 @@ fun CannoliIGM(
     settingsItems: List<IGMSettingsItem>,
     previewTitle: String = "",
     previewItems: List<String> = emptyList(),
+    previewCanRestore: Boolean = false,
+    settingsCanRestore: Boolean = false,
+    livePreview: Boolean = false,
     overlayImage: String? = null,
     cheatItems: List<IGMController.CheatItem>,
     cheatVisibleItems: List<IGMController.CheatItem>,
@@ -222,6 +225,7 @@ fun CannoliIGM(
                         items = previewItems,
                         index = screen.selectedIndex,
                         labels = labels,
+                        canRestore = previewCanRestore,
                         fontSize = igmFontSize,
                         lineHeight = igmLineHeight,
                     )
@@ -230,6 +234,8 @@ fun CannoliIGM(
                 is IGMScreen.ProviderSettings, is IGMScreen.SettingsExitPrompt -> {
                     val description = (screen as? IGMScreen.ProviderSettings)?.description
                     val descriptionScroll = (screen as? IGMScreen.ProviderSettings)?.descriptionScroll ?: 0
+                    val inShaderTree = screen is IGMScreen.ProviderSettings &&
+                        screen.path.firstOrNull() == CuratedCatalog.CATEGORY_SHADER
                     val selectLabel = stringResource(dev.cannoli.ui.R.string.label_select)
                     val rowCycles = screen is IGMScreen.ProviderSettings &&
                         settingsItems.getOrNull(screen.selectedIndex)?.value != null
@@ -237,6 +243,22 @@ fun CannoliIGM(
                         settingsItems.getOrNull(screen.selectedIndex)?.description != null
                     val bottomBarRight = when {
                         description != null -> emptyList()
+                        // Seeing the picture is the point of this screen, and the menu has the game
+                        // paused, so the way to unpause it belongs in the legend rather than hidden.
+                        inShaderTree -> buildList {
+                            // Offered only while this game overrides its platform, which is what
+                            // makes the legend also the answer to where the shader came from.
+                            if (settingsCanRestore) add(
+                                labels.west to
+                                    stringResource(dev.cannoli.ui.R.string.label_use_platform)
+                            )
+                            add(
+                                labels.north to stringResource(
+                                    if (livePreview) dev.cannoli.ui.R.string.label_pause
+                                    else dev.cannoli.ui.R.string.label_play
+                                )
+                            )
+                        }
                         hasDescription -> listOf(
                             labels.north to stringResource(dev.cannoli.ui.R.string.igm_help)
                         )
@@ -270,7 +292,12 @@ fun CannoliIGM(
                         description = description,
                         descriptionScroll = descriptionScroll,
                         fontSize = igmFontSize,
-                        lineHeight = igmLineHeight
+                        lineHeight = igmLineHeight,
+                        // A shader is judged by what it does to the picture, so its list steps aside
+                        // and barely dims: the game has to be visible for choosing one to mean
+                        // anything. Every other settings screen still covers the frame.
+                        dimAlpha = if (inShaderTree) 0.35f else 0.85f,
+                        widthFraction = if (inShaderTree) 0.5f else 1f,
                     )
                 }
                 is IGMScreen.GuidePicker -> {

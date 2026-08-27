@@ -66,6 +66,9 @@ class RaIgmSettingsProvider(
     // side drops any key that is not a live RA setting. Cleared whenever the dirty flag is.
     private val changedKeys = mutableSetOf<String>()
 
+    // Marks a browser row as a preset rather than a folder, since both are just names.
+    private val SHADER_PRESET_PREFIX = "shader_preset:"
+
     // What each changed key held before the first edit of this visit, so Discard can put it back.
     // Captured before the write, since afterwards the old value is gone, and first capture wins,
     // so cycling a row four times still restores what it held on the way in. Only user edits are
@@ -88,7 +91,16 @@ class RaIgmSettingsProvider(
 
     override fun setOnChanged(callback: () -> Unit) { onChanged = callback }
 
-    override fun screen(path: List<String>): GenericIgmSettingsScreen = when {
+    // The level the navigator last asked for. activate() is told only a row key, and a shader
+    // preset means nothing without the folder it was listed from.
+    private var currentPath: List<String> = emptyList()
+
+    override fun screen(path: List<String>): GenericIgmSettingsScreen {
+        currentPath = path
+        return screenFor(path)
+    }
+
+    private fun screenFor(path: List<String>): GenericIgmSettingsScreen = when {
         path.isEmpty() -> if (curated) curatedRoot() else root()
         path.first() == EMULATOR_CATEGORY -> emulatorScreen(path.getOrNull(1))
         // Info describes the running core rather than any setting, so it belongs in both menus.
@@ -97,6 +109,7 @@ class RaIgmSettingsProvider(
         // live preview picker on seeing this path and never renders what is returned here.
         path.first() == CuratedCatalog.CATEGORY_OVERLAY ->
             GenericIgmSettingsScreen(curatedTitle(CuratedCatalog.CATEGORY_OVERLAY), emptyList())
+        path.first() == CuratedCatalog.CATEGORY_SHADER -> shaderScreen(path.drop(1))
         curated -> curatedCategoryScreen(path.first())
         // RetroArch's tree is arbitrarily deep, so the screen is whatever the path last entered.
         else -> raScreen(path.last())
@@ -163,6 +176,7 @@ class RaIgmSettingsProvider(
                 ))
             }
             addOverlayCategory()
+            addShaderCategory()
             if (host.systemInfo().isNotEmpty()) {
                 add(GenericIgmSettingsItem.Category(
                     CuratedCatalog.CATEGORY_INFO,
@@ -171,6 +185,46 @@ class RaIgmSettingsProvider(
             }
         }
         return GenericIgmSettingsScreen(strings.rootTitle, items)
+    }
+
+    /**
+     * One level of the shader browser. Folders are Category rows, so descending and backing out ride
+     * the path stack every other category already uses; presets are Action rows, because choosing
+     * one hands off to the picker rather than opening another screen.
+     *
+     * The title is the folder rather than a fixed word, so a browser several levels into a pack
+     * still says where it is.
+     */
+    private fun shaderScreen(relative: List<String>): GenericIgmSettingsScreen {
+        val title = relative.lastOrNull() ?: curatedTitle(CuratedCatalog.CATEGORY_SHADER)
+        val applied = host.appliedShaderPreset()
+        return GenericIgmSettingsScreen(
+            title,
+            host.shaderEntries(relative).map { entry ->
+                when {
+                    entry.isFolder -> GenericIgmSettingsItem.Category(entry.name, entry.name)
+                    // The one in force reads as a value rather than an action, which is what makes
+                    // pressing A visibly do something in a list that otherwise never changes.
+                    entry.path == applied ->
+                        GenericIgmSettingsItem.Choice(
+                            SHADER_PRESET_PREFIX + entry.name,
+                            entry.name,
+                            strings.shaderApplied,
+                        )
+                    else -> GenericIgmSettingsItem.Action(SHADER_PRESET_PREFIX + entry.name, entry.name)
+                }
+            },
+        )
+    }
+
+    // Absent when nothing under it can load, which is the same rule the overlay row follows and
+    // also covers the case of the database never having been downloaded.
+    private fun MutableList<GenericIgmSettingsItem>.addShaderCategory() {
+        if (!host.hasShaders()) return
+        add(GenericIgmSettingsItem.Category(
+            CuratedCatalog.CATEGORY_SHADER,
+            curatedTitle(CuratedCatalog.CATEGORY_SHADER),
+        ))
     }
 
     // Absent rather than empty when the platform has no overlay folders, the same rule the core
@@ -275,6 +329,7 @@ class RaIgmSettingsProvider(
             }
             addAll(raRows(""))
             addOverlayCategory()
+            addShaderCategory()
             if (host.systemInfo().isNotEmpty()) {
                 add(GenericIgmSettingsItem.Category(
                     CuratedCatalog.CATEGORY_INFO,
@@ -398,7 +453,28 @@ class RaIgmSettingsProvider(
         replaceSetting(i, currentSettings[i].copy(value = value))
     }
 
-    override fun activate(itemKey: String): IgmSettingsExit.Prompt? = null
+    override fun canRestoreDefault(path: List<String>): Boolean =
+        path.firstOrNull() == CuratedCatalog.CATEGORY_SHADER && host.shaderOverriddenAtGame()
+
+    override fun restoreDefault(path: List<String>): Set<String> {
+        if (!canRestoreDefault(path)) return emptySet()
+        val staged = host.restoreShaderDefault()
+        markChangedExternally(staged)
+        return staged
+    }
+
+    override fun activate(itemKey: String): IgmSettingsExit.Prompt? {
+        if (itemKey.startsWith(SHADER_PRESET_PREFIX)) {
+            // The path this row was listed from is the level the navigator is on, minus the category
+            // key that led into the tree. The list stays put: choosing another preset is a press
+            // away, which is the point of applying in place rather than on a screen of its own.
+            markChangedExternally(
+                host.applyShaderPreset(currentPath.drop(1), itemKey.removePrefix(SHADER_PRESET_PREFIX))
+            )
+        }
+        return null
+    }
+
 
     // The live preview picker writes its setting straight to RetroArch, so nothing here saw the
     // change. Joining the same changed set is what puts an overlay in the save prompt beside the

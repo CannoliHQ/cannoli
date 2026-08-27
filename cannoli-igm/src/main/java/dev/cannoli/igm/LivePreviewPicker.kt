@@ -53,6 +53,7 @@ fun LivePreviewPicker(
     items: kotlin.collections.List<String>,
     index: Int,
     labels: ButtonStyle,
+    canRestore: Boolean = false,
     fontSize: TextUnit = 22.sp,
     lineHeight: TextUnit = 32.sp,
     modifier: Modifier = Modifier,
@@ -103,10 +104,12 @@ fun LivePreviewPicker(
                     labels.back to stringResource(dev.cannoli.ui.R.string.label_back),
                     DPAD_HORIZONTAL to stringResource(dev.cannoli.ui.R.string.label_change),
                 ),
-                // Nothing on the right. A move is already applied and already staged, so Back is the
-                // only way out and the save prompt leaving the tree decides the rest; and there is
-                // nothing to configure, because how a bezel looks belongs to the artwork.
-                rightItems = emptyList(),
+                // Only ever the one action. A move is already applied and already staged, so Back
+                // is the way out and the save prompt leaving the tree decides the rest; and there
+                // is nothing to configure, because how a bezel looks belongs to the artwork.
+                rightItems = if (!canRestore) emptyList() else listOf(
+                    labels.west to stringResource(dev.cannoli.ui.R.string.label_use_platform)
+                ),
             )
         }
     }
