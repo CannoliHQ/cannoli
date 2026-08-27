@@ -1,4 +1,0 @@
-shaders = 1
-
-shader0 = shaders/crt-lottes-fast.glsl
-filter_linear0 = true

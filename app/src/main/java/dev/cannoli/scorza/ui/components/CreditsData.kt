@@ -30,18 +30,12 @@ val CREDITS_CORES: List<CreditEntry> = listOf(
     CreditEntry("SwanStation", "GPLv3"),
 )
 
+// Only what Cannoli ships. Every other shader now comes from the libretro shader database at
+// runtime, and those carry their own licences in the archive rather than being restated here,
+// where a list of several hundred could only go out of date.
 val CREDITS_SHADERS: List<CreditEntry> = listOf(
-    CreditEntry("crt-aperture by EasyMode", "GPL"),
     CreditEntry("crt-cannoli by Cannoli (based on EasyMode)", "GPL"),
-    CreditEntry("crt-easymode by EasyMode", "GPL"),
-    CreditEntry("crt-geom by cgwg / Themaister / DOLLS", "GPLv2"),
-    CreditEntry("crt-lottes-fast by Timothy Lottes / hunterk", "Public domain"),
-    CreditEntry("dot by Themaister", "Public domain"),
-    CreditEntry("lcd3x by Gigaherz", "Public domain"),
-    CreditEntry("scanline by hunterk", "Public domain"),
-    CreditEntry("sharp-bilinear-simple by rsn8887", "Public domain"),
-    CreditEntry("zfast-crt by SoltanGris42", "GPLv2"),
-    CreditEntry("zfast-lcd by SoltanGris42", "GPLv2"),
+    CreditEntry("libretro shader database", "See each preset"),
 )
 
 val CREDITS_FONTS: List<CreditEntry> = listOf(
