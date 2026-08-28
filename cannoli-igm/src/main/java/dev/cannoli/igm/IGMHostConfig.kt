@@ -3,9 +3,23 @@ package dev.cannoli.igm
 import dev.cannoli.ui.ButtonLabelSet
 import dev.cannoli.ui.ConfirmButton
 
-enum class BatteryDisplayMode { HIDE, PERCENT, ICON }
+enum class BatteryDisplayMode {
+    HIDE, PERCENT, ICON;
 
-enum class TimeFormatMode { TWELVE_HOUR, TWENTY_FOUR_HOUR }
+    companion object {
+        fun fromString(value: String?): BatteryDisplayMode =
+            entries.firstOrNull { it.name == value } ?: PERCENT
+    }
+}
+
+enum class TimeFormatMode {
+    TWELVE_HOUR, TWENTY_FOUR_HOUR;
+
+    companion object {
+        fun fromString(value: String?): TimeFormatMode =
+            entries.firstOrNull { it.name == value } ?: TWELVE_HOUR
+    }
+}
 
 // port >= 0 is an assigned controller port; a negative port means unassigned.
 

@@ -36,10 +36,10 @@ data class IgmDisplaySettings(
         dest.writeInt(if (showBluetooth) 1 else 0)
         dest.writeInt(if (showVpn) 1 else 0)
         dest.writeInt(if (showClock) 1 else 0)
-        dest.writeInt(batteryDisplay.ordinal)
-        dest.writeInt(timeFormat.ordinal)
-        dest.writeInt(buttonLabelSet.ordinal)
-        dest.writeInt(confirmButton.ordinal)
+        dest.writeString(batteryDisplay.name)
+        dest.writeString(timeFormat.name)
+        dest.writeString(buttonLabelSet.name)
+        dest.writeString(confirmButton.name)
     }
 
     companion object CREATOR : Parcelable.Creator<IgmDisplaySettings> {
@@ -54,10 +54,12 @@ data class IgmDisplaySettings(
             showBluetooth = p.readInt() != 0,
             showVpn = p.readInt() != 0,
             showClock = p.readInt() != 0,
-            batteryDisplay = BatteryDisplayMode.values()[p.readInt()],
-            timeFormat = TimeFormatMode.values()[p.readInt()],
-            buttonLabelSet = ButtonLabelSet.values()[p.readInt()],
-            confirmButton = ConfirmButton.values()[p.readInt()],
+            // By name, and defaulting rather than throwing: the sender is a separate build, so it
+            // can hold a value this one has never heard of.
+            batteryDisplay = BatteryDisplayMode.fromString(p.readString()),
+            timeFormat = TimeFormatMode.fromString(p.readString()),
+            buttonLabelSet = ButtonLabelSet.fromString(p.readString()),
+            confirmButton = ConfirmButton.fromString(p.readString()),
         )
 
         override fun newArray(size: Int) = arrayOfNulls<IgmDisplaySettings>(size)
