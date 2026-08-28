@@ -32,7 +32,7 @@ private const val SHADER_FILTER_PREFIX = "shader_filter:"
 private const val SHADER_SCALE_PREFIX = "shader_scale:"
 
 // Cannoli's own key for the shader in force, staged so a pipeline edit reaches the save prompt.
-private const val SHADER_KEY_CANNOLI = "cannoli_shader"
+private val SHADER_KEY_CANNOLI = dev.cannoli.core.config.OverrideTiers.KEY_SHADER
 
 // A scale row has to be walkable with a D-pad, and past this it is a preset's business rather
 // than something set by hand. The pass count has no such limit here: it follows from what is

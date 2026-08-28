@@ -716,13 +716,11 @@ class EmbeddedRetroArchBridge(
         /** Mirrors RICOTTA_RA_SETTING_FIELDS. Both describers allocate this many. */
         private const val RA_SETTING_FIELDS = 10
 
-        const val KEY_OVERLAY = "cannoli_overlay"
 
         /**
          * Cannoli's own, for the same reason as the overlay: RetroArch has no config key naming the
          * preset in force, so there is nothing of its own to write into.
          */
-        const val KEY_SHADER = "cannoli_shader"
 
         /** Characters a filename cannot carry, dropped from a name taken off a tag or a rom. */
         private val FILENAME_RESERVED = setOf('/', '\\', ':', '*', '?', '"', '<', '>', '|')
@@ -732,6 +730,9 @@ class EmbeddedRetroArchBridge(
          * offer the working copy of the thing you are currently editing as something to load.
          */
         private const val WORKING_CHAIN = ".cannoli_chain"
+
+        const val KEY_OVERLAY = OverrideTiers.KEY_OVERLAY
+        const val KEY_SHADER = OverrideTiers.KEY_SHADER
 
         private val CANNOLI_KEYS = listOf(KEY_OVERLAY, KEY_SHADER)
         // Real RetroArch settings: a shader is a pass in its render chain, so unlike the bezel
