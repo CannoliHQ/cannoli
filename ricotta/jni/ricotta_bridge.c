@@ -193,9 +193,8 @@ static void ricotta_enqueue_command(int cmd, int slot, int has_slot)
    ricotta_enqueue_entry(entry);
 }
 
-/* Cheat descriptions and codes have no fixed bound (CHEAT_CODE_SCRATCH_SIZE is 16 KB), so the
- * snapshot is built into a growable buffer rather than the fixed line buffer the achievement
- * snapshot uses. */
+/* Cheat descriptions and codes have no fixed bound (CHEAT_CODE_SCRATCH_SIZE is 16 KB), so a
+ * snapshot is built into a growable buffer rather than a fixed line buffer. */
 typedef struct
 {
    char  *buf;
@@ -229,14 +228,29 @@ static void ricotta_sb_putc(ricotta_strbuf *sb, char c)
    sb->buf[sb->len]   = '\0';
 }
 
+/* For text already known to be plain ASCII, such as a formatted number. */
+static void ricotta_sb_puts(ricotta_strbuf *sb, const char *s)
+{
+   size_t n;
+
+   if (!s || !*s)
+      return;
+   n = strlen(s);
+   if (!ricotta_sb_reserve(sb, n))
+      return;
+   memcpy(sb->buf + sb->len, s, n);
+   sb->len += n;
+   sb->buf[sb->len] = '\0';
+}
+
 /* Backslash, pipe and newline are escaped so a desc or code containing them cannot forge a field
  * or a row boundary. The Kotlin decoder reverses exactly these three and splits rows on \n alone,
  * so a lone \r is deliberately left as a literal byte inside its field.
  *
- * These bytes come from a user-supplied .cht and community packs are not always UTF-8, so anything
- * that is not valid modified UTF-8 is replaced with '?' as it is copied: NewStringUTF aborts the
- * process under CheckJNI on a bad sequence. Four-byte sequences are invalid here too, modified
- * UTF-8 spells those as a surrogate pair of three-byte ones. */
+ * These bytes come from a user-supplied .cht or from the RetroAchievements server, neither of
+ * which is reliably UTF-8, so anything that is not valid modified UTF-8 is replaced with '?' as it
+ * is copied: NewStringUTF aborts the process under CheckJNI on a bad sequence. Four-byte sequences
+ * are invalid here too, modified UTF-8 spells those as a surrogate pair of three-byte ones. */
 static void ricotta_sb_escaped(ricotta_strbuf *sb, const char *s)
 {
    const unsigned char *p = (const unsigned char *)s;
@@ -2057,7 +2071,8 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeRaSaveOverride(
 
 /* Snapshot the live rc_client achievement list as a delimited string:
  * one line per achievement, "id|title|description|points|unlocked|state|unlock_time".
- * The IGM pauses emulation while shown, so reading the client here is safe. */
+ * Title and description are server text, so they go through ricotta_sb_escaped and the Kotlin
+ * decoder reverses it. The IGM pauses emulation while shown, so reading the client here is safe. */
 JNIEXPORT jstring JNICALL
 Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeGetAchievementData(
       JNIEnv *env, jobject obj)
@@ -2065,9 +2080,7 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeGetAchievementData(
    rcheevos_locals_t *locals;
    rc_client_t *client;
    rc_client_achievement_list_t *list;
-   char *out      = NULL;
-   size_t out_len = 0;
-   size_t out_cap = 0;
+   ricotta_strbuf sb = {0};
    uint32_t b, a;
    jstring result;
 
@@ -2090,40 +2103,26 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeGetAchievementData(
       for (a = 0; a < bucket->num_achievements; a++)
       {
          const rc_client_achievement_t *ach = bucket->achievements[a];
-         char line[768];
-         int n = snprintf(line, sizeof(line),
-               "%u|%s|%s|%u|%d|%u|%lld\n",
-               ach->id,
-               ach->title ? ach->title : "",
-               ach->description ? ach->description : "",
+         char nums[96];
+
+         snprintf(nums, sizeof(nums), "%u|", ach->id);
+         ricotta_sb_puts(&sb, nums);
+         ricotta_sb_escaped(&sb, ach->title);
+         ricotta_sb_putc(&sb, '|');
+         ricotta_sb_escaped(&sb, ach->description);
+         snprintf(nums, sizeof(nums), "|%u|%d|%u|%lld\n",
                ach->points,
                ach->unlocked ? 1 : 0,
                (unsigned)ach->state,
                (long long)ach->unlock_time);
-         if (n < 0)
-            continue;
-         if (out_len + (size_t)n + 1 > out_cap)
-         {
-            size_t new_cap = (out_cap ? out_cap * 2 : 4096);
-            char  *grown;
-            while (new_cap < out_len + (size_t)n + 1)
-               new_cap *= 2;
-            grown = (char *)realloc(out, new_cap);
-            if (!grown)
-               break;
-            out     = grown;
-            out_cap = new_cap;
-         }
-         memcpy(out + out_len, line, (size_t)n);
-         out_len += (size_t)n;
-         out[out_len] = '\0';
+         ricotta_sb_puts(&sb, nums);
       }
    }
 
    rc_client_destroy_achievement_list(list);
 
-   result = (*env)->NewStringUTF(env, out ? out : "");
-   free(out);
+   result = (*env)->NewStringUTF(env, sb.buf ? sb.buf : "");
+   free(sb.buf);
    return result;
 }
 

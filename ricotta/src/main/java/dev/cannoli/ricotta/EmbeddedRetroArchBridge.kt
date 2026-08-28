@@ -134,24 +134,8 @@ class EmbeddedRetroArchBridge(
     fun undoSaveState() = nativeUndoSaveState()
     fun undoLoadState() = nativeUndoLoadState()
 
-    override fun getAchievements(): List<AchievementInfo> {
-        val raw = nativeGetAchievementData()
-        if (raw.isEmpty()) return emptyList()
-        return raw.split('\n').mapNotNull { line ->
-            if (line.isBlank()) return@mapNotNull null
-            val parts = line.split('|', limit = 7)
-            if (parts.size < 7) return@mapNotNull null
-            AchievementInfo(
-                id = parts[0].toIntOrNull() ?: return@mapNotNull null,
-                title = parts[1],
-                description = parts[2],
-                points = parts[3].toIntOrNull() ?: 0,
-                unlocked = parts[4] == "1",
-                state = parts[5].toIntOrNull() ?: 0,
-                unlockTime = parts[6].toLongOrNull() ?: 0
-            )
-        }
-    }
+    override fun getAchievements(): List<AchievementInfo> =
+        decodeAchievements(nativeGetAchievementData())
 
     override fun getDiskCount() = nativeDiskCount()
     override fun getDiskIndex() = nativeDiskIndex()
@@ -779,6 +763,26 @@ class EmbeddedRetroArchBridge(
                     code = parts[1],
                     enabled = parts[2] == "1",
                     supported = parts[3] == "1",
+                )
+            }
+        }
+
+        // Title and description are RetroAchievements server text, so they carry the same escaping
+        // the cheat rows do. A malformed line is dropped, never thrown on.
+        internal fun decodeAchievements(payload: String): List<AchievementInfo> {
+            if (payload.isEmpty()) return emptyList()
+            return payload.split('\n').mapNotNull { line ->
+                if (line.isBlank()) return@mapNotNull null
+                val parts = splitEscaped(line)
+                if (parts.size < 7) return@mapNotNull null
+                AchievementInfo(
+                    id = parts[0].toIntOrNull() ?: return@mapNotNull null,
+                    title = parts[1],
+                    description = parts[2],
+                    points = parts[3].toIntOrNull() ?: 0,
+                    unlocked = parts[4] == "1",
+                    state = parts[5].toIntOrNull() ?: 0,
+                    unlockTime = parts[6].toLongOrNull() ?: 0,
                 )
             }
         }
