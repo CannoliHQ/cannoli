@@ -44,19 +44,19 @@ class InputTesterHatTest {
     }
 
     @Test fun `a straight mapping reports the direction pressed`() {
-        assertEquals(setOf("btn_left"), mappingHatButtons(straight, axes(HAT_X to -1f)))
-        assertEquals(setOf("btn_right"), mappingHatButtons(straight, axes(HAT_X to 1f)))
-        assertEquals(setOf("btn_up"), mappingHatButtons(straight, axes(HAT_Y to -1f)))
-        assertEquals(setOf("btn_down"), mappingHatButtons(straight, axes(HAT_Y to 1f)))
+        assertEquals(setOf(CanonicalButton.BTN_LEFT), mappingHatButtons(straight, axes(HAT_X to -1f)))
+        assertEquals(setOf(CanonicalButton.BTN_RIGHT), mappingHatButtons(straight, axes(HAT_X to 1f)))
+        assertEquals(setOf(CanonicalButton.BTN_UP), mappingHatButtons(straight, axes(HAT_Y to -1f)))
+        assertEquals(setOf(CanonicalButton.BTN_DOWN), mappingHatButtons(straight, axes(HAT_Y to 1f)))
     }
 
     @Test fun `a crossed mapping reports the binding, not the hardware`() {
-        assertEquals(setOf("btn_right"), mappingHatButtons(crossed, axes(HAT_X to -1f)))
-        assertEquals(setOf("btn_left"), mappingHatButtons(crossed, axes(HAT_X to 1f)))
+        assertEquals(setOf(CanonicalButton.BTN_RIGHT), mappingHatButtons(crossed, axes(HAT_X to -1f)))
+        assertEquals(setOf(CanonicalButton.BTN_LEFT), mappingHatButtons(crossed, axes(HAT_X to 1f)))
     }
 
     @Test fun `a resting hat reports nothing`() {
-        assertEquals(emptySet<String>(), mappingHatButtons(straight, axes(HAT_X to 0f)))
+        assertEquals(emptySet<CanonicalButton>(), mappingHatButtons(straight, axes(HAT_X to 0f)))
     }
 
     @Test fun `a mapping with no hat bindings falls back to the raw hat`() {
@@ -66,10 +66,10 @@ class InputTesterHatTest {
     }
 
     @Test fun `the raw fallback reads the hat sign`() {
-        assertEquals(setOf("btn_left"), rawHatButtons(-1f, 0f))
-        assertEquals(setOf("btn_right"), rawHatButtons(1f, 0f))
-        assertEquals(setOf("btn_up"), rawHatButtons(0f, -1f))
-        assertEquals(setOf("btn_down"), rawHatButtons(0f, 1f))
-        assertEquals(emptySet<String>(), rawHatButtons(0f, 0f))
+        assertEquals(setOf(CanonicalButton.BTN_LEFT), rawHatButtons(-1f, 0f))
+        assertEquals(setOf(CanonicalButton.BTN_RIGHT), rawHatButtons(1f, 0f))
+        assertEquals(setOf(CanonicalButton.BTN_UP), rawHatButtons(0f, -1f))
+        assertEquals(setOf(CanonicalButton.BTN_DOWN), rawHatButtons(0f, 1f))
+        assertEquals(emptySet<CanonicalButton>(), rawHatButtons(0f, 0f))
     }
 }

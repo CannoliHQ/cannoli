@@ -42,25 +42,6 @@ data class RetroArchCfgEntry(
     val isUserOwned: Boolean get() = provenance?.let { it == CfgProvenance.USER } ?: cannoliUser
 
     companion object {
-        val SUPPORTED_BUTTON_KEYS = setOf(
-            "a_btn", "b_btn", "x_btn", "y_btn",
-            "l_btn", "r_btn",
-            "l2_btn", "r2_btn",
-            "l3_btn", "r3_btn",
-            "start_btn", "select_btn",
-            "up_btn", "down_btn", "left_btn", "right_btn",
-            "menu_toggle_btn"
-        )
-
-        val SUPPORTED_AXIS_KEYS = setOf(
-            "l2_axis", "r2_axis",
-            "up_axis", "down_axis", "left_axis", "right_axis",
-            "l_x_plus_axis", "l_x_minus_axis",
-            "l_y_plus_axis", "l_y_minus_axis",
-            "r_x_plus_axis", "r_x_minus_axis",
-            "r_y_plus_axis", "r_y_minus_axis",
-        )
-
         // Keys RetroArchCfgWriter regenerates from the model; every other line in a cfg is carried
         // through untouched. input_menu_toggle_btn stays managed even when the writer deliberately
         // omits it, so a cleared menu never leaves the old line behind for RetroArch to read.
@@ -70,8 +51,8 @@ data class RetroArchCfgEntry(
             add("input_device_display_name")
             add("input_vendor_id")
             add("input_product_id")
-            SUPPORTED_BUTTON_KEYS.mapTo(this) { "input_$it" }
-            SUPPORTED_AXIS_KEYS.mapTo(this) { "input_$it" }
+            RaButtonKey.CFG_KEYS.mapTo(this) { "input_$it" }
+            RaAxisKey.CFG_KEYS.mapTo(this) { "input_$it" }
             addAll(
                 listOf(
                     "cannoli_user",

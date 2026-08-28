@@ -1,5 +1,6 @@
 package dev.cannoli.scorza.ui.viewmodel
 
+import dev.cannoli.scorza.input.CanonicalButton
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -20,12 +21,12 @@ class InputTesterViewModelTest {
             keyName = "BUTTON_A",
             deviceId = 10,
             deviceName = "Test Pad",
-            resolvedButton = "btn_south",
+            resolvedButton = CanonicalButton.BTN_SOUTH,
         )
         val state = vm.state.value
         assertTrue("btn_south" in (state.portStates[0]?.pressedButtons ?: emptySet()))
         assertEquals(1, state.eventLog.size)
-        assertEquals("btn_south", state.eventLog.first().resolvedButton)
+        assertEquals(CanonicalButton.BTN_SOUTH, state.eventLog.first().resolvedButton)
         assertEquals(0, state.lastEventDevice?.port)
         assertEquals("Test Pad", state.lastEventDevice?.name)
     }
@@ -33,20 +34,20 @@ class InputTesterViewModelTest {
     @Test
     fun onKeyDown_marks_event_unbound_when_flagged() {
         val vm = vm()
-        vm.onKeyDown(0, 104, "BUTTON_L2", 8, "Retroid", "btn_l2", unbound = true)
+        vm.onKeyDown(0, 104, "BUTTON_L2", 8, "Retroid", CanonicalButton.BTN_L2, unbound = true)
         val unboundEntry = vm.state.value.eventLog.first()
         assertTrue(unboundEntry.unbound)
-        assertEquals("btn_l2", unboundEntry.resolvedButton)
+        assertEquals(CanonicalButton.BTN_L2, unboundEntry.resolvedButton)
 
-        vm.onKeyDown(0, 96, "BUTTON_A", 8, "Retroid", "btn_south")
+        vm.onKeyDown(0, 96, "BUTTON_A", 8, "Retroid", CanonicalButton.BTN_SOUTH)
         assertFalse(vm.state.value.eventLog.first().unbound)
     }
 
     @Test
     fun keyUp_removesButton() {
         val vm = vm()
-        vm.onKeyDown(0, 96, "BUTTON_A", 10, "Test Pad", "btn_south")
-        vm.onKeyUp(0, 96, "BUTTON_A", 10, "Test Pad", "btn_south")
+        vm.onKeyDown(0, 96, "BUTTON_A", 10, "Test Pad", CanonicalButton.BTN_SOUTH)
+        vm.onKeyUp(0, 96, "BUTTON_A", 10, "Test Pad", CanonicalButton.BTN_SOUTH)
         val pressed = vm.state.value.portStates[0]?.pressedButtons ?: emptySet()
         assertTrue(pressed.isEmpty())
     }
@@ -64,7 +65,7 @@ class InputTesterViewModelTest {
     fun eventLogIsBoundedByCapacity() {
         val vm = InputTesterViewModel(now = { fakeNow }, eventLogCapacity = 3)
         repeat(5) { i ->
-            vm.onKeyDown(0, 96 + i, "K$i", 10, "Test Pad", "btn_south")
+            vm.onKeyDown(0, 96 + i, "K$i", 10, "Test Pad", CanonicalButton.BTN_SOUTH)
         }
         val log = vm.state.value.eventLog
         assertEquals(3, log.size)
@@ -83,16 +84,16 @@ class InputTesterViewModelTest {
     @Test
     fun orphanKeyUp_isIgnored() {
         val vm = vm()
-        vm.onKeyUp(0, 96, "BUTTON_A", 10, "Test Pad", "btn_south")
+        vm.onKeyUp(0, 96, "BUTTON_A", 10, "Test Pad", CanonicalButton.BTN_SOUTH)
         assertEquals(0, vm.state.value.eventLog.size)
     }
 
     @Test
     fun autorepeatKeyDown_notLoggedAndDoesNotCountTowardExit() {
         val vm = vm()
-        vm.onKeyDown(0, 96, "BUTTON_A", 10, "Test Pad", "btn_south")
+        vm.onKeyDown(0, 96, "BUTTON_A", 10, "Test Pad", CanonicalButton.BTN_SOUTH)
         repeat(10) {
-            vm.onKeyDown(0, 96, "BUTTON_A", 10, "Test Pad", "btn_south")
+            vm.onKeyDown(0, 96, "BUTTON_A", 10, "Test Pad", CanonicalButton.BTN_SOUTH)
         }
         assertEquals(1, vm.state.value.eventLog.size)
         assertFalse(vm.state.value.exitRequested)
@@ -121,7 +122,7 @@ class InputTesterViewModelTest {
     @Test
     fun hatAxis_addsDpadButtonWithoutKeycode() {
         val vm = vm()
-        vm.onMotion(0, 10, "Test Pad", 0f, 0f, 0f, 0f, 0f, 0f, hatButtons = setOf("btn_left"))
+        vm.onMotion(0, 10, "Test Pad", 0f, 0f, 0f, 0f, 0f, 0f, hatButtons = setOf(CanonicalButton.BTN_LEFT))
         val pressed = vm.state.value.portStates[0]?.pressedButtons ?: emptySet()
         assertTrue("btn_left" in pressed)
     }
@@ -164,7 +165,7 @@ class InputTesterViewModelTest {
     @Test
     fun hatAxisReleased_clearsDpadButton() {
         val vm = vm()
-        vm.onMotion(0, 10, "Test Pad", 0f, 0f, 0f, 0f, 0f, 0f, hatButtons = setOf("btn_left"))
+        vm.onMotion(0, 10, "Test Pad", 0f, 0f, 0f, 0f, 0f, 0f, hatButtons = setOf(CanonicalButton.BTN_LEFT))
         assertTrue("btn_left" in (vm.state.value.portStates[0]?.pressedButtons ?: emptySet()))
         vm.onMotion(0, 10, "Test Pad", 0f, 0f, 0f, 0f, 0f, 0f, hatButtons = emptySet())
         assertFalse("btn_left" in (vm.state.value.portStates[0]?.pressedButtons ?: emptySet()))

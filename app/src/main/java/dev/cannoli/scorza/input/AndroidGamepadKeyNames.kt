@@ -5,25 +5,25 @@ import android.view.KeyEvent
 
 object AndroidGamepadKeyNames {
 
-    val DEFAULT_KEY_MAP: Map<Int, String> = mapOf(
-        KeyEvent.KEYCODE_BUTTON_A to "btn_south",
-        KeyEvent.KEYCODE_BUTTON_B to "btn_east",
-        KeyEvent.KEYCODE_BUTTON_X to "btn_west",
-        KeyEvent.KEYCODE_BUTTON_Y to "btn_north",
-        KeyEvent.KEYCODE_BUTTON_L1 to "btn_l",
-        KeyEvent.KEYCODE_BUTTON_R1 to "btn_r",
-        KeyEvent.KEYCODE_BUTTON_L2 to "btn_l2",
-        KeyEvent.KEYCODE_BUTTON_R2 to "btn_r2",
-        KeyEvent.KEYCODE_BUTTON_THUMBL to "btn_l3",
-        KeyEvent.KEYCODE_BUTTON_THUMBR to "btn_r3",
-        KeyEvent.KEYCODE_BUTTON_START to "btn_start",
-        KeyEvent.KEYCODE_BUTTON_SELECT to "btn_select",
-        KeyEvent.KEYCODE_DPAD_UP to "btn_up",
-        KeyEvent.KEYCODE_DPAD_DOWN to "btn_down",
-        KeyEvent.KEYCODE_DPAD_LEFT to "btn_left",
-        KeyEvent.KEYCODE_DPAD_RIGHT to "btn_right",
-        KeyEvent.KEYCODE_BACK to "btn_menu",
-        KeyEvent.KEYCODE_BUTTON_MODE to "btn_menu",
+    val DEFAULT_KEY_MAP: Map<Int, CanonicalButton> = mapOf(
+        KeyEvent.KEYCODE_BUTTON_A to CanonicalButton.BTN_SOUTH,
+        KeyEvent.KEYCODE_BUTTON_B to CanonicalButton.BTN_EAST,
+        KeyEvent.KEYCODE_BUTTON_X to CanonicalButton.BTN_WEST,
+        KeyEvent.KEYCODE_BUTTON_Y to CanonicalButton.BTN_NORTH,
+        KeyEvent.KEYCODE_BUTTON_L1 to CanonicalButton.BTN_L,
+        KeyEvent.KEYCODE_BUTTON_R1 to CanonicalButton.BTN_R,
+        KeyEvent.KEYCODE_BUTTON_L2 to CanonicalButton.BTN_L2,
+        KeyEvent.KEYCODE_BUTTON_R2 to CanonicalButton.BTN_R2,
+        KeyEvent.KEYCODE_BUTTON_THUMBL to CanonicalButton.BTN_L3,
+        KeyEvent.KEYCODE_BUTTON_THUMBR to CanonicalButton.BTN_R3,
+        KeyEvent.KEYCODE_BUTTON_START to CanonicalButton.BTN_START,
+        KeyEvent.KEYCODE_BUTTON_SELECT to CanonicalButton.BTN_SELECT,
+        KeyEvent.KEYCODE_DPAD_UP to CanonicalButton.BTN_UP,
+        KeyEvent.KEYCODE_DPAD_DOWN to CanonicalButton.BTN_DOWN,
+        KeyEvent.KEYCODE_DPAD_LEFT to CanonicalButton.BTN_LEFT,
+        KeyEvent.KEYCODE_DPAD_RIGHT to CanonicalButton.BTN_RIGHT,
+        KeyEvent.KEYCODE_BACK to CanonicalButton.BTN_MENU,
+        KeyEvent.KEYCODE_BUTTON_MODE to CanonicalButton.BTN_MENU,
     )
 
     fun isGamepadEvent(event: KeyEvent): Boolean {

@@ -2,6 +2,8 @@ package dev.cannoli.scorza.ui.viewmodel
 
 import androidx.compose.ui.geometry.Offset
 import dagger.hilt.android.scopes.ActivityScoped
+import dev.cannoli.scorza.input.CanonicalButton
+import dev.cannoli.scorza.input.HAT_CANONICALS
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,7 +25,7 @@ data class EventLogEntry(
     val keyName: String,
     val deviceId: Int,
     val deviceName: String,
-    val resolvedButton: String?,
+    val resolvedButton: CanonicalButton?,
     val timestamp: Long,
     val isDown: Boolean = true,
     val unbound: Boolean = false,
@@ -44,6 +46,9 @@ data class InputTesterUiState(
     val exitRequested: Boolean = false,
     val axisDumpEnabled: Boolean = false,
 )
+
+// ControllerDiagram keys its pressed set by the lowercased canonical name.
+private val CanonicalButton.diagramKey: String get() = name.lowercase()
 
 @ActivityScoped
 class InputTesterViewModel @Inject constructor() {
@@ -86,14 +91,14 @@ class InputTesterViewModel @Inject constructor() {
         keyName: String,
         deviceId: Int,
         deviceName: String,
-        resolvedButton: String?,
+        resolvedButton: CanonicalButton?,
         unbound: Boolean = false,
     ) {
         val isFreshPress = heldKeyCodes.add(keyCode)
         val ts = now()
         _state.update { current ->
             val prev = current.portStates[port] ?: InputTesterState()
-            val pressed = if (resolvedButton != null) prev.pressedButtons + resolvedButton else prev.pressedButtons
+            val pressed = if (resolvedButton != null) prev.pressedButtons + resolvedButton.diagramKey else prev.pressedButtons
             val updatedPort = prev.copy(pressedButtons = pressed)
             val entry = EventLogEntry(keyCode, keyName, deviceId, deviceName, resolvedButton, ts, isDown = true, unbound = unbound)
             current.copy(
@@ -110,7 +115,7 @@ class InputTesterViewModel @Inject constructor() {
         keyName: String,
         deviceId: Int,
         deviceName: String,
-        resolvedButton: String?,
+        resolvedButton: CanonicalButton?,
         unbound: Boolean = false,
     ) {
         val wasHeld = heldKeyCodes.remove(keyCode)
@@ -118,7 +123,7 @@ class InputTesterViewModel @Inject constructor() {
         val ts = now()
         _state.update { current ->
             val prev = current.portStates[port] ?: InputTesterState()
-            val pressed = if (resolvedButton != null) prev.pressedButtons - resolvedButton else prev.pressedButtons
+            val pressed = if (resolvedButton != null) prev.pressedButtons - resolvedButton.diagramKey else prev.pressedButtons
             val updatedPort = prev.copy(pressedButtons = pressed)
             val entry = EventLogEntry(keyCode, keyName, deviceId, deviceName, resolvedButton, ts, isDown = false, unbound = unbound)
             current.copy(
@@ -135,22 +140,22 @@ class InputTesterViewModel @Inject constructor() {
         leftX: Float, leftY: Float,
         rightX: Float, rightY: Float,
         leftTrigger: Float, rightTrigger: Float,
-        hatButtons: Set<String>,
+        hatButtons: Set<CanonicalButton>,
     ) {
         val ts = now()
         _state.update { current ->
             val prev = current.portStates[port] ?: InputTesterState()
 
-            val axisPressed = hatButtons
+            val axisPressed = hatButtons.mapTo(mutableSetOf()) { it.diagramKey }
 
             val nonAxis = prev.pressedButtons - HAT_BUTTONS
             val newPressed = nonAxis + axisPressed
 
-            val newlyPressed = axisPressed - (prev.pressedButtons intersect HAT_BUTTONS)
+            val newlyPressed = hatButtons.filter { it.diagramKey !in prev.pressedButtons }
             val synthLogEntries = newlyPressed.map { btn ->
                 EventLogEntry(
                     keyCode = -1,
-                    keyName = btn.removePrefix("btn_").uppercase(),
+                    keyName = btn.name.removePrefix("BTN_"),
                     deviceId = deviceId,
                     deviceName = deviceName,
                     resolvedButton = btn,
@@ -210,6 +215,6 @@ class InputTesterViewModel @Inject constructor() {
 
     companion object {
         const val DEFAULT_EVENT_LOG_CAPACITY = 8
-        private val HAT_BUTTONS = setOf("btn_up", "btn_down", "btn_left", "btn_right")
+        private val HAT_BUTTONS = HAT_CANONICALS.mapTo(mutableSetOf()) { it.diagramKey }
     }
 }

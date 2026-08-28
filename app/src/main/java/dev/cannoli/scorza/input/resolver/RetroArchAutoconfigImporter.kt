@@ -2,7 +2,9 @@ package dev.cannoli.scorza.input.resolver
 
 import dev.cannoli.scorza.input.autoconfig.CfgHatDirection
 import dev.cannoli.scorza.input.autoconfig.HatRef
+import dev.cannoli.scorza.input.autoconfig.RaAxisKey
 import dev.cannoli.scorza.input.autoconfig.RaAxisSlots
+import dev.cannoli.scorza.input.autoconfig.RaButtonKey
 import dev.cannoli.scorza.input.autoconfig.RetroArchCfgEntry
 import dev.cannoli.scorza.input.HatDirection
 import dev.cannoli.scorza.input.AnalogRole
@@ -19,26 +21,6 @@ object RetroArchAutoconfigImporter {
 
     private val legendResolver = LegendResolver()
 
-    private val BTN_TO_CANONICAL: Map<String, CanonicalButton> = mapOf(
-        "b_btn" to CanonicalButton.BTN_SOUTH,
-        "a_btn" to CanonicalButton.BTN_EAST,
-        "y_btn" to CanonicalButton.BTN_WEST,
-        "x_btn" to CanonicalButton.BTN_NORTH,
-        "l_btn" to CanonicalButton.BTN_L,
-        "l2_btn" to CanonicalButton.BTN_L2,
-        "r_btn" to CanonicalButton.BTN_R,
-        "r2_btn" to CanonicalButton.BTN_R2,
-        "l3_btn" to CanonicalButton.BTN_L3,
-        "r3_btn" to CanonicalButton.BTN_R3,
-        "start_btn" to CanonicalButton.BTN_START,
-        "select_btn" to CanonicalButton.BTN_SELECT,
-        "up_btn" to CanonicalButton.BTN_UP,
-        "down_btn" to CanonicalButton.BTN_DOWN,
-        "left_btn" to CanonicalButton.BTN_LEFT,
-        "right_btn" to CanonicalButton.BTN_RIGHT,
-        "menu_toggle_btn" to CanonicalButton.BTN_MENU,
-    )
-
     fun import(
         entry: RetroArchCfgEntry,
         device: ConnectedDevice,
@@ -46,15 +28,16 @@ object RetroArchAutoconfigImporter {
         val bindings = mutableMapOf<CanonicalButton, MutableList<InputBinding>>()
 
         for ((raKey, keyCode) in entry.buttonBindings) {
-            val canonical = BTN_TO_CANONICAL[raKey] ?: continue
+            val canonical = RaButtonKey.forCfgKey(raKey)?.canonical ?: continue
             bindings.getOrPut(canonical) { mutableListOf() }
                 .add(InputBinding.Button(keyCode))
         }
 
         for ((axisKey, ref) in entry.axisBindings) {
-            val (canonical, role) = mapAxisKeyToCanonicalAndRole(axisKey) ?: continue
+            val raAxis = RaAxisKey.forCfgKey(axisKey) ?: continue
+            val role = raAxis.analogRole
             val (resting, activeMin, activeMax) = axisRange(ref.direction, role)
-            bindings.getOrPut(canonical) { mutableListOf() }
+            bindings.getOrPut(raAxis.canonical) { mutableListOf() }
                 .add(
                     InputBinding.Axis(
                         axis = RaAxisSlots.toAndroidAxis(ref.axis),
@@ -69,7 +52,7 @@ object RetroArchAutoconfigImporter {
         }
 
         for ((btnKey, hatRef) in entry.hatBindings) {
-            val canonical = BTN_TO_CANONICAL[btnKey] ?: continue
+            val canonical = RaButtonKey.forCfgKey(btnKey)?.canonical ?: continue
             val (axis, direction) = mapHatRefToAxisAndDirection(hatRef) ?: continue
             bindings.getOrPut(canonical) { mutableListOf() }
                 .add(
@@ -154,20 +137,6 @@ object RetroArchAutoconfigImporter {
 
     private const val ANDROID_AXIS_HAT_X: Int = 15
     private const val ANDROID_AXIS_HAT_Y: Int = 16
-
-    private fun mapAxisKeyToCanonicalAndRole(key: String): Pair<CanonicalButton, AnalogRole>? = when (key) {
-        "l2_axis" -> CanonicalButton.BTN_L2 to AnalogRole.DIGITAL_BUTTON
-        "r2_axis" -> CanonicalButton.BTN_R2 to AnalogRole.DIGITAL_BUTTON
-        "up_axis" -> CanonicalButton.BTN_UP to AnalogRole.DIGITAL_BUTTON
-        "down_axis" -> CanonicalButton.BTN_DOWN to AnalogRole.DIGITAL_BUTTON
-        "left_axis" -> CanonicalButton.BTN_LEFT to AnalogRole.DIGITAL_BUTTON
-        "right_axis" -> CanonicalButton.BTN_RIGHT to AnalogRole.DIGITAL_BUTTON
-        "l_x_plus_axis", "l_x_minus_axis" -> CanonicalButton.BTN_LSTICK_X to AnalogRole.ANALOG_STICK
-        "l_y_plus_axis", "l_y_minus_axis" -> CanonicalButton.BTN_LSTICK_Y to AnalogRole.ANALOG_STICK
-        "r_x_plus_axis", "r_x_minus_axis" -> CanonicalButton.BTN_RSTICK_X to AnalogRole.ANALOG_STICK
-        "r_y_plus_axis", "r_y_minus_axis" -> CanonicalButton.BTN_RSTICK_Y to AnalogRole.ANALOG_STICK
-        else -> null
-    }
 
     private fun axisRange(direction: Int, role: AnalogRole): Triple<Float, Float, Float> {
         // Trigger axes (DIGITAL_BUTTON) are unipolar: rest at 0, full press at +/-1. Mapping

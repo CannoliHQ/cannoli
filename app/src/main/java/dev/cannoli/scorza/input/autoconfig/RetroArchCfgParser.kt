@@ -54,7 +54,7 @@ object RetroArchCfgParser {
                 prefix == "input" && key == "device_display_name" -> displayName = value
                 prefix == "input" && key == "vendor_id" -> vendorId = value.toIntOrNull()
                 prefix == "input" && key == "product_id" -> productId = value.toIntOrNull()
-                prefix == "input" && key in RetroArchCfgEntry.SUPPORTED_BUTTON_KEYS -> {
+                prefix == "input" && key in RaButtonKey.CFG_KEYS -> {
                     // Hat and axis notation are checked before the plain keycode parse: a
                     // signed axis value like "-1" is also a valid (negative) Int, so parsing it
                     // as a keycode first would swallow it before the axis branch ever runs.
@@ -87,7 +87,7 @@ object RetroArchCfgParser {
                     val asInt = value.toIntOrNull() ?: continue
                     bindings[key] = asInt
                 }
-                prefix == "input" && key in RetroArchCfgEntry.SUPPORTED_AXIS_KEYS -> {
+                prefix == "input" && key in RaAxisKey.CFG_KEYS -> {
                     val m = AXIS_VALUE_REGEX.matchEntire(value) ?: continue
                     val sign = if (m.groupValues[1] == "+") 1 else -1
                     val axis = m.groupValues[2].toIntOrNull() ?: continue

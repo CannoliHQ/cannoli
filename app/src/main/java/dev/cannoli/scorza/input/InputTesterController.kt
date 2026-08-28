@@ -16,7 +16,7 @@ class InputTesterController(
     private val unknownDeviceName: String,
     private val keyboardDeviceName: String,
 ) {
-    private val pressedKeycodes = mutableMapOf<Int, String?>()
+    private val pressedKeycodes = mutableMapOf<Int, CanonicalButton?>()
     private var selectHeld = false
     private var startHeld = false
     private val axisTriggerL2Held = mutableSetOf<Int>()
@@ -53,30 +53,29 @@ class InputTesterController(
 
         if (down) {
             val isRepeat = event.repeatCount > 0
-            if (navButton == "btn_select" && !selectHeld) {
+            if (navButton == CanonicalButton.BTN_SELECT && !selectHeld) {
                 selectHeld = true
                 updateExitCountdown()
             }
-            if (navButton == "btn_start" && !startHeld) {
+            if (navButton == CanonicalButton.BTN_START && !startHeld) {
                 startHeld = true
                 updateExitCountdown()
             }
-            if (!isRepeat && selectHeld && navButton == "btn_north") {
+            if (!isRepeat && selectHeld && navButton == CanonicalButton.BTN_NORTH) {
                 viewModel.toggleAxisDump()
             }
-            val resolved = mappingNav ?: AndroidGamepadKeyNames.DEFAULT_KEY_MAP[event.keyCode]
-            pressedKeycodes[event.keyCode] = resolved
-            viewModel.onKeyDown(port, event.keyCode, keyName, deviceId, name, resolved, unbound = unbound)
+            pressedKeycodes[event.keyCode] = navButton
+            viewModel.onKeyDown(port, event.keyCode, keyName, deviceId, name, navButton, unbound = unbound)
             if (!isRepeat) {
                 viewModel.setActivePort(port)
                 portRouter.mappingForPort(port)?.let { activeMappingHolder.set(it) }
             }
         } else {
-            if (navButton == "btn_select" && selectHeld) {
+            if (navButton == CanonicalButton.BTN_SELECT && selectHeld) {
                 selectHeld = false
                 updateExitCountdown()
             }
-            if (navButton == "btn_start" && startHeld) {
+            if (navButton == CanonicalButton.BTN_START && startHeld) {
                 startHeld = false
                 updateExitCountdown()
             }
@@ -128,11 +127,13 @@ class InputTesterController(
         viewModel.recordAxisValues(port, dumpAxes.associateWith { event.getAxisValue(it) })
 
         syncAxisTrigger(
-            port, deviceId, name, KeyEvent.KEYCODE_BUTTON_L2, leftTrigger, axisTriggerL2Held, "btn_l2",
+            port, deviceId, name, KeyEvent.KEYCODE_BUTTON_L2, leftTrigger, axisTriggerL2Held,
+            CanonicalButton.BTN_L2,
             unbound = triggerUnbound(mapping, CanonicalButton.BTN_L2),
         )
         syncAxisTrigger(
-            port, deviceId, name, KeyEvent.KEYCODE_BUTTON_R2, rightTrigger, axisTriggerR2Held, "btn_r2",
+            port, deviceId, name, KeyEvent.KEYCODE_BUTTON_R2, rightTrigger, axisTriggerR2Held,
+            CanonicalButton.BTN_R2,
             unbound = triggerUnbound(mapping, CanonicalButton.BTN_R2),
         )
 
@@ -160,48 +161,24 @@ class InputTesterController(
         syntheticKeyCode: Int,
         value: Float,
         held: MutableSet<Int>,
-        legacyKey: String,
+        canonical: CanonicalButton,
         unbound: Boolean,
     ) {
         val keyName = KeyEvent.keyCodeToString(syntheticKeyCode).removePrefix("KEYCODE_")
         val wasHeld = deviceId in held
         if (value > 0.5f && !wasHeld) {
             held.add(deviceId)
-            viewModel.onKeyDown(port, syntheticKeyCode, keyName, deviceId, deviceName, legacyKey, unbound = unbound)
+            viewModel.onKeyDown(port, syntheticKeyCode, keyName, deviceId, deviceName, canonical, unbound = unbound)
         } else if (value < 0.3f && wasHeld) {
             held.remove(deviceId)
-            viewModel.onKeyUp(port, syntheticKeyCode, keyName, deviceId, deviceName, legacyKey, unbound = unbound)
+            viewModel.onKeyUp(port, syntheticKeyCode, keyName, deviceId, deviceName, canonical, unbound = unbound)
         }
     }
 
-    private fun mappingNavButtonFor(mapping: DeviceMapping?, keyCode: Int): String? {
-        val canonical = mapping?.bindings?.entries?.firstOrNull { (_, bindings) ->
+    private fun mappingNavButtonFor(mapping: DeviceMapping?, keyCode: Int): CanonicalButton? =
+        mapping?.bindings?.entries?.firstOrNull { (_, bindings) ->
             bindings.any { it is InputBinding.Button && it.keyCode == keyCode }
-        }?.key ?: return null
-        return when (canonical) {
-            CanonicalButton.BTN_SOUTH -> "btn_south"
-            CanonicalButton.BTN_EAST -> "btn_east"
-            CanonicalButton.BTN_WEST -> "btn_west"
-            CanonicalButton.BTN_NORTH -> "btn_north"
-            CanonicalButton.BTN_L -> "btn_l"
-            CanonicalButton.BTN_R -> "btn_r"
-            CanonicalButton.BTN_L2 -> "btn_l2"
-            CanonicalButton.BTN_R2 -> "btn_r2"
-            CanonicalButton.BTN_L3 -> "btn_l3"
-            CanonicalButton.BTN_R3 -> "btn_r3"
-            CanonicalButton.BTN_START -> "btn_start"
-            CanonicalButton.BTN_SELECT -> "btn_select"
-            CanonicalButton.BTN_MENU -> "btn_menu"
-            CanonicalButton.BTN_UP -> "btn_up"
-            CanonicalButton.BTN_DOWN -> "btn_down"
-            CanonicalButton.BTN_LEFT -> "btn_left"
-            CanonicalButton.BTN_RIGHT -> "btn_right"
-            CanonicalButton.BTN_LSTICK_X -> "lstick_x"
-            CanonicalButton.BTN_LSTICK_Y -> "lstick_y"
-            CanonicalButton.BTN_RSTICK_X -> "rstick_x"
-            CanonicalButton.BTN_RSTICK_Y -> "rstick_y"
-        }
-    }
+        }?.key
 
     // A trigger is bound if its canonical carries any binding, keycode or axis. Pads that report L2/R2
     // purely as analog axes have no keycode Button, so a keycode-only check wrongly flags them unbound.
@@ -252,11 +229,11 @@ class InputTesterController(
 
 }
 
-private val HAT_CANONICALS = listOf(
-    CanonicalButton.BTN_UP to "btn_up",
-    CanonicalButton.BTN_DOWN to "btn_down",
-    CanonicalButton.BTN_LEFT to "btn_left",
-    CanonicalButton.BTN_RIGHT to "btn_right",
+internal val HAT_CANONICALS = listOf(
+    CanonicalButton.BTN_UP,
+    CanonicalButton.BTN_DOWN,
+    CanonicalButton.BTN_LEFT,
+    CanonicalButton.BTN_RIGHT,
 )
 
 /**
@@ -267,22 +244,22 @@ private val HAT_CANONICALS = listOf(
  * Returns null when the mapping carries no hat bindings at all, so the caller can fall back to the
  * raw hat and still show something for an unmapped pad.
  */
-internal fun mappingHatButtons(mapping: DeviceMapping?, axisValue: (Int) -> Float): Set<String>? {
+internal fun mappingHatButtons(mapping: DeviceMapping?, axisValue: (Int) -> Float): Set<CanonicalButton>? {
     var bound = false
     val pressed = buildSet {
-        for ((canonical, name) in HAT_CANONICALS) {
+        for (canonical in HAT_CANONICALS) {
             val hats = mapping?.bindings?.get(canonical)?.filterIsInstance<InputBinding.Hat>().orEmpty()
             if (hats.isEmpty()) continue
             bound = true
-            if (hats.any { it.isPressed(axisValue(it.axis)) }) add(name)
+            if (hats.any { it.isPressed(axisValue(it.axis)) }) add(canonical)
         }
     }
     return pressed.takeIf { bound }
 }
 
-internal fun rawHatButtons(hatX: Float, hatY: Float): Set<String> = buildSet {
-    if (hatX < -0.5f) add("btn_left")
-    if (hatX > 0.5f) add("btn_right")
-    if (hatY < -0.5f) add("btn_up")
-    if (hatY > 0.5f) add("btn_down")
+internal fun rawHatButtons(hatX: Float, hatY: Float): Set<CanonicalButton> = buildSet {
+    if (hatX < -0.5f) add(CanonicalButton.BTN_LEFT)
+    if (hatX > 0.5f) add(CanonicalButton.BTN_RIGHT)
+    if (hatY < -0.5f) add(CanonicalButton.BTN_UP)
+    if (hatY > 0.5f) add(CanonicalButton.BTN_DOWN)
 }

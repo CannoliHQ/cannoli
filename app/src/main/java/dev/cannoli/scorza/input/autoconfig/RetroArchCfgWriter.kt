@@ -1,31 +1,10 @@
 package dev.cannoli.scorza.input.autoconfig
 
-import dev.cannoli.scorza.input.AnalogRole
 import dev.cannoli.scorza.input.CanonicalButton
 import dev.cannoli.scorza.input.DeviceMapping
 import dev.cannoli.scorza.input.InputBinding
 
 object RetroArchCfgWriter {
-
-    private val CANONICAL_TO_BTN: Map<CanonicalButton, String> = mapOf(
-        CanonicalButton.BTN_SOUTH to "b_btn",
-        CanonicalButton.BTN_EAST to "a_btn",
-        CanonicalButton.BTN_WEST to "y_btn",
-        CanonicalButton.BTN_NORTH to "x_btn",
-        CanonicalButton.BTN_L to "l_btn",
-        CanonicalButton.BTN_L2 to "l2_btn",
-        CanonicalButton.BTN_R to "r_btn",
-        CanonicalButton.BTN_R2 to "r2_btn",
-        CanonicalButton.BTN_L3 to "l3_btn",
-        CanonicalButton.BTN_R3 to "r3_btn",
-        CanonicalButton.BTN_START to "start_btn",
-        CanonicalButton.BTN_SELECT to "select_btn",
-        CanonicalButton.BTN_UP to "up_btn",
-        CanonicalButton.BTN_DOWN to "down_btn",
-        CanonicalButton.BTN_LEFT to "left_btn",
-        CanonicalButton.BTN_RIGHT to "right_btn",
-        CanonicalButton.BTN_MENU to "menu_toggle_btn",
-    )
 
     // 4 (BACK) and 110 (BUTTON_MODE) are the platform defaults the importer injects into
     // BTN_MENU; they describe the platform, not this pad, so they never serialize.
@@ -42,7 +21,7 @@ object RetroArchCfgWriter {
             // The stick canonicals (BTN_LSTICK_X etc.) carry only axis bindings and have no RA
             // digital button key of their own -- l3_btn/r3_btn cover the stick click separately
             // -- so btnKey stays null for them and only the Axis branch below applies.
-            val btnKey = CANONICAL_TO_BTN[canonical]
+            val btnKey = RaButtonKey.forCanonical(canonical)?.cfgKey
             // RetroArch reads this file too, and it opens its own menu on whatever
             // input_menu_toggle_btn names. A hat or axis there would fire in-game because motion
             // events never reach the launcher's keycode intercept, so the menu takes buttons only.
@@ -81,7 +60,8 @@ object RetroArchCfgWriter {
             }
             for (binding in effective) {
                 if (binding !is InputBinding.Axis) continue
-                val key = axisKeyFor(canonical, binding) ?: continue
+                val positive = binding.activeMax >= 0f
+                val key = RaAxisKey.forBinding(canonical, binding.analogRole, positive)?.cfgKey ?: continue
                 // An axis RA's Android driver never reads has no slot to name, and any number
                 // written here would bind something else or nothing. Skipped before the key is
                 // claimed, so a mappable binding on the same key still gets to write.
@@ -92,7 +72,7 @@ object RetroArchCfgWriter {
                 // it; a stick's plus and minus bindings resolve to distinct keys and both
                 // still write.
                 if (axisKeysWritten.add(key)) {
-                    val sign = if (binding.activeMax >= 0f) "+" else "-"
+                    val sign = if (positive) "+" else "-"
                     line("input_$key", "$sign$slot")
                 }
             }
@@ -126,28 +106,5 @@ object RetroArchCfgWriter {
     // silently revert on the next read and RetroArch would see a malformed key.
     private fun StringBuilder.line(key: String, value: String?) {
         if (value != null) appendLine("$key = \"${value.replace("\"", "")}\"")
-    }
-
-    private fun axisKeyFor(canonical: CanonicalButton, axis: InputBinding.Axis): String? {
-        if (axis.analogRole == AnalogRole.DIGITAL_BUTTON) {
-            return when (canonical) {
-                CanonicalButton.BTN_L2 -> "l2_axis"
-                CanonicalButton.BTN_R2 -> "r2_axis"
-                CanonicalButton.BTN_UP -> "up_axis"
-                CanonicalButton.BTN_DOWN -> "down_axis"
-                CanonicalButton.BTN_LEFT -> "left_axis"
-                CanonicalButton.BTN_RIGHT -> "right_axis"
-                else -> null
-            }
-        }
-        val prefix = when (canonical) {
-            CanonicalButton.BTN_LSTICK_X -> "l_x"
-            CanonicalButton.BTN_LSTICK_Y -> "l_y"
-            CanonicalButton.BTN_RSTICK_X -> "r_x"
-            CanonicalButton.BTN_RSTICK_Y -> "r_y"
-            else -> return null
-        }
-        val direction = if (axis.activeMax >= 0f) "plus" else "minus"
-        return "${prefix}_${direction}_axis"
     }
 }
