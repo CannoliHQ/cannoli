@@ -135,15 +135,30 @@ internal fun DialogInputHandler.onRommSettingsConfirm(ds: DialogState.RommSettin
     }
 }
 
-internal fun DialogInputHandler.buildSaveSyncMenu(selectedIndex: Int = 0, pendingConflicts: Int) = DialogState.RommSaveSyncMenu(
-    selectedIndex = selectedIndex,
-    supported = dev.cannoli.scorza.romm.RommCapabilities.isSupported(rommStore.serverVersion),
-    enabled = settings.rommSaveSyncEnabled,
-    backupCount = settings.rommSaveBackupCount,
-    pendingConflicts = pendingConflicts,
-    syncErrors = saveSyncStatusHolder.errors.value.size,
-    hasBackups = saveSyncService.hasBackups(),
-)
+/**
+ * [selectedRow] rather than an index: which rows exist depends on five values this already knows,
+ * so a caller working the position out for itself is a second copy of that rule.
+ */
+internal fun DialogInputHandler.buildSaveSyncMenu(
+    pendingConflicts: Int,
+    selectedRow: dev.cannoli.scorza.ui.components.RommSaveSyncRow? = null,
+): DialogState.RommSaveSyncMenu {
+    val menu = DialogState.RommSaveSyncMenu(
+        selectedIndex = 0,
+        supported = dev.cannoli.scorza.romm.RommCapabilities.isSupported(rommStore.serverVersion),
+        enabled = settings.rommSaveSyncEnabled,
+        backupCount = settings.rommSaveBackupCount,
+        pendingConflicts = pendingConflicts,
+        syncErrors = saveSyncStatusHolder.errors.value.size,
+        hasBackups = saveSyncService.hasBackups(),
+    )
+    val row = selectedRow ?: return menu
+    val index = dev.cannoli.scorza.ui.components.RommSaveSyncRow
+        .visibleRows(menu.supported, menu.enabled, menu.pendingConflicts, menu.syncErrors, menu.hasBackups)
+        .indexOf(row)
+        .coerceAtLeast(0)
+    return menu.copy(selectedIndex = index)
+}
 
 private fun DialogInputHandler.toggleSaveSync(ds: DialogState.RommSaveSyncMenu) {
     if (!ds.supported) return
@@ -200,11 +215,9 @@ internal fun DialogInputHandler.returnToSaveSyncMenu(row: dev.cannoli.scorza.ui.
     ioScope.launch {
         val count = saveSyncService.pendingConflictCount()
         val errorCount = saveSyncStatusHolder.errors.value.size
-        val idx = dev.cannoli.scorza.ui.components.RommSaveSyncRow.visibleRows(
-            dev.cannoli.scorza.romm.RommCapabilities.isSupported(rommStore.serverVersion),
-            settings.rommSaveSyncEnabled, count, errorCount, saveSyncService.hasBackups(),
-        ).indexOf(row).coerceAtLeast(0)
-        withContext(Dispatchers.Main) { nav.dialogState.value = buildSaveSyncMenu(selectedIndex = idx, pendingConflicts = count) }
+        withContext(Dispatchers.Main) {
+            nav.dialogState.value = buildSaveSyncMenu(pendingConflicts = count, selectedRow = row)
+        }
     }
 }
 
@@ -283,17 +296,8 @@ internal fun DialogInputHandler.returnFromSaveSyncChild(
         val count = saveSyncService.pendingConflictCount()
         val errorCount = saveSyncStatusHolder.errors.value.size
         if (fromSaveSyncMenu) {
-            val idx = dev.cannoli.scorza.ui.components.RommSaveSyncRow
-                .visibleRows(
-                    dev.cannoli.scorza.romm.RommCapabilities.isSupported(rommStore.serverVersion),
-                    settings.rommSaveSyncEnabled,
-                    count,
-                    errorCount,
-                )
-                .indexOf(saveSyncRow)
-                .coerceAtLeast(0)
             withContext(Dispatchers.Main) {
-                nav.dialogState.value = buildSaveSyncMenu(selectedIndex = idx, pendingConflicts = count)
+                nav.dialogState.value = buildSaveSyncMenu(pendingConflicts = count, selectedRow = saveSyncRow)
             }
         } else {
             openQuickMenu(quickRow)
@@ -398,15 +402,10 @@ internal fun DialogInputHandler.applyAllConflicts(ds: DialogState.ConflictsMenu)
 
 internal fun DialogInputHandler.showOriginMenu(fromSaveSyncMenu: Boolean, count: Int) {
     if (fromSaveSyncMenu) {
-        val idx = dev.cannoli.scorza.ui.components.RommSaveSyncRow
-            .visibleRows(
-                dev.cannoli.scorza.romm.RommCapabilities.isSupported(rommStore.serverVersion),
-                settings.rommSaveSyncEnabled,
-                count,
-            )
-            .indexOf(dev.cannoli.scorza.ui.components.RommSaveSyncRow.CONFLICTS)
-            .coerceAtLeast(0)
-        nav.dialogState.value = buildSaveSyncMenu(selectedIndex = idx, pendingConflicts = count)
+        nav.dialogState.value = buildSaveSyncMenu(
+            pendingConflicts = count,
+            selectedRow = dev.cannoli.scorza.ui.components.RommSaveSyncRow.CONFLICTS,
+        )
     } else {
         openQuickMenu(dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.CONFLICTS)
     }

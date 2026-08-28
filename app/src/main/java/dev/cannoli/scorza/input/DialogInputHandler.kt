@@ -12,7 +12,6 @@ import dev.cannoli.scorza.db.RomScanner
 import dev.cannoli.scorza.db.RomsRepository
 import dev.cannoli.scorza.di.IoScope
 import dev.cannoli.scorza.launcher.InstalledCoreService
-import dev.cannoli.scorza.launcher.LaunchManager
 import dev.cannoli.scorza.navigation.LauncherScreen
 import dev.cannoli.scorza.navigation.NavigationController
 import dev.cannoli.scorza.settings.SettingsRepository
@@ -49,7 +48,6 @@ class DialogInputHandler @Inject constructor(
     internal val recentlyPlayedManager: RecentlyPlayedRepository,
     internal val platformResolver: PlatformConfig,
     internal val installedCoreService: InstalledCoreService,
-    internal val launchManager: LaunchManager,
     internal val updateManager: dev.cannoli.scorza.updater.UpdateManager,
     internal val atomicRename: AtomicRename,
     internal val scanner: RomScanner,

@@ -34,7 +34,7 @@ enum class RommSettingsRow(@androidx.annotation.StringRes val labelRes: Int, val
 enum class RommSaveSyncRow {
     TOGGLE, BACKUPS, HISTORY, CONFLICTS, ERRORS, RESTORE;
     companion object {
-        fun visibleRows(supported: Boolean, enabled: Boolean, pendingConflicts: Int = 0, syncErrors: Int = 0, hasBackups: Boolean = false): List<RommSaveSyncRow> =
+        fun visibleRows(supported: Boolean, enabled: Boolean, pendingConflicts: Int, syncErrors: Int, hasBackups: Boolean): List<RommSaveSyncRow> =
             buildList {
                 add(TOGGLE)
                 if (supported && enabled) {

@@ -38,7 +38,6 @@ internal fun testDialogInputHandler(
     recentlyPlayedManager = mockk(relaxed = true),
     platformResolver = mockk(relaxed = true),
     installedCoreService = mockk(relaxed = true),
-    launchManager = mockk(relaxed = true),
     updateManager = updateManager,
     atomicRename = mockk(relaxed = true),
     scanner = mockk(relaxed = true),
