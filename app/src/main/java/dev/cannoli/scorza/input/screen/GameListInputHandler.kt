@@ -17,11 +17,13 @@ import dev.cannoli.scorza.input.MENU_REMOVE_FROM_RECENTS
 import dev.cannoli.scorza.input.ScreenInputHandler
 import dev.cannoli.scorza.model.ListItem
 import dev.cannoli.scorza.model.recentKey
+import dev.cannoli.scorza.model.VirtualPlatformTags
 import dev.cannoli.scorza.navigation.NavigationController
 import dev.cannoli.scorza.settings.ContentMode
 import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.input.PageJump
 import dev.cannoli.scorza.ui.screens.DialogState
+import dev.cannoli.scorza.ui.screens.RenameTarget
 import dev.cannoli.scorza.ui.viewmodel.GameListViewModel
 import dev.cannoli.ui.components.KeyboardState
 import kotlinx.coroutines.CoroutineScope
@@ -45,7 +47,7 @@ class GameListInputHandler @Inject constructor(
     val collectionSelectHoldRunnable = Runnable {
         collectionSelectHeld = true
         val glState = gameListViewModel.state.value
-        val isApkList = glState.platformTag == "tools" || glState.platformTag == "ports"
+        val isApkList = VirtualPlatformTags.isAppList(glState.platformTag)
         if ((glState.isCollection && !glState.isCollectionsList && glState.subfolderPath == null) || isApkList) {
             if (!gameListViewModel.isReorderMode() && !gameListViewModel.isMultiSelectMode()) {
                 gameListViewModel.enterMultiSelect()
@@ -136,8 +138,7 @@ class GameListInputHandler @Inject constructor(
         val glState = gameListViewModel.state.value
         if (glState.reorderMode || glState.multiSelectMode || glState.isCollectionsList) return
         nav.dialogState.value = DialogState.RenameInput(
-            gameName = "launcher_search",
-            searchScope = glState.breadcrumb,
+            target = RenameTarget.LauncherSearch(glState.breadcrumb),
             keyboard = KeyboardState(
                 text = glState.searchTerm ?: "",
                 cursorPos = (glState.searchTerm ?: "").length,
@@ -185,9 +186,9 @@ class GameListInputHandler @Inject constructor(
                         is FavRef.App -> ref.id in glState.favoriteAppIds
                     }
                 }
-                val isApkList = glState.platformTag == "tools" || glState.platformTag == "ports"
+                val isApkList = VirtualPlatformTags.isAppList(glState.platformTag)
                 val options = mutableListOf<String>()
-                if (glState.platformTag == "recently_played") options.add(MENU_REMOVE_FROM_RECENTS)
+                if (glState.platformTag == VirtualPlatformTags.RECENTLY_PLAYED) options.add(MENU_REMOVE_FROM_RECENTS)
                 options.add(if (allFav) MENU_REMOVE_FAVORITE else MENU_ADD_FAVORITE)
                 if (glState.isCollection && glState.collectionId != null) {
                     options.add(MENU_REMOVE_FROM_COLLECTION)
@@ -236,7 +237,7 @@ class GameListInputHandler @Inject constructor(
         if (gameSelectDown) return
         gameSelectDown = true
         val glState = gameListViewModel.state.value
-        val isApkList = glState.platformTag == "tools" || glState.platformTag == "ports"
+        val isApkList = VirtualPlatformTags.isAppList(glState.platformTag)
         if (glState.isCollection && !glState.isCollectionsList && glState.subfolderPath == null) {
             if (gameListViewModel.isReorderMode()) {
                 gameListViewModel.confirmReorder()
@@ -278,7 +279,7 @@ class GameListInputHandler @Inject constructor(
         // so a release can arrive here with no press behind it. Flags below still reset either way.
         if (gameSelectDown && !nav.selectHeld && !collectionSelectHeld && !selectHandled) {
             val glState = gameListViewModel.state.value
-            val isApkList = glState.platformTag == "tools" || glState.platformTag == "ports"
+            val isApkList = VirtualPlatformTags.isAppList(glState.platformTag)
             if (((glState.isCollection && !glState.isCollectionsList && glState.subfolderPath == null) || isApkList)
                 && !gameListViewModel.isReorderMode() && !gameListViewModel.isMultiSelectMode()) {
                 gameListViewModel.enterReorderMode()
@@ -314,7 +315,7 @@ class GameListInputHandler @Inject constructor(
             launcherActions.launchSelected(
                 item,
                 !settings.swapPlayResume,
-                trackRecent = glState.platformTag != "tools",
+                trackRecent = glState.platformTag != VirtualPlatformTags.TOOLS,
             )?.let { nav.dialogState.value = it }
         }
     }
@@ -362,8 +363,8 @@ class GameListInputHandler @Inject constructor(
         launcherActions.launchSelected(
             item,
             isResumable && settings.swapPlayResume,
-            trackRecent = tag != "tools",
-            reorderRecent = tag == "recently_played",
+            trackRecent = tag != VirtualPlatformTags.TOOLS,
+            reorderRecent = tag == VirtualPlatformTags.RECENTLY_PLAYED,
         )?.let { nav.dialogState.value = it }
     }
 

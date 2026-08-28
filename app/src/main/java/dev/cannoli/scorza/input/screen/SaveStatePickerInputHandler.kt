@@ -4,6 +4,7 @@ import dagger.hilt.android.scopes.ActivityScoped
 import dev.cannoli.scorza.input.LauncherActions
 import dev.cannoli.scorza.input.ScreenInputHandler
 import dev.cannoli.scorza.navigation.LauncherScreen
+import dev.cannoli.scorza.model.VirtualPlatformTags
 import dev.cannoli.scorza.navigation.NavigationController
 import javax.inject.Inject
 
@@ -33,7 +34,7 @@ class SaveStatePickerInputHandler @Inject constructor(
         if (error != null) {
             nav.dialogState.value = error
         } else {
-            if (s.rom.platformTag != "tools") {
+            if (s.rom.platformTag != VirtualPlatformTags.TOOLS) {
                 launcherActions.recordRecentlyPlayedByPath(s.rom.path.absolutePath)
             }
             nav.pop()

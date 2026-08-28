@@ -14,11 +14,13 @@ import dev.cannoli.scorza.input.MENU_RENAME
 import dev.cannoli.scorza.input.PageJump
 import dev.cannoli.scorza.input.ScreenInputHandler
 import dev.cannoli.scorza.model.ListItem
+import dev.cannoli.scorza.model.VirtualPlatformTags
 import dev.cannoli.scorza.navigation.LauncherScreen
 import dev.cannoli.scorza.navigation.NavigationController
 import dev.cannoli.scorza.settings.ContentMode
 import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.ui.screens.DialogState
+import dev.cannoli.scorza.ui.screens.RenameTarget
 import dev.cannoli.scorza.ui.viewmodel.GameListViewModel
 import dev.cannoli.scorza.ui.viewmodel.SystemListViewModel
 import javax.inject.Inject
@@ -60,7 +62,7 @@ class SystemListInputHandler @Inject constructor(
     override fun onR1() {
         if (systemListViewModel.isReorderMode()) return
         nav.dialogState.value = DialogState.RenameInput(
-            gameName = "launcher_global_search",
+            target = RenameTarget.LauncherGlobalSearch,
         )
     }
 
@@ -180,14 +182,14 @@ class SystemListInputHandler @Inject constructor(
             }
             is SystemListViewModel.ListItem.ToolsFolder -> {
                 nav.navigating = true
-                gameListViewModel.loadApkList("tools", item.name) {
+                gameListViewModel.loadApkList(VirtualPlatformTags.TOOLS, item.name) {
                     nav.screenStack.add(LauncherScreen.GameList)
                     nav.navigating = false
                 }
             }
             is SystemListViewModel.ListItem.PortsFolder -> {
                 nav.navigating = true
-                gameListViewModel.loadApkList("ports", item.name) {
+                gameListViewModel.loadApkList(VirtualPlatformTags.PORTS, item.name) {
                     nav.screenStack.add(LauncherScreen.GameList)
                     nav.navigating = false
                 }

@@ -53,6 +53,7 @@ import dev.cannoli.ui.components.footerReservation
 import dev.cannoli.ui.components.listTitleSpacing
 import dev.cannoli.ui.components.pillItemHeight
 import dev.cannoli.ui.components.screenInsets
+import dev.cannoli.scorza.model.VirtualPlatformTags
 import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.Radius
 import kotlinx.coroutines.Dispatchers
@@ -184,14 +185,14 @@ fun SystemListScreen(
                     onListStateChanged = onListStateChanged,
                     key = if (state.reorderMode) null else { _, item ->
                         when (item) {
-                            is ListItem.RecentlyPlayedItem -> "recently_played"
+                            is ListItem.RecentlyPlayedItem -> VirtualPlatformTags.RECENTLY_PLAYED
                             is ListItem.FavoritesItem -> "favorites"
                             is ListItem.CollectionsFolder -> "collections"
                             is ListItem.PlatformItem -> item.platform.tag
                             is ListItem.CollectionItem -> "col:${item.id}"
                             is ListItem.GameItem -> "game:${item.recentKey}"
-                            is ListItem.ToolsFolder -> "tools"
-                            is ListItem.PortsFolder -> "ports"
+                            is ListItem.ToolsFolder -> VirtualPlatformTags.TOOLS
+                            is ListItem.PortsFolder -> VirtualPlatformTags.PORTS
                         }
                     }
                 ) { _, item, isSelected ->

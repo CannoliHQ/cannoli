@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.model.AppType
 import dev.cannoli.scorza.model.ListItem
+import dev.cannoli.scorza.model.VirtualPlatformTags
 import dev.cannoli.scorza.settings.ArtScale
 import dev.cannoli.scorza.ui.viewmodel.GameListViewModel
 import dev.cannoli.ui.ButtonStyle
@@ -138,7 +139,7 @@ fun GameListScreen(
     val showFavoriteStars = viewModel.showFavoriteStars && !inFavoritesCollection
     val favoriteRomIds = state.favoriteRomIds
     val favoriteAppIds = state.favoriteAppIds
-    val showPlatformInSuffix = state.isCollection || state.platformTag == "recently_played"
+    val showPlatformInSuffix = state.isCollection || state.platformTag == VirtualPlatformTags.RECENTLY_PLAYED
     val romTagSuffixById = remember(state.items, showPlatformInSuffix) {
         val result = HashMap<Long, String>()
         val byName = state.items
