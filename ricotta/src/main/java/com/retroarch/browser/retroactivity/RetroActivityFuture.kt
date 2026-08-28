@@ -148,7 +148,8 @@ class RetroActivityFuture : RetroActivityCamera() {
             // The applied echo arrives after RetroArch has taken the write, which is the only
             // moment the index actually reflects what the user picked.
             bridge.setOnRaSettingAppliedLocal { key, _ ->
-                if (key == "aspect_ratio_index" || key == "video_scale_integer") refreshViewport()
+                if (key == dev.cannoli.igm.RaKeys.ASPECT_RATIO_INDEX ||
+                    key == dev.cannoli.igm.RaKeys.VIDEO_SCALE_INTEGER) refreshViewport()
             }
             params?.let { bridge.setIgmTriggerKeycodes(it.igmTriggerKeycodes.toIntArray()) }
             params?.let { bridge.setBuiltinPorts(it.builtinPorts.toIntArray()) }

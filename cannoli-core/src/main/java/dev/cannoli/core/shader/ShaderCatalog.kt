@@ -8,16 +8,10 @@ import java.io.File
 data class ShaderEntry(val name: String, val isFolder: Boolean, val path: String = "")
 
 /**
- * Browsing the shader database on disk.
+ * Browsing the shader database on disk, in the archives' own taxonomy: folders then presets, sorted.
  *
- * The archives ship their own taxonomy, about sixty category folders, and it is trusted rather than
- * reorganised: RetroArch's own shader browser is a plain extension-filtered file listing for the
- * same reason. A level is folders first and then presets, each sorted, so the packs stay together
- * instead of being scattered through one alphabetical run.
- *
- * Which format is offered follows the video driver, because RetroArch's GL driver refuses anything
- * that is not GLSL and its Vulkan driver takes slang. Filtering here rather than showing a user a
- * preset that cannot load is the whole reason this knows about drivers at all.
+ * Which format is listed follows the video driver, because GL refuses anything but GLSL and Vulkan
+ * takes slang.
  */
 object ShaderCatalog {
 

@@ -33,16 +33,10 @@ class IgmInputTranslator(private val mapping: IgmInputMapping?) {
         private val PASS_THROUGH = mapOf(19 to 19, 20 to 20, 21 to 21, 22 to 22, 4 to BACK)
 
         /**
-         * What the IGM hears for each button the device mapping names.
+         * What the IGM hears for each button the device mapping names, as Android's own codes.
          *
-         * Exhaustive on purpose, with no else: a button the mapping knows about but this does not
-         * used to fall through to its raw keycode, which works only on a pad that happens to use
-         * the conventional numbering and fails silently on any that does not. Select was missing
-         * for exactly that reason and reordering did nothing on a remapped pad. Adding a
-         * CanonicalButton now stops the build until this says what it means.
-         *
-         * The values are Android's own codes for those buttons, so a pad reporting them directly
-         * and one reaching them through a mapping arrive at the same place.
+         * Exhaustive with no else, so adding a CanonicalButton stops the build rather than falling
+         * through to a raw keycode that only a conventionally numbered pad would get right.
          */
         private fun normalized(button: CanonicalButton): Int? = when (button) {
             CanonicalButton.BTN_UP -> 19

@@ -262,17 +262,6 @@ class RaIgmSettingsProvider(
     }
 
     /**
-     * RetroArch's shader chain, which All Settings edits directly instead of picking a preset.
-     *
-     * The curated menu answers "which shader", and that is the whole question there. This answers
-     * RetroArch's question, which is what the chain is made of: how many passes, what each one
-     * runs, how it is filtered and scaled, and what the applied preset lets you tune. The
-     * vocabulary is RetroArch's on purpose, so a preset's own documentation reads across.
-     *
-     * Nothing here takes effect until Apply Changes. That is RetroArch's model, not a shortcut:
-     * a chain is built up and compiled in one go, which is what makes a half-built one harmless.
-     */
-    /**
      * The shader chain All Settings edits, held here rather than in RetroArch's live shader.
      *
      * RetroArch is handed the result once, when the chain is applied or saved.

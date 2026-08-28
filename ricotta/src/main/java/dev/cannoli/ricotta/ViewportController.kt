@@ -61,8 +61,8 @@ class ViewportController(
         val idx = shadowedAspectIdx ?: return emptyMap()
         val integer = shadowedIntegerScale ?: return emptyMap()
         return mapOf(
-            "aspect_ratio_index" to idx,
-            "video_scale_integer" to integer,
+            dev.cannoli.igm.RaKeys.ASPECT_RATIO_INDEX to idx,
+            dev.cannoli.igm.RaKeys.VIDEO_SCALE_INTEGER to integer,
         )
     }
 

@@ -9,6 +9,18 @@ package dev.cannoli.igm
 //
 // Aspect indices come from enum aspect_ratio in retroarch/gfx/video_defines.h:
 // ASPECT_RATIO_CORE = 22, ASPECT_RATIO_CUSTOM = 23, ASPECT_RATIO_FULL = 24.
+/**
+ * RetroArch keys that more than one part of Cannoli names.
+ *
+ * The viewport takeover shadows these two while it holds the screen, and the curated catalogue
+ * matches against the shadowed pair to resolve a scaling preset. A spelling that drifts between the
+ * two ends resolves no preset, and the row then adopts the first one over the user's choice.
+ */
+object RaKeys {
+    const val ASPECT_RATIO_INDEX = "aspect_ratio_index"
+    const val VIDEO_SCALE_INTEGER = "video_scale_integer"
+}
+
 object CuratedCatalog {
 
     data class Preset(val labelKey: String, val values: Map<String, String>)
@@ -38,16 +50,16 @@ object CuratedCatalog {
             // latter was a viewport mode of Cannoli's own renderer with no RetroArch equivalent.
             Row("curated_screen_scaling", listOf(
                 Preset("scaling_core_reported", mapOf(
-                    "aspect_ratio_index" to "22",
-                    "video_scale_integer" to "false",
+                    RaKeys.ASPECT_RATIO_INDEX to "22",
+                    RaKeys.VIDEO_SCALE_INTEGER to "false",
                 )),
                 Preset("scaling_integer", mapOf(
-                    "aspect_ratio_index" to "22",
-                    "video_scale_integer" to "true",
+                    RaKeys.ASPECT_RATIO_INDEX to "22",
+                    RaKeys.VIDEO_SCALE_INTEGER to "true",
                 )),
                 Preset("scaling_fullscreen", mapOf(
-                    "aspect_ratio_index" to "24",
-                    "video_scale_integer" to "false",
+                    RaKeys.ASPECT_RATIO_INDEX to "24",
+                    RaKeys.VIDEO_SCALE_INTEGER to "false",
                 )),
             )),
             Row("curated_screen_sharpness", listOf(

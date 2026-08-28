@@ -3,17 +3,10 @@ package dev.cannoli.igm
 import androidx.compose.runtime.mutableStateOf
 
 /**
- * State behind one live preview picker.
+ * State behind one live preview picker. One instance per thing being picked.
  *
- * One instance per thing being picked. Overlays and shaders both use this shape but hold entirely
- * different lists and callbacks, and sharing a single instance between them meant whichever was
- * opened last left the other showing its entries and unable to re-read its own.
- *
- * Cannoli draws the artwork itself, so a move changes what is on screen directly rather than asking
- * the emulator for anything. Nothing is persisted here either: a move stages its key the same way
- * cycling any other row does, and the save prompt on the way out of the settings tree decides
- * whether it is written for the platform, for the game, or not at all. That is what gives an
- * overlay the same two scopes every other setting has, rather than a persistence path of its own.
+ * A move applies to the screen directly and stages its key like any other row, so the save prompt
+ * leaving the settings tree decides the scope.
  */
 class PreviewPickerController {
 

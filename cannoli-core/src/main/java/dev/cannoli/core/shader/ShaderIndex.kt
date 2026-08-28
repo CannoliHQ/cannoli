@@ -3,16 +3,10 @@ package dev.cannoli.core.shader
 import java.io.File
 
 /**
- * Which folders of the shader tree lead to a preset, worked out once instead of on every render.
+ * Which folders of the shader tree lead to a preset, so the browser does not walk it per render.
  *
- * Deciding whether to offer a folder means knowing whether anything under it can load, and the
- * packs nest, so answering it live meant statting most of a three thousand file tree every time a
- * level was drawn. It is written at the end of an extraction, where minutes are already being spent
- * and nobody is waiting, and read as a plain set afterwards.
- *
- * Being stale is survivable by design: a folder the index does not mention is checked directly, so
- * anything dropped in by hand still appears. The cost of that fallback is one folder rather than a
- * tree, which is the whole difference.
+ * Written at the end of an extraction. A folder it does not mention is checked directly, so
+ * hand-placed shaders still appear and staleness costs one subtree rather than a wrong answer.
  */
 object ShaderIndex {
 

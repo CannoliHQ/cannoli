@@ -93,18 +93,10 @@ class ShaderDownloadHandler(
     }
 
     /**
-     * Where an archive entry lands, or null if it should be skipped.
+     * Where an archive entry lands, or null to skip it.
      *
-     * Extracted exactly as authored, including the archive's own top-level folder. That folder was
-     * stripped at first, to spare someone browsing a level that only names a shading language, and
-     * it broke the database: presets reference their sources and lookup textures by relative path,
-     * twenty-two thousand of them reaching up three levels and some up five. Removing a level put
-     * those references outside the tree, so every preset with an external texture failed to build
-     * its filter chain and RetroArch fell back to stock. Presentation is the browser's problem;
-     * what is on disk has to be what the preset authors assumed.
-     *
-     * Two folders are still never written to: the presets Cannoli ships, which the bundle sync
-     * owns, and Custom, which is the user's.
+     * Extracted exactly as authored, top-level folder included: presets reference their sources and
+     * textures by relative path, so removing a level puts those references outside the tree.
      */
     private fun resolve(dest: File, rawName: String): File? {
         val parts = rawName.replace('\\', '/').split('/').filter { it.isNotEmpty() && it != "." }
