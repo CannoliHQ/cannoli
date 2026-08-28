@@ -674,12 +674,14 @@ class RaIgmSettingsProvider(
             onChanged?.invoke()
             return
         }
-        val i = currentSettings.indexOfFirst { it.key == key }
-        if (i >= 0 && fresh != null && currentSettings[i] != fresh) {
-            replaceSetting(i, fresh)
-            return
+        // Not just the key that was written: a change handler moves its neighbours, so setting
+        // sub frame shaders zeroes black frame insertion and the swap interval. Re-reading only
+        // the written key left those showing what they held before.
+        val refreshed = currentSettings.map { row ->
+            if (row.key == key) fresh ?: row else host.raGetSetting(row.key) ?: row
         }
-        // RetroArch decides which rows exist from the value, and that list is only re-read on a
+        if (refreshed != currentSettings) currentSettings = refreshed
+        // RetroArch decides which rows exist from the values, and that list is only re-read on a
         // render, so a row a setting reveals would otherwise arrive one keypress late.
         onChanged?.invoke()
     }

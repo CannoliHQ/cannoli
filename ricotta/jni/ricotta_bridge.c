@@ -969,17 +969,19 @@ static void ricotta_ra_apply(const char *key, const char *value)
    s = ricotta_ra_find(key);
    if (!s)
       return;
+   /* Every path below reaches the echo, including the ones that change nothing. A write RetroArch
+    * refuses or clamps has to be reported, or the menu keeps showing the value it predicted and
+    * only finds out it never took by being left and re-entered. */
    if (ricotta_ra_is_combobox(s))
    {
-      /* A combobox is a numeric setting rendered with labels, so a write is the number. Labels are
-       * translated and can repeat, and matching one meant setting the live value once per candidate
-       * while searching. */
+      /* A combobox is a numeric setting rendered with labels, so a write is the number. */
       char *end = NULL;
       long  n   = strtol(value, &end, 10);
-      if (!end || end == value || *end != '\0'
-            || n < (long)s->min || n > (long)s->max)
-         return;
-      ricotta_ra_set_int(s, n);
+      if (end && end != value && *end == '\0'
+            && n >= (long)s->min && n <= (long)s->max)
+         ricotta_ra_set_int(s, n);
+      else
+         goto echo;
    }
    else
    {
@@ -1010,7 +1012,7 @@ static void ricotta_ra_apply(const char *key, const char *value)
             strlcpy(s->value.target.string, value, s->size);
             break;
          default:
-            return;
+            goto echo;
       }
    }
    settings         = config_get_ptr();
@@ -1021,6 +1023,7 @@ static void ricotta_ra_apply(const char *key, const char *value)
          && !(s->flags & SD_FLAG_CMD_TRIGGER_EVENT_TRIGGERED))
       command_event(s->cmd_trigger_idx, NULL);
 
+echo:
    /* Confirm with the authoritative value; handlers may clamp or rewrite it. */
    {
       char buf[512];

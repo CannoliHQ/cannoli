@@ -407,6 +407,32 @@ class RaIgmSettingsProviderTest {
         assertTrue("the echo must trigger a render", renders > afterCycle)
     }
 
+    /**
+     * A change handler moves its neighbours: setting sub frame shaders above one zeroes black
+     * frame insertion and the swap interval. Refreshing only the written key left those rows
+     * showing what they held before, until the screen was left and re-entered.
+     */
+    @Test
+    fun `an echo refreshes the neighbours a handler moved`() {
+        val h = host()
+        h.settings["run_ahead_hide_warnings"] =
+            h.settings["run_ahead_hide_warnings"]!!.copy(machineValue = MachineValue("false"))
+        val p = provider(h)
+        p.screen(listOf(LATENCY))
+
+        // Something else on the screen moved without being written to.
+        h.settings["run_ahead_hide_warnings"] =
+            h.settings["run_ahead_hide_warnings"]!!.copy(
+                machineValue = MachineValue("true"), displayValue = "true",
+            )
+        h.fireApplied("run_ahead_frames", "1")
+
+        val row = p.screen(listOf(LATENCY)).items
+            .filterIsInstance<GenericIgmSettingsItem.Choice>()
+            .first { it.key == "run_ahead_hide_warnings" }
+        assertEquals("the neighbour must be re-read, not left stale", "On", row.value)
+    }
+
     @Test
     fun `All Settings gets the chain, not the picker`() {
         val keys = rowKeys(pipelineProvider(pipelineHost()))
