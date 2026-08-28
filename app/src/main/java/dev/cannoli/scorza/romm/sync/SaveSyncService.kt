@@ -150,13 +150,13 @@ class SaveSyncService(
                 ?: return@withContext PreLaunchOutcome.Proceed
             val op = response.operations.firstOrNull { (it.slot ?: DEFAULT_SLOT) == slot }
             dev.cannoli.scorza.util.RommLog.write("launch [$base]: negotiate slot=$slot op=${op?.action ?: "none"} serverHash=${op?.serverContentHash?.take(8)} anchorHash=${anchor?.lastUploadedHash?.take(8)}")
-            val outcome = when (op?.action) {
-                "download" -> downloadOp(tag, base, gameKey, slot, romId, deviceId, op).also {
+            val outcome = when (op?.verdict) {
+                SyncAction.Download -> downloadOp(tag, base, gameKey, slot, romId, deviceId, op).also {
                     if (it == PreLaunchOutcome.Proceed) {
                         dev.cannoli.scorza.util.RommLog.write("launch [$base]: downloaded server save")
                     }
                 }
-                "upload" -> if (isStuckUpload(op, anchor, local)) {
+                SyncAction.Upload -> if (isStuckUpload(op, anchor, local)) {
                     dev.cannoli.scorza.util.RommLog.write("launch [$base]: upload cannot converge, surfacing conflict")
                     buildConflict(op, local, slot, romId, tag, base, gameKey, emulator)
                 } else {
@@ -169,10 +169,19 @@ class SaveSyncService(
                     }
                     PreLaunchOutcome.Proceed
                 }
-                "conflict" -> buildConflict(op, local, slot, romId, tag, base, gameKey, emulator)
-                else -> PreLaunchOutcome.Proceed
+                SyncAction.Conflict -> buildConflict(op, local, slot, romId, tag, base, gameKey, emulator)
+                // A verdict this build does not know is not a no-op: nothing has been settled, so
+                // proceeding would launch against a save the server may consider stale.
+                SyncAction.Unknown -> {
+                    dev.cannoli.scorza.util.RommLog.write(
+                        "launch [$base]: unrecognised sync verdict '${op?.action}', not proceeding"
+                    )
+                    PreLaunchOutcome.KnownStaleBlock(gameKey, slot)
+                }
+                SyncAction.NoOp, null -> PreLaunchOutcome.Proceed
             }
-            val completed = if (outcome == PreLaunchOutcome.Proceed && (op?.action == "download" || op?.action == "upload")) 1 else 0
+            val completed = if (outcome == PreLaunchOutcome.Proceed &&
+                (op?.verdict == SyncAction.Download || op?.verdict == SyncAction.Upload)) 1 else 0
             val failed = if (outcome is PreLaunchOutcome.KnownStaleBlock) 1 else 0
             runCatching { client.completeSyncSession(response.sessionId, SyncCompletePayload(operationsCompleted = completed, operationsFailed = failed)) }
             outcome
@@ -543,7 +552,9 @@ class SaveSyncService(
                 batchReached = true
                 response.operations.forEach { opByKey[it.romId to (it.slot ?: DEFAULT_SLOT)] = it }
                 runCatching {
-                    val completed = response.operations.count { it.action == "download" || it.action == "upload" }
+                    val completed = response.operations.count {
+                        it.verdict == SyncAction.Download || it.verdict == SyncAction.Upload
+                    }
                     client.completeSyncSession(response.sessionId, SyncCompletePayload(operationsCompleted = completed, operationsFailed = 0))
                 }
             } else {
@@ -630,14 +641,14 @@ class SaveSyncService(
         }
         promotions.get(s.gameKey, s.slot)?.let { return plan(SweepAction.PROMOTE, promotion = it) }
         if (batchFailed) return plan(SweepAction.UNREACHABLE)
-        return when (op?.action) {
-            "download" -> plan(SweepAction.DOWNLOAD, downloadOp = op)
-            "upload" -> if (isStuckUpload(op, s.anchor, local)) {
+        return when (op?.verdict) {
+            SyncAction.Download -> plan(SweepAction.DOWNLOAD, downloadOp = op)
+            SyncAction.Upload -> if (isStuckUpload(op, s.anchor, local)) {
                 plan(SweepAction.ESCALATE, conflict = buildConflict(op, local, s.slot, s.romId, s.tag, s.base, s.gameKey, s.emulator))
             } else {
                 plan(SweepAction.UPLOAD)
             }
-            "conflict" -> {
+            SyncAction.Conflict -> {
                 val cf = buildConflict(op, local, s.slot, s.romId, s.tag, s.base, s.gameKey, s.emulator)
                 when (ConflictAutoResolver.classify(local.contentHash, s.anchor?.localContentHash, op.serverContentHash, s.anchor?.lastUploadedHash)) {
                     ConflictResolution.KEEP_LOCAL -> plan(SweepAction.KEEP_LOCAL, conflict = cf)
@@ -645,7 +656,8 @@ class SaveSyncService(
                     ConflictResolution.ESCALATE -> plan(SweepAction.ESCALATE, conflict = cf)
                 }
             }
-            else -> {
+            SyncAction.Unknown -> plan(SweepAction.UNREACHABLE)
+            SyncAction.NoOp, null -> {
                 val anchor = s.anchor
                 when {
                     anchor == null -> plan(SweepAction.UPLOAD)

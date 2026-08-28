@@ -36,6 +36,26 @@ data class SyncNegotiatePayload(
     val saves: List<ClientSaveState>,
 )
 
+/**
+ * What the server decided for one save.
+ *
+ * [Unknown] is not [NoOp]: a verdict this build does not recognise means nothing has been settled,
+ * and treating it as "nothing to do" launches the game against whatever is on disk.
+ */
+enum class SyncAction {
+    Download, Upload, Conflict, NoOp, Unknown;
+
+    companion object {
+        fun of(wire: String?): SyncAction = when (wire) {
+            "download" -> Download
+            "upload" -> Upload
+            "conflict" -> Conflict
+            "no_op" -> NoOp
+            else -> Unknown
+        }
+    }
+}
+
 @Serializable
 data class SyncOperationDto(
     val action: String,
@@ -47,7 +67,9 @@ data class SyncOperationDto(
     val reason: String = "",
     @SerialName("server_updated_at") val serverUpdatedAt: String? = null,
     @SerialName("server_content_hash") val serverContentHash: String? = null,
-)
+) {
+    val verdict: SyncAction get() = SyncAction.of(action)
+}
 
 @Serializable
 data class SyncNegotiateResponse(

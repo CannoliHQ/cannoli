@@ -2,6 +2,7 @@ package dev.cannoli.scorza.romm.sync
 
 import dev.cannoli.scorza.romm.rommJson
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Test
 
 class SaveSyncDtosTest {
@@ -38,5 +39,20 @@ class SaveSyncDtosTest {
         assertEquals(100, s.id)
         assertEquals("autosave", s.slot)
         assertEquals("dev-9", s.originDeviceId)
+    }
+
+    /**
+     * An unrecognised verdict is not a no-op. Collapsing the two launched the game against a save
+     * the server may consider stale, and reported the session as zero completed and zero failed.
+     */
+    @Test
+    fun `an unknown action is distinct from no_op`() {
+        assertEquals(SyncAction.Download, SyncAction.of("download"))
+        assertEquals(SyncAction.Upload, SyncAction.of("upload"))
+        assertEquals(SyncAction.Conflict, SyncAction.of("conflict"))
+        assertEquals(SyncAction.NoOp, SyncAction.of("no_op"))
+        assertEquals(SyncAction.Unknown, SyncAction.of("rebase"))
+        assertEquals(SyncAction.Unknown, SyncAction.of(null))
+        assertNotEquals(SyncAction.NoOp, SyncAction.of("rebase"))
     }
 }
