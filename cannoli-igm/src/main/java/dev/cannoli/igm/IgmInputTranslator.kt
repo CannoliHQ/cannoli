@@ -19,22 +19,56 @@ class IgmInputTranslator(private val mapping: IgmInputMapping?) {
         PASS_THROUGH[rawKeycode]?.let { return it }
         val m = mapping ?: return rawKeycode
         val canonical = rawToCanonical[rawKeycode] ?: return rawKeycode
-        return when (canonical) {
+        // Confirm and back are whichever face buttons this device calls them, so the device's own
+        // answer wins over the button's position on the pad.
+        if (canonical == m.menuConfirm) return CONFIRM
+        if (canonical == m.menuBack) return BACK
+        return normalized(canonical) ?: rawKeycode
+    }
+
+    companion object {
+        private const val CONFIRM = 96
+        private const val BACK = 97
+
+        private val PASS_THROUGH = mapOf(19 to 19, 20 to 20, 21 to 21, 22 to 22, 4 to BACK)
+
+        /**
+         * What the IGM hears for each button the device mapping names.
+         *
+         * Exhaustive on purpose, with no else: a button the mapping knows about but this does not
+         * used to fall through to its raw keycode, which works only on a pad that happens to use
+         * the conventional numbering and fails silently on any that does not. Select was missing
+         * for exactly that reason and reordering did nothing on a remapped pad. Adding a
+         * CanonicalButton now stops the build until this says what it means.
+         *
+         * The values are Android's own codes for those buttons, so a pad reporting them directly
+         * and one reaching them through a mapping arrive at the same place.
+         */
+        private fun normalized(button: CanonicalButton): Int? = when (button) {
             CanonicalButton.BTN_UP -> 19
             CanonicalButton.BTN_DOWN -> 20
             CanonicalButton.BTN_LEFT -> 21
             CanonicalButton.BTN_RIGHT -> 22
-            m.menuConfirm -> 96
-            m.menuBack -> 97
+            // Reached only when a mapping names neither as confirm or back, which it always does.
+            CanonicalButton.BTN_SOUTH -> CONFIRM
+            CanonicalButton.BTN_EAST -> BACK
             CanonicalButton.BTN_WEST -> 99
             CanonicalButton.BTN_NORTH -> 100
             CanonicalButton.BTN_L -> 102
             CanonicalButton.BTN_R -> 103
-            else -> rawKeycode
+            CanonicalButton.BTN_L2 -> 104
+            CanonicalButton.BTN_R2 -> 105
+            CanonicalButton.BTN_L3 -> 106
+            CanonicalButton.BTN_R3 -> 107
+            CanonicalButton.BTN_START -> 108
+            CanonicalButton.BTN_SELECT -> 109
+            CanonicalButton.BTN_MENU -> 82
+            // Axes rather than buttons, so they never appear in a keycode map. Null rather than a
+            // keycode, because inventing one would give a stick a button's meaning.
+            CanonicalButton.BTN_LSTICK_X,
+            CanonicalButton.BTN_LSTICK_Y,
+            CanonicalButton.BTN_RSTICK_X,
+            CanonicalButton.BTN_RSTICK_Y -> null
         }
-    }
-
-    companion object {
-        private val PASS_THROUGH = mapOf(19 to 19, 20 to 20, 21 to 21, 22 to 22, 4 to 97)
     }
 }
