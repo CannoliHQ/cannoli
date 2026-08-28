@@ -257,6 +257,10 @@ class LaunchManager(
             // cannot turn it off.
             put("savestate_thumbnail_enable", "true")
             put("joypad_autoconfig_dir", paths.configInputAutoconfig.absolutePath)
+            // Where RetroArch writes the preset that compiling a chain produces, and where it
+            // looks for one by name. Left unset it is empty, and applying a chain built in the
+            // menu silently writes nowhere and shows nothing.
+            put("video_shader_dir", paths.shadersDir.absolutePath)
             // Core options are not RetroArch settings and cannot live in this config, so they are
             // composed into their own file from the same platform and game tiers. global_core_options
             // is what makes RetroArch use core_options_path verbatim instead of deriving a per-core

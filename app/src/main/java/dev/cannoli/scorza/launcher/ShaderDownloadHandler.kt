@@ -112,17 +112,22 @@ class ShaderDownloadHandler(
         // A traversal entry rewrites a file outside the tree entirely, which is worth refusing even
         // from a source we trust.
         if (parts.any { it == ".." }) return null
-        if (parts.firstOrNull().equals(RESERVED_CUSTOM, ignoreCase = true)) return null
+        // The archive carries the repository's own furniture: a deploy script, readmes, a spec.
+        // None of it is a shader, and every one of them is a file the card has to hold and the
+        // browser has to walk past.
+        if (parts.last().substringAfterLast('.', "").lowercase() in SKIPPED_EXTENSIONS) return null
+        if (parts.firstOrNull().equals(dev.cannoli.core.shader.ShaderCatalog.CUSTOM_DIR, ignoreCase = true)) return null
         if (parts.firstOrNull().equals(RESERVED_BUNDLED, ignoreCase = true)) return null
         return File(dest, parts.joinToString(File.separator))
     }
 
     companion object {
         private const val BASE_URL = "https://buildbot.libretro.com/assets/frontend/"
+
+        /** Documentation and tooling that ships alongside the shaders. */
+        private val SKIPPED_EXTENSIONS = setOf("py", "md", "txt", "sh", "yml", "yaml")
         private const val YIELD_EVERY = 32
 
-        /** The user's own shaders. Named for custom.cfg, and left alone for the same reason. */
-        const val RESERVED_CUSTOM = "Custom"
         private const val RESERVED_BUNDLED = "crt-cannoli"
 
         /**
