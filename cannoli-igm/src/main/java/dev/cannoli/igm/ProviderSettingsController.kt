@@ -23,7 +23,22 @@ class ProviderSettingsController(val provider: IgmSettingsProvider) {
         data object ActionFired : State
     }
 
-    private class Level(val path: List<String>, var cursor: Int)
+    /**
+     * [selectedKey] is what the highlight is on; [cursor] is only where that row last sat.
+     *
+     * RetroArch decides which rows a screen has from the values on it, so a row can appear or
+     * vanish under the selection between renders. An index alone then names a different setting,
+     * and the next Left or Right cycles whatever slid into that slot.
+     *
+     * [precedingKey] is the row above it, which for a row that only exists because of another is
+     * the one that governs it: RetroArch lists a gated setting directly after its gate.
+     */
+    private class Level(
+        val path: List<String>,
+        var cursor: Int,
+        var selectedKey: String? = null,
+        var precedingKey: String? = null,
+    )
 
     fun descriptionAt(index: Int): String? {
         val level = levels.lastOrNull() ?: return null
@@ -98,12 +113,36 @@ class ProviderSettingsController(val provider: IgmSettingsProvider) {
         prompt?.let { return State.Prompt(it.title, it.options, promptCursor) }
         val level = levels.lastOrNull() ?: return State.Closed
         val screen = provider.screen(level.path)
-        // The provider's item list can shrink between events (a cycle that hides
-        // gated options, a controller disconnect). Clamp so selectedIndex never
-        // points past the end.
-        level.cursor = level.cursor.coerceIn(0, (screen.items.size - 1).coerceAtLeast(0))
+        level.follow(screen.items)
         val description = if (showingDescription) descriptionOf(screen.items, level.cursor) else null
         return State.Menu(level.path, screen.title, level.cursor, screen.items, description, descriptionScroll)
+    }
+
+    /**
+     * Puts the highlight back on the row it was on, wherever that row now is.
+     *
+     * A row that has gone takes the selection to the one that preceded it, which is the setting
+     * that governs it and so the way to bring it back. Only when that is gone too does this fall
+     * back to the position, clamped.
+     */
+    /** Moves the highlight to [index] and records the row it landed on. */
+    private fun Level.select(items: List<GenericIgmSettingsItem>, index: Int) {
+        cursor = index
+        selectedKey = items.getOrNull(index)?.key
+        precedingKey = items.getOrNull(index - 1)?.key
+    }
+
+    private fun Level.follow(items: List<GenericIgmSettingsItem>) {
+        val last = (items.size - 1).coerceAtLeast(0)
+        val moved = selectedKey?.let { key -> items.indexOfFirst { it.key == key } } ?: -1
+        val fallback = precedingKey?.let { key -> items.indexOfFirst { it.key == key } } ?: -1
+        cursor = when {
+            moved >= 0 -> moved
+            fallback >= 0 -> fallback
+            else -> cursor.coerceIn(0, last)
+        }
+        selectedKey = items.getOrNull(cursor)?.key
+        precedingKey = items.getOrNull(cursor - 1)?.key
     }
 
     // Rows per jump. Fixed rather than the viewport height, which this does not know: the screen
@@ -113,7 +152,9 @@ class ProviderSettingsController(val provider: IgmSettingsProvider) {
     // Clamped rather than wrapped: paging is for crossing a long list, and wrapping from the top to
     // the end makes it impossible to reach the start by holding a direction.
     private fun pageBy(level: Level, delta: Int, count: Int): State {
-        if (count > 0) level.cursor = (level.cursor + delta).coerceIn(0, count - 1)
+        if (count > 0) {
+            level.select(provider.screen(level.path).items, (level.cursor + delta).coerceIn(0, count - 1))
+        }
         return state()
     }
 
@@ -136,8 +177,8 @@ class ProviderSettingsController(val provider: IgmSettingsProvider) {
             return state()
         }
         when (button) {
-            Nav.UP -> if (count > 0) level.cursor = (level.cursor - 1 + count) % count
-            Nav.DOWN -> if (count > 0) level.cursor = (level.cursor + 1) % count
+            Nav.UP -> if (count > 0) level.select(items, (level.cursor - 1 + count) % count)
+            Nav.DOWN -> if (count > 0) level.select(items, (level.cursor + 1) % count)
             // Clamped rather than wrapped: a page jump is for crossing a long list, and wrapping
             // from the top to the end makes it impossible to reach the start by holding a shoulder.
             // A shader category can hold a hundred presets, which is the reason this exists.
@@ -149,12 +190,6 @@ class ProviderSettingsController(val provider: IgmSettingsProvider) {
                 val item = items.getOrNull(level.cursor) as? GenericIgmSettingsItem.Choice
                     ?: return pageBy(level, if (button == Nav.LEFT) -PAGE else PAGE, count)
                 provider.cycle(item.key, if (button == Nav.LEFT) -1 else 1)
-                // RetroArch's rows are conditional, so this cycle can add or remove rows above the
-                // one being edited: Aspect Ratio reveals Config Aspect Ratio, Custom reveals the
-                // viewport rows. The cursor is an index, so without following the key the highlight
-                // slides onto a different setting mid-edit and the next press changes that one.
-                val moved = provider.screen(level.path).items.indexOfFirst { it.key == item.key }
-                if (moved >= 0) level.cursor = moved
             }
             Nav.CONFIRM -> when (val item = items.getOrNull(level.cursor)) {
                 is GenericIgmSettingsItem.Category -> levels.addLast(Level(level.path + item.key, 0))
