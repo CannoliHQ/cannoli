@@ -81,10 +81,10 @@ class UpdateManager @Inject constructor(
         if (!isOnline()) return@withContext _updateAvailable.value
         if (!checking.compareAndSet(false, true)) return@withContext _updateAvailable.value
         try {
-            val channel = ReleaseChannel.fromString(settings.releaseChannel)
+            val channel = settings.releaseChannel
             val json = fetchJson("https://update.cannoli.dev/versions.json")
             val candidates = channel.visibleChannels().mapNotNull { ch ->
-                val obj = json.optJSONObject(ch.key) ?: return@mapNotNull null
+                val obj = json.optJSONObject(ch.manifestField) ?: return@mapNotNull null
                 UpdateInfo(
                     versionName = obj.getString("versionName"),
                     versionCode = obj.getInt("versionCode"),

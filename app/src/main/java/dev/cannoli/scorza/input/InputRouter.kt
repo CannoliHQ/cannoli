@@ -30,6 +30,8 @@ import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.ui.components.CREDITS_ROOT_ROWS
 import dev.cannoli.scorza.ui.components.CreditsRootRow
 import dev.cannoli.scorza.ui.screens.DialogState
+import dev.cannoli.scorza.ui.viewmodel.SettingsCategory
+import dev.cannoli.scorza.ui.screens.RenameTarget
 import dev.cannoli.scorza.input.runtime.InputDispatcher
 import dev.cannoli.scorza.util.NaturalSort
 import dev.cannoli.scorza.di.IoScope
@@ -244,7 +246,7 @@ class InputRouter @Inject constructor(
     // credential sub-list, step back out to Integrations so the user does not land on the login form.
     private fun leaveRetroAchievements() {
         nav.pop()
-        if (settingsViewModel.state.value.activeCategory == "retroachievements") settingsViewModel.exitSubList()
+        if (settingsViewModel.state.value.activeCategory == SettingsCategory.RETROACHIEVEMENTS) settingsViewModel.exitSubList()
     }
 
     private fun retroAchievementsHandler(): dev.cannoli.scorza.input.screen.ScrollListInputHandler {
@@ -607,7 +609,7 @@ class InputRouter @Inject constructor(
         },
         onR1 = {
             nav.dialogState.value = DialogState.RenameInput(
-                gameName = "romm_global_search",
+                target = RenameTarget.RommGlobalSearch,
             )
         },
     )
@@ -685,8 +687,7 @@ class InputRouter @Inject constructor(
         },
         onR1 = {
             nav.dialogState.value = DialogState.RenameInput(
-                gameName = "romm_collection_search",
-                searchScope = collection.name,
+                target = RenameTarget.RommCollectionSearch(collection.name),
                 keyboard = KeyboardState(text = search, cursorPos = search.length),
             )
         },
@@ -735,8 +736,7 @@ class InputRouter @Inject constructor(
         onWest = { if (platform.firmwareCount > 0) nav.push(LauncherScreen.RommFirmwareList(platform = platform)) },
         onR1 = {
             nav.dialogState.value = DialogState.RenameInput(
-                gameName = "romm_search",
-                searchScope = platform.displayName,
+                target = RenameTarget.RommPlatformSearch(platform.displayName),
                 keyboard = KeyboardState(text = search, cursorPos = search.length),
             )
         },

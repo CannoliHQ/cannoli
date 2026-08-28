@@ -19,6 +19,8 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
+import dev.cannoli.scorza.ui.viewmodel.SettingsCategory
+import dev.cannoli.scorza.ui.viewmodel.SettingsKey
 import dev.cannoli.scorza.ui.viewmodel.SettingsViewModel
 import dev.cannoli.ui.ButtonStyle
 import dev.cannoli.ui.DPAD_HORIZONTAL
@@ -105,15 +107,16 @@ fun SettingsScreen(
             }
 
             val selectedItem = state.items.getOrNull(state.selectedIndex)
-            val isColorItem = selectedItem?.key?.startsWith("color_") == true
+            val selectedKey = SettingsKey.fromId(selectedItem?.key)
+            val isColorItem = selectedKey in SettingsKey.COLOR_ROWS
             val isEditableItem = selectedItem?.isEditable == true
-            val isFghCollection = selectedItem?.key == "fgh_collection"
+            val isFghCollection = selectedKey == SettingsKey.FGH_COLLECTION
             val showChange = selectedItem?.canCycle != false && selectedItem?.disabled != true && (!isEditableItem || isFghCollection)
             // Rows measured in pixels or percent take a coarse step on the shoulders, so the D-pad
             // can stay on single units. Advertised only on those rows; elsewhere the shoulders do
             // nothing and a legend entry would be a lie.
-            val takesCoarseStep = selectedItem?.key == "portrait_margin" ||
-                selectedItem?.key?.startsWith("screen_geo_") == true
+            val takesCoarseStep = selectedKey == SettingsKey.PORTRAIT_MARGIN ||
+                selectedKey in SettingsKey.SCREEN_GEOMETRY_ROWS
             val leftItems = if (showChange) {
                 buildList {
                     add(buttonStyle.back to stringResource(R.string.label_back))
@@ -123,11 +126,11 @@ fun SettingsScreen(
             } else {
                 listOf(buttonStyle.back to stringResource(R.string.label_back))
             }
-            val showClear = selectedItem?.key == "rom_directory" && selectedItem.valueText != null
+            val showClear = selectedKey == SettingsKey.ROM_DIRECTORY && selectedItem?.valueText != null
             // Rows that act rather than cycle or navigate. The two RomM pairing rows were the
             // only ones when this was a key check; the flag is what the check was really asking.
             val isRommPairAction = selectedItem?.isAction == true ||
-                selectedItem?.key == "romm_pair" || selectedItem?.key == "romm_pair_code"
+                selectedKey == SettingsKey.ROMM_PAIR || selectedKey == SettingsKey.ROMM_PAIR_CODE
             val isNavInto = selectedItem?.isEditable == true
                 && selectedItem.valueText == null
                 && selectedItem.valueRes == null
@@ -137,7 +140,7 @@ fun SettingsScreen(
                 listOf(buttonStyle.confirm to stringResource(R.string.label_select))
             } else if (isFghCollection) {
                 listOf(buttonStyle.confirm to stringResource(R.string.label_choose))
-            } else if (state.activeCategory == "screen_geometry") {
+            } else if (state.activeCategory == SettingsCategory.SCREEN_GEOMETRY) {
                 listOf(buttonStyle.north to stringResource(R.string.label_reset))
             } else if (showClear) {
                 listOf(buttonStyle.north to stringResource(R.string.label_clear))

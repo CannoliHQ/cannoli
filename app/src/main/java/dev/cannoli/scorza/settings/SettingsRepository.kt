@@ -14,6 +14,7 @@ import java.io.File
 import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
+import dev.cannoli.scorza.updater.ReleaseChannel
 
 @Singleton
 class SettingsRepository @Inject constructor(@ApplicationContext private val context: Context) {
@@ -385,9 +386,9 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
             editor.apply()
         }
 
-    var releaseChannel: String
-        get() = jsonRead { optString(KEY_RELEASE_CHANNEL, "STABLE") }
-        set(value) = jsonWrite { put(KEY_RELEASE_CHANNEL, value) }
+    var releaseChannel: ReleaseChannel
+        get() = jsonRead { ReleaseChannel.fromString(optString(KEY_RELEASE_CHANNEL, "STABLE")) }
+        set(value) = jsonWrite { put(KEY_RELEASE_CHANNEL, value.name) }
 
     var lastUpdateCheck: Long
         get() = jsonRead { optLong(KEY_LAST_UPDATE_CHECK, 0L) }

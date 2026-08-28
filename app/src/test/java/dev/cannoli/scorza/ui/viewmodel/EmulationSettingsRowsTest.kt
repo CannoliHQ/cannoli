@@ -35,7 +35,7 @@ class EmulationSettingsRowsTest {
         )
         vm.load()
         vm.reinitialize(ctx.packageManager, ctx.packageName)
-        val index = vm.state.value.categories.indexOfFirst { it.key == "emulation" }
+        val index = vm.state.value.categories.indexOfFirst { it.key == SettingsCategory.EMULATION }
         assertTrue("no emulation category", index >= 0)
         vm.setCategoryIndex(index)
         vm.enterCategory()
@@ -67,10 +67,10 @@ class EmulationSettingsRowsTest {
             )
             vm.load()
             vm.reinitialize(ctx.packageManager, ctx.packageName)
-            val index = vm.state.value.categories.indexOfFirst { it.key == "emulation" }
+            val index = vm.state.value.categories.indexOfFirst { it.key == SettingsCategory.EMULATION }
             vm.setCategoryIndex(index)
             vm.enterCategory()
-            return vm.state.value.items.first { it.key == "update_cores" }.valueText
+            return vm.state.value.items.first { it.key == SettingsKey.UPDATE_CORES.id }.valueText
         }
 
         val finished = valueFor(true)
@@ -99,10 +99,10 @@ class EmulationSettingsRowsTest {
         )
         vm.load()
         vm.reinitialize(ctx.packageManager, ctx.packageName)
-        val index = vm.state.value.categories.indexOfFirst { it.key == "emulation" }
+        val index = vm.state.value.categories.indexOfFirst { it.key == SettingsCategory.EMULATION }
         vm.setCategoryIndex(index)
         vm.enterCategory()
-        val row = vm.state.value.items.first { it.key == "update_cores" }
+        val row = vm.state.value.items.first { it.key == SettingsKey.UPDATE_CORES.id }
 
         assertTrue("not marked as an action", row.isAction)
         assertTrue("an action row must not also cycle", !row.canCycle)

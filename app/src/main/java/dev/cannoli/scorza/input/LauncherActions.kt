@@ -32,6 +32,7 @@ import dev.cannoli.scorza.ui.viewmodel.SettingsViewModel
 import dev.cannoli.scorza.ui.viewmodel.SystemListViewModel
 import dev.cannoli.scorza.util.ArcadeTitleLookup
 import dev.cannoli.scorza.util.ArtworkLookup
+import dev.cannoli.scorza.ui.viewmodel.SettingsKey
 import dev.cannoli.ui.components.COLOR_GRID_COLS
 import dev.cannoli.ui.theme.COLOR_PRESETS
 import dev.cannoli.ui.theme.colorToArgbLong
@@ -323,11 +324,10 @@ class LauncherActions @Inject constructor(
         )
     }
 
-    fun handleSystemListRename(state: DialogState.RenameInput) {
-        val newName = state.currentName.trim()
+    fun handleSystemListRename(oldName: String, newName: String) {
         val item = systemListViewModel.getSelectedItem()
         val blankResetsToDefault = item is SystemListViewModel.ListItem.PlatformItem
-        if (newName == state.gameName || (newName.isEmpty() && !blankResetsToDefault)) {
+        if (newName == oldName || (newName.isEmpty() && !blankResetsToDefault)) {
             nav.dialogState.value = DialogState.None
             return
         }
@@ -378,12 +378,12 @@ class LauncherActions @Inject constructor(
     }
 
     private fun colorSettingTitle(settingKey: String): String {
-        val labelRes = when (settingKey) {
-            "color_accent" -> dev.cannoli.scorza.R.string.setting_color_accent
-            "color_highlight" -> dev.cannoli.scorza.R.string.setting_color_highlight
-            "color_highlight_text" -> dev.cannoli.scorza.R.string.setting_color_highlight_text
-            "color_text" -> dev.cannoli.scorza.R.string.setting_color_text
-            "color_title" -> dev.cannoli.scorza.R.string.setting_color_title
+        val labelRes = when (SettingsKey.fromId(settingKey)) {
+            SettingsKey.COLOR_ACCENT -> dev.cannoli.scorza.R.string.setting_color_accent
+            SettingsKey.COLOR_HIGHLIGHT -> dev.cannoli.scorza.R.string.setting_color_highlight
+            SettingsKey.COLOR_HIGHLIGHT_TEXT -> dev.cannoli.scorza.R.string.setting_color_highlight_text
+            SettingsKey.COLOR_TEXT -> dev.cannoli.scorza.R.string.setting_color_text
+            SettingsKey.COLOR_TITLE -> dev.cannoli.scorza.R.string.setting_color_title
             else -> return ""
         }
         return context.getString(labelRes)

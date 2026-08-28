@@ -80,6 +80,8 @@ import dev.cannoli.scorza.ui.screens.SystemListScreen
 import dev.cannoli.scorza.ui.viewmodel.ControllersViewModel
 import dev.cannoli.scorza.ui.viewmodel.GameListViewModel
 import dev.cannoli.scorza.ui.viewmodel.InputTesterViewModel
+import dev.cannoli.scorza.ui.viewmodel.SettingsCategory
+import dev.cannoli.scorza.ui.viewmodel.SettingsKey
 import dev.cannoli.scorza.ui.viewmodel.SettingsViewModel
 import dev.cannoli.scorza.ui.viewmodel.SystemListViewModel
 import dev.cannoli.ui.components.ConfirmOverlay
@@ -195,7 +197,7 @@ sealed class LauncherScreen {
      *  landed on (null being the category list), so Back only leaves at the level it arrived at. */
     data class Settings(
         val quickMenuRow: dev.cannoli.scorza.ui.quickmenu.QuickMenuRow? = null,
-        val quickMenuCategory: String? = null,
+        val quickMenuCategory: SettingsCategory? = null,
     ) : LauncherScreen()
     data object InputTester : LauncherScreen()
     data class SaveStatePicker(
@@ -633,8 +635,8 @@ fun AppNavGraph(
     // screen. Drawn inside the padded box below it would measure an area the margin has already been
     // subtracted from, and at a large margin the band collapses to cover everything.
     val onPortraitMarginRow = currentScreen is LauncherScreen.Settings
-        && settingsState.activeCategory == "display"
-        && settingsState.items.getOrNull(settingsState.selectedIndex)?.key == "portrait_margin"
+        && settingsState.activeCategory == SettingsCategory.DISPLAY
+        && settingsState.items.getOrNull(settingsState.selectedIndex)?.key == SettingsKey.PORTRAIT_MARGIN.id
     Box(modifier = Modifier.fillMaxSize()) {
     BoxWithConstraints(modifier = Modifier.fillMaxSize().displayCutoutPadding().padding(effectiveViewportPadding())) {
     // Solved once here so the title spacer, the row spacing and the footer reservation all come from
@@ -2247,7 +2249,7 @@ fun AppNavGraph(
         }
         if (inRomm) RommBorderFrame()
     }
-    val onScreenGeometryRow = currentScreen is LauncherScreen.Settings && settingsState.activeCategory == "screen_geometry"
+    val onScreenGeometryRow = currentScreen is LauncherScreen.Settings && settingsState.activeCategory == SettingsCategory.SCREEN_GEOMETRY
     val geometryIsDefault = appSettings.screenGeometryWidth == 100 && appSettings.screenGeometryHeight == 100 &&
         appSettings.screenGeometryX == 0 && appSettings.screenGeometryY == 0
     if (onScreenGeometryRow && !geometryIsDefault) {

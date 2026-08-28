@@ -8,6 +8,7 @@ import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.ui.quickmenu.QuickMenuRow
 import dev.cannoli.scorza.ui.screens.DialogState
 import dev.cannoli.scorza.ui.viewmodel.SettingsViewModel
+import dev.cannoli.scorza.ui.viewmodel.SettingsCategory
 import io.mockk.mockk
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -98,13 +99,13 @@ class QuickMenuAboutDebugActionTest {
     @Test fun debug_row_pushes_settings_already_inside_the_debug_category() {
         confirmRow(QuickMenuRow.DEBUG)
         assertEquals(DialogState.None, nav.dialogState.value)
-        assertEquals(LauncherScreen.Settings(QuickMenuRow.DEBUG, "debug"), nav.currentScreen)
-        assertEquals("debug", settingsViewModel.state.value.activeCategory)
+        assertEquals(LauncherScreen.Settings(QuickMenuRow.DEBUG, SettingsCategory.DEBUG), nav.currentScreen)
+        assertEquals(SettingsCategory.DEBUG, settingsViewModel.state.value.activeCategory)
         assertTrue(settingsViewModel.state.value.items.isNotEmpty())
     }
 
     @Test fun debug_is_not_a_top_level_settings_category() {
         settingsViewModel.load()
-        assertTrue(settingsViewModel.state.value.categories.none { it.key == "debug" || it.key == "about" })
+        assertTrue(settingsViewModel.state.value.categories.none { it.key == SettingsCategory.DEBUG })
     }
 }

@@ -18,6 +18,7 @@ import dev.cannoli.scorza.launcher.ApkLauncher
 import dev.cannoli.scorza.launcher.InstalledCoreService
 import dev.cannoli.scorza.launcher.IntentAuditor
 import dev.cannoli.scorza.model.AppType
+import dev.cannoli.scorza.model.VirtualPlatformTags
 import dev.cannoli.scorza.navigation.BrowsePurpose
 import dev.cannoli.scorza.navigation.LauncherScreen
 import dev.cannoli.scorza.navigation.NavigationController
@@ -25,6 +26,9 @@ import dev.cannoli.scorza.settings.GlobalOverridesManager
 import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.setup.SetupCoordinator
 import dev.cannoli.scorza.ui.screens.DialogState
+import dev.cannoli.scorza.ui.screens.RenameTarget
+import dev.cannoli.scorza.ui.viewmodel.SettingsCategory
+import dev.cannoli.scorza.ui.viewmodel.SettingsKey
 import dev.cannoli.scorza.ui.viewmodel.SettingsViewModel
 import dev.cannoli.ui.components.KeyboardState
 import dev.cannoli.scorza.updater.UpdateManager
@@ -74,7 +78,7 @@ class SettingsInputHandler @Inject constructor(
     override fun onLeft() {
         if (settingsViewModel.state.value.inSubList) {
             settingsViewModel.cycleSelected(-1, repeatCount = nav.lastKeyRepeatCount)
-            if (settingsViewModel.getSelectedItem()?.key == "release_channel") {
+            if (settingsViewModel.getSelectedItem()?.key == SettingsKey.RELEASE_CHANNEL.id) {
                 ioScope.launch { updateManager.checkForUpdate() }
             }
         } else {
@@ -97,7 +101,7 @@ class SettingsInputHandler @Inject constructor(
     override fun onRight() {
         if (settingsViewModel.state.value.inSubList) {
             settingsViewModel.cycleSelected(1, repeatCount = nav.lastKeyRepeatCount)
-            if (settingsViewModel.getSelectedItem()?.key == "release_channel") {
+            if (settingsViewModel.getSelectedItem()?.key == SettingsKey.RELEASE_CHANNEL.id) {
                 ioScope.launch { updateManager.checkForUpdate() }
             }
         } else {
@@ -111,52 +115,53 @@ class SettingsInputHandler @Inject constructor(
             return
         }
 
-        when (val key = settingsViewModel.enterSelected()) {
-            "integrations_ra" -> {
+        val key = settingsViewModel.enterSelected() ?: return
+        when (SettingsKey.fromId(key)) {
+            SettingsKey.INTEGRATIONS_RA -> {
                 if (settings.raToken.isNotEmpty()) raLoginController.openAccountMenu()
-                else settingsViewModel.enterSubCategory("retroachievements", dev.cannoli.scorza.R.string.settings_retroachievements)
+                else settingsViewModel.enterSubCategory(SettingsCategory.RETROACHIEVEMENTS, dev.cannoli.scorza.R.string.settings_retroachievements)
             }
-            "integrations_romm" -> {
-                if (rommStore.token.isNullOrEmpty()) settingsViewModel.enterSubCategory("romm", dev.cannoli.scorza.R.string.settings_romm)
+            SettingsKey.INTEGRATIONS_ROMM -> {
+                if (rommStore.token.isNullOrEmpty()) settingsViewModel.enterSubCategory(SettingsCategory.ROMM, dev.cannoli.scorza.R.string.settings_romm)
                 else nav.dialogState.value = DialogState.RommConnected(
                     host = rommStore.host, username = rommStore.username, version = rommStore.serverVersion)
             }
-            "status_bar" -> settingsViewModel.enterSubCategory("status_bar", dev.cannoli.scorza.R.string.settings_status_bar)
-            "fgh_collection" -> settingsViewModel.enterSubCategory(
-                "fgh_collection_picker",
+            SettingsKey.STATUS_BAR -> settingsViewModel.enterSubCategory(SettingsCategory.STATUS_BAR, dev.cannoli.scorza.R.string.settings_status_bar)
+            SettingsKey.FGH_COLLECTION -> settingsViewModel.enterSubCategory(
+                SettingsCategory.FGH_COLLECTION_PICKER,
                 dev.cannoli.scorza.R.string.setting_fgh_collection,
                 settingsViewModel.fghPickerInitialIndex()
             )
-            "sd_root" -> pushDirectoryBrowser(BrowsePurpose.SD_ROOT, settings.sdCardRoot)
-            "rom_directory" -> {
+            SettingsKey.SD_ROOT -> pushDirectoryBrowser(BrowsePurpose.SD_ROOT, settings.sdCardRoot)
+            SettingsKey.ROM_DIRECTORY -> {
                 val startPath = settings.romDirectory.ifEmpty { settings.sdCardRoot }
                 pushDirectoryBrowser(BrowsePurpose.ROM_DIRECTORY, startPath)
             }
-            "colors" -> nav.push(LauncherScreen.ColorList(colors = settingsViewModel.getColorEntries()))
-            "controllers" -> nav.push(LauncherScreen.Controllers())
-            "screen_geometry" -> settingsViewModel.enterSubCategory("screen_geometry", dev.cannoli.scorza.R.string.setting_screen_geometry)
-            "logging" -> nav.push(LauncherScreen.LoggingSettings())
-            "permissions" -> permissionsInputHandler.open()
-            "audit_emulator_intents" -> runIntentAudit()
-            "icon_gallery" -> nav.push(LauncherScreen.IconGallery())
-            "shortcuts" -> nav.push(LauncherScreen.ShortcutBinding(shortcuts = globalOverrides.readShortcuts()))
-            "input_tester" -> {
+            SettingsKey.COLORS -> nav.push(LauncherScreen.ColorList(colors = settingsViewModel.getColorEntries()))
+            SettingsKey.CONTROLLERS -> nav.push(LauncherScreen.Controllers())
+            SettingsKey.SCREEN_GEOMETRY -> settingsViewModel.enterSubCategory(SettingsCategory.SCREEN_GEOMETRY, dev.cannoli.scorza.R.string.setting_screen_geometry)
+            SettingsKey.LOGGING -> nav.push(LauncherScreen.LoggingSettings())
+            SettingsKey.PERMISSIONS -> permissionsInputHandler.open()
+            SettingsKey.AUDIT_EMULATOR_INTENTS -> runIntentAudit()
+            SettingsKey.ICON_GALLERY -> nav.push(LauncherScreen.IconGallery())
+            SettingsKey.SHORTCUTS -> nav.push(LauncherScreen.ShortcutBinding(shortcuts = globalOverrides.readShortcuts()))
+            SettingsKey.INPUT_TESTER -> {
                 inputTesterController.enter()
                 nav.push(LauncherScreen.InputTester)
             }
-            "core_mapping" -> openEmulatorMapping()
-            "set_default_launcher" -> context.startActivity(
+            SettingsKey.CORE_MAPPING -> openEmulatorMapping()
+            SettingsKey.SET_DEFAULT_LAUNCHER -> context.startActivity(
                 Intent(android.provider.Settings.ACTION_HOME_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             )
-            "update_cores" -> coreUpdateController.confirm()
-            "update_shaders" -> shaderUpdateController.confirm()
-            "installed_cores" -> nav.push(emulatorMappingBuilder.buildInstalledCores())
-            "manage_tools" -> openAppPicker("tools")
-            "manage_ports" -> openAppPicker("ports")
-            "reset_custom_config" -> {
+            SettingsKey.UPDATE_CORES -> coreUpdateController.confirm()
+            SettingsKey.UPDATE_SHADERS -> shaderUpdateController.confirm()
+            SettingsKey.INSTALLED_CORES -> nav.push(emulatorMappingBuilder.buildInstalledCores())
+            SettingsKey.MANAGE_TOOLS -> openAppPicker(VirtualPlatformTags.TOOLS)
+            SettingsKey.MANAGE_PORTS -> openAppPicker(VirtualPlatformTags.PORTS)
+            SettingsKey.RESET_CUSTOM_CONFIG -> {
                 nav.dialogState.value = DialogState.ResetCustomConfigConfirm
             }
-            "regenerate_system_folders" -> {
+            SettingsKey.REGENERATE_SYSTEM_FOLDERS -> {
                 val romDir = cannoliPaths.romDir
                 val tags = platformConfig.getAllTags()
                 ioScope.launch {
@@ -173,53 +178,64 @@ class SettingsInputHandler @Inject constructor(
                     }
                 }
             }
-            "ra_username" -> {
-                val current = settings.raUsername
+            SettingsKey.TITLE -> {
+                val current = settings.title
                 nav.dialogState.value = DialogState.RenameInput(
-                    gameName = "ra_username",
+                    target = RenameTarget.LauncherTitle,
                     keyboard = KeyboardState(text = current, cursorPos = current.length)
                 )
             }
-            "ra_password" -> {
+            SettingsKey.RA_USERNAME -> {
+                val current = settings.raUsername
                 nav.dialogState.value = DialogState.RenameInput(
-                    gameName = "ra_password",
+                    target = RenameTarget.RaUsername,
+                    keyboard = KeyboardState(text = current, cursorPos = current.length)
+                )
+            }
+            SettingsKey.RA_PASSWORD -> {
+                nav.dialogState.value = DialogState.RenameInput(
+                    target = RenameTarget.RaPassword,
                     keyboard = KeyboardState(text = settingsViewModel.raPassword, cursorPos = settingsViewModel.raPassword.length)
                 )
             }
-            "ra_login" -> activityActions.startRaLogin(settings.raUsername, settingsViewModel.raPassword)
-            "romm_host" -> {
+            SettingsKey.RA_LOGIN -> activityActions.startRaLogin(settings.raUsername, settingsViewModel.raPassword)
+            SettingsKey.ROMM_HOST -> {
                 val current = rommStore.host
-                nav.dialogState.value = DialogState.RenameInput(gameName = "romm_host", keyboard = KeyboardState(text = current, cursorPos = current.length))
+                nav.dialogState.value = DialogState.RenameInput(target = RenameTarget.RommHost, keyboard = KeyboardState(text = current, cursorPos = current.length))
             }
-            "romm_pair" -> activityActions.startRommPairing(rommStore.host)
-            "romm_pair_code" -> {
-                nav.dialogState.value = DialogState.RenameInput(gameName = "romm_pair_code", keyboard = KeyboardState())
+            SettingsKey.ROMM_PAIR -> activityActions.startRommPairing(rommStore.host)
+            SettingsKey.ROMM_PAIR_CODE -> {
+                nav.dialogState.value = DialogState.RenameInput(target = RenameTarget.RommPairCode, keyboard = KeyboardState())
             }
-            null -> {}
-            else -> {
-                when {
-                    key.startsWith("fgh_pick:") -> {
-                        val id = key.removePrefix("fgh_pick:").toLongOrNull()
-                        settingsViewModel.selectFghCollectionId(id)
-                        settingsViewModel.save()
-                        settingsViewModel.exitSubList()
-                        launcherActions.rescanSystemList()
-                    }
-                    key.startsWith("color_") -> {
-                        val entries = settingsViewModel.getColorEntries()
-                        val idx = entries.indexOfFirst { it.key == key }.coerceAtLeast(0)
-                        nav.push(LauncherScreen.ColorList(colors = entries, selectedIndex = idx))
-                        launcherActions.openColorPicker(key)
-                    }
-                    else -> {
-                        val displayValue = settingsViewModel.getSelectedItemDisplayValue()
-                        nav.dialogState.value = DialogState.RenameInput(
-                            gameName = key,
-                            keyboard = KeyboardState(text = displayValue, cursorPos = displayValue.length)
-                        )
-                    }
-                }
+            SettingsKey.COLOR_BACKGROUND, SettingsKey.COLOR_TEXT, SettingsKey.COLOR_STATUS_BAR,
+            SettingsKey.COLOR_HIGHLIGHT, SettingsKey.COLOR_HIGHLIGHT_TEXT, SettingsKey.COLOR_ACCENT,
+            SettingsKey.COLOR_TITLE -> {
+                val entries = settingsViewModel.getColorEntries()
+                val idx = entries.indexOfFirst { it.key == key }.coerceAtLeast(0)
+                nav.push(LauncherScreen.ColorList(colors = entries, selectedIndex = idx))
+                launcherActions.openColorPicker(key)
             }
+            // A collection pick carries its id in the key, so it never resolves to a constant.
+            null -> if (key.startsWith(SettingsKey.FGH_PICK_PREFIX)) {
+                val id = key.removePrefix(SettingsKey.FGH_PICK_PREFIX).toLongOrNull()
+                settingsViewModel.selectFghCollectionId(id)
+                settingsViewModel.save()
+                settingsViewModel.exitSubList()
+                launcherActions.rescanSystemList()
+            }
+            // Rows that cycle a value rather than open something: Confirm does nothing.
+            SettingsKey.LANGUAGE, SettingsKey.SWAP_PLAY_RESUME, SettingsKey.MAIN_MENU_QUIT,
+            SettingsKey.BG_IMAGE, SettingsKey.BG_TINT, SettingsKey.FONT, SettingsKey.TEXT_SIZE,
+            SettingsKey.ART_SCALE, SettingsKey.ART_WIDTH, SettingsKey.PORTRAIT_MARGIN,
+            SettingsKey.CONTENT_MODE, SettingsKey.SHOW_RECENTLY_PLAYED, SettingsKey.SHOW_FAVORITES,
+            SettingsKey.SCAN_LIBRARY, SettingsKey.SHOW_BATTERY, SettingsKey.SHOW_BLUETOOTH,
+            SettingsKey.SHOW_CLOCK, SettingsKey.SHOW_KITCHEN, SettingsKey.SHOW_DOWNLOADS,
+            SettingsKey.SHOW_UPDATE, SettingsKey.SHOW_VPN, SettingsKey.SHOW_WIFI,
+            SettingsKey.SCREEN_GEO_WIDTH, SettingsKey.SCREEN_GEO_HEIGHT, SettingsKey.SCREEN_GEO_X,
+            SettingsKey.SCREEN_GEO_Y, SettingsKey.ALWAYS_SAVE_ON_QUIT, SettingsKey.IGM_SETTINGS_MODE,
+            SettingsKey.DEFAULT_VIDEO_DRIVER, SettingsKey.ROMM_ALLOW_SELF_SIGNED,
+            SettingsKey.KITCHEN_CODE_BYPASS, SettingsKey.EXPERIMENTAL_FEATURES,
+            SettingsKey.RELEASE_CHANNEL -> {}
         }
     }
 
@@ -254,11 +270,11 @@ class SettingsInputHandler @Inject constructor(
 
     override fun onNorth() {
         val item = settingsViewModel.getSelectedItem()
-        if (item?.key == "rom_directory" && settings.romDirectory.isNotEmpty()) {
+        if (item?.key == SettingsKey.ROM_DIRECTORY.id && settings.romDirectory.isNotEmpty()) {
             launcherActions.confirmRomDirectoryChange("")
             return
         }
-        if (settingsViewModel.state.value.activeCategory == "screen_geometry") {
+        if (settingsViewModel.state.value.activeCategory == SettingsCategory.SCREEN_GEOMETRY) {
             settingsViewModel.resetScreenGeometry()
         }
     }
@@ -301,16 +317,16 @@ class SettingsInputHandler @Inject constructor(
     private fun openAppPicker(type: String) {
         val installed = getInstalledLauncherApps()
         val allApps = buildList {
-            if (type == "tools" && context.packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK)) {
+            if (type == VirtualPlatformTags.TOOLS && context.packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK)) {
                 add(context.getString(dev.cannoli.ui.R.string.app_android_tv_settings) to ApkLauncher.VIRTUAL_TV_SETTINGS_PACKAGE)
             }
             addAll(installed)
         }
-        val appType = if (type == "tools") AppType.TOOL else AppType.PORT
+        val appType = if (type == VirtualPlatformTags.TOOLS) AppType.TOOL else AppType.PORT
         val existing = appsRepository.all(appType).map { it.packageName }.toSet()
         val initialChecked = allApps.indices.filter { allApps[it].second in existing }.toSet()
         val title = context.getString(
-            if (type == "tools") dev.cannoli.ui.R.string.title_manage_tools
+            if (type == VirtualPlatformTags.TOOLS) dev.cannoli.ui.R.string.title_manage_tools
             else dev.cannoli.ui.R.string.title_manage_ports
         )
         nav.push(LauncherScreen.AppPicker(
@@ -344,7 +360,7 @@ class SettingsInputHandler @Inject constructor(
             val pkg = state.packages.getOrNull(idx) ?: return@mapNotNull null
             name to pkg
         }
-        val appType = if (state.type == "tools") AppType.TOOL else AppType.PORT
+        val appType = if (state.type == VirtualPlatformTags.TOOLS) AppType.TOOL else AppType.PORT
         ioScope.launch {
             val keep = selected.map { it.second }.toSet()
             appsRepository.all(appType).forEach { app ->

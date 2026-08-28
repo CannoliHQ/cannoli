@@ -8,6 +8,7 @@ import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.ui.quickmenu.QuickMenuRow
 import dev.cannoli.scorza.ui.screens.DialogState
 import dev.cannoli.scorza.ui.viewmodel.SettingsViewModel
+import dev.cannoli.scorza.ui.viewmodel.SettingsCategory
 import io.mockk.mockk
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -82,7 +83,7 @@ class QuickMenuBackNavigationTest {
 
     @Test fun the_debug_row_marks_the_settings_screen_with_the_row_and_category_to_return_from() {
         confirmQuickRow(QuickMenuRow.DEBUG)
-        assertEquals(LauncherScreen.Settings(QuickMenuRow.DEBUG, "debug"), nav.currentScreen)
+        assertEquals(LauncherScreen.Settings(QuickMenuRow.DEBUG, SettingsCategory.DEBUG), nav.currentScreen)
     }
 
     @Test fun the_settings_row_marks_the_screen_with_no_category() {
@@ -128,7 +129,7 @@ class QuickMenuBackNavigationTest {
     @Test fun the_debug_category_stays_up_until_the_quick_menu_is_ready() = runTest(dispatcher) {
         confirmQuickRow(QuickMenuRow.DEBUG)
         settingsHandler.onBack()
-        assertEquals("debug", settingsViewModel.state.value.activeCategory)
+        assertEquals(SettingsCategory.DEBUG, settingsViewModel.state.value.activeCategory)
         assertEquals(DialogState.None, nav.dialogState.value)
 
         advanceUntilIdle()
@@ -139,7 +140,7 @@ class QuickMenuBackNavigationTest {
     @Test fun back_from_a_normally_entered_category_still_goes_to_the_top_level_list() = runTest(dispatcher) {
         confirmQuickRow(QuickMenuRow.SETTINGS)
         settingsViewModel.enterCategory()
-        assertEquals("general", settingsViewModel.state.value.activeCategory)
+        assertEquals(SettingsCategory.GENERAL, settingsViewModel.state.value.activeCategory)
 
         settingsHandler.onBack()
         advanceUntilIdle()

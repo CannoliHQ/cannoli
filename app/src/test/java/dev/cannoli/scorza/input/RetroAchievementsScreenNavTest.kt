@@ -8,6 +8,7 @@ import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.ui.components.RaAccountRow
 import dev.cannoli.scorza.ui.screens.DialogState
 import dev.cannoli.scorza.ui.viewmodel.SettingsViewModel
+import dev.cannoli.scorza.ui.viewmodel.SettingsCategory
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -113,7 +114,7 @@ class RetroAchievementsScreenNavTest {
 
     private fun onIntegrations() {
         every { settingsViewModel.state } returns
-            MutableStateFlow(SettingsViewModel.State(activeCategory = "integrations"))
+            MutableStateFlow(SettingsViewModel.State(activeCategory = SettingsCategory.INTEGRATIONS))
     }
 
     private fun onAccountScreen(s: SettingsRepository): InputRouter {

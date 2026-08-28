@@ -1,6 +1,10 @@
 package dev.cannoli.scorza.updater
 
-enum class ReleaseChannel(val key: String, val label: String) {
+/**
+ * [manifestField] is the release manifest's own name for the channel, not an identity: the setting
+ * is stored by [name], and writing the other one reads back as STABLE with no error.
+ */
+enum class ReleaseChannel(val manifestField: String, val label: String) {
     STABLE("stable", "Stable"),
     BETA("beta", "Beta"),
     TEST("test", "Test");
