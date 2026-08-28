@@ -17,12 +17,14 @@ sealed interface GenericIgmSettingsItem {
 
 data class GenericIgmSettingsScreen(val title: String, val items: List<GenericIgmSettingsItem>)
 
+/** One answer to a prompt. The action rides with the label, so its position never means anything. */
+data class IgmPromptOption(val label: String, val choose: () -> Unit)
+
 sealed interface IgmSettingsExit {
     data object Close : IgmSettingsExit
     data class Prompt(
         val title: String?,
-        val options: List<String>,
+        val options: List<IgmPromptOption>,
         val onCancel: (() -> Unit)? = null,
-        val onChoice: (Int) -> Unit,
     ) : IgmSettingsExit
 }

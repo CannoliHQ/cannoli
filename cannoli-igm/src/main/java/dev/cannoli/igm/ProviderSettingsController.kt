@@ -110,7 +110,7 @@ class ProviderSettingsController(val provider: IgmSettingsProvider) {
     }
 
     fun state(): State {
-        prompt?.let { return State.Prompt(it.title, it.options, promptCursor) }
+        prompt?.let { return State.Prompt(it.title, it.labels(), promptCursor) }
         val level = levels.lastOrNull() ?: return State.Closed
         val screen = provider.screen(level.path)
         level.follow(screen.items)
@@ -198,7 +198,7 @@ class ProviderSettingsController(val provider: IgmSettingsProvider) {
                     if (requested != null) {
                         prompt = requested
                         promptCursor = 0
-                        return State.Prompt(requested.title, requested.options, 0)
+                        return State.Prompt(requested.title, requested.labels(), 0)
                     }
                     provider.returnPathAfter(item.key, level.path)?.let { target ->
                         // Unwound to the level that asked the question, leaving its cursor where it
@@ -227,20 +227,22 @@ class ProviderSettingsController(val provider: IgmSettingsProvider) {
         is IgmSettingsExit.Prompt -> {
             prompt = e
             promptCursor = 0
-            State.Prompt(e.title, e.options, 0)
+            State.Prompt(e.title, e.labels(), 0)
         }
     }
+
+    private fun IgmSettingsExit.Prompt.labels(): List<String> = options.map { it.label }
 
     private fun onPrompt(button: Nav, p: IgmSettingsExit.Prompt): State {
         val count = p.options.size
         when (button) {
             Nav.UP -> if (count > 0) promptCursor = (promptCursor - 1 + count) % count
             Nav.DOWN -> if (count > 0) promptCursor = (promptCursor + 1) % count
-            Nav.CONFIRM -> { p.onChoice(promptCursor); return closeAll() }
+            Nav.CONFIRM -> { p.options.getOrNull(promptCursor)?.choose(); return closeAll() }
             Nav.BACK -> { p.onCancel?.invoke(); return closeAll() }
             else -> {}
         }
-        return State.Prompt(p.title, p.options, promptCursor)
+        return State.Prompt(p.title, p.labels(), promptCursor)
     }
 
     private fun closeAll(): State {

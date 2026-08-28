@@ -33,7 +33,7 @@ class RaIgmSettingsCheevosDenylistTest {
         for (k in CheevosSessionKeys.ALL) p.cycle(k, 1)
         p.cycle("run_ahead_frames", 1)
 
-        (p.exitPrompt() as IgmSettingsExit.Prompt).onChoice(1)
+        (p.exitPrompt() as IgmSettingsExit.Prompt).choose(SaveAnswer.game)
 
         assertEquals(listOf(setOf("run_ahead_frames")), host.savedKeys)
     }
@@ -44,7 +44,7 @@ class RaIgmSettingsCheevosDenylistTest {
         p.screen(listOf("emulator"))
         for (k in CheevosSessionKeys.ALL) p.cycle(k, 1)
 
-        (p.exitPrompt() as IgmSettingsExit.Prompt).onChoice(0)
+        (p.exitPrompt() as IgmSettingsExit.Prompt).choose(SaveAnswer.platform)
 
         assertTrue(host.savedKeys.single().isEmpty())
     }

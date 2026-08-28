@@ -193,7 +193,7 @@ class RaIgmSettingsProviderCuratedTest {
         val p = provider(h)
         p.screen(listOf("advanced"))
         p.cycle("curated_debug_hud", 1)
-        (p.exitPrompt() as IgmSettingsExit.Prompt).onChoice(0)
+        (p.exitPrompt() as IgmSettingsExit.Prompt).choose(SaveAnswer.platform)
         assertEquals(hud.settingKeys, h.savedKeys.single())
     }
 

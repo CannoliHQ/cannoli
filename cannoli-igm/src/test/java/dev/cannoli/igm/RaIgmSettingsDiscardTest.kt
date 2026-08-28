@@ -55,7 +55,7 @@ class RaIgmSettingsDiscardTest {
     private fun discard(p: IgmSettingsProvider) {
         val exit = p.exitPrompt()
         assertTrue(exit is IgmSettingsExit.Prompt)
-        (exit as IgmSettingsExit.Prompt).onChoice(2)
+        (exit as IgmSettingsExit.Prompt).choose(SaveAnswer.discard)
     }
 
     @Test fun `discard puts a changed setting back`() {
@@ -91,7 +91,7 @@ class RaIgmSettingsDiscardTest {
         p.cycle("k", 1)
 
         val exit = p.exitPrompt() as IgmSettingsExit.Prompt
-        exit.onChoice(0)
+        exit.choose(SaveAnswer.platform)
 
         assertEquals("b", host.settings["k"]?.machineValue?.raw)
         assertEquals(setOf("k"), host.savedKeys.single())
@@ -120,7 +120,7 @@ class RaIgmSettingsDiscardTest {
         p.screen(listOf(SCREEN))
         p.cycle("k", 1)
 
-        (p.exitPrompt() as IgmSettingsExit.Prompt).onChoice(0)
+        (p.exitPrompt() as IgmSettingsExit.Prompt).choose(SaveAnswer.platform)
 
         val (scope, changed) = host.cannoliSaves.single()
         assertEquals(RaOverrideScope.SYSTEM, scope)

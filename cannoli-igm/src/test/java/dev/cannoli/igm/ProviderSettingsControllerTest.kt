@@ -219,25 +219,45 @@ class ProviderSettingsControllerTest {
     @Test
     fun `back at root with Prompt shows the prompt then closes on choice`() {
         val p = FakeProvider()
-        var chosen = -1
-        p.exit = IgmSettingsExit.Prompt("Save changes", listOf("A", "B", "C")) { chosen = it }
+        var chosen: String? = null
+        p.exit = IgmSettingsExit.Prompt("Save changes", options("A", "B", "C") { chosen = it })
         val (c, _) = enter(p)
         val prompt = c.onNav(ProviderSettingsController.Nav.BACK) as ProviderSettingsController.State.Prompt
         assertEquals(listOf("A", "B", "C"), prompt.options)
         c.onNav(ProviderSettingsController.Nav.DOWN)
         assertTrue(c.onNav(ProviderSettingsController.Nav.CONFIRM) is ProviderSettingsController.State.Closed)
-        assertEquals(1, chosen)
+        assertEquals("B", chosen)
+    }
+
+    /**
+     * Confirming runs the action of the option that was rendered under the cursor, in any order.
+     *
+     * The answer used to be the cursor index, which the provider read back positionally, so
+     * inserting or moving an option retargeted every answer after it without a compile error.
+     */
+    @Test
+    fun `the answer is the option under the cursor whatever order they are in`() {
+        for (index in 0..2) {
+            val p = FakeProvider()
+            var chosen: String? = null
+            p.exit = IgmSettingsExit.Prompt(null, options("A", "B", "C") { chosen = it }.reversed())
+            val (c, _) = enter(p)
+            val prompt = c.onNav(ProviderSettingsController.Nav.BACK) as ProviderSettingsController.State.Prompt
+            repeat(index) { c.onNav(ProviderSettingsController.Nav.DOWN) }
+            c.onNav(ProviderSettingsController.Nav.CONFIRM)
+            assertEquals(prompt.options[index], chosen)
+        }
     }
 
     @Test
     fun `back dismisses the prompt without choosing`() {
         val p = FakeProvider()
-        var chosen = -1
-        p.exit = IgmSettingsExit.Prompt(null, listOf("A", "B")) { chosen = it }
+        var chosen: String? = null
+        p.exit = IgmSettingsExit.Prompt(null, options("A", "B") { chosen = it })
         val (c, _) = enter(p)
         c.onNav(ProviderSettingsController.Nav.BACK)
         assertTrue(c.onNav(ProviderSettingsController.Nav.BACK) is ProviderSettingsController.State.Closed)
-        assertEquals(-1, chosen)
+        assertEquals(null, chosen)
     }
 
     @Test
@@ -252,8 +272,8 @@ class ProviderSettingsControllerTest {
     @Test
     fun `an action that returns a prompt enters the prompt state`() {
         val p = FakeProvider()
-        var chosen = -1
-        p.actionPrompt = IgmSettingsExit.Prompt("Save?", listOf("A", "B")) { chosen = it }
+        var chosen: String? = null
+        p.actionPrompt = IgmSettingsExit.Prompt("Save?", options("A", "B") { chosen = it })
         val c = ProviderSettingsController(p)
         c.enter()
         c.onNav(ProviderSettingsController.Nav.DOWN)
@@ -261,7 +281,7 @@ class ProviderSettingsControllerTest {
         assertEquals(listOf("A", "B"), s.options)
         c.onNav(ProviderSettingsController.Nav.DOWN)
         assertTrue(c.onNav(ProviderSettingsController.Nav.CONFIRM) is ProviderSettingsController.State.Closed)
-        assertEquals(1, chosen)
+        assertEquals("B", chosen)
     }
 
     // The reported bug: RetroArch reveals a row above the one being edited, and because the cursor

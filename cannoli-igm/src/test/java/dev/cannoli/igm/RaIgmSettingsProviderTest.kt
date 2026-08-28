@@ -239,11 +239,39 @@ class RaIgmSettingsProviderTest {
         p.cycle("run_ahead_hide_warnings", 1)
         val prompt = p.exitPrompt() as IgmSettingsExit.Prompt
         assertEquals(
-            listOf(RaOptionStrings().savePlatform, RaOptionStrings().saveGame, RaOptionStrings().dontSave),
-            prompt.options,
+            listOf(SaveAnswer.platform, SaveAnswer.game, SaveAnswer.discard),
+            prompt.options.map { it.label },
         )
-        prompt.onChoice(0)
+        prompt.choose(SaveAnswer.platform)
         assertEquals(listOf(RaOverrideScope.SYSTEM), h.savedScopes)
+    }
+
+    /**
+     * An answer means what its label says, not what its position says.
+     *
+     * The options used to be plain strings answered by cursor index, so inserting one or putting
+     * Discard first silently retargeted every answer after it: the user picked Save and the
+     * provider discarded, with nothing to catch it at compile time.
+     */
+    @Test
+    fun `a save option keeps its action wherever it sits in the list`() {
+        val expected = mapOf(
+            SaveAnswer.platform to listOf(RaOverrideScope.SYSTEM),
+            SaveAnswer.game to listOf(RaOverrideScope.GAME),
+            SaveAnswer.discard to emptyList(),
+        )
+        for ((label, scopes) in expected) {
+            val h = host()
+            val p = provider(h)
+            p.screen(listOf(LATENCY))
+            p.cycle("run_ahead_hide_warnings", 1)
+
+            val prompt = p.exitPrompt() as IgmSettingsExit.Prompt
+            val reordered = prompt.copy(options = prompt.options.reversed())
+            reordered.choose(label)
+
+            assertEquals(label, scopes, h.savedScopes)
+        }
     }
 
     @Test
@@ -252,7 +280,7 @@ class RaIgmSettingsProviderTest {
         val p = provider(h)
         p.screen(listOf(LATENCY))
         p.cycle("run_ahead_hide_warnings", 1)
-        (p.exitPrompt() as IgmSettingsExit.Prompt).onChoice(1)
+        (p.exitPrompt() as IgmSettingsExit.Prompt).choose(SaveAnswer.game)
         assertEquals(listOf(RaOverrideScope.GAME), h.savedScopes)
     }
 
@@ -262,7 +290,7 @@ class RaIgmSettingsProviderTest {
         val p = provider(h)
         p.screen(listOf(LATENCY))
         p.cycle("run_ahead_hide_warnings", 1)
-        (p.exitPrompt() as IgmSettingsExit.Prompt).onChoice(2)
+        (p.exitPrompt() as IgmSettingsExit.Prompt).choose(SaveAnswer.discard)
         assertTrue(h.savedScopes.isEmpty())
         assertTrue(p.exitPrompt() is IgmSettingsExit.Close)
     }
@@ -275,13 +303,13 @@ class RaIgmSettingsProviderTest {
         p.cycle("run_ahead_hide_warnings", 1)
         p.cycle("run_ahead_frames", 1)
         p.screen(emptyList())
-        (p.exitPrompt() as IgmSettingsExit.Prompt).onChoice(1)
+        (p.exitPrompt() as IgmSettingsExit.Prompt).choose(SaveAnswer.game)
         assertEquals(listOf(setOf("run_ahead_hide_warnings", "run_ahead_frames")), h.savedKeys)
 
         // The set is cleared on save, so a later change saves only itself.
         p.screen(listOf(LATENCY))
         p.cycle("run_ahead_frames", 1)
-        (p.exitPrompt() as IgmSettingsExit.Prompt).onChoice(0)
+        (p.exitPrompt() as IgmSettingsExit.Prompt).choose(SaveAnswer.platform)
         assertEquals(setOf("run_ahead_frames"), h.savedKeys.last())
     }
 
@@ -291,9 +319,9 @@ class RaIgmSettingsProviderTest {
         val p = provider(h)
         p.screen(listOf(LATENCY))
         p.cycle("run_ahead_hide_warnings", 1)
-        (p.exitPrompt() as IgmSettingsExit.Prompt).onChoice(2)
+        (p.exitPrompt() as IgmSettingsExit.Prompt).choose(SaveAnswer.discard)
         p.cycle("run_ahead_frames", 1)
-        (p.exitPrompt() as IgmSettingsExit.Prompt).onChoice(1)
+        (p.exitPrompt() as IgmSettingsExit.Prompt).choose(SaveAnswer.game)
         assertEquals(listOf(setOf("run_ahead_frames")), h.savedKeys)
     }
 

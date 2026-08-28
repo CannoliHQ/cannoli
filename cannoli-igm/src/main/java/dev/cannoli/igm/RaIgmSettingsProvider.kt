@@ -822,27 +822,28 @@ class RaIgmSettingsProvider(
         if (!dirty) IgmSettingsExit.Close
         else IgmSettingsExit.Prompt(
             title = null,
-            options = listOf(strings.savePlatform, strings.saveGame, strings.dontSave),
-        ) { choice ->
-            when (choice) {
-                0 -> {
-                    host.raSaveOverride(RaOverrideScope.SYSTEM, overrideKeys())
-                    host.saveCannoliOverride(RaOverrideScope.SYSTEM, overrideKeys())
-                }
-                1 -> {
-                    host.raSaveOverride(RaOverrideScope.GAME, overrideKeys())
-                    host.saveCannoliOverride(RaOverrideScope.GAME, overrideKeys())
-                }
-                // Discard puts the running game back as it was. Without this it only dropped the
-                // write, so a change stayed live until the next launch recomposed the config from
-                // tiers it had never reached, which reads as the button having done nothing.
-                else -> {
-                    restorePriorValues()
-                    host.revertCannoliOverride()
-                }
-            }
-            clearDirty()
-        }
+            options = listOf(
+                IgmPromptOption(strings.savePlatform) { saveOverride(RaOverrideScope.SYSTEM) },
+                IgmPromptOption(strings.saveGame) { saveOverride(RaOverrideScope.GAME) },
+                IgmPromptOption(strings.dontSave) { discardChanges() },
+            ),
+        )
+
+    private fun saveOverride(scope: RaOverrideScope) {
+        val keys = overrideKeys()
+        host.raSaveOverride(scope, keys)
+        host.saveCannoliOverride(scope, keys)
+        clearDirty()
+    }
+
+    // Discard puts the running game back as it was. Without this it only dropped the write, so a
+    // change stayed live until the next launch recomposed the config from tiers it had never
+    // reached, which reads as the button having done nothing.
+    private fun discardChanges() {
+        restorePriorValues()
+        host.revertCannoliOverride()
+        clearDirty()
+    }
 
     // The RetroAchievements session keys are injected fresh into the per-launch config every launch
     // and must never be persisted in an override, where a stale copy could re-enable hardcore
