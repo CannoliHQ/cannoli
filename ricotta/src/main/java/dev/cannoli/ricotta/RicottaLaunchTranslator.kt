@@ -19,11 +19,11 @@ object RicottaLaunchTranslator {
                 context.packageName,
                 "com.retroarch.browser.retroactivity.RetroActivityFuture",
             )
+            // These three stay string extras: platform_unix.c reads them by name from C. Everything
+            // else the activity needs comes off the parcel.
             putExtra("LIBRETRO", coreLibPath(context, params.coreId))
             putExtra("ROM", params.romPath)
             params.configFilePath?.let { putExtra("CONFIGFILE", it) }
-            if (params.quitOnFocusLoss) putExtra("QUITFOCUS", true)
-            params.preferredRefreshRate?.let { putExtra("REFRESH", it.toString()) }
             params.writeToIntent(this)
         }
 }

@@ -23,6 +23,7 @@ import java.io.File
 class RetroActivityFuture : RetroActivityCamera() {
 
     private var quitfocus = false
+    private var preferredRefreshRate: Int? = null
     private lateinit var mDecorView: View
     private var igmOverlay: IGMOverlay? = null
     private var osdOverlay: OsdOverlay? = null
@@ -60,7 +61,6 @@ class RetroActivityFuture : RetroActivityCamera() {
 
         isRunning = true
         mDecorView = window.decorView
-        quitfocus = intent.hasExtra("QUITFOCUS")
 
         // Immersive before the surface exists. RetroArch posts this toggle a few hundred ms into
         // the run, and applying it first time round let the system bars lay out and then resized
@@ -70,6 +70,8 @@ class RetroActivityFuture : RetroActivityCamera() {
 
         try {
             val params = dev.cannoli.igm.RicottaLaunchParams.readFromIntent(intent)
+            quitfocus = params?.quitOnFocusLoss == true
+            preferredRefreshRate = params?.preferredRefreshRate
             val gameTitle = (params?.gameTitle?.takeIf { it.isNotEmpty() }
                 ?: intent.getStringExtra("ROM")?.substringAfterLast('/')?.substringBeforeLast('.')
                 ?: "Game")
@@ -221,12 +223,10 @@ class RetroActivityFuture : RetroActivityCamera() {
         igmOverlay?.onResume()
         setSustainedPerformanceMode(sustainedPerformanceMode)
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            intent.getStringExtra("REFRESH")?.let { refresh ->
-                val params = window.attributes
-                params.preferredRefreshRate = refresh.toFloat()
-                window.attributes = params
-            }
+        preferredRefreshRate?.let { rate ->
+            val attrs = window.attributes
+            attrs.preferredRefreshRate = rate.toFloat()
+            window.attributes = attrs
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && notchWriteOver) {
