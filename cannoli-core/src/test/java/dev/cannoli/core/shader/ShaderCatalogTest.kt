@@ -124,6 +124,19 @@ class ShaderCatalogTest {
         assertEquals(listOf("real"), names(ShaderCatalog.list(r, emptyList(), "gl", ShaderIndex.load(r))))
     }
 
+    // RetroArch rewrites this every time two presets are combined, so it holds whatever the last
+    // append produced. Offering it would be offering a leftover.
+    @Test fun `RetroArch's scratch preset is never offered at the root`() {
+        val r = root()
+        file(r, "retroarch.glslp")
+        file(r, "real.glslp")
+
+        assertEquals(listOf("real"), names(ShaderCatalog.list(r, emptyList(), "gl")))
+        // Only at the root: a pack of its own may legitimately name a preset this.
+        file(File(r, "pack"), "retroarch.glslp")
+        assertEquals(listOf("retroarch"), names(ShaderCatalog.list(r, listOf("pack"), "gl")))
+    }
+
     @Test fun `a preset resolves to a real path in its folder`() {
         val r = root()
         val f = file(File(r, "pack"), "crt.slangp")

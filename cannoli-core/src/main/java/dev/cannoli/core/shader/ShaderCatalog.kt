@@ -23,6 +23,12 @@ object ShaderCatalog {
 
     const val DIR = "Shaders"
 
+    /** The user's own presets. Named for custom.cfg, and left alone by the download for the same reason. */
+    const val CUSTOM_DIR = "Custom"
+
+    /** What RetroArch calls the preset it writes when combining two others. */
+    private const val SCRATCH_PRESET = "retroarch"
+
     /** Preset extension the active video driver can load. */
     fun presetExtension(videoDriver: String): String =
         if (videoDriver.equals("vulkan", ignoreCase = true)) "slangp" else "glslp"
@@ -53,7 +59,10 @@ object ShaderCatalog {
             .sortedBy { it.name.lowercase() }
 
         val presets = children
-            .filter { !it.name.startsWith(".") && it.isFile && it.extension.equals(ext, ignoreCase = true) }
+            .filter {
+                !it.name.startsWith(".") && it.isFile &&
+                    it.extension.equals(ext, ignoreCase = true) && !isScratchPreset(it, relative)
+            }
             .map { ShaderEntry(it.nameWithoutExtension, isFolder = false, path = it.absolutePath) }
             .sortedBy { it.name.lowercase() }
 
@@ -66,6 +75,16 @@ object ShaderCatalog {
             relative.fold(shadersDir) { acc, part -> File(acc, part) },
             "$name.${presetExtension(videoDriver)}",
         )
+
+    /**
+     * RetroArch's own scratch preset, which it rewrites every time two presets are combined.
+     *
+     * It lives at the root of the shader directory because that is where RetroArch puts it, and it
+     * holds whatever the last append happened to produce, so offering it would be offering a
+     * leftover. Only at the root: a pack of its own may legitimately name a preset this.
+     */
+    private fun isScratchPreset(file: File, relative: List<String>): Boolean =
+        relative.isEmpty() && file.nameWithoutExtension.equals(SCRATCH_PRESET, ignoreCase = true)
 
     // The archives keep their shader sources in a top-level "shaders" folder beside the presets.
     // It holds no presets of its own, so it would already be filtered out, but naming it costs
