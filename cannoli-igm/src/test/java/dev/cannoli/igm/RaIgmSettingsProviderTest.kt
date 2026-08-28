@@ -18,9 +18,18 @@ private class FakeRaHost : RaSettingsHost {
     override fun raScreenRows(label: String): List<RaScreenRow> = screens[label].orEmpty()
     // Mirrors the native contract: false means the key resolves to nothing, so nothing was queued.
     var setSucceeds = true
-    override fun raSetSetting(key: String, value: String): Boolean {
-        setCalls.add(key to value)
-        return setSucceeds
+    override fun raSetSetting(key: String, value: MachineValue): Boolean {
+        setCalls.add(key to value.raw)
+        if (!setSucceeds) return false
+        // A write that succeeds changes what a read returns, which is what makes the applied echo
+        // meaningful: it says something changed, and the value is read back rather than carried.
+        settings[key]?.let {
+            settings[key] = it.copy(
+                machineValue = value,
+                displayValue = it.options?.firstOrNull { o -> o.machine == value }?.display ?: value.raw,
+            )
+        }
+        return true
     }
     override fun raSaveOverride(scope: RaOverrideScope, keys: Set<String>) {
         savedScopes.add(scope)
@@ -72,11 +81,11 @@ private fun host(): FakeRaHost = FakeRaHost().apply {
         RaScreenRow("run_ahead_hide_warnings", "Hide Run-Ahead Warnings", isMenu = false),
     )
     settings["run_ahead_frames"] =
-        RaSetting("run_ahead_frames", "Run-Ahead Frames", RaSettingType.INT, "1", min = 0f, max = 4f, step = 1f)
+        RaSetting("run_ahead_frames", "Run-Ahead Frames", RaSettingType.INT, MachineValue("1"), "1", min = 0f, max = 4f, step = 1f)
     // A boolean that is still menu-registered. run_ahead_enabled was the fixture until RetroArch
     // stopped registering it in favour of the runahead_mode enum.
     settings["run_ahead_hide_warnings"] =
-        RaSetting("run_ahead_hide_warnings", "Hide Run-Ahead Warnings", RaSettingType.BOOL, "false")
+        RaSetting("run_ahead_hide_warnings", "Hide Run-Ahead Warnings", RaSettingType.BOOL, MachineValue("false"), "false")
 }
 
 private fun provider(
@@ -127,9 +136,9 @@ class RaIgmSettingsProviderTest {
     fun `a row RetroArch reveals mid-screen appears`() {
         val h = host()
         h.settings["aspect_ratio_index"] =
-            RaSetting("aspect_ratio_index", "Aspect Ratio", RaSettingType.INT, "0", min = 0f, max = 24f, step = 1f)
+            RaSetting("aspect_ratio_index", "Aspect Ratio", RaSettingType.INT, MachineValue("0"), "0", min = 0f, max = 24f, step = 1f)
         h.settings["video_aspect_ratio"] =
-            RaSetting("video_aspect_ratio", "Config Aspect Ratio", RaSettingType.FLOAT, "1.33")
+            RaSetting("video_aspect_ratio", "Config Aspect Ratio", RaSettingType.FLOAT, MachineValue("1.33"), "1.33")
         h.screens["video_scaling_settings"] = listOf(
             RaScreenRow("aspect_ratio_index", "Aspect Ratio", isMenu = false),
         )
@@ -177,6 +186,9 @@ class RaIgmSettingsProviderTest {
         val h = host()
         val p = provider(h)
         p.screen(listOf(LATENCY))
+        // Something outside the menu moved it. The echo is the signal; the value is read back.
+        h.settings["run_ahead_frames"] = h.settings["run_ahead_frames"]!!
+            .copy(machineValue = MachineValue("3"), displayValue = "3")
         h.fireApplied("run_ahead_frames", "3")
         assertEquals("3",
             p.screen(listOf(LATENCY)).items.filterIsInstance<GenericIgmSettingsItem.Choice>()
@@ -291,7 +303,7 @@ class RaIgmSettingsProviderTest {
     fun `a restart-required setting carries the restart hint`() {
         val h = host()
         h.settings["video_threaded"] =
-            RaSetting("video_threaded", "Threaded Video", RaSettingType.BOOL, "false", requiresRestart = true)
+            RaSetting("video_threaded", "Threaded Video", RaSettingType.BOOL, MachineValue("false"), "false", requiresRestart = true)
         val p = provider(h)
         h.screens["video_output_settings"] =
             listOf(RaScreenRow("video_threaded", "Threaded Video", isMenu = false))
@@ -390,7 +402,7 @@ class RaIgmSettingsProviderTest {
 
         p.cycle("run_ahead_frames", 1)
         val afterCycle = renders
-        h.fireApplied("run_ahead_frames", h.settings["run_ahead_frames"]!!.value)
+        h.fireApplied("run_ahead_frames", h.settings["run_ahead_frames"]!!.machineValue.raw)
 
         assertTrue("the echo must trigger a render", renders > afterCycle)
     }

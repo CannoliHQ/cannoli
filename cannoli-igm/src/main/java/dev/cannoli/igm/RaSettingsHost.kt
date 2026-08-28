@@ -8,7 +8,7 @@ interface RaSettingsHost {
     fun systemInfo(): List<Pair<String, String>> = emptyList()
 
     fun raGetSetting(key: String): RaSetting?
-    fun raSetSetting(key: String, value: String): Boolean
+    fun raSetSetting(key: String, value: MachineValue): Boolean
     fun raSaveOverride(scope: RaOverrideScope, keys: Set<String>)
 
     /**

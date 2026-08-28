@@ -20,11 +20,11 @@ private class CuratedFakeHost : RaSettingsHost {
     val screens = mutableMapOf<String, List<RaScreenRow>>()
     override fun raScreenRows(label: String): List<RaScreenRow> = screens[label].orEmpty()
     override fun raGetSetting(key: String): RaSetting? = settings[key]
-    override fun raSetSetting(key: String, value: String): Boolean {
-        setCalls.add(key to value)
+    override fun raSetSetting(key: String, value: MachineValue): Boolean {
+        setCalls.add(key to value.raw)
         if (applyWrites) {
-            settings[key] = (settings[key] ?: RaSetting(key, key, RaSettingType.STRING_RO, value))
-                .copy(value = value, rawValue = value)
+            settings[key] = (settings[key] ?: RaSetting(key, key, RaSettingType.STRING_RO, value, value.raw))
+                .copy(machineValue = value, displayValue = value.raw)
         }
         return true
     }
@@ -48,7 +48,7 @@ class RaIgmSettingsProviderCuratedTest {
     /** Seeds every key of [row] with the values of one of its presets. */
     private fun CuratedFakeHost.seed(row: CuratedCatalog.Row, presetIndex: Int) {
         for ((k, v) in row.presets[presetIndex].values) {
-            settings[k] = RaSetting(k, k, RaSettingType.STRING_RO, value = v, rawValue = v)
+            settings[k] = RaSetting(k, k, RaSettingType.STRING_RO, machineValue = MachineValue(v), displayValue = v)
         }
     }
 
@@ -111,7 +111,7 @@ class RaIgmSettingsProviderCuratedTest {
     fun `a row whose live values match no preset adopts the first one`() {
         val h = CuratedFakeHost()
         h.settings["video_smooth"] =
-            RaSetting("video_smooth", "video_smooth", RaSettingType.BOOL, value = "?", rawValue = "?")
+            RaSetting("video_smooth", "video_smooth", RaSettingType.BOOL, machineValue = MachineValue("?"), displayValue = "?")
         val r = choices(provider(h), listOf("video")).first { it.key == "curated_screen_sharpness" }
         assertEquals("Sharp", r.value)
         assertEquals(listOf("video_smooth" to "false"), h.setCalls)
@@ -123,7 +123,7 @@ class RaIgmSettingsProviderCuratedTest {
     fun `adopting a preset does not make the session look edited`() {
         val h = CuratedFakeHost()
         h.settings["video_smooth"] =
-            RaSetting("video_smooth", "video_smooth", RaSettingType.BOOL, value = "?", rawValue = "?")
+            RaSetting("video_smooth", "video_smooth", RaSettingType.BOOL, machineValue = MachineValue("?"), displayValue = "?")
         val p = provider(h)
         p.screen(listOf("video"))
         assertTrue(p.exitPrompt() is IgmSettingsExit.Close)
@@ -147,7 +147,7 @@ class RaIgmSettingsProviderCuratedTest {
         val scaling = row("video", "curated_screen_scaling")
         for ((k, v) in scaling.presets[0].values) {
             val display = if (k == "aspect_ratio_index") "Core Provided" else v
-            h.settings[k] = RaSetting(k, k, RaSettingType.ENUM, value = display, rawValue = v)
+            h.settings[k] = RaSetting(k, k, RaSettingType.ENUM, machineValue = MachineValue(v), displayValue = display)
         }
         val r = choices(provider(h), listOf("video")).first { it.key == "curated_screen_scaling" }
         assertEquals("Core Reported", r.value)
@@ -161,9 +161,9 @@ class RaIgmSettingsProviderCuratedTest {
     fun `a shadowed aspect index resolves against the user's choice, not Cannoli's takeover value`() {
         val h = CuratedFakeHost()
         h.settings["aspect_ratio_index"] =
-            RaSetting("aspect_ratio_index", "aspect_ratio_index", RaSettingType.ENUM, value = "Custom", rawValue = "23")
+            RaSetting("aspect_ratio_index", "aspect_ratio_index", RaSettingType.ENUM, machineValue = MachineValue("23"), displayValue = "Custom")
         h.settings["video_scale_integer"] =
-            RaSetting("video_scale_integer", "video_scale_integer", RaSettingType.BOOL, value = "false", rawValue = "false")
+            RaSetting("video_scale_integer", "video_scale_integer", RaSettingType.BOOL, machineValue = MachineValue("false"), displayValue = "false")
         h.shadow = mapOf("aspect_ratio_index" to "22", "video_scale_integer" to "true")
 
         val r = choices(provider(h), listOf("video")).first { it.key == "curated_screen_scaling" }
@@ -181,7 +181,7 @@ class RaIgmSettingsProviderCuratedTest {
         p.cycle("curated_debug_hud", 1)
         assertEquals(hud.settingKeys, h.setCalls.map { it.first }.toSet())
         for ((k, v) in hud.presets[1].values) {
-            assertEquals("$k should carry the new preset's value", v, h.settings[k]?.rawValue)
+            assertEquals("$k should carry the new preset's value", v, h.settings[k]?.machineValue?.raw)
         }
     }
 
@@ -278,7 +278,7 @@ class RaIgmSettingsProviderCuratedTest {
         val scaling = row("video", "curated_screen_scaling")
         for ((k, v) in scaling.presets[0].values) {
             val display = if (k == "aspect_ratio_index") "Core Provided" else v
-            h.settings[k] = RaSetting(k, k, RaSettingType.ENUM, value = display, rawValue = v)
+            h.settings[k] = RaSetting(k, k, RaSettingType.ENUM, machineValue = MachineValue(v), displayValue = display)
         }
         val p = provider(h)
         p.screen(listOf("video"))
@@ -293,7 +293,7 @@ class RaIgmSettingsProviderCuratedTest {
         val h = CuratedFakeHost()
         val scaling = row("video", "curated_screen_scaling")
         for ((k, v) in scaling.presets[0].values) {
-            h.settings[k] = RaSetting(k, k, RaSettingType.ENUM, value = v, rawValue = v)
+            h.settings[k] = RaSetting(k, k, RaSettingType.ENUM, machineValue = MachineValue(v), displayValue = v)
         }
         val p = provider(h)
         p.screen(listOf("video"))

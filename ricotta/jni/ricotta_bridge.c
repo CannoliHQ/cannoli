@@ -100,6 +100,38 @@ static volatile int g_menu_poll_active = 0;
  * thread while retro_run executes on the runloop thread, so the JNI methods enqueue
  * commands here and ricotta_bridge_poll_commands() runs them on the runloop thread. */
 #define RICOTTA_CMD_QUEUE_SIZE 32
+/* A setting crosses as a flat name/value array rather than a fixed positional one. Adding a field
+ * cannot shift another, and the two describers cannot drift apart by allocating different counts,
+ * which is how core options ended up with no machine value. */
+#define RICOTTA_MAX_OPTS 48
+
+typedef struct
+{
+   const char *name;
+   const char *value;
+} ricotta_field;
+
+static jobjectArray ricotta_fields_to_array(JNIEnv *env, const ricotta_field *f, size_t n)
+{
+   jclass str_cls   = (*env)->FindClass(env, "java/lang/String");
+   jobjectArray out = (*env)->NewObjectArray(env, (jsize)(n * 2), str_cls, NULL);
+   size_t i;
+
+   if (!out)
+      return NULL;
+
+   for (i = 0; i < n; i++)
+   {
+      jstring name  = (*env)->NewStringUTF(env, f[i].name);
+      jstring value = (*env)->NewStringUTF(env, f[i].value ? f[i].value : "");
+      (*env)->SetObjectArrayElement(env, out, (jsize)(i * 2), name);
+      (*env)->SetObjectArrayElement(env, out, (jsize)(i * 2 + 1), value);
+      (*env)->DeleteLocalRef(env, name);
+      (*env)->DeleteLocalRef(env, value);
+   }
+   return out;
+}
+
 #define RICOTTA_QCMD_RA_SET           -1
 #define RICOTTA_QCMD_RA_SAVE_OVERRIDE -2
 #define RICOTTA_QCMD_DISK_SET         -3
@@ -808,11 +840,13 @@ static void ricotta_core_opt_apply(const char *key, const char *value)
       return;
    {
       struct core_option *o = &opt->opts[idx];
-      if (!o->val_labels)
+      /* Machine values only. Labels are translated and can repeat, and every writer sends the
+       * machine value, so matching one would only ever hide a caller that did not. */
+      if (!o->vals)
          return;
-      for (v = 0; v < o->val_labels->size; v++)
+      for (v = 0; v < o->vals->size; v++)
       {
-         if (!strcmp(o->val_labels->elems[v].data, value))
+         if (!strcmp(o->vals->elems[v].data, value))
          {
             core_option_manager_set_val(opt, (size_t)idx, v, true);
             return;
@@ -821,48 +855,48 @@ static void ricotta_core_opt_apply(const char *key, const char *value)
    }
 }
 
-/* Same eight-element layout nativeRaGetSetting returns, so one decoder serves both. A core option
- * is always a labelled value list, which is the ENUM case. */
+/* A core option is always a labelled value list, which is the ENUM case. Its machine values and its
+ * display labels are separate lists and must stay that way: the labels are translated, and only the
+ * machine value is what the core and the .opt file understand. */
 static jobjectArray ricotta_core_opt_describe(JNIEnv *env, const char *key)
 {
    size_t v;
-   char opts_buf[1024];
+   size_t n = 0;
+   ricotta_field fields[8 + RICOTTA_MAX_OPTS * 2];
+   char opt_names[RICOTTA_MAX_OPTS * 2][20];
    jobjectArray out;
-   jclass str_cls;
    core_option_manager_t *opt = ricotta_core_options();
    long idx = ricotta_core_opt_index(key);
    struct core_option *o;
+   const char *raw;
 
    if (!opt || idx < 0)
       return NULL;
 
-   o           = &opt->opts[idx];
-   opts_buf[0] = '\0';
-   if (o->val_labels)
+   o   = &opt->opts[idx];
+   raw = ricotta_core_opt_value(key);
+
+   fields[n].name = "key";     fields[n++].value = key;
+   fields[n].name = "label";   fields[n++].value = core_option_manager_get_desc(opt, (size_t)idx, true);
+   fields[n].name = "type";    fields[n++].value = "ENUM";
+   fields[n].name = "machine"; fields[n++].value = raw ? raw : "";
+   fields[n].name = "display"; fields[n++].value = core_option_manager_get_val_label(opt, (size_t)idx);
+
+   if (o->vals)
    {
-      for (v = 0; v < o->val_labels->size; v++)
+      for (v = 0; v < o->vals->size && v < RICOTTA_MAX_OPTS; v++)
       {
-         if (v)
-            strlcat(opts_buf, "|", sizeof(opts_buf));
-         strlcat(opts_buf, o->val_labels->elems[v].data, sizeof(opts_buf));
+         const char *label = (o->val_labels && v < o->val_labels->size)
+            ? o->val_labels->elems[v].data
+            : o->vals->elems[v].data;
+         snprintf(opt_names[v * 2],     sizeof(opt_names[0]), "opt%zu.machine", v);
+         snprintf(opt_names[v * 2 + 1], sizeof(opt_names[0]), "opt%zu.display", v);
+         fields[n].name = opt_names[v * 2];     fields[n++].value = o->vals->elems[v].data;
+         fields[n].name = opt_names[v * 2 + 1]; fields[n++].value = label;
       }
    }
 
-   str_cls = (*env)->FindClass(env, "java/lang/String");
-   out     = (*env)->NewObjectArray(env, 8, str_cls, NULL);
-   if (!out)
-      return NULL;
-
-   (*env)->SetObjectArrayElement(env, out, 0, (*env)->NewStringUTF(env,
-         core_option_manager_get_desc(opt, (size_t)idx, true)));
-   (*env)->SetObjectArrayElement(env, out, 1, (*env)->NewStringUTF(env, "ENUM"));
-   (*env)->SetObjectArrayElement(env, out, 2, (*env)->NewStringUTF(env,
-         core_option_manager_get_val_label(opt, (size_t)idx)));
-   (*env)->SetObjectArrayElement(env, out, 3, (*env)->NewStringUTF(env, ""));
-   (*env)->SetObjectArrayElement(env, out, 4, (*env)->NewStringUTF(env, ""));
-   (*env)->SetObjectArrayElement(env, out, 5, (*env)->NewStringUTF(env, ""));
-   (*env)->SetObjectArrayElement(env, out, 6, (*env)->NewStringUTF(env, opts_buf));
-   (*env)->SetObjectArrayElement(env, out, 7, (*env)->NewStringUTF(env, "0"));
+   out = ricotta_fields_to_array(env, fields, n);
    return out;
 }
 
@@ -937,39 +971,15 @@ static void ricotta_ra_apply(const char *key, const char *value)
       return;
    if (ricotta_ra_is_combobox(s))
    {
-      float step    = s->step > 0.0f ? s->step : 1.0f;
-      long  orig    = ricotta_ra_get_int(s);
-      int   matched = 0;
-      char  lbl[256];
-      float i;
-      for (i = s->min; i <= s->max; i += step)
-      {
-         ricotta_ra_set_int(s, (long)i);
-         s->actions->repr(s, lbl, sizeof(lbl));
-         if (!strcmp(lbl, value))
-         {
-            matched = 1;
-            break;
-         }
-      }
-      if (!matched)
-      {
-         /* The Everything menu cycles by label, which the loop above handles. Curated rows write
-          * the raw index instead, because a label is translated and can repeat. Accept both, or a
-          * curated write is silently dropped and the override then persists the unchanged value. */
-         char *end = NULL;
-         long  n;
-         ricotta_ra_set_int(s, orig);
-         n = strtol(value, &end, 10);
-         if (end && end != value && *end == '\0'
-               && n >= (long)s->min && n <= (long)s->max)
-         {
-            ricotta_ra_set_int(s, n);
-            matched = 1;
-         }
-      }
-      if (!matched)
+      /* A combobox is a numeric setting rendered with labels, so a write is the number. Labels are
+       * translated and can repeat, and matching one meant setting the live value once per candidate
+       * while searching. */
+      char *end = NULL;
+      long  n   = strtol(value, &end, 10);
+      if (!end || end == value || *end != '\0'
+            || n < (long)s->min || n > (long)s->max)
          return;
+      ricotta_ra_set_int(s, n);
    }
    else
    {
@@ -1680,18 +1690,27 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeRaGetSetting(
       JNIEnv *env, jobject obj, jstring jkey)
 {
    const char *key;
+   char key_buf[256];
    rarch_setting_t *s;
    const char *type_str;
    char value_buf[512];
    char raw_buf[512];
    char min_buf[32], max_buf[32], step_buf[32];
-   char opts_buf[1024];
+   char opt_machine[RICOTTA_MAX_OPTS][32];
+   char opt_display[RICOTTA_MAX_OPTS][128];
+   char opt_names[RICOTTA_MAX_OPTS * 2][20];
+   ricotta_field fields[10 + RICOTTA_MAX_OPTS * 2];
+   unsigned opt_count;
+   unsigned opt_i;
+   size_t n = 0;
    jobjectArray out;
-   jclass str_cls;
 
    (void)obj;
 
    key = (*env)->GetStringUTFChars(env, jkey, NULL);
+   /* Copied because the fields below reference it and the JNI string is released before they are
+    * built. */
+   strlcpy(key_buf, key ? key : "", sizeof(key_buf));
 
    if (key && !strncmp(key, RICOTTA_CORE_OPT_PREFIX, strlen(RICOTTA_CORE_OPT_PREFIX)))
    {
@@ -1737,27 +1756,40 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeRaGetSetting(
       }
    }
 
-   opts_buf[0] = '\0';
+   opt_count = 0;
    if (ricotta_ra_is_combobox(s))
    {
-      float step  = s->step > 0.0f ? s->step : 1.0f;
-      long  orig  = ricotta_ra_get_int(s);
-      int   first = 1;
-      char  lbl[256];
+      float step = s->step > 0.0f ? s->step : 1.0f;
+      long  orig = ricotta_ra_get_int(s);
       float i;
-      for (i = s->min; i <= s->max; i += step)
+      for (i = s->min; i <= s->max && opt_count < RICOTTA_MAX_OPTS; i += step)
       {
          ricotta_ra_set_int(s, (long)i);
-         s->actions->repr(s, lbl, sizeof(lbl));
-         if (!first)
-            strlcat(opts_buf, "|", sizeof(opts_buf));
-         strlcat(opts_buf, lbl, sizeof(opts_buf));
-         first = 0;
+         snprintf(opt_machine[opt_count], sizeof(opt_machine[0]), "%ld", (long)i);
+         s->actions->repr(s, opt_display[opt_count], sizeof(opt_display[0]));
+         opt_count++;
       }
       ricotta_ra_set_int(s, orig);
    }
    else if (s->type == ST_STRING_OPTIONS && s->values)
-      strlcpy(opts_buf, s->values, sizeof(opts_buf));
+   {
+      /* A pipe separated list of machine values, with no separate labels to show. */
+      const char *p = s->values;
+      while (*p && opt_count < RICOTTA_MAX_OPTS)
+      {
+         const char *end = strchr(p, '|');
+         size_t len = end ? (size_t)(end - p) : strlen(p);
+         if (len >= sizeof(opt_machine[0]))
+            len = sizeof(opt_machine[0]) - 1;
+         memcpy(opt_machine[opt_count], p, len);
+         opt_machine[opt_count][len] = '\0';
+         strlcpy(opt_display[opt_count], opt_machine[opt_count], sizeof(opt_display[0]));
+         opt_count++;
+         if (!end)
+            break;
+         p = end + 1;
+      }
+   }
 
    if (!ricotta_ra_format_value(s, value_buf, sizeof(value_buf)))
       return NULL;
@@ -1771,27 +1803,28 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeRaGetSetting(
    if (s->step > 0.0f)
       snprintf(step_buf, sizeof(step_buf), "%g", s->step);
 
-   str_cls = (*env)->FindClass(env, "java/lang/String");
-   out     = (*env)->NewObjectArray(env, 10, str_cls, NULL);
-   if (!out)
-      return NULL;
-
-   (*env)->SetObjectArrayElement(env, out, 0,
-         (*env)->NewStringUTF(env, s->short_description ? s->short_description : s->name));
-   (*env)->SetObjectArrayElement(env, out, 1, (*env)->NewStringUTF(env, type_str));
-   (*env)->SetObjectArrayElement(env, out, 2, (*env)->NewStringUTF(env, value_buf));
-   (*env)->SetObjectArrayElement(env, out, 3, (*env)->NewStringUTF(env, min_buf));
-   (*env)->SetObjectArrayElement(env, out, 4, (*env)->NewStringUTF(env, max_buf));
-   (*env)->SetObjectArrayElement(env, out, 5, (*env)->NewStringUTF(env, step_buf));
-   (*env)->SetObjectArrayElement(env, out, 6, (*env)->NewStringUTF(env, opts_buf));
-   (*env)->SetObjectArrayElement(env, out, 7,
-         (*env)->NewStringUTF(env,
-               ((s->flags & SD_FLAG_IS_DRIVER)
-                || s->cmd_trigger_idx == CMD_EVENT_REINIT
-                || s->cmd_trigger_idx == CMD_EVENT_REINIT_FROM_TOGGLE) ? "1" : "0"));
    if (!ricotta_ra_format_raw_value(s, raw_buf, sizeof(raw_buf)))
       raw_buf[0] = '\0';
-   (*env)->SetObjectArrayElement(env, out, 8, (*env)->NewStringUTF(env, raw_buf));
+
+   fields[n].name = "key";     fields[n++].value = key_buf;
+   fields[n].name = "label";   fields[n++].value = s->short_description ? s->short_description : s->name;
+   fields[n].name = "type";    fields[n++].value = type_str;
+   fields[n].name = "machine"; fields[n++].value = raw_buf;
+   fields[n].name = "display"; fields[n++].value = value_buf;
+   fields[n].name = "min";     fields[n++].value = min_buf;
+   fields[n].name = "max";     fields[n++].value = max_buf;
+   fields[n].name = "step";    fields[n++].value = step_buf;
+   fields[n].name = "restart"; fields[n++].value =
+         ((s->flags & SD_FLAG_IS_DRIVER)
+          || s->cmd_trigger_idx == CMD_EVENT_REINIT
+          || s->cmd_trigger_idx == CMD_EVENT_REINIT_FROM_TOGGLE) ? "1" : "0";
+   for (opt_i = 0; opt_i < opt_count; opt_i++)
+   {
+      snprintf(opt_names[opt_i * 2],     sizeof(opt_names[0]), "opt%u.machine", opt_i);
+      snprintf(opt_names[opt_i * 2 + 1], sizeof(opt_names[0]), "opt%u.display", opt_i);
+      fields[n].name = opt_names[opt_i * 2];     fields[n++].value = opt_machine[opt_i];
+      fields[n].name = opt_names[opt_i * 2 + 1]; fields[n++].value = opt_display[opt_i];
+   }
 
    /* RetroArch's own description. MENU_LABEL() declares LABEL, SUBLABEL and LABEL_VALUE
     * consecutively and enum_idx is the LABEL, so the sublabel sits at enum_idx + 1. Two guards:
@@ -1804,9 +1837,10 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeRaGetSetting(
          sub = msg_hash_to_str((enum msg_hash_enums)(s->enum_idx + 1));
       if (sub && !strcmp(sub, "null"))
          sub = NULL;
-      (*env)->SetObjectArrayElement(env, out, 9,
-            (*env)->NewStringUTF(env, sub ? sub : ""));
+      fields[n].name = "desc"; fields[n++].value = sub ? sub : "";
    }
+
+   out = ricotta_fields_to_array(env, fields, n);
    return out;
 }
 

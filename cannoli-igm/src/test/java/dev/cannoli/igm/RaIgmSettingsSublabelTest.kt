@@ -9,7 +9,7 @@ private class SublabelHost : RaSettingsHost {
     val screens = mutableMapOf<String, List<RaScreenRow>>()
     override fun raScreenRows(label: String): List<RaScreenRow> = screens[label].orEmpty()
     override fun raGetSetting(key: String): RaSetting? = settings[key]
-    override fun raSetSetting(key: String, value: String) = true
+    override fun raSetSetting(key: String, value: MachineValue) = true
     override fun raSaveOverride(scope: RaOverrideScope, keys: Set<String>) {}
     override fun setOnRaSettingApplied(callback: (String, String) -> Unit) {}
 }
@@ -32,7 +32,7 @@ class RaIgmSettingsSublabelTest {
     fun `a row carries the description the host reports`() {
         val h = SublabelHost()
         h.settings["video_smooth"] = RaSetting(
-            "video_smooth", "Bilinear Filtering", RaSettingType.BOOL, "false",
+            "video_smooth", "Bilinear Filtering", RaSettingType.BOOL, MachineValue("false"), "false",
             description = "Add a slight blur to the image to soften hard pixel edges.",
         )
         assertEquals(
@@ -46,7 +46,7 @@ class RaIgmSettingsSublabelTest {
     fun `a row without one carries null rather than an empty string`() {
         val h = SublabelHost()
         h.settings["video_smooth"] =
-            RaSetting("video_smooth", "Bilinear Filtering", RaSettingType.BOOL, "false")
+            RaSetting("video_smooth", "Bilinear Filtering", RaSettingType.BOOL, MachineValue("false"), "false")
         assertNull(scalingRow(h, "video_smooth").description)
     }
 
@@ -54,7 +54,7 @@ class RaIgmSettingsSublabelTest {
     fun `a description survives on a nested screen as well as a top-level one`() {
         val h = SublabelHost()
         h.settings["fps_show"] = RaSetting(
-            "fps_show", "Display Framerate", RaSettingType.BOOL, "false",
+            "fps_show", "Display Framerate", RaSettingType.BOOL, MachineValue("false"), "false",
             description = "Shows the current frames per second.",
         )
         val row = scalingRow(h, "fps_show")

@@ -15,6 +15,8 @@ import java.io.File
 import dev.cannoli.igm.AchievementInfo
 import dev.cannoli.igm.RetroArchBridge
 import dev.cannoli.igm.RaOverrideScope
+import dev.cannoli.igm.MachineValue
+import dev.cannoli.igm.RaOption
 import dev.cannoli.igm.RaSetting
 import dev.cannoli.igm.RaSettingType
 import dev.cannoli.igm.RaScreenRow
@@ -114,7 +116,7 @@ class EmbeddedRetroArchBridge(
     fun unpause() = nativeUnpause()
 
     override val savesOnQuit: Boolean
-        get() = raGetSetting("savestate_auto_save")?.value == "true"
+        get() = raGetSetting("savestate_auto_save")?.machineValue?.raw == "true"
 
     // Carried from the launcher's authoritative effective-hardcore decision across the launch
     // parcel, not read from the live cheevos settings. A stale per-game RetroArch override can layer
@@ -246,7 +248,7 @@ class EmbeddedRetroArchBridge(
         // the loaded preset in a runtime path and finds it again by looking for an auto-shader named
         // after the content, so a chosen preset has nowhere in its config to live. Cannoli stores
         // the path in its own tier instead, the way it already does for a bezel.
-        raSetSetting(SHADER_ENABLE_KEY, "true")
+        raSetSetting(SHADER_ENABLE_KEY, MachineValue("true"))
         appliedShader = preset
         return setOf(KEY_SHADER, SHADER_ENABLE_KEY)
     }
@@ -285,7 +287,7 @@ class EmbeddedRetroArchBridge(
 
     // What RetroArch is running right now, not what a config asked for: a hardware-rendered core
     // overrides the driver at load, and a preset the running driver cannot parse simply fails.
-    private fun videoDriver(): String = raGetSetting("video_driver")?.value.orEmpty()
+    private fun videoDriver(): String = raGetSetting("video_driver")?.machineValue?.raw.orEmpty()
 
     private var overlayNames: List<String>? = null
 
@@ -306,34 +308,48 @@ class EmbeddedRetroArchBridge(
     }
 
     override fun raGetSetting(key: String): RaSetting? {
-        val arr = nativeRaGetSetting(key) ?: return null
-        if (arr.size < 8) return null
-        val type = when (arr[1]) {
+        val fields = nativeRaGetSetting(key)?.asFields() ?: return null
+        val machine = fields["machine"] ?: return null
+        val type = when (fields["type"]) {
             "BOOL" -> RaSettingType.BOOL
             "INT" -> RaSettingType.INT
             "FLOAT" -> RaSettingType.FLOAT
             "ENUM" -> RaSettingType.ENUM
-            else -> RaSettingType.STRING_RO
+            "STRING_RO" -> RaSettingType.STRING_RO
+            else -> return null
         }
         return RaSetting(
             key = key,
-            label = arr[0],
+            label = fields["label"].orEmpty(),
             type = type,
-            value = arr[2],
-            min = arr[3].toFloatOrNull(),
-            max = arr[4].toFloatOrNull(),
-            step = arr[5].toFloatOrNull(),
-            options = arr[6].takeIf { it.isNotEmpty() }?.split("|"),
-            requiresRestart = arr[7] == "1",
-            // Core options come back from the same call with eight elements and no raw value.
-            rawValue = arr.getOrNull(8)?.takeIf { it.isNotEmpty() },
-            description = arr.getOrNull(9)?.takeIf { it.isNotEmpty() },
+            machineValue = MachineValue(machine),
+            displayValue = fields["display"] ?: machine,
+            min = fields["min"]?.toFloatOrNull(),
+            max = fields["max"]?.toFloatOrNull(),
+            step = fields["step"]?.toFloatOrNull(),
+            options = fields.options(),
+            requiresRestart = fields["restart"] == "1",
+            description = fields["desc"]?.takeIf { it.isNotEmpty() },
         )
+    }
+
+    /** Alternating name and value, so a field can be added without shifting another. */
+    private fun Array<String>.asFields(): Map<String, String> =
+        toList().chunked(2).filter { it.size == 2 }.associate { it[0] to it[1] }
+
+    private fun Map<String, String>.options(): List<RaOption>? {
+        val found = generateSequence(0) { it + 1 }
+            .map { this["opt$it.machine"] to this["opt$it.display"] }
+            .takeWhile { (machine, _) -> machine != null }
+            .map { (machine, display) -> RaOption(MachineValue(machine!!), display ?: machine) }
+            .toList()
+        return found.takeIf { it.isNotEmpty() }
     }
 
     // False means the key resolves to nothing, so the write was never queued. The apply itself is
     // asynchronous and its outcome arrives later through the applied echo.
-    override fun raSetSetting(key: String, value: String): Boolean = nativeRaSetSetting(key, value)
+    override fun raSetSetting(key: String, value: MachineValue): Boolean =
+        nativeRaSetSetting(key, value.raw)
 
     override fun coreGeometry(): IntArray? = nativeCoreGeometry()
 
@@ -713,6 +729,9 @@ class EmbeddedRetroArchBridge(
          * Not a RetroArch setting, so its native writer skips it. Staging it is purely what marks
          * the settings tree dirty, so the save prompt appears and offers platform or game.
          */
+        /** Mirrors RICOTTA_RA_SETTING_FIELDS. Both describers allocate this many. */
+        private const val RA_SETTING_FIELDS = 10
+
         const val KEY_OVERLAY = "cannoli_overlay"
 
         /**

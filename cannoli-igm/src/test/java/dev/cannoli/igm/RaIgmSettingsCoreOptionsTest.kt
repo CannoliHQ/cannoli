@@ -18,13 +18,14 @@ private class CoreOptionHost(private val keys: List<String>) : RaSettingsHost {
             key = key,
             label = key.removePrefix(PREFIX).replace('_', ' '),
             type = RaSettingType.ENUM,
-            value = "disabled",
-            options = listOf("disabled", "enabled"),
+            machineValue = MachineValue("disabled"),
+            displayValue = "Disabled",
+            options = listOf(RaOption(MachineValue("disabled"), "disabled"), RaOption(MachineValue("enabled"), "enabled")),
         )
     }
 
-    override fun raSetSetting(key: String, value: String): Boolean {
-        written += key to value
+    override fun raSetSetting(key: String, value: MachineValue): Boolean {
+        written += key to value.raw
         return true
     }
 
@@ -75,10 +76,11 @@ private class CategorisedHost(private val refs: List<CoreOptionRef>) : RaSetting
         key = key,
         label = "${key.removePrefix(PREFIX)} (Restart)",
         type = RaSettingType.ENUM,
-        value = "a",
-        options = listOf("a", "b"),
+        machineValue = MachineValue("a"),
+        displayValue = "A",
+        options = listOf(RaOption(MachineValue("a"), "a"), RaOption(MachineValue("b"), "b")),
     )
-    override fun raSetSetting(key: String, value: String) = true
+    override fun raSetSetting(key: String, value: MachineValue) = true
     override fun raSaveOverride(scope: RaOverrideScope, keys: Set<String>) {}
     override fun setOnRaSettingApplied(callback: (String, String) -> Unit) {}
 }

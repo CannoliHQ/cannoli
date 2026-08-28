@@ -80,6 +80,29 @@ private class NestedProvider : IgmSettingsProvider {
     override fun setOnChanged(callback: () -> Unit) {}
 }
 
+/**
+ * A setting that reveals a row directly beneath it, which is how RetroArch orders a gated setting:
+ * black frame insertion and its dark-frame count, sub frame shaders and its scan count.
+ */
+private class GatedProvider : IgmSettingsProvider {
+    var gateOpen = false
+    override fun screen(path: List<String>): GenericIgmSettingsScreen = GenericIgmSettingsScreen(
+        "Sync",
+        buildList {
+            add(GenericIgmSettingsItem.Choice("video_vsync", "VSync", "On"))
+            add(GenericIgmSettingsItem.Choice("video_black_frame_insertion", "BFI", if (gateOpen) "1" else "0"))
+            if (gateOpen) add(GenericIgmSettingsItem.Choice("video_bfi_dark_frames", "Dark Frames", "1"))
+            add(GenericIgmSettingsItem.Choice("vrr_runloop_enable", "Sync to Exact Content", "Off"))
+        },
+    )
+    override fun cycle(itemKey: String, direction: Int) {
+        if (itemKey == "video_black_frame_insertion") gateOpen = !gateOpen
+    }
+    override fun activate(itemKey: String): IgmSettingsExit.Prompt? = null
+    override fun exitPrompt(): IgmSettingsExit = IgmSettingsExit.Close
+    override fun setOnChanged(callback: () -> Unit) {}
+}
+
 private class ShrinkProvider : IgmSettingsProvider {
     var shrunk = false
     override fun screen(path: List<String>): GenericIgmSettingsScreen =
@@ -258,5 +281,63 @@ class ProviderSettingsControllerTest {
             "aspect_ratio_index",
             state.items[state.selectedIndex].key,
         )
+    }
+
+    private fun selected(state: ProviderSettingsController.State) =
+        (state as ProviderSettingsController.State.Menu).let { it.items[it.selectedIndex].key }
+
+    /**
+     * The row list is RetroArch's and changes when its values change, so an index alone names a
+     * different setting the moment a row appears above the highlight.
+     */
+    @Test fun `a row appearing above the selection does not move it`() {
+        val p = GatedProvider()
+        val c = ProviderSettingsController(p)
+        c.enter()
+        c.onNav(ProviderSettingsController.Nav.DOWN)
+        c.onNav(ProviderSettingsController.Nav.DOWN)
+        assertEquals("vrr_runloop_enable", selected(c.state()))
+
+        p.gateOpen = true
+
+        assertEquals("vrr_runloop_enable", selected(c.state()))
+    }
+
+    // The row that governs it is the way to bring it back, and RetroArch lists it directly above.
+    @Test fun `a vanishing row hands the selection to the setting that governs it`() {
+        val p = GatedProvider().apply { gateOpen = true }
+        val c = ProviderSettingsController(p)
+        c.enter()
+        c.onNav(ProviderSettingsController.Nav.DOWN)
+        c.onNav(ProviderSettingsController.Nav.DOWN)
+        assertEquals("video_bfi_dark_frames", selected(c.state()))
+
+        p.gateOpen = false
+
+        assertEquals("video_black_frame_insertion", selected(c.state()))
+    }
+
+    @Test fun `cycling a gate keeps the highlight on the gate`() {
+        val c = ProviderSettingsController(GatedProvider())
+        c.enter()
+        c.onNav(ProviderSettingsController.Nav.DOWN)
+        assertEquals("video_black_frame_insertion", selected(c.state()))
+
+        c.onNav(ProviderSettingsController.Nav.RIGHT)
+
+        assertEquals("video_black_frame_insertion", selected(c.state()))
+    }
+
+    // Nothing to follow and nothing above it either, so position is all that is left.
+    @Test fun `a list that loses everything below still lands somewhere valid`() {
+        val p = ShrinkProvider()
+        val c = ProviderSettingsController(p)
+        c.enter()
+        c.onNav(ProviderSettingsController.Nav.DOWN)
+        c.onNav(ProviderSettingsController.Nav.DOWN)
+
+        p.shrunk = true
+
+        assertEquals("a", selected(c.state()))
     }
 }

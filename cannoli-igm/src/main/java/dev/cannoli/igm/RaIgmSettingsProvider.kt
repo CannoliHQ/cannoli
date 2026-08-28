@@ -108,7 +108,8 @@ class RaIgmSettingsProvider(
     // so cycling a row four times still restores what it held on the way in. Only user edits are
     // recorded: adoptFirstPresetIfUnmatched normalises on load and never dirties, so the value it
     // replaces is not something Discard should bring back.
-    private val priorValues = mutableMapOf<String, String>()
+    /** What Discard puts back, so it is the machine value and cannot be anything else. */
+    private val priorValues = mutableMapOf<String, MachineValue>()
 
     // The settings of the category currently being shown, cached so cycle() has the
     // rich RaSetting (type/min/max/options) the generic Choice row does not carry.
@@ -120,7 +121,9 @@ class RaIgmSettingsProvider(
     private val pending = mutableMapOf<String, Int>()
 
     init {
-        host.setOnRaSettingApplied { key, value -> onApplied(key, value) }
+        // The payload is dropped here: it is RetroArch's display text, so it can say a setting
+        // changed but never what it changed to.
+        host.setOnRaSettingApplied { key, _ -> onApplied(key) }
     }
 
     override fun setOnChanged(callback: () -> Unit) { onChanged = callback }
@@ -175,7 +178,7 @@ class RaIgmSettingsProvider(
         curatedValues = rows
             .flatMap { it.settingKeys }
             .distinct()
-            .mapNotNull { key -> (shadow[key] ?: host.raGetSetting(key)?.rawValue)?.let { key to it } }
+            .mapNotNull { key -> (shadow[key] ?: host.raGetSetting(key)?.machineValue?.raw)?.let { key to it } }
             .toMap(mutableMapOf())
         for (row in rows) adoptFirstPresetIfUnmatched(row)
     }
@@ -189,7 +192,7 @@ class RaIgmSettingsProvider(
         if (CuratedCatalog.resolve(row, valuesFor(row)) != null) return
         for ((key, value) in row.presets.first().values) {
             if (!curatedValues.containsKey(key)) continue
-            if (!host.raSetSetting(key, value)) continue
+            if (!host.raSetSetting(key, MachineValue(value))) continue
             curatedValues[key] = value
             pending[key] = (pending[key] ?: 0) + 1
         }
@@ -497,7 +500,7 @@ class RaIgmSettingsProvider(
         for ((key, value) in preset.values) {
             if (!curatedValues.containsKey(key)) continue
             snapshot(key)
-            if (!host.raSetSetting(key, value)) continue
+            if (!host.raSetSetting(key, MachineValue(value))) continue
             curatedValues[key] = value
             changedKeys.add(key)
             pending[key] = (pending[key] ?: 0) + 1
@@ -620,9 +623,9 @@ class RaIgmSettingsProvider(
         key = s.key,
         label = s.label,
         value = when {
-            s.type == RaSettingType.BOOL && s.value == "true" -> strings.on
+            s.type == RaSettingType.BOOL && s.machineValue.raw == "true" -> strings.on
             s.type == RaSettingType.BOOL -> strings.off
-            else -> s.value
+            else -> s.displayValue
         },
         hint = if (s.requiresRestart) strings.restartHint else null,
         description = s.description,
@@ -637,13 +640,19 @@ class RaIgmSettingsProvider(
         if (i < 0) return
         val s = currentSettings[i]
         val newValue = RaValueCycler.next(s, direction) ?: return
-        if (newValue == s.value) return
+        if (newValue == s.machineValue) return
         snapshot(s.key)
         if (host.raSetSetting(s.key, newValue)) {
             dirty = true
             changedKeys.add(s.key)
             pending[s.key] = (pending[s.key] ?: 0) + 1
-            replaceSetting(i, s.copy(value = newValue))
+            // The display text for the new value is RetroArch's to produce, so the row shows the
+            // machine value until the applied echo brings it back.
+            replaceSetting(i, s.copy(
+                machineValue = newValue,
+                displayValue = s.options?.firstOrNull { it.machine == newValue }?.display
+                    ?: newValue.raw,
+            ))
         }
     }
 
@@ -652,34 +661,26 @@ class RaIgmSettingsProvider(
         onChanged?.invoke()
     }
 
-    private fun onApplied(key: String, value: String) {
+    private fun onApplied(key: String) {
         val remaining = (pending[key] ?: 0) - 1
         if (remaining > 0) {
             pending[key] = remaining
             return
         }
         pending.remove(key)
-        // A curated row caches raw values, so an echo has to land there too or the row keeps showing
-        // what it last wrote. The echo's payload is the DISPLAY value though, which for a combobox
-        // is translated label text, so it is treated as a signal that something changed and the raw
-        // value is read back rather than trusted. Storing the payload here poisoned the cache and
-        // made every keypress resolve to Custom.
+        val fresh = host.raGetSetting(key)
         if (curated && curatedValues.containsKey(key)) {
-            val raw = host.raGetSetting(key)?.rawValue ?: return
-            if (curatedValues[key] != raw) {
-                curatedValues[key] = raw
-                onChanged?.invoke()
-            }
+            curatedValues[key] = fresh?.machineValue?.raw ?: return
+            onChanged?.invoke()
             return
         }
         val i = currentSettings.indexOfFirst { it.key == key }
-        if (i >= 0 && currentSettings[i].value != value) {
-            replaceSetting(i, currentSettings[i].copy(value = value))
+        if (i >= 0 && fresh != null && currentSettings[i] != fresh) {
+            replaceSetting(i, fresh)
             return
         }
-        // The value is what cycling already predicted, but RetroArch decides which rows exist from
-        // it, and that list is only re-read on a render. Without this the row a setting reveals
-        // arrives one keypress late.
+        // RetroArch decides which rows exist from the value, and that list is only re-read on a
+        // render, so a row a setting reveals would otherwise arrive one keypress late.
         onChanged?.invoke()
     }
 
@@ -849,15 +850,15 @@ class RaIgmSettingsProvider(
 
     private fun snapshot(key: String) {
         if (priorValues.containsKey(key)) return
-        val before = if (curated && curatedValues.containsKey(key)) curatedValues[key]
-        else host.raGetSetting(key)?.rawValue
+        val before = if (curated && curatedValues.containsKey(key)) curatedValues[key]?.let(::MachineValue)
+        else host.raGetSetting(key)?.machineValue
         before?.let { priorValues[key] = it }
     }
 
     private fun restorePriorValues() {
         for ((key, value) in priorValues) {
             host.raSetSetting(key, value)
-            if (curatedValues.containsKey(key)) curatedValues[key] = value
+            if (curatedValues.containsKey(key)) curatedValues[key] = value.raw
         }
         onChanged?.invoke()
     }

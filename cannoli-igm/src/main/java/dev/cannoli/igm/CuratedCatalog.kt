@@ -3,7 +3,7 @@ package dev.cannoli.igm
 // The curated in-game settings: task-shaped rows rather than key-shaped ones, so "Screen Scaling"
 // is one choice instead of three RetroArch settings the player has to combine correctly.
 //
-// Values here are RetroArch's MACHINE values, matched against RaSetting.rawValue, never against
+// Values here are RetroArch's MACHINE values, matched against RaSetting.machineValue, never against
 // RaSetting.value. A combobox like aspect_ratio_index reports "Core Provided" in value, which is
 // translated and therefore not something to compare.
 //
