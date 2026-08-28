@@ -52,6 +52,8 @@ fun IGMSettingsScreen(
     bottomBarLeft: kotlin.collections.List<Pair<String, String>>,
     bottomBarRight: kotlin.collections.List<Pair<String, String>>,
     coreInfo: String = "",
+    /** Marks the row that is picked up, so it is obvious which one Up and Down are moving. */
+    reorderingIndex: Int? = null,
     description: String? = null,
     descriptionScroll: Int = 0,
     fontSize: TextUnit = 22.sp,
@@ -141,7 +143,8 @@ fun IGMSettingsScreen(
                                 isSelected = isSelected,
                                 fontSize = fontSize,
                                 lineHeight = lineHeight,
-                                verticalPadding = verticalPadding
+                                verticalPadding = verticalPadding,
+                                showReorderIcon = reorderingIndex != null && isSelected,
                             )
                         }
                     }

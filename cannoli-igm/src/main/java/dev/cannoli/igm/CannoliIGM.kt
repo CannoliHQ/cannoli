@@ -48,6 +48,8 @@ import dev.cannoli.ui.DPAD_HORIZONTAL
 import dev.cannoli.ui.DPAD_VERTICAL
 import dev.cannoli.ui.HALF_CIRCLE
 import dev.cannoli.ui.components.BottomBar
+import dev.cannoli.ui.components.KeyboardHelpOverlay
+import dev.cannoli.ui.components.KeyboardOverlay
 import dev.cannoli.ui.components.LocalStatusBarLeftEdge
 import dev.cannoli.ui.components.ScreenBackground
 import dev.cannoli.ui.components.ScreenTitle
@@ -82,7 +84,9 @@ fun CannoliIGM(
     previewItems: List<String> = emptyList(),
     previewCanRestore: Boolean = false,
     settingsCanRestore: Boolean = false,
-    livePreview: Boolean = false,
+    settingsCanReorder: Boolean = false,
+    settingsCanRemovePass: Boolean = false,
+    settingsReordering: Boolean = false,
     overlayImage: String? = null,
     cheatItems: List<IGMController.CheatItem>,
     cheatVisibleItems: List<IGMController.CheatItem>,
@@ -219,6 +223,24 @@ fun CannoliIGM(
                         }
                     }
                 }
+                // The launcher's keyboard, unchanged: naming a preset here and naming a folder
+                // there are the same act, and it brings its own legend and help with it.
+                is IGMScreen.ShaderSaveName -> {
+                    if (screen.help) {
+                        KeyboardHelpOverlay(
+                            layout = screen.keyboard.layout,
+                            titleFontSize = igmFontSize,
+                            titleLineHeight = igmLineHeight,
+                            buttonStyle = labels,
+                        )
+                    } else {
+                        KeyboardOverlay(
+                            state = screen.keyboard,
+                            title = stringResource(dev.cannoli.ui.R.string.igm_shader_save_title),
+                            buttonStyle = labels,
+                        )
+                    }
+                }
                 is IGMScreen.PreviewPicker -> {
                     LivePreviewPicker(
                         title = previewTitle,
@@ -242,9 +264,9 @@ fun CannoliIGM(
                     val hasDescription =
                         settingsItems.getOrNull(screen.selectedIndex)?.description != null
                     val bottomBarRight = when {
+                        settingsReordering ->
+                            listOf(labels.confirm to stringResource(dev.cannoli.ui.R.string.label_done))
                         description != null -> emptyList()
-                        // Seeing the picture is the point of this screen, and the menu has the game
-                        // paused, so the way to unpause it belongs in the legend rather than hidden.
                         inShaderTree -> buildList {
                             // Offered only while this game overrides its platform, which is what
                             // makes the legend also the answer to where the shader came from.
@@ -252,11 +274,11 @@ fun CannoliIGM(
                                 labels.west to
                                     stringResource(dev.cannoli.ui.R.string.label_use_platform)
                             )
-                            add(
-                                labels.north to stringResource(
-                                    if (livePreview) dev.cannoli.ui.R.string.label_pause
-                                    else dev.cannoli.ui.R.string.label_play
-                                )
+                            // Only on a row that is a pass, so the button cannot take away
+                            // something the screen never offered.
+                            if (settingsCanRemovePass) add(
+                                labels.north to
+                                    stringResource(dev.cannoli.ui.R.string.label_remove_pass)
                             )
                         }
                         hasDescription -> listOf(
@@ -270,7 +292,16 @@ fun CannoliIGM(
                         else -> stringResource(dev.cannoli.ui.R.string.igm_save_changes)
                     }
                     val bottomBarLeft = buildList {
+                        if (settingsReordering) {
+                            add(DPAD_VERTICAL to stringResource(dev.cannoli.ui.R.string.label_move))
+                            return@buildList
+                        }
                         add(labels.back to stringResource(dev.cannoli.ui.R.string.label_back))
+                        // Only where a row can actually be picked up, so the offer is also the
+                        // answer to which rows have a position that matters.
+                        if (settingsCanReorder) {
+                            add(dev.cannoli.ui.SELECT_GLYPH to stringResource(dev.cannoli.ui.R.string.label_reorder))
+                        }
                         // The description covers the list, so nothing below it can be cycled. Up
                         // and Down scroll the text instead.
                         when {
@@ -291,13 +322,9 @@ fun CannoliIGM(
                         else "",
                         description = description,
                         descriptionScroll = descriptionScroll,
+                        reorderingIndex = screen.selectedIndex.takeIf { settingsReordering },
                         fontSize = igmFontSize,
                         lineHeight = igmLineHeight,
-                        // A shader is judged by what it does to the picture, so its list steps aside
-                        // and barely dims: the game has to be visible for choosing one to mean
-                        // anything. Every other settings screen still covers the frame.
-                        dimAlpha = if (inShaderTree) 0.35f else 0.85f,
-                        widthFraction = if (inShaderTree) 0.5f else 1f,
                     )
                 }
                 is IGMScreen.GuidePicker -> {

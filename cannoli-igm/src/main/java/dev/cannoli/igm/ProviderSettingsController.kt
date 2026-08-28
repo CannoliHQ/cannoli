@@ -1,6 +1,6 @@
 package dev.cannoli.igm
 
-class ProviderSettingsController(private val provider: IgmSettingsProvider) {
+class ProviderSettingsController(val provider: IgmSettingsProvider) {
 
     enum class Nav { UP, DOWN, LEFT, RIGHT, CONFIRM, BACK, NORTH, WEST }
 
@@ -48,6 +48,42 @@ class ProviderSettingsController(private val provider: IgmSettingsProvider) {
     /** Whether the level on screen has an override to drop, so the legend can offer it. */
     fun canRestoreDefault(): Boolean =
         levels.lastOrNull()?.let { provider.canRestoreDefault(it.path) } ?: false
+
+    /** Whether the highlighted row can be picked up and moved. */
+    fun canReorderSelection(): Boolean =
+        levels.lastOrNull()?.let { provider.canReorder(it.path, it.cursor) } ?: false
+
+    /**
+     * Moves the highlighted row by [delta] and keeps the highlight on it.
+     *
+     * The cursor follows the row rather than the position, which is the whole feel of dragging:
+     * the thing under your thumb is the thing that moves.
+     */
+    fun reorderSelection(delta: Int): State {
+        val level = levels.lastOrNull() ?: return state()
+        level.cursor = provider.reorder(level.path, level.cursor, delta)
+        return state()
+    }
+
+    /** Whether the highlighted row is something the list can take away. */
+    fun canRemoveSelection(): Boolean =
+        levels.lastOrNull()?.let { provider.canRemoveRow(it.path, it.cursor) } ?: false
+
+    /**
+     * Takes the highlighted row out, keeping the cursor in range.
+     *
+     * Removing the last row would otherwise leave the highlight past the end of a shorter list.
+     */
+    fun removeSelection(): State {
+        val level = levels.lastOrNull() ?: return state()
+        provider.removeRow(level.path, level.cursor)
+        val count = provider.screen(level.path).items.size
+        level.cursor = level.cursor.coerceIn(0, (count - 1).coerceAtLeast(0))
+        return state()
+    }
+
+    /** Compiles anything built but not yet compiled. */
+    fun applyPendingChanges() = provider.applyPendingChanges()
 
     fun enter(): State {
         levels.clear()
@@ -128,6 +164,14 @@ class ProviderSettingsController(private val provider: IgmSettingsProvider) {
                         prompt = requested
                         promptCursor = 0
                         return State.Prompt(requested.title, requested.options, 0)
+                    }
+                    provider.returnPathAfter(item.key, level.path)?.let { target ->
+                        // Unwound to the level that asked the question, leaving its cursor where it
+                        // was. Nothing is dropped when the path is not on the stack.
+                        if (levels.any { it.path == target }) {
+                            while (levels.size > 1 && levels.last().path != target) levels.removeLast()
+                            return state()
+                        }
                     }
                     return State.ActionFired
                 }

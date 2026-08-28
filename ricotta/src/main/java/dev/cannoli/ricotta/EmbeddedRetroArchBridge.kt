@@ -5,10 +5,12 @@ import android.os.Looper
 import dev.cannoli.core.StateSlotPaths
 import dev.cannoli.core.config.OverrideTiers
 import dev.cannoli.core.config.RetroArchConfigComposer
+import dev.cannoli.core.config.TierValue
 import dev.cannoli.core.overlay.OverlayCatalog
 import dev.cannoli.core.shader.ShaderCatalog
 import dev.cannoli.core.shader.ShaderEntry
 import dev.cannoli.core.shader.ShaderIndex
+import dev.cannoli.core.shader.ShaderPreset
 import java.io.File
 import dev.cannoli.igm.AchievementInfo
 import dev.cannoli.igm.RetroArchBridge
@@ -252,6 +254,12 @@ class EmbeddedRetroArchBridge(
     private var appliedShader: String? = null
 
     /** Absolute path of the preset in force, so the browser can mark the row that is applied. */
+    /**
+     * Null once the chain stops matching the preset it came from, so the picker marks nothing
+     * rather than a preset that is no longer what is running. Not cleared by compiling: that runs
+     * on the way out of the tree, before the save prompt, and clearing it there threw away the path
+     * a load had recorded and left the save writing an empty value, which means an explicit off.
+     */
     override fun appliedShaderPreset(): String? = appliedShader
 
     private var loadedIndex: ShaderIndex.Index? = null
@@ -267,7 +275,7 @@ class EmbeddedRetroArchBridge(
         return loadedIndex
     }
 
-    fun shaderPresetPath(path: List<String>, name: String): String? {
+    override fun shaderPresetPath(path: List<String>, name: String): String? {
         if (cannoliRoot.isEmpty()) return null
         val root = ShaderCatalog.shadersDir(File(cannoliRoot))
         return ShaderCatalog.presetFile(root, path, name, videoDriver())
@@ -392,13 +400,37 @@ class EmbeddedRetroArchBridge(
         if (mine.isEmpty() && cleared.isEmpty()) return
         if (cannoliRoot.isEmpty()) return
         val target = tierFile(scope) ?: return
+
+        val values = LinkedHashMap<String, TierValue>()
+        for (key in mine) {
+            if (key in cleared) continue
+            when (key) {
+                KEY_OVERLAY -> values[key] =
+                    cannoliOverlayName?.let { TierValue.Set(it) } ?: TierValue.Off
+                KEY_SHADER -> shaderTierValue(scope)?.let { values[key] = it }
+            }
+        }
+        writeTier(target, values)
+
         // Dropping the game's override and saving a value are independent answers to different
         // questions, so both are honoured: asking a game to stop overriding stays true even when
         // the same visit saves what is now showing onto the platform.
-        writeSharedTier(target, mine.filterNot { it in cleared })
-        if (cleared.isNotEmpty()) gameTier()?.let { clearFromTier(it, cleared) }
+        if (cleared.isNotEmpty()) {
+            gameTier()?.let { writeTier(it, cleared.associateWith { TierValue.Inherit }) }
+        }
         cleared.clear()
         onCannoliSaved?.invoke()
+    }
+
+    /** Null leaves the key as it is, for a write that failed and so settled nothing. */
+    private fun shaderTierValue(scope: RaOverrideScope): TierValue? {
+        val chain = pendingChain
+            ?: return appliedShader?.let { TierValue.Set(it) } ?: TierValue.Off
+        if (chain.passes.isEmpty()) {
+            applyShaderChain()
+            return TierValue.Off
+        }
+        return applyShaderChain(autoPresetName(scope))?.let { TierValue.Set(it) }
     }
 
     /**
@@ -419,7 +451,38 @@ class EmbeddedRetroArchBridge(
      * already undone.
      */
     fun overridesAtGame(key: String): Boolean =
-        key !in cleared && gameTier()?.let { tierValue(it, key) } != null
+        key !in cleared && gameTier()?.let { tierValue(it, key) } !is TierValue.Inherit?
+
+    /** Null when the menu is not editing one, so a save leaves the stored preset alone. */
+    private var pendingChain: ShaderPreset? = null
+
+    override fun setShaderChain(chain: ShaderPreset?) {
+        pendingChain = chain
+    }
+
+    override fun applyShaderChain(saveAs: String?): String? {
+        val chain = pendingChain ?: return null
+        if (cannoliRoot.isEmpty()) return null
+        val shaders = ShaderCatalog.shadersDir(File(cannoliRoot))
+        val ext = ShaderCatalog.presetExtension(videoDriver())
+        // An empty path clears the shader.
+        if (chain.passes.isEmpty()) {
+            nativeSetShaderPreset("")
+            appliedShader = null
+            return null
+        }
+        val target = if (saveAs == null) File(shaders, "$WORKING_CHAIN.$ext")
+        else File(shaders, ShaderCatalog.CUSTOM_DIR).apply { mkdirs() }.let { File(it, "$saveAs.$ext") }
+        return try {
+            target.parentFile?.mkdirs()
+            target.writeText(chain.serialise())
+            nativeSetShaderPreset(target.absolutePath)
+            appliedShader = target.absolutePath
+            target.absolutePath
+        } catch (_: Exception) {
+            null
+        }
+    }
 
     override fun shaderOverriddenAtGame(): Boolean = overridesAtGame(KEY_SHADER)
 
@@ -435,7 +498,7 @@ class EmbeddedRetroArchBridge(
     /** Drops this game's override of [key], returning what it will inherit instead. */
     private fun clearGameOverride(key: String): String? {
         cleared.add(key)
-        return systemTier()?.let { tierValue(it, key) }?.takeIf { it.isNotBlank() }
+        return systemTier()?.let { tierValue(it, key) }?.chosen
     }
 
     /**
@@ -459,22 +522,14 @@ class EmbeddedRetroArchBridge(
 
     // Merged rather than rewritten: the tier is shared with anything else core-independent, and the
     // overlay and the shader land in the same file.
-    private fun writeSharedTier(file: File, keys: List<String>) {
-        if (keys.isEmpty()) return
-        // None is written as an empty value rather than removed, so that a game can switch off an
-        // overlay its platform sets. Removing the key would mean "inherit", which is a different
-        // thing and is why turning one off at game scope used to bring the platform's back.
+    private fun writeTier(file: File, values: Map<String, TierValue>) {
+        if (values.isEmpty()) return
         editTier(file) { merged ->
-            for (key in keys) merged[key] = when (key) {
-                KEY_OVERLAY -> cannoliOverlayName.orEmpty()
-                else -> appliedShader.orEmpty()
+            for ((key, value) in values) {
+                val text = TierValue.serialise(value)
+                if (text == null) merged.remove(key) else merged[key] = text
             }
         }
-    }
-
-    private fun clearFromTier(file: File, keys: Set<String>) {
-        if (!file.isFile) return
-        editTier(file) { merged -> keys.forEach { merged.remove(it) } }
     }
 
     private fun editTier(file: File, edit: (LinkedHashMap<String, String>) -> Unit) {
@@ -491,7 +546,21 @@ class EmbeddedRetroArchBridge(
         if (file.isFile) RetroArchConfigComposer.parse(file.readText()) else emptyMap()
     } catch (_: Exception) { emptyMap() }
 
-    private fun tierValue(file: File, key: String): String? = readTier(file)[key]
+    private fun tierValue(file: File, key: String): TierValue = TierValue.of(readTier(file)[key])
+
+    /**
+     * What an automatically saved chain is called: the thing it was saved for.
+     *
+     * Flat rather than nested, so these list beside the presets someone named themselves instead of
+     * being buried a folder deep.
+     */
+    private fun autoPresetName(scope: RaOverrideScope): String {
+        val name = when (scope) {
+            RaOverrideScope.GAME -> "$platformTag - $romBaseName"
+            RaOverrideScope.SYSTEM -> platformTag
+        }
+        return name.filterNot { it in FILENAME_RESERVED }.trim().ifEmpty { "chain" }
+    }
 
     private fun gameTier(): File? {
         if (cannoliRoot.isEmpty() || romBaseName.isEmpty()) return null
@@ -511,7 +580,7 @@ class EmbeddedRetroArchBridge(
     }
 
     /** The stored overlay for this game, game scope winning, or null when none is set. */
-    fun storedOverlayName(): String? = storedTierValue(KEY_OVERLAY)?.takeIf { it.isNotBlank() }
+    fun storedOverlayName(): String? = storedTierValue(KEY_OVERLAY).chosen
 
     /**
      * Loads the shader this game was saved with, because nothing else will.
@@ -521,7 +590,7 @@ class EmbeddedRetroArchBridge(
      * again. Queued rather than called: it lands on the runloop once video is up.
      */
     private fun applyStoredShader() {
-        val stored = storedTierValue(KEY_SHADER)?.takeIf { it.isNotBlank() } ?: return
+        val stored = storedTierValue(KEY_SHADER).chosen ?: return
         // A preset that has been deleted since, or a card that moved: applying it would clear the
         // chain to nothing, which looks like the shader having been forgotten rather than missing.
         if (!File(stored).isFile) return
@@ -535,8 +604,11 @@ class EmbeddedRetroArchBridge(
      * The nearest tier that mentions the key wins, even when what it says is empty. A tier that does
      * not mention it at all is silent, and the next one out is asked instead.
      */
-    private fun storedTierValue(key: String): String? =
-        listOfNotNull(gameTier(), systemTier()).firstNotNullOfOrNull { tierValue(it, key) }
+    private fun storedTierValue(key: String): TierValue =
+        listOfNotNull(gameTier(), systemTier())
+            .map { tierValue(it, key) }
+            .firstOrNull { it !is TierValue.Inherit }
+            ?: TierValue.Inherit
 
     override fun raSaveOverride(scope: RaOverrideScope, keys: Set<String>) {
         val encoded = if (scope == RaOverrideScope.GAME) 1 else 0
@@ -627,8 +699,7 @@ class EmbeddedRetroArchBridge(
     private external fun nativeRaGetSetting(key: String): Array<String>?
     private external fun nativeRaSetSetting(key: String, value: String): Boolean
     private external fun nativeSetShaderPreset(path: String)
-    private external fun nativeSetAudioMuted(muted: Boolean)
-    private external fun nativeSetLivePreview(live: Boolean)
+
     private external fun nativeRaSaveOverride(scope: Int, keys: String)
     private external fun nativeCoreGeometry(): IntArray?
     private external fun nativeApplyViewport(x: Int, y: Int, w: Int, h: Int): Boolean
@@ -649,6 +720,15 @@ class EmbeddedRetroArchBridge(
          * preset in force, so there is nothing of its own to write into.
          */
         const val KEY_SHADER = "cannoli_shader"
+
+        /** Characters a filename cannot carry, dropped from a name taken off a tag or a rom. */
+        private val FILENAME_RESERVED = setOf('/', '\\', ':', '*', '?', '"', '<', '>', '|')
+
+        /**
+         * Where a chain lives while it is only being looked at. Hidden, so the browser does not
+         * offer the working copy of the thing you are currently editing as something to load.
+         */
+        private const val WORKING_CHAIN = ".cannoli_chain"
 
         private val CANNOLI_KEYS = listOf(KEY_OVERLAY, KEY_SHADER)
         // Real RetroArch settings: a shader is a pass in its render chain, so unlike the bezel

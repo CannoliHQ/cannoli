@@ -29,6 +29,29 @@ private class FakeRaHost : RaSettingsHost {
     override fun setOnRaSettingApplied(callback: (String, String) -> Unit) { appliedCb = callback }
     fun fireApplied(key: String, value: String) { appliedCb?.invoke(key, value) }
 
+    /** Presets the browser can hand back, by the path the provider will ask for. */
+    val presetFiles = mutableMapOf<String, String>()
+    var appliedPreset: String? = null
+    var chain: dev.cannoli.core.shader.ShaderPreset? = null
+    val chainApplies = mutableListOf<String?>()
+
+    override fun appliedShaderPreset(): String? = appliedPreset
+    override fun shaderEntries(path: List<String>): List<dev.cannoli.core.shader.ShaderEntry> =
+        listOf(dev.cannoli.core.shader.ShaderEntry("crt-geom", isFolder = false,
+            path = "/Shaders/crt/crt-geom.slangp"))
+    override fun shaderPresetPath(path: List<String>, name: String): String? =
+        presetFiles[(path + name).joinToString("/")]
+    override fun setShaderChain(chain: dev.cannoli.core.shader.ShaderPreset?) { this.chain = chain }
+    override fun applyShaderChain(saveAs: String?): String? {
+        chainApplies.add(saveAs)
+        return "/Shaders/Custom/${saveAs ?: "working"}.slangp"
+    }
+    val applyCalls = mutableListOf<Pair<List<String>, String>>()
+    override fun applyShaderPreset(path: List<String>, name: String): Set<String> {
+        applyCalls.add(path to name)
+        return setOf("cannoli_shader")
+    }
+
     var shaderIsGameOwned = false
     var shaderRestored = 0
     override fun shaderOverriddenAtGame(): Boolean = shaderIsGameOwned
@@ -161,16 +184,18 @@ class RaIgmSettingsProviderTest {
     }
 
     @Test
-    fun `our own apply echo is suppressed and does not double-count`() {
+    fun `our own apply echo does not write the value back or restage it`() {
         val h = host()
-        var changes = 0
         val p = provider(h)
-        p.setOnChanged { changes++ }
         p.screen(listOf(LATENCY))
         p.cycle("run_ahead_frames", 1)
-        val afterCycle = changes
+        val row = p.screen(listOf(LATENCY)).items.first { it.key == "run_ahead_frames" }
+
         h.fireApplied("run_ahead_frames", "2")
-        assertEquals(afterCycle, changes)
+
+        // The echo carries the display value, which is translated label text for some rows, so it
+        // must never be stored. It may re-render: RetroArch decides the row list from the value.
+        assertEquals(row, p.screen(listOf(LATENCY)).items.first { it.key == "run_ahead_frames" })
     }
 
     // A write the native side could not queue must not be recorded as a change, or exiting prompts
@@ -313,4 +338,289 @@ class RaIgmSettingsProviderTest {
         assertEquals(emptySet<String>(), p.restoreDefault(listOf(LATENCY)))
         assertEquals(0, h.shaderRestored)
     }
+
+    @get:org.junit.Rule val shaderFolder = org.junit.rules.TemporaryFolder()
+
+    /** A preset on disk, because the chain is parsed from files rather than asked of RetroArch. */
+    private fun writePreset(name: String, vararg shaders: String): String {
+        val dir = java.io.File(shaderFolder.root, "presets").apply { mkdirs() }
+        val f = java.io.File(dir, "$name.slangp")
+        f.writeText(buildString {
+            append("shaders = ${shaders.size}\n")
+            shaders.forEachIndexed { i, sh -> append("shader$i = $sh\n") }
+        })
+        return f.absolutePath
+    }
+
+    private fun shaderSource(name: String, vararg pragmas: String): String {
+        val f = java.io.File(shaderFolder.root, name)
+        f.parentFile?.mkdirs()
+        f.writeText(pragmas.joinToString("\n"))
+        return f.absolutePath
+    }
+
+    private fun pipelineHost(): FakeRaHost = host().apply {
+        val a = shaderSource("a.slang", """#pragma parameter warp "Warp" 0.5 0.0 1.0 0.25""")
+        val b = shaderSource("b.slang")
+        appliedPreset = writePreset("current", a, b)
+        presetFiles["crt/crt-geom"] = writePreset("crt-geom", shaderSource("geom.slang"))
+    }
+
+    private fun pipelineProvider(h: FakeRaHost) = RaIgmSettingsProvider(host = h, curated = false)
+
+    private val SHADERS = CuratedCatalog.CATEGORY_SHADER
+
+    private fun rowKeys(p: RaIgmSettingsProvider) =
+        p.screen(listOf(SHADERS)).items.map { it.key }
+
+    // The enable flag is not a row: turning shaders off is what an empty chain means, and a second
+    // way to say it is a second thing to disagree with the first.
+    /**
+     * RetroArch decides which rows a screen has from the values on it, so a setting landing has to
+     * re-render even when its value is exactly what cycling predicted. Black frame insertion and
+     * sub-frame shaders both reveal rows, and without this they arrive a keypress late.
+     */
+    @Test
+    fun `a setting landing re-renders even when its value was predicted`() {
+        val h = host()
+        val p = provider(h)
+        var renders = 0
+        p.setOnChanged { renders++ }
+        p.screen(listOf(LATENCY))
+
+        p.cycle("run_ahead_frames", 1)
+        val afterCycle = renders
+        h.fireApplied("run_ahead_frames", h.settings["run_ahead_frames"]!!.value)
+
+        assertTrue("the echo must trigger a render", renders > afterCycle)
+    }
+
+    @Test
+    fun `All Settings gets the chain, not the picker`() {
+        val keys = rowKeys(pipelineProvider(pipelineHost()))
+
+        assertTrue(keys.containsAll(listOf("load", "save", "append", "prepend")))
+        assertTrue(keys.contains("pass_0") && keys.contains("pass_1"))
+        assertTrue(keys.contains("params"))
+        assertFalse(keys.contains("video_shader_enable"))
+        assertFalse(keys.contains("shader_passes"))
+        // Applying is a footer action, not a row to walk past on every trip down the list.
+        assertFalse(keys.contains("shader_apply"))
+    }
+
+    // The chain is seeded from what is running, so entering the tree shows it rather than looking
+    // as though nothing is loaded.
+    @Test
+    fun `the chain starts as the preset in force`() {
+        val h = pipelineHost()
+        pipelineProvider(h).screen(listOf(SHADERS))
+
+        assertEquals(2, h.chain!!.passes.size)
+    }
+
+    @Test
+    fun `a pass row names the shader it holds`() {
+        val p = pipelineProvider(pipelineHost())
+        assertEquals("Pass 0: a", p.screen(listOf(SHADERS)).items.first { it.key == "pass_0" }.label)
+    }
+
+    // Nothing reaches RetroArch until the chain is applied, which is what lets the list be edited
+    // freely without any of it showing or half-showing.
+    @Test
+    fun `editing the chain touches only the model`() {
+        val h = pipelineHost()
+        val p = pipelineProvider(h)
+        p.screen(listOf(SHADERS))
+
+        p.removeRow(listOf(SHADERS), rowKeys(p).indexOf("pass_1"))
+        assertEquals(1, h.chain!!.passes.size)
+        assertTrue(h.chainApplies.isEmpty())
+
+        p.applyPendingChanges()
+        assertEquals(listOf<String?>(null), h.chainApplies)
+    }
+
+    @Test
+    fun `removing and reordering rearrange the passes`() {
+        val h = pipelineHost()
+        val p = pipelineProvider(h)
+        val first = rowKeys(p).indexOf("pass_0")
+
+        assertEquals(first + 1, p.reorder(listOf(SHADERS), first, 1))
+        assertEquals(listOf("b", "a"), h.chain!!.passes.map { it.shader.substringAfterLast('/').removeSuffix(".slang") })
+
+        // Pass 0 cannot go above itself, so nothing moves and the highlight stays put.
+        assertEquals(first, p.reorder(listOf(SHADERS), first, -1))
+    }
+
+    @Test
+    fun `only a pass row can be picked up or taken out`() {
+        val p = pipelineProvider(pipelineHost())
+        val keys = rowKeys(p)
+
+        assertTrue(p.canReorder(listOf(SHADERS), keys.indexOf("pass_0")))
+        assertTrue(p.canRemoveRow(listOf(SHADERS), keys.indexOf("pass_0")))
+        assertFalse(p.canReorder(listOf(SHADERS), keys.indexOf("load")))
+        assertFalse(p.canReorder(listOf(SHADERS, "params"), 0))
+    }
+
+    @Test
+    fun `loading replaces the chain and adding combines with it`() {
+        val h = pipelineHost()
+        val p = pipelineProvider(h)
+        p.screen(listOf(SHADERS))
+
+        p.screen(listOf(SHADERS, "load", "crt"))
+        p.activate("shader_preset:crt-geom")
+        assertEquals(listOf("geom"), h.chain!!.passes.map { it.shader.substringAfterLast('/').removeSuffix(".slang") })
+
+        p.screen(listOf(SHADERS, "append", "crt"))
+        p.activate("shader_preset:crt-geom")
+        assertEquals(2, h.chain!!.passes.size)
+
+        p.screen(listOf(SHADERS, "prepend", "crt"))
+        p.activate("shader_preset:crt-geom")
+        assertEquals(3, h.chain!!.passes.size)
+    }
+
+    // With no chain there is nothing to add to, and Load Preset is the row that covers it.
+    @Test
+    fun `adding to the chain is offered only once there is one`() {
+        val h = pipelineHost()
+        h.appliedPreset = null
+        val keys = rowKeys(pipelineProvider(h))
+
+        assertTrue(keys.contains("load"))
+        assertFalse(keys.contains("append"))
+        assertFalse(keys.contains("prepend"))
+    }
+
+    // Read from the shader sources, so a chain describes what it can tune before RetroArch has
+    // ever seen it.
+    @Test
+    fun `parameters come from the shaders and step by their author's range`() {
+        val h = pipelineHost()
+        val p = pipelineProvider(h)
+        val row = p.screen(listOf(SHADERS, "params")).items.single()
+
+        assertEquals("Warp", row.label)
+        assertEquals("0.5", (row as GenericIgmSettingsItem.Choice).value)
+
+        p.cycle("shader_param:warp", 1)
+        assertEquals("0.75", h.chain!!.parameters["warp"])
+
+        // Stops at the end its author gave it.
+        p.cycle("shader_param:warp", 1)
+        p.cycle("shader_param:warp", 1)
+        assertEquals("1", h.chain!!.parameters["warp"])
+    }
+
+    @Test
+    fun `a pass filter cycles through unspecified as a real state`() {
+        val h = pipelineHost()
+        val p = pipelineProvider(h)
+        p.screen(listOf(SHADERS, "pass_0"))
+
+        p.cycle("shader_filter:0", 1)
+        assertEquals("true", h.chain!!.passes[0].settings["filter_linear"])
+        p.cycle("shader_filter:0", 1)
+        assertEquals("false", h.chain!!.passes[0].settings["filter_linear"])
+        p.cycle("shader_filter:0", 1)
+        assertNull(h.chain!!.passes[0].settings["filter_linear"])
+    }
+
+    // A size means nothing without saying what it is relative to, so scale is four keys or none.
+    @Test
+    fun `a pass scale writes its type alongside its size`() {
+        val h = pipelineHost()
+        val p = pipelineProvider(h)
+        p.screen(listOf(SHADERS, "pass_0"))
+
+        p.cycle("shader_scale:0", 1)
+        val set = h.chain!!.passes[0].settings
+        assertEquals("1.000000", set["scale_x"])
+        assertEquals("source", set["scale_type_x"])
+
+        p.cycle("shader_scale:0", -1)
+        assertNull(h.chain!!.passes[0].settings["scale_x"])
+        assertNull(h.chain!!.passes[0].settings["scale_type_x"])
+    }
+
+    /**
+     * Every chain change has to reach the save prompt, or editing one and leaving runs it for the
+     * session and loses it on the next launch with nothing said.
+     */
+    @Test
+    fun `every chain change offers to be kept`() {
+        for (edit in listOf<(RaIgmSettingsProvider) -> Unit>(
+            { it.cycle("shader_param:warp", 1) },
+            { it.reorder(listOf(SHADERS), rowKeys(it).indexOf("pass_0"), 1) },
+            { it.removeRow(listOf(SHADERS), rowKeys(it).indexOf("pass_1")) },
+            { it.screen(listOf(SHADERS, "append", "crt")); it.activate("shader_preset:crt-geom") },
+            { it.screen(listOf(SHADERS, "load", "crt")); it.activate("shader_preset:crt-geom") },
+        )) {
+            val p = pipelineProvider(pipelineHost())
+            p.screen(listOf(SHADERS))
+            assertTrue(p.exitPrompt() is IgmSettingsExit.Close)
+            edit(p)
+            assertTrue(p.exitPrompt() is IgmSettingsExit.Prompt)
+        }
+    }
+
+    @Test
+    fun `saving names the preset it writes`() {
+        val h = pipelineHost()
+        val p = pipelineProvider(h)
+        p.screen(listOf(SHADERS))
+        p.saveShaderPresetAs("crt soft")
+
+        assertEquals(listOf("crt soft"), h.chainApplies)
+        assertTrue(p.exitPrompt() is IgmSettingsExit.Prompt)
+    }
+
+    // The browser answers one question. Staying three folders deep after it is answered means a
+    // walk back up before anything else can be done.
+    @Test
+    fun `picking in the chain tree returns to the chain root, and the picker stays put`() {
+        val h = pipelineHost()
+        val p = pipelineProvider(h)
+
+        assertEquals(
+            listOf(SHADERS),
+            p.returnPathAfter("shader_preset:crt-geom", listOf(SHADERS, "load", "crt")),
+        )
+        assertNull(p.returnPathAfter("save", listOf(SHADERS)))
+        assertNull(
+            RaIgmSettingsProvider(host = h, curated = true)
+                .returnPathAfter("shader_preset:crt-geom", listOf(SHADERS, "crt")),
+        )
+    }
+
+    // The picker's list is the answer and has to say which is in force. The chain tree's browser is
+    // left the moment it is answered, so a mark there is never seen and would be wrong anyway.
+    @Test
+    fun `only the picker marks the applied preset`() {
+        val h = pipelineHost()
+        h.appliedPreset = "/Shaders/crt/crt-geom.slangp"
+
+        val chainRow = pipelineProvider(h).screen(listOf(SHADERS, "load", "crt")).items
+            .first { it.key == "shader_preset:crt-geom" }
+        assertTrue(chainRow is GenericIgmSettingsItem.Action)
+
+        val pickerRow = RaIgmSettingsProvider(host = h, curated = true)
+            .screen(listOf(SHADERS, "crt")).items.first { it.key == "shader_preset:crt-geom" }
+        assertTrue(pickerRow is GenericIgmSettingsItem.Choice)
+    }
+
+    // The picker has no compile-on-leave, so there it must still apply outright.
+    @Test
+    fun `the picker still applies on selection`() {
+        val h = pipelineHost()
+        val p = RaIgmSettingsProvider(host = h, curated = true)
+        p.screen(listOf(SHADERS, "crt"))
+        p.activate("shader_preset:crt-geom")
+
+        assertEquals(listOf(listOf("crt") to "crt-geom"), h.applyCalls)
+    }
+
 }

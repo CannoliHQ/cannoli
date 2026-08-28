@@ -2,6 +2,9 @@ package dev.cannoli.igm
 
 import android.graphics.Bitmap
 import dev.cannoli.core.SaveSlotStore
+import dev.cannoli.ui.components.Direction
+import dev.cannoli.ui.components.KeyboardController
+import dev.cannoli.ui.components.KeyboardPress
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -11,6 +14,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+
+// Matches the Save Preset category key the settings provider emits.
+private const val SHADER_SAVE_SEGMENT = "save"
+
+// Characters a filename cannot carry. Dropped from a typed name rather than refused.
+private val FILENAME_RESERVED = setOf('/', '\\', ':', '*', '?', '"', '<', '>', '|')
 
 class IGMController(
     val bridge: RetroArchBridge,
@@ -33,6 +42,15 @@ class IGMController(
 
     /** Whether the settings level on screen has a game override to drop. Drives the legend. */
     val settingsCanRestore = mutableStateOf(false)
+
+    /** Whether the highlighted settings row can be picked up and moved. */
+    val settingsCanReorder = mutableStateOf(false)
+
+    /** Whether the highlighted settings row is something the list can take away. */
+    val settingsCanRemovePass = mutableStateOf(false)
+
+    /** Whether a row is currently picked up, which changes what every button means. */
+    val settingsReordering = mutableStateOf(false)
 
     private var inputTranslator = IgmInputTranslator(null)
 
@@ -326,9 +344,6 @@ class IGMController(
         }
     }
 
-    private var lastMenuIndex = 0
-    private var lastMenuAction: IgmMenuAction? = null
-
     // Cheevos load once per session and never drop back to empty, so a positive read is frozen;
     // a still-zero read is retried on the next open in case the set was still loading (login,
     // network fetch) the first time this was asked. bridge.getAchievements() builds the full list
@@ -345,30 +360,16 @@ class IGMController(
         refreshDiskInfo()
         requestCheatsIfMissing()
         refreshAchievementCount()
-        val options = buildMenuOptions()
-        val lastIndex = (options.actions.size - 1).coerceAtLeast(0)
-        // Rows come and go between opens now that the cheats snapshot lands during gameplay, so a
-        // remembered index would point at whatever moved into its place. The row the user left on
-        // is what comes back; its index is only the fallback for a row that is no longer there.
-        val selected = lastMenuAction
-            ?.let { options.actions.indexOf(it) }
-            ?.takeIf { it >= 0 }
-            ?: lastMenuIndex.coerceIn(0, lastIndex)
+        // Always Resume, never where the menu was left. The menu is opened mid-game far more often
+        // to get back to the game than to do anything else, and a remembered row means the most
+        // common action is never the one under the cursor.
         screenStack.clear()
-        screenStack.add(IGMScreen.Menu(selectedIndex = selected))
+        screenStack.add(IGMScreen.Menu(selectedIndex = buildMenuOptions().resumeIndex))
         refreshSlotInfo()
     }
 
     fun closeMenu() {
-        rememberMenuIndex()
         screenStack.clear()
-    }
-
-    private fun rememberMenuIndex() {
-        (screenStack.firstOrNull { it is IGMScreen.Menu } as? IGMScreen.Menu)?.let {
-            lastMenuIndex = it.selectedIndex
-            lastMenuAction = buildMenuOptions().actionAt(it.selectedIndex)
-        }
     }
 
     fun push(screen: IGMScreen) {
@@ -462,7 +463,6 @@ class IGMController(
     }
 
     fun suspendForNativeMenu() {
-        rememberMenuIndex()
         bridge.setOnNativeMenuClosed { onNativeMenuClosed?.invoke() }
         bridge.openNativeMenu()
     }
@@ -589,6 +589,7 @@ class IGMController(
             is IGMScreen.Achievements -> handleAchievementsKey(screen, normalized)
             is IGMScreen.AchievementDetail -> handleAchievementDetailKey(screen, normalized)
             is IGMScreen.PreviewPicker -> handlePreviewPickerKey(screen, normalized)
+            is IGMScreen.ShaderSaveName -> handleShaderSaveNameKey(screen, normalized)
             is IGMScreen.ProviderSettings -> handleProviderKey(normalized)
             is IGMScreen.SettingsExitPrompt -> handleProviderKey(normalized)
         }
@@ -707,6 +708,8 @@ class IGMController(
 
     private fun renderProviderState(state: ProviderSettingsController.State) {
         settingsCanRestore.value = providerNav?.canRestoreDefault() ?: false
+        settingsCanReorder.value = providerNav?.canReorderSelection() ?: false
+        settingsCanRemovePass.value = providerNav?.canRemoveSelection() ?: false
         when (state) {
             is ProviderSettingsController.State.Menu -> {
                 // Applying a preset echoes back and re-renders the tree it was chosen from. The
@@ -719,6 +722,11 @@ class IGMController(
                 // Cannoli's own screen wears a settings row so it appears in both menus, but it is
                 // not a settings screen: entering the category swaps to the picker rather than
                 // rendering the empty screen the provider returns for it.
+                // Cannoli's own screen too: naming a preset is a keyboard, not a settings list.
+                if (state.path == listOf(CuratedCatalog.CATEGORY_SHADER, SHADER_SAVE_SEGMENT)) {
+                    if (currentScreen !is IGMScreen.ShaderSaveName) push(IGMScreen.ShaderSaveName())
+                    return
+                }
                 if (state.path.lastOrNull() == CuratedCatalog.CATEGORY_OVERLAY) {
                     // Staging a change re-renders the provider, which lands back here. Push only on
                     // the way in, or every value cycled stacks another picker to back out of.
@@ -743,7 +751,10 @@ class IGMController(
                 settingsItems.value = state.options.map { IGMSettingsItem(it) }
             }
             is ProviderSettingsController.State.Closed -> {
+                // Leaving the menu outright is the other way out of the chain tree.
+                providerNav?.applyPendingChanges()
                 providerNav = null
+                settingsReordering.value = false
                 if (currentScreen is IGMScreen.ProviderSettings || currentScreen is IGMScreen.SettingsExitPrompt) pop()
             }
             is ProviderSettingsController.State.ActionFired -> { /* activate() pushed its own screen (or nothing); leave the stack untouched */ }
@@ -791,16 +802,61 @@ class IGMController(
         }
     }
 
-    /** Whether the game is being left to run so a shader can be seen. Off outside the tree. */
-    val livePreview = mutableStateOf(false)
+    /**
+     * Naming a preset, using the launcher's keyboard so the two behave identically.
+     *
+     * The bindings are the launcher's, not invented here: Back deletes rather than leaving, which
+     * reads wrong until you have used it once and then is the only thing that does not need a
+     * second press. Leaving is Cancel, which is what the keyboard's own legend says.
+     */
+    private fun handleShaderSaveNameKey(screen: IGMScreen.ShaderSaveName, keycode: Int) {
+        if (screen.help) {
+            // Any way out of the reference, since it covers the keyboard entirely.
+            if (keycode in setOf(97, 4, 82, 108, 96)) replaceTop(screen.copy(help = false))
+            return
+        }
+        val kb = screen.keyboard
+        fun update(next: dev.cannoli.ui.components.KeyboardState) =
+            replaceTop(screen.copy(keyboard = next))
+        when (keycode) {
+            19 -> update(KeyboardController.moveSelection(kb, Direction.UP))
+            20 -> update(KeyboardController.moveSelection(kb, Direction.DOWN))
+            21 -> update(KeyboardController.moveSelection(kb, Direction.LEFT))
+            22 -> update(KeyboardController.moveSelection(kb, Direction.RIGHT))
+            96 -> when (val r = KeyboardController.press(kb)) {
+                is KeyboardPress.Update -> update(r.state)
+                KeyboardPress.Confirm -> confirmShaderName(kb.text)
+            }
+            97, 4 -> update(KeyboardController.backspace(kb))
+            99 -> leaveShaderSaveName()
+            100 -> update(KeyboardController.insertChar(kb, " "))
+            102 -> update(KeyboardController.moveCursor(kb, -1))
+            103 -> update(KeyboardController.moveCursor(kb, 1))
+            104 -> update(KeyboardController.cursorToStart(kb))
+            105 -> update(KeyboardController.cursorToEnd(kb))
+            108 -> confirmShaderName(kb.text)
+            82 -> replaceTop(screen.copy(help = true))
+        }
+    }
 
-    /** Set by the host: lets the game run while the menu is up, muted. */
-    var onLivePreview: ((Boolean) -> Unit)? = null
+    /**
+     * Saves under [raw] and returns to the chain, or does nothing when there is no name to save.
+     *
+     * A name is a filename, so the characters a path cannot carry are dropped rather than refused:
+     * refusing would mean an error screen for a slash someone typed by accident.
+     */
+    private fun confirmShaderName(raw: String) {
+        val name = raw.filterNot { it in FILENAME_RESERVED }.trim()
+        if (name.isEmpty()) return
+        (providerNav?.provider as? RaIgmSettingsProvider)?.saveShaderPresetAs(name)
+        leaveShaderSaveName()
+    }
 
-    private fun setLivePreview(on: Boolean) {
-        if (livePreview.value == on) return
-        livePreview.value = on
-        onLivePreview?.invoke(on)
+    private fun leaveShaderSaveName() {
+        pop()
+        // The category push that led here has to be unwound, or the browser sits a level below
+        // where the list is showing. Same rule as the overlay picker.
+        providerNav?.let { renderProviderState(it.onNav(ProviderSettingsController.Nav.BACK)) }
     }
 
     private fun inShaderTree(): Boolean =
@@ -809,10 +865,26 @@ class IGMController(
 
     private fun handleProviderKey(keycode: Int) {
         val nav = providerNav ?: return
-        // Only in the shader tree, where nothing else claims this button and seeing the picture is
-        // the whole point of the screen.
-        if (keycode == 100 && inShaderTree()) {
-            setLivePreview(!livePreview.value)
+        // A picked-up row owns every button, the same way the platform list works: nothing else on
+        // the screen can be reached until it is put down, so nothing else can be pressed by mistake.
+        if (settingsReordering.value) {
+            when (keycode) {
+                19 -> renderProviderState(nav.reorderSelection(-1))
+                20 -> renderProviderState(nav.reorderSelection(1))
+                96, 108, 109 -> settingsReordering.value = false
+                // Back puts it down where it now is rather than undoing the moves. Every move has
+                // already been applied to the chain, and unwinding them would be a second history
+                // to keep; Discard on the way out of the tree is the undo that already exists.
+                97, 4 -> settingsReordering.value = false
+            }
+            return
+        }
+        if (keycode == 109) {
+            if (settingsCanReorder.value) settingsReordering.value = true
+            return
+        }
+        if (keycode == 100) {
+            if (settingsCanRemovePass.value) renderProviderState(nav.removeSelection())
             return
         }
         // Nothing else claims this button in the tree, and the legend only offers it where there is
@@ -829,10 +901,11 @@ class IGMController(
             100 -> ProviderSettingsController.Nav.NORTH
             else -> return
         }
+        val wasBuildingChain = inShaderTree()
         renderProviderState(nav.onNav(button))
-        // Leaving the tree always gives the pause back, so play never outlives the screen that
-        // asked for it.
-        if (!inShaderTree()) setLivePreview(false)
+        // Compiled on the way out rather than on a button: this is the first moment the result can
+        // be seen, because the menu has the game paused until then.
+        if (wasBuildingChain && !inShaderTree()) nav.applyPendingChanges()
     }
 
     private fun selectMenuItem(index: Int) {

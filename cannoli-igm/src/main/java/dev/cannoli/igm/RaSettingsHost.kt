@@ -69,6 +69,28 @@ interface RaSettingsHost {
     /** Absolute path of the preset in force, so the browser can say which row is applied. */
     fun appliedShaderPreset(): String? = null
 
+    /**
+     * Hands over the chain the menu is building, so a save has something to write.
+     *
+     * Cannoli holds the chain while it is being edited rather than mutating RetroArch's own shader
+     * a step at a time. RetroArch is given the result once, as a preset, because every attempt to
+     * edit its live shader ran into the same wall: the menu's writes are queued, the runloop does
+     * not run while the menu is up, and applying a chain writes a preset and loads it back over the
+     * shader being edited. A list of passes in memory has none of those problems.
+     */
+    fun setShaderChain(chain: dev.cannoli.core.shader.ShaderPreset?) {}
+
+    /** Absolute path of a preset the browser listed, so a pick becomes something to load. */
+    fun shaderPresetPath(path: List<String>, name: String): String? = null
+
+    /**
+     * Writes the chain and loads it, returning where it landed.
+     *
+     * [saveAs] names a preset to keep in Shaders/Custom; without it the chain goes to a working
+     * file, which is what compiling on the way out of the menu uses.
+     */
+    fun applyShaderChain(saveAs: String? = null): String? = null
+
     /** Whether the shader in force is this game's own choice rather than its platform's. */
     fun shaderOverriddenAtGame(): Boolean = false
 
@@ -77,15 +99,6 @@ interface RaSettingsHost {
      * keys it staged. Absent at platform scope, where there is nothing above to fall back to.
      */
     fun restoreShaderDefault(): Set<String> = emptySet()
-
-    /**
-     * Lets the game run while a menu is open, so a change to the picture can actually be seen.
-     *
-     * The menu pauses emulation and a paused RetroArch presents no frames, so a shader applied here
-     * would not appear until the menu closed. Muted while it runs, and the host restores both the
-     * pause and the previous mute when this goes off.
-     */
-    fun setLivePreview(on: Boolean) {}
 
     /** One RetroArch settings screen. An empty label is the root. */
     fun raScreenRows(label: String): List<RaScreenRow> = emptyList()

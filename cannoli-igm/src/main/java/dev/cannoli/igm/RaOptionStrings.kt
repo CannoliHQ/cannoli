@@ -12,6 +12,24 @@ data class RaOptionStrings(
     val emulator: String = "Emulator",
     val custom: String = "Custom",
     val shaderApplied: String = "Applied",
+    val shaderLoad: String = "Load Preset",
+    val shaderAddStart: String = "Add to Start",
+    val shaderAddEnd: String = "Add to End",
+    val shaderSave: String = "Save Preset",
+    /** Formats one pass row. The argument is the pass number, counted from zero. */
+    val shaderPass: (Int) -> String = { "Pass $it" },
+    /** Formats a pass row that already knows which shader it holds. */
+    val shaderPassNamed: (Int, String) -> String = { i, name -> "Pass $i: $name" },
+    val shaderParameters: String = "Parameters",
+    val shaderPreset: String = "Shader",
+    val shaderFilter: String = "Filter",
+    val shaderScale: String = "Scale",
+    val shaderUnspecified: String = "Unspecified",
+    val shaderFilterLinear: String = "Linear",
+    val shaderFilterNearest: String = "Nearest",
+    /** Formats a scale row. The argument is a whole-number multiple of the input size. */
+    val shaderScaleX: (Int) -> String = { "${it}x" },
+    val shaderNone: String = "None",
     val infoCore: String = "Core",
     val infoCoreVersion: String = "Core Version",
     val curatedCategoryTitles: Map<String, String> = mapOf(
@@ -20,7 +38,7 @@ data class RaOptionStrings(
         CuratedCatalog.CATEGORY_ADVANCED to "Advanced",
         CuratedCatalog.CATEGORY_INFO to "Info",
         CuratedCatalog.CATEGORY_OVERLAY to "Overlay",
-        CuratedCatalog.CATEGORY_SHADER to "Shader",
+        CuratedCatalog.CATEGORY_SHADER to "Shaders",
     ),
     val curatedRowLabels: Map<String, String> = mapOf(
         "curated_screen_scaling" to "Screen Scaling",

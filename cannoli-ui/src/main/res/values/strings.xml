@@ -25,6 +25,12 @@
     <string name="label_settings">SETTINGS</string>
     <!-- Drops this game's own overlay or shader so its platform's applies again. -->
     <string name="label_use_platform">USE PLATFORM</string>
+    <!-- Picks a row up so Up and Down move it within its list. -->
+    <string name="label_reorder">REORDER</string>
+    <string name="label_move">MOVE</string>
+    <string name="label_done">DONE</string>
+    <!-- Takes the highlighted shader pass out of the chain. -->
+    <string name="label_remove_pass">REMOVE</string>
     <string name="label_resume">RESUME</string>
     <string name="label_continue">CONTINUE</string>
     <string name="label_new_folder">NEW</string>
@@ -917,8 +923,35 @@
     <!-- In-game settings category showing read-only facts about the running emulator core. -->
     <string name="igm_info">Info</string>
     <string name="igm_overlay">Overlay</string>
-    <string name="igm_shader">Shader</string>
-    <string name="label_pause">PAUSE</string>
+    <string name="igm_shader">Shaders</string>
+    <!-- All Settings only: RetroArch's own shader chain, which the curated menu replaces with
+         a plain picker. The vocabulary follows RetroArch's so a preset's own documentation reads
+         across. -->
+    <string name="igm_shader_load">Load Preset</string>
+    <!-- Combine a preset with the chain already built. Start and end are the ends of the pass
+         list as it is drawn, which runs from the first pass down to the last. -->
+    <string name="igm_shader_add_start">Add to Start</string>
+    <string name="igm_shader_add_end">Add to End</string>
+    <string name="igm_shader_save">Save Preset</string>
+    <!-- %1$d is the pass number, counted from zero as RetroArch counts them. -->
+    <string name="igm_shader_pass">Pass %1$d</string>
+    <!-- %1$d is the pass number, %2$s the shader file it holds. -->
+    <string name="igm_shader_pass_named">Pass %1$d: %2$s</string>
+    <string name="igm_shader_parameters">Parameters</string>
+    <string name="igm_shader_preset">Shader</string>
+    <string name="igm_shader_filter">Filter</string>
+    <string name="igm_shader_scale">Scale</string>
+    <!-- Filter and scale both allow "leave whatever the preset chose", which is not a value. -->
+    <string name="igm_shader_unspecified">Unspecified</string>
+    <string name="igm_shader_filter_linear">Linear</string>
+    <string name="igm_shader_filter_nearest">Nearest</string>
+    <!-- %1$d is a whole-number multiple of the input size. -->
+    <string name="igm_shader_scale_x">%1$dx</string>
+    <string name="igm_shader_none">None</string>
+    <!-- Value on the preset row that is currently loaded, in the curated picker. -->
+    <string name="igm_shader_applied">Applied</string>
+    <!-- Title over the keyboard when naming a preset. -->
+    <string name="igm_shader_save_title">Save Preset As</string>
     <!-- Info row label. The value is the emulator core's name, for example "Nestopia". -->
     <string name="igm_info_core">Core</string>
     <!-- Info row label. The value is the emulator core's version number. -->

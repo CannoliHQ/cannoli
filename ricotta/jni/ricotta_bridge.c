@@ -31,7 +31,9 @@ static long long get_time_ms(void)
 #include "../../../../command.h"
 #include "../../../../configuration.h"
 #include <file/file_path.h>
+#include <string/stdstring.h>
 #include "../../../../menu/menu_driver.h"
+#include "../../../../menu/menu_shader.h"
 #include "../../../../menu/menu_defines.h"
 #include "../../../../runloop.h"
 #include "../../../../setting_list.h"
@@ -108,8 +110,6 @@ static volatile int g_menu_poll_active = 0;
 #define RICOTTA_QCMD_OSD_ACHIEVEMENT  -8
 #define RICOTTA_QCMD_VIEWPORT_SET     -9
 #define RICOTTA_QCMD_SHADER_SET       -10
-#define RICOTTA_QCMD_MUTE             -11
-#define RICOTTA_QCMD_LIVE_PREVIEW     -12
 typedef struct
 {
    int   cmd;
@@ -390,49 +390,16 @@ void ricotta_bridge_poll_commands(void)
          free(entry.ra_value);
          continue;
       }
-      if (entry.cmd == RICOTTA_QCMD_LIVE_PREVIEW)
-      {
-         /* Letting the game run while a menu is up takes two things, in this order.
-          *
-          * pause_nonactive makes RetroArch pause itself whenever its own window is not
-          * focused, and the menu holds focus, so it re-pauses every iteration and an unpause
-          * on its own is undone immediately. It is set here rather than through the settings
-          * path because a write that cannot resolve the key is dropped in silence, and this
-          * has to be certain. */
-         settings_t *settings = config_get_ptr();
-         if (settings)
-            configuration_set_bool(settings, settings->bools.pause_nonactive,
-                  entry.slot ? false : true);
-         command_event(entry.slot ? CMD_EVENT_UNPAUSE : CMD_EVENT_PAUSE, NULL);
-         continue;
-      }
-      if (entry.cmd == RICOTTA_QCMD_MUTE)
-      {
-         /* Set outright rather than through CMD_EVENT_AUDIO_MUTE_TOGGLE, which is stateful
-          * and raises an on-screen message a settings menu has no business showing. */
-         audio_driver_state_t *audio_st = audio_state_get_ptr();
-         if (audio_st)
-            audio_st->mute_enable = entry.slot ? true : false;
-         continue;
-      }
       if (entry.cmd == RICOTTA_QCMD_SHADER_SET)
       {
-         /* Writing video_shader into the config loads nothing: a preset is compiled and
-          * installed into the render chain by this call, which is what RetroArch's own
-          * "Apply Changes" ends up in. An empty path clears the chain instead. */
-         settings_t *settings = config_get_ptr();
-         const char *path     = entry.ra_key;
-         if (settings)
-         {
-            /* message = true: RetroArch says whether the preset loaded, and names the failure when
-             * it does not. A shader that silently does nothing is indistinguishable from one that
-             * is subtle, so the frontend has no way to tell the user which happened. */
-            if (path && *path)
-               video_shader_apply_shader(settings,
-                     video_shader_parse_type(path), path, true);
-            else
-               video_shader_apply_shader(settings, RARCH_SHADER_NONE, "", true);
-         }
+         /* Through the menu's own loader rather than straight to the render chain. Both apply the
+          * preset, but this one also reads it into the shader the chain screen edits, and those
+          * are different objects: applying directly leaves All Settings looking at an empty chain,
+          * so appending combines with nothing and leaving recompiles the stale one over the top.
+          * An empty path clears the passes, which is how the chain is emptied. */
+         const char *path = entry.ra_key ? entry.ra_key : "";
+         menu_shader_manager_set_preset(menu_shader_get(),
+               video_shader_parse_type(path), path, true);
          free(entry.ra_key);
          continue;
       }
@@ -2003,28 +1970,6 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeRaIntegerScale(
 }
 
 JNIEXPORT void JNICALL
-Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSetLivePreview(
-      JNIEnv *env, jobject obj, jboolean live)
-{
-   ricotta_cmd_entry entry = {0};
-   (void)env; (void)obj;
-   entry.cmd  = RICOTTA_QCMD_LIVE_PREVIEW;
-   entry.slot = live ? 1 : 0;
-   ricotta_enqueue_entry(entry);
-}
-
-JNIEXPORT void JNICALL
-Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSetAudioMuted(
-      JNIEnv *env, jobject obj, jboolean muted)
-{
-   ricotta_cmd_entry entry = {0};
-   (void)env; (void)obj;
-   entry.cmd  = RICOTTA_QCMD_MUTE;
-   entry.slot = muted ? 1 : 0;
-   ricotta_enqueue_entry(entry);
-}
-
-JNIEXPORT void JNICALL
 Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSetShaderPreset(
       JNIEnv *env, jobject obj, jstring jpath)
 {
@@ -2038,6 +1983,22 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSetShaderPreset(
    ricotta_enqueue_entry(entry);
 }
 
+/* Edits the menu shader in place, on the thread that asked.
+ *
+ * These touch nothing but the struct, and the struct belongs to the menu rather than to the render
+ * chain: nothing is visible until the chain is compiled on the way out. Queueing them meant the
+ * write landed on the runloop while the read that redrew the list happened immediately, so removing
+ * a pass redrew the chain it had before, and a second press acted on a list that was already wrong.
+ * Anything that reaches the video driver stays queued.
+ */
+/* Loads a preset into the chain without compiling it.
+ *
+ * menu_shader_manager_set_preset applies as well as loads, and applying reaches the video driver,
+ * which belongs to the runloop. Queueing it meant the chain root redrew from the shader RetroArch
+ * had before the queue ran, so a loaded preset only appeared on the next visit. With apply left
+ * off, the load is pure struct work and can happen here, and the chain is compiled on the way out
+ * of the tree like every other edit.
+ */
 JNIEXPORT void JNICALL
 Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeRaSaveOverride(
       JNIEnv *env, jobject obj, jint scope, jstring jkeys)

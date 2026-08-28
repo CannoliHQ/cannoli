@@ -11,37 +11,37 @@ class IGMControllerMenuSelectionTest {
 
     private fun menu(c: IGMController) = c.currentScreen as IGMScreen.Menu
 
-    @Test fun `a first open starts at the top`() {
+    @Test fun `a first open starts on Resume`() {
         val c = testController(FakeRetroArchBridge())
         c.openMenu()
-        assertEquals(0, menu(c).selectedIndex)
+        assertEquals(c.buildMenuOptions().resumeIndex, menu(c).selectedIndex)
     }
 
-    @Test fun `reopening the menu keeps the last selection`() {
+    // The menu is opened mid-game far more often to get back to the game than to do anything else,
+    // so the most common action has to be the one already under the cursor.
+    @Test fun `reopening the menu returns to Resume rather than the last row`() {
         val c = testController(FakeRetroArchBridge())
         c.openMenu()
         c.handleKeyDown(DPAD_DOWN)
         c.handleKeyDown(DPAD_DOWN)
-        val before = menu(c).selectedIndex
-        assertTrue("the fixture must have enough rows to move", before > 0)
+        assertTrue("the fixture must have enough rows to move", menu(c).selectedIndex > 0)
 
         c.closeMenu()
         c.openMenu()
 
-        assertEquals(before, menu(c).selectedIndex)
+        assertEquals(c.buildMenuOptions().resumeIndex, menu(c).selectedIndex)
     }
 
-    @Test fun `the selection is remembered from underneath a submenu`() {
+    @Test fun `leaving from underneath a submenu still returns to Resume`() {
         val c = testController(FakeRetroArchBridge())
         c.openMenu()
         c.handleKeyDown(DPAD_DOWN)
-        val before = menu(c).selectedIndex
 
         c.push(IGMScreen.GuidePicker())
         c.closeMenu()
         c.openMenu()
 
-        assertEquals(before, menu(c).selectedIndex)
+        assertEquals(c.buildMenuOptions().resumeIndex, menu(c).selectedIndex)
     }
 
     @Test fun `the screen stack survives a trip through the native menu`() {
@@ -71,13 +71,12 @@ class IGMControllerMenuSelectionTest {
         assertEquals(1, backUp)
     }
 
-    @Test fun `the remembered row survives the native menu round trip`() {
+    @Test fun `a native menu round trip also comes back to Resume`() {
         val bridge = FakeRetroArchBridge()
         val c = testController(bridge)
         c.openMenu()
         c.handleKeyDown(DPAD_DOWN)
-        val before = menu(c).selectedIndex
-        assertTrue("the fixture must have enough rows to move", before > 0)
+        assertTrue("the fixture must have enough rows to move", menu(c).selectedIndex > 0)
 
         c.push(IGMScreen.ProviderSettings(title = "Settings"))
         c.suspendForNativeMenu()
@@ -85,7 +84,7 @@ class IGMControllerMenuSelectionTest {
         c.closeMenu()
         c.openMenu()
 
-        assertEquals(before, menu(c).selectedIndex)
+        assertEquals(c.buildMenuOptions().resumeIndex, menu(c).selectedIndex)
     }
 
     private class HardcoreBridge : FakeRetroArchBridge() {
@@ -116,6 +115,7 @@ class IGMControllerMenuSelectionTest {
         // state rather than that nothing was ever pressed.
         for (i in opts.actions.indices) {
             assertEquals(i, menu(c).selectedIndex)
+
             assertTrue(opts.actionAt(i) != IgmMenuAction.SAVE_STATE)
             assertTrue(opts.actionAt(i) != IgmMenuAction.LOAD_STATE)
             c.handleKeyDown(CONFIRM)

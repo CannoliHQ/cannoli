@@ -190,6 +190,22 @@ class IGMOverlay(
             saveGame = uiContext.getString(R.string.igm_save_game),
             dontSave = uiContext.getString(R.string.igm_dont_save),
             emulator = uiContext.getString(R.string.igm_emulator),
+            shaderApplied = uiContext.getString(R.string.igm_shader_applied),
+            shaderLoad = uiContext.getString(R.string.igm_shader_load),
+            shaderAddStart = uiContext.getString(R.string.igm_shader_add_start),
+            shaderAddEnd = uiContext.getString(R.string.igm_shader_add_end),
+            shaderSave = uiContext.getString(R.string.igm_shader_save),
+            shaderPass = { uiContext.getString(R.string.igm_shader_pass, it) },
+            shaderPassNamed = { i, name -> uiContext.getString(R.string.igm_shader_pass_named, i, name) },
+            shaderParameters = uiContext.getString(R.string.igm_shader_parameters),
+            shaderPreset = uiContext.getString(R.string.igm_shader_preset),
+            shaderFilter = uiContext.getString(R.string.igm_shader_filter),
+            shaderScale = uiContext.getString(R.string.igm_shader_scale),
+            shaderUnspecified = uiContext.getString(R.string.igm_shader_unspecified),
+            shaderFilterLinear = uiContext.getString(R.string.igm_shader_filter_linear),
+            shaderFilterNearest = uiContext.getString(R.string.igm_shader_filter_nearest),
+            shaderScaleX = { uiContext.getString(R.string.igm_shader_scale_x, it) },
+            shaderNone = uiContext.getString(R.string.igm_shader_none),
             custom = uiContext.getString(R.string.igm_curated_custom),
             infoCore = uiContext.getString(R.string.igm_info_core),
             infoCoreVersion = uiContext.getString(R.string.igm_info_core_version),
@@ -471,7 +487,6 @@ class IGMOverlay(
         // what gives an overlay the same platform-or-game scope every other setting has.
         picker.stagedKeys = setOf(EmbeddedRetroArchBridge.KEY_OVERLAY)
 
-        controller.onLivePreview = { on -> bridge.setLivePreview(on) }
         bridge.onCannoliSaved = {
             overlayBeforeEdit = bridge.cannoliOverlayName
             picker.canRestore.value = bridge.overridesAtGame(EmbeddedRetroArchBridge.KEY_OVERLAY)
@@ -545,7 +560,9 @@ class IGMOverlay(
                     previewItems = controller.overlayPicker.items.value,
                     previewCanRestore = controller.overlayPicker.canRestore.value,
                     settingsCanRestore = controller.settingsCanRestore.value,
-                    livePreview = controller.livePreview.value,
+                    settingsCanReorder = controller.settingsCanReorder.value,
+                    settingsCanRemovePass = controller.settingsCanRemovePass.value,
+                    settingsReordering = controller.settingsReordering.value,
                     overlayImage = controller.overlayPicker.activeImage.value,
                     cheatItems = controller.cheatItems.value,
                     cheatVisibleItems = controller.cheatVisibleItems.value,

@@ -24,6 +24,18 @@ sealed class IGMScreen {
         override val selectedIndex: Int = 0,
         val unwindOnBack: Boolean = false,
     ) : IGMScreen()
+    /**
+     * Naming a shader preset. [selectedIndex] is unused: the keyboard carries its own cursor.
+     *
+     * [help] shows the keyboard's own button reference, which its legend offers and which would
+     * otherwise advertise something this screen does not answer.
+     */
+    data class ShaderSaveName(
+        override val selectedIndex: Int = 0,
+        val keyboard: dev.cannoli.ui.components.KeyboardState =
+            dev.cannoli.ui.components.KeyboardState(),
+        val help: Boolean = false,
+    ) : IGMScreen()
     data class Achievements(override val selectedIndex: Int = 0, val achievements: List<AchievementInfo> = emptyList(), val filter: Int = 0, val status: String = "") : IGMScreen()
     data class AchievementDetail(override val selectedIndex: Int = 0, val achievement: AchievementInfo, val parentIndex: Int = 0) : IGMScreen()
     data class GuidePicker(override val selectedIndex: Int = 0) : IGMScreen()

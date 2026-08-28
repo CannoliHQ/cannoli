@@ -670,7 +670,9 @@ class IGMControllerCheatsTest {
         assertTrue(c.buildMenuOptions().hasCheats)
     }
 
-    @Test fun `the remembered menu row survives the cheats row coming back`() {
+    // The cheats row lands during gameplay, so the row count changes between opens. What matters
+    // now is that the rebuilt menu is coherent and opens on Resume, not that a row is remembered.
+    @Test fun `the menu opens on Resume when the cheats row comes back`() {
         writeCht("a.cht", "One")
         val bridge = bridgeFor("a.cht" to listOf("One")).apply { discs = 2; deferCheatLoads = true }
         val c = testController(bridge)
@@ -693,7 +695,7 @@ class IGMControllerCheatsTest {
         val opts = c.buildMenuOptions()
         assertTrue(opts.hasCheats)
         val selected = (c.currentScreen as IGMScreen.Menu).selectedIndex
-        assertEquals(IgmMenuAction.QUIT, opts.actionAt(selected))
+        assertEquals(IgmMenuAction.RESUME, opts.actionAt(selected))
     }
 
     @Test fun `two disc switches while loads are in flight discard exactly what is in flight`() {
