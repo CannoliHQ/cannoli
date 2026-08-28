@@ -155,8 +155,7 @@ sealed interface DialogState {
     data class BulkContextMenu(val gamePaths: List<String>, val selectedOption: Int = 0, val options: List<String>) : DialogState
     data class DeleteConfirm(val gameName: String, val bulkPaths: List<String>? = null) : DialogState
     data class RenameInput(
-        val gameName: String,
-        val searchScope: String? = null,
+        val target: RenameTarget,
         @androidx.annotation.StringRes override val titleRes: Int? = null,
         override val keyboard: KeyboardState = KeyboardState(),
     ) : DialogState, KeyboardHost {

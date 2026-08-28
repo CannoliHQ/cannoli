@@ -6,6 +6,7 @@ import dev.cannoli.scorza.input.DeviceMapping
 import dev.cannoli.scorza.navigation.LauncherScreen
 import dev.cannoli.scorza.navigation.NavigationController
 import dev.cannoli.scorza.ui.screens.DialogState
+import dev.cannoli.scorza.ui.screens.RenameTarget
 import dev.cannoli.scorza.ui.viewmodel.ControllersViewModel
 import dev.cannoli.ui.components.KeyboardState
 import javax.inject.Inject
@@ -52,7 +53,7 @@ class ControllerDetailInputHandler @Inject constructor(
         when (screen.selectedIndex) {
             0 -> nav.push(LauncherScreen.EditButtons(mappingId = mapping.id))
             4 -> nav.dialogState.value = DialogState.RenameInput(
-                gameName = "$RENAME_KEY_PREFIX${mapping.id}",
+                target = RenameTarget.ControllerMapping(mapping.id),
                 titleRes = dev.cannoli.ui.R.string.keyboard_title_rename_controller,
                 keyboard = KeyboardState(text = mapping.displayName, cursorPos = mapping.displayName.length),
             )
@@ -78,9 +79,5 @@ class ControllerDetailInputHandler @Inject constructor(
             2 -> viewModel.cycleGlyphStyle(mapping, direction)
             3 -> viewModel.toggleExclude(mapping)
         }
-    }
-
-    companion object {
-        const val RENAME_KEY_PREFIX = "controller_mapping:"
     }
 }

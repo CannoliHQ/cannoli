@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.input.MENU_FORCE_SOFTCORE
+import dev.cannoli.scorza.model.VirtualPlatformTags
 import dev.cannoli.scorza.romm.sync.PreLaunchOutcome
 import dev.cannoli.scorza.romm.sync.SyncDirection
 import dev.cannoli.scorza.ui.screens.SyncHistoryRow
@@ -36,6 +37,7 @@ import dev.cannoli.scorza.ui.screens.ConflictChoice
 import dev.cannoli.scorza.ui.screens.DialogState
 import dev.cannoli.scorza.ui.screens.KeyboardHost
 import dev.cannoli.scorza.ui.screens.RaTokenState
+import dev.cannoli.scorza.ui.screens.RenameTarget
 import dev.cannoli.scorza.romm.RommArtType
 import dev.cannoli.ui.ButtonStyle
 import dev.cannoli.ui.DPAD_HORIZONTAL
@@ -209,11 +211,11 @@ fun DialogOverlay(
             val host = dialogState
             val keyboardTitle = host.titleRes?.let { stringResource(it) }
                 ?: (dialogState as? DialogState.RenameInput)?.let { rn ->
-                    when (rn.gameName) {
-                        "launcher_global_search" -> stringResource(R.string.search_global)
-                        "romm_global_search" -> stringResource(R.string.search_romm)
-                        "launcher_search", "romm_search", "romm_collection_search" -> rn.searchScope?.let { stringResource(R.string.search_in_platform, it) }
-                        "romm_device_name" -> stringResource(dev.cannoli.ui.R.string.dialog_romm_device_name_title)
+                    when (val target = rn.target) {
+                        is RenameTarget.LauncherGlobalSearch -> stringResource(R.string.search_global)
+                        is RenameTarget.RommGlobalSearch -> stringResource(R.string.search_romm)
+                        is RenameTarget.ScopedSearch -> stringResource(R.string.search_in_platform, target.scope)
+                        is RenameTarget.RommDeviceName -> stringResource(dev.cannoli.ui.R.string.dialog_romm_device_name_title)
                         else -> null
                     }
                 }
@@ -1002,7 +1004,7 @@ fun DialogOverlay(
             title = stringResource(R.string.launch_issue_app_missing),
             subject = stringResource(R.string.launch_issue_subject, dialogState.platformName, dialogState.appName),
             confirmLabel = when {
-                appListPlatformTag == "tools" || appListPlatformTag == "ports" ->
+                VirtualPlatformTags.isAppList(appListPlatformTag) ->
                     stringResource(R.string.label_remove)
                 dialogState.platformTag != null -> stringResource(R.string.label_change_emulator)
                 else -> null

@@ -10,6 +10,7 @@ import dev.cannoli.scorza.romm.sync.DEFAULT_SLOT
 import dev.cannoli.scorza.romm.sync.SlotManager
 import dev.cannoli.ui.components.KeyboardState
 import dev.cannoli.scorza.ui.screens.DialogState
+import dev.cannoli.scorza.ui.screens.RenameTarget
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -92,7 +93,7 @@ class SaveSlotsInputHandler @Inject constructor(
         val s = current() ?: return
         if (s.pendingDelete) return
         nav.dialogState.value = DialogState.RenameInput(
-            gameName = "save_slot_create",
+            target = RenameTarget.SaveSlotCreate,
             titleRes = dev.cannoli.ui.R.string.keyboard_title_new_slot,
             keyboard = KeyboardState(),
         )
@@ -104,7 +105,7 @@ class SaveSlotsInputHandler @Inject constructor(
         val target = s.slots.getOrNull(s.selectedIndex) ?: return
         if (target.slot == DEFAULT_SLOT) return
         nav.dialogState.value = DialogState.RenameInput(
-            gameName = "save_slot_rename:${target.slot}",
+            target = RenameTarget.SaveSlotRename(target.slot),
             titleRes = dev.cannoli.ui.R.string.keyboard_title_rename_slot,
             keyboard = KeyboardState(text = target.slot, cursorPos = target.slot.length),
         )

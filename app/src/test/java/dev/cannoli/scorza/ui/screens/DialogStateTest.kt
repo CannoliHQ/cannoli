@@ -55,14 +55,14 @@ class DialogStateTest {
     // ---- backspace via KeyboardController ----
 
     @Test fun `backspace removes the character before the cursor`() {
-        val state = DialogState.RenameInput(gameName = "g", keyboard = KeyboardState(text = "hello", cursorPos = 5))
+        val state = DialogState.RenameInput(target = RenameTarget.GameListItem, keyboard = KeyboardState(text = "hello", cursorPos = 5))
         val ks = KeyboardController.backspace(state.keyboard)
         assertEquals("hell", ks.text)
         assertEquals(4, ks.cursorPos)
     }
 
     @Test fun `backspace from middle of string removes correct character`() {
-        val state = DialogState.RenameInput(gameName = "g", keyboard = KeyboardState(text = "abcdef", cursorPos = 3))
+        val state = DialogState.RenameInput(target = RenameTarget.GameListItem, keyboard = KeyboardState(text = "abcdef", cursorPos = 3))
         val ks = KeyboardController.backspace(state.keyboard)
         assertEquals("abdef", ks.text)
         assertEquals(2, ks.cursorPos)
@@ -102,7 +102,7 @@ class DialogStateTest {
     // ---- withKeyboard / cursorPos / caps / symbols via KeyboardHost ----
 
     @Test fun `withKeyboard updates keyboard state for each subtype`() {
-        val rename = DialogState.RenameInput(gameName = "g")
+        val rename = DialogState.RenameInput(target = RenameTarget.GameListItem)
         val updated = rename.withKeyboard(KeyboardState(text = "abc", cursorPos = 2)) as DialogState.RenameInput
         assertEquals(2, updated.keyboard.cursorPos)
 
@@ -120,7 +120,7 @@ class DialogStateTest {
     }
 
     @Test fun `caps and symbols accessible via keyboard`() {
-        val s = DialogState.RenameInput(gameName = "g", keyboard = KeyboardState(caps = false, symbols = false))
+        val s = DialogState.RenameInput(target = RenameTarget.GameListItem, keyboard = KeyboardState(caps = false, symbols = false))
         val capsOn = s.withKeyboard(s.keyboard.copy(caps = true)) as DialogState.RenameInput
         assertTrue(capsOn.keyboard.caps)
         val symbolsOn = s.withKeyboard(s.keyboard.copy(symbols = true)) as DialogState.RenameInput
@@ -128,14 +128,14 @@ class DialogStateTest {
     }
 
     @Test fun `withKeyboard records row and column`() {
-        val s = DialogState.RenameInput(gameName = "g")
+        val s = DialogState.RenameInput(target = RenameTarget.GameListItem)
         val moved = s.withKeyboard(s.keyboard.copy(keyRow = 3, keyCol = 7)) as DialogState.RenameInput
         assertEquals(3, moved.keyboard.keyRow)
         assertEquals(7, moved.keyboard.keyCol)
     }
 
     @Test fun `currentName and cursorPos read through KeyboardHost`() {
-        val s = DialogState.RenameInput(gameName = "g", keyboard = KeyboardState(text = "xyz", cursorPos = 3))
+        val s = DialogState.RenameInput(target = RenameTarget.GameListItem, keyboard = KeyboardState(text = "xyz", cursorPos = 3))
         val host = s as KeyboardHost
         assertEquals("xyz", host.currentName)
         assertEquals(3, host.cursorPos)
@@ -144,7 +144,7 @@ class DialogStateTest {
     // ---- KeyboardHost membership ----
 
     @Test fun `keyboard dialogs are KeyboardHost, non-keyboard dialogs are not`() {
-        assertTrue(DialogState.RenameInput(gameName = "g") is KeyboardHost)
+        assertTrue(DialogState.RenameInput(target = RenameTarget.GameListItem) is KeyboardHost)
         assertTrue(DialogState.NewCollectionInput() is KeyboardHost)
         assertTrue(DialogState.None !is KeyboardHost)
         assertTrue(DialogState.QuitConfirm !is KeyboardHost)

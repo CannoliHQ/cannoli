@@ -8,7 +8,7 @@ import org.junit.Test
 class KeyboardHostTest {
 
     private val dialogs: List<DialogState> = listOf(
-        DialogState.RenameInput(gameName = "g"),
+        DialogState.RenameInput(target = RenameTarget.GameListItem),
         DialogState.NewCollectionInput(),
         DialogState.CollectionRenameInput(collectionId = 1, oldDisplayName = "x"),
         DialogState.NewFolderInput(parentPath = "/p"),
@@ -30,10 +30,10 @@ class KeyboardHostTest {
     }
 
     @Test fun `RenameInput title defaults to null and honors an explicit titleRes`() {
-        assertEquals(null, DialogState.RenameInput(gameName = "g").titleRes)
+        assertEquals(null, DialogState.RenameInput(target = RenameTarget.GameListItem).titleRes)
         assertEquals(
             R.string.keyboard_title_rename_game,
-            DialogState.RenameInput(gameName = "g", titleRes = R.string.keyboard_title_rename_game).titleRes,
+            DialogState.RenameInput(target = RenameTarget.GameListItem, titleRes = R.string.keyboard_title_rename_game).titleRes,
         )
     }
 }

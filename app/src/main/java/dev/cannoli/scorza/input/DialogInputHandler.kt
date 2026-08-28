@@ -20,6 +20,7 @@ import dev.cannoli.scorza.model.AppType
 import dev.cannoli.scorza.model.CollectionType
 import dev.cannoli.scorza.model.ListItem
 import dev.cannoli.scorza.model.artTag
+import dev.cannoli.scorza.model.VirtualPlatformTags
 import dev.cannoli.scorza.model.recentKey
 import dev.cannoli.scorza.navigation.LauncherScreen
 import dev.cannoli.scorza.navigation.NavigationController
@@ -33,8 +34,10 @@ import dev.cannoli.scorza.ui.screens.EmulatorPickerOption
 import dev.cannoli.scorza.ui.screens.DialogState
 import dev.cannoli.scorza.ui.screens.ListDialog
 import dev.cannoli.scorza.ui.screens.KeyboardHost
+import dev.cannoli.scorza.ui.screens.RenameTarget
 import dev.cannoli.scorza.ui.screens.withMenuDelta
 import dev.cannoli.scorza.ui.viewmodel.GameListViewModel
+import dev.cannoli.scorza.ui.viewmodel.SettingsCategory
 import dev.cannoli.scorza.ui.viewmodel.SettingsViewModel
 import dev.cannoli.scorza.ui.viewmodel.SystemListViewModel
 import dev.cannoli.scorza.util.AtomicRename
@@ -446,7 +449,7 @@ class DialogInputHandler @Inject constructor(
             }
             is DialogState.MissingApp -> {
                 val glState = gameListViewModel.state.value
-                if (glState.platformTag == "tools" || glState.platformTag == "ports") {
+                if (VirtualPlatformTags.isAppList(glState.platformTag)) {
                     val item = gameListViewModel.getSelectedItem()
                     if (item is ListItem.AppItem) {
                         nav.dialogState.value = DialogState.None
@@ -578,7 +581,7 @@ class DialogInputHandler @Inject constructor(
                         nav.dialogState.value = DialogState.About(fromQuickMenu = true)
                     dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.DEBUG -> openSettings(
                         dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.DEBUG,
-                        QuickSettingsCategory("debug", dev.cannoli.scorza.R.string.settings_debug),
+                        QuickSettingsCategory(SettingsCategory.DEBUG, dev.cannoli.scorza.R.string.settings_debug),
                     )
                     null -> nav.dialogState.value = DialogState.None
                 }
@@ -670,7 +673,7 @@ class DialogInputHandler @Inject constructor(
     }
 
     private data class QuickSettingsCategory(
-        val key: String,
+        val key: SettingsCategory,
         @androidx.annotation.StringRes val labelRes: Int,
     )
 
@@ -804,7 +807,7 @@ class DialogInputHandler @Inject constructor(
         } else {
             val default = deviceRegistrar.defaultDeviceName()
             nav.dialogState.value = DialogState.RenameInput(
-                gameName = "romm_device_name",
+                target = RenameTarget.RommDeviceName,
                 keyboard = KeyboardState(text = default, cursorPos = default.length),
             )
         }
@@ -1175,9 +1178,9 @@ class DialogInputHandler @Inject constructor(
             }
             is DialogState.RALoggingIn -> {
                 nav.dialogState.value = DialogState.None
-                if (ds.failed && settingsViewModel.state.value.activeCategory != "retroachievements") {
+                if (ds.failed && settingsViewModel.state.value.activeCategory != SettingsCategory.RETROACHIEVEMENTS) {
                     settingsViewModel.enterSubCategory(
-                        "retroachievements",
+                        SettingsCategory.RETROACHIEVEMENTS,
                         dev.cannoli.scorza.R.string.settings_retroachievements,
                     )
                 }
@@ -1491,7 +1494,7 @@ class DialogInputHandler @Inject constructor(
                             else -> dev.cannoli.ui.R.string.keyboard_title_rename_folder
                         }
                         nav.dialogState.value = DialogState.RenameInput(
-                            gameName = state.gameName,
+                            target = RenameTarget.SystemListItem(state.gameName),
                             titleRes = renameTitle,
                             keyboard = KeyboardState(text = state.gameName, cursorPos = state.gameName.length),
                         )
@@ -1551,7 +1554,7 @@ class DialogInputHandler @Inject constructor(
                         else -> dev.cannoli.ui.R.string.keyboard_title_rename_game
                     }
                     nav.dialogState.value = DialogState.RenameInput(
-                        gameName = displayName,
+                        target = RenameTarget.GameListItem,
                         titleRes = renameTitle,
                         keyboard = KeyboardState(text = displayName, cursorPos = displayName.length),
                     )
@@ -1586,7 +1589,7 @@ class DialogInputHandler @Inject constructor(
                 if (rom != null) {
                     val current = rom.raGameId?.toString() ?: ""
                     nav.dialogState.value = DialogState.RenameInput(
-                        gameName = "ra_game_id:${rom.path.absolutePath}",
+                        target = RenameTarget.RaGameId(rom.path.absolutePath),
                         keyboard = KeyboardState(text = current, cursorPos = current.length, layout = KeyboardLayout.Number),
                     )
                 }
@@ -1945,7 +1948,7 @@ class DialogInputHandler @Inject constructor(
         val rom = (item as? ListItem.RomItem)?.rom
         val app = (item as? ListItem.AppItem)?.app
         val isApk = app != null
-        val platformTag = rom?.platformTag ?: (if (app?.type == AppType.TOOL) "tools" else "ports")
+        val platformTag = rom?.platformTag ?: (if (app?.type == AppType.TOOL) VirtualPlatformTags.TOOLS else VirtualPlatformTags.PORTS)
         val romPath = rom?.path?.absolutePath
         val isFav = when {
             rom != null -> rom.id in glState.favoriteRomIds
@@ -1953,7 +1956,7 @@ class DialogInputHandler @Inject constructor(
             else -> false
         } || (glState.isCollection && glState.isFavorites)
         return buildList {
-            if (glState.platformTag == "recently_played") add(MENU_REMOVE_FROM_RECENTS)
+            if (glState.platformTag == VirtualPlatformTags.RECENTLY_PLAYED) add(MENU_REMOVE_FROM_RECENTS)
             add(if (isFav) MENU_REMOVE_FAVORITE else MENU_ADD_FAVORITE)
             if (isApk) {
                 add(MENU_MANAGE_COLLECTIONS)
@@ -2171,156 +2174,135 @@ class DialogInputHandler @Inject constructor(
     }
 
     private fun onRenameConfirm(state: DialogState.RenameInput) {
-        if (state.gameName.startsWith(dev.cannoli.scorza.input.screen.ControllerDetailInputHandler.RENAME_KEY_PREFIX)) {
-            val mappingId = state.gameName.removePrefix(dev.cannoli.scorza.input.screen.ControllerDetailInputHandler.RENAME_KEY_PREFIX)
-            val newName = state.currentName.trim()
-            val vm = controllersViewModel
-            val mapping = vm.state.value.connected.firstOrNull { it.mapping.id == mappingId }?.mapping
-                ?: vm.state.value.savedMappings.firstOrNull { it.id == mappingId }
-            if (mapping != null && newName.isNotEmpty() && newName != mapping.displayName) {
-                vm.renameMapping(mapping, newName)
+        when (val target = state.target) {
+            is RenameTarget.ControllerMapping -> {
+                val newName = state.currentName.trim()
+                val vm = controllersViewModel
+                val mapping = vm.state.value.connected.firstOrNull { it.mapping.id == target.mappingId }?.mapping
+                    ?: vm.state.value.savedMappings.firstOrNull { it.id == target.mappingId }
+                if (mapping != null && newName.isNotEmpty() && newName != mapping.displayName) {
+                    vm.renameMapping(mapping, newName)
+                }
+                nav.dialogState.value = DialogState.None
             }
-            nav.dialogState.value = DialogState.None
-            return
-        }
-        if (state.gameName == "ra_username") {
-            settings.raUsername = state.currentName.trim()
-            settingsViewModel.refreshSubList()
-            nav.dialogState.value = DialogState.None
-            return
-        }
-        if (state.gameName == "ra_password") {
-            settingsViewModel.raPassword = state.currentName.trim()
-            settingsViewModel.refreshSubList()
-            nav.dialogState.value = DialogState.None
-            return
-        }
-        if (state.gameName == "ra_login") {
-            activityActions.startRaLogin(settings.raUsername, settingsViewModel.raPassword)
-            nav.dialogState.value = DialogState.None
-            return
-        }
-        if (state.gameName == "romm_host") {
-            rommStore.host = state.currentName.trim()
-            settingsViewModel.refreshSubList()
-            nav.dialogState.value = DialogState.None
-            return
-        }
-        if (state.gameName == "romm_pair_code") {
-            val code = state.currentName
-            nav.dialogState.value = DialogState.None
-            activityActions.startRommCodePairing(rommStore.host, code)
-            return
-        }
-        if (state.gameName == "romm_device_name") {
-            val name = state.currentName.trim().ifEmpty { deviceRegistrar.defaultDeviceName() }
-            nav.dialogState.value = DialogState.None
-            ioScope.launch {
-                runCatching { deviceRegistrar.register(name) }
-                    .onSuccess {
-                        settings.rommSaveSyncEnabled = true
-                        val count = saveSyncService.pendingConflictCount()
-                        saveSyncStatusHolder.settle(enabled = true, online = true, pendingConflicts = count, hadError = false)
-                        withContext(Dispatchers.Main) { nav.dialogState.value = buildSaveSyncMenu(pendingConflicts = count) }
+            is RenameTarget.RaUsername -> {
+                settings.raUsername = state.currentName.trim()
+                settingsViewModel.refreshSubList()
+                nav.dialogState.value = DialogState.None
+            }
+            is RenameTarget.RaPassword -> {
+                settingsViewModel.raPassword = state.currentName.trim()
+                settingsViewModel.refreshSubList()
+                nav.dialogState.value = DialogState.None
+            }
+            is RenameTarget.RommHost -> {
+                rommStore.host = state.currentName.trim()
+                settingsViewModel.refreshSubList()
+                nav.dialogState.value = DialogState.None
+            }
+            is RenameTarget.RommPairCode -> {
+                val code = state.currentName
+                nav.dialogState.value = DialogState.None
+                activityActions.startRommCodePairing(rommStore.host, code)
+            }
+            is RenameTarget.RommDeviceName -> {
+                val name = state.currentName.trim().ifEmpty { deviceRegistrar.defaultDeviceName() }
+                nav.dialogState.value = DialogState.None
+                ioScope.launch {
+                    runCatching { deviceRegistrar.register(name) }
+                        .onSuccess {
+                            settings.rommSaveSyncEnabled = true
+                            val count = saveSyncService.pendingConflictCount()
+                            saveSyncStatusHolder.settle(enabled = true, online = true, pendingConflicts = count, hadError = false)
+                            withContext(Dispatchers.Main) { nav.dialogState.value = buildSaveSyncMenu(pendingConflicts = count) }
+                        }
+                        .onFailure { ErrorLog.write("romm device registration failed: ${it.message}") }
+                }
+            }
+            is RenameTarget.RommPlatformSearch -> {
+                (nav.currentScreen as? dev.cannoli.scorza.navigation.LauncherScreen.RommGameList)?.let {
+                    nav.replaceTop(it.copy(search = state.currentName.trim(), selectedIndex = 0, scrollTarget = 0))
+                }
+                nav.dialogState.value = DialogState.None
+            }
+            is RenameTarget.RommCollectionSearch -> {
+                (nav.currentScreen as? dev.cannoli.scorza.navigation.LauncherScreen.RommCollectionGameList)?.let {
+                    nav.replaceTop(it.copy(search = state.currentName.trim(), selectedIndex = 0, scrollTarget = 0))
+                }
+                nav.dialogState.value = DialogState.None
+            }
+            is RenameTarget.RommGlobalSearch -> {
+                val term = state.currentName.trim()
+                nav.dialogState.value = DialogState.None
+                if (term.isNotBlank()) nav.push(LauncherScreen.RommGlobalSearch(term = term))
+            }
+            is RenameTarget.LauncherSearch -> {
+                val term = state.currentName.trim()
+                if (term.isBlank()) gameListViewModel.clearSearch() else gameListViewModel.setSearch(term)
+                nav.dialogState.value = DialogState.None
+            }
+            is RenameTarget.LauncherGlobalSearch -> {
+                if (nav.navigating) return
+                val term = state.currentName.trim()
+                if (term.isBlank()) {
+                    nav.dialogState.value = DialogState.None
+                    return
+                }
+                // Keep the keyboard up until results are ready so the screen underneath never flashes,
+                // then dismiss it and reveal the populated results in the same frame.
+                nav.navigating = true
+                gameListViewModel.loadGlobalSearch(dev.cannoli.scorza.model.GameSearchQuery(term)) {
+                    launcherActions.scanResumableGames()
+                    nav.screenStack.add(LauncherScreen.GameList)
+                    nav.dialogState.value = DialogState.None
+                    nav.navigating = false
+                }
+            }
+            is RenameTarget.SaveSlotCreate -> {
+                val name = state.currentName.trim()
+                nav.dialogState.value = DialogState.None
+                if (name.isNotBlank()) {
+                    val s = nav.currentScreen as? dev.cannoli.scorza.navigation.LauncherScreen.SaveSlots ?: return
+                    ioScope.launch {
+                        runCatching { slotManager.create(s.gameKey, s.tag, s.base, s.romId, s.emulator, name) }
+                            .onFailure { ErrorLog.write("save slot create failed: ${it.message}") }
+                        withContext(Dispatchers.Main) { saveSlotsHandler.refreshSlots() }
                     }
-                    .onFailure { ErrorLog.write("romm device registration failed: ${it.message}") }
-            }
-            return
-        }
-        if (state.gameName == "romm_search") {
-            (nav.currentScreen as? dev.cannoli.scorza.navigation.LauncherScreen.RommGameList)?.let {
-                nav.replaceTop(it.copy(search = state.currentName.trim(), selectedIndex = 0, scrollTarget = 0))
-            }
-            nav.dialogState.value = DialogState.None
-            return
-        }
-        if (state.gameName == "romm_collection_search") {
-            (nav.currentScreen as? dev.cannoli.scorza.navigation.LauncherScreen.RommCollectionGameList)?.let {
-                nav.replaceTop(it.copy(search = state.currentName.trim(), selectedIndex = 0, scrollTarget = 0))
-            }
-            nav.dialogState.value = DialogState.None
-            return
-        }
-        if (state.gameName == "romm_global_search") {
-            val term = state.currentName.trim()
-            nav.dialogState.value = DialogState.None
-            if (term.isNotBlank()) nav.push(LauncherScreen.RommGlobalSearch(term = term))
-            return
-        }
-        if (state.gameName == "launcher_search") {
-            val term = state.currentName.trim()
-            if (term.isBlank()) gameListViewModel.clearSearch() else gameListViewModel.setSearch(term)
-            nav.dialogState.value = DialogState.None
-            return
-        }
-        if (state.gameName == "save_slot_create") {
-            val name = state.currentName.trim()
-            nav.dialogState.value = DialogState.None
-            if (name.isNotBlank()) {
-                val s = nav.currentScreen as? dev.cannoli.scorza.navigation.LauncherScreen.SaveSlots ?: return
-                ioScope.launch {
-                    runCatching { slotManager.create(s.gameKey, s.tag, s.base, s.romId, s.emulator, name) }
-                        .onFailure { ErrorLog.write("save slot create failed: ${it.message}") }
-                    withContext(Dispatchers.Main) { saveSlotsHandler.refreshSlots() }
                 }
             }
-            return
-        }
-        if (state.gameName.startsWith("save_slot_rename:")) {
-            val oldSlot = state.gameName.removePrefix("save_slot_rename:")
-            val newSlot = state.currentName.trim()
-            nav.dialogState.value = DialogState.None
-            if (newSlot.isNotBlank() && newSlot != oldSlot) {
-                val s = nav.currentScreen as? dev.cannoli.scorza.navigation.LauncherScreen.SaveSlots ?: return
-                ioScope.launch {
-                    runCatching { slotManager.rename(s.gameKey, s.tag, s.base, s.romId, s.emulator, oldSlot, newSlot) }
-                        .onFailure { ErrorLog.write("save slot rename failed: ${it.message}") }
-                    withContext(Dispatchers.Main) { saveSlotsHandler.refreshSlots() }
+            is RenameTarget.SaveSlotRename -> {
+                val newSlot = state.currentName.trim()
+                nav.dialogState.value = DialogState.None
+                if (newSlot.isNotBlank() && newSlot != target.slot) {
+                    val s = nav.currentScreen as? dev.cannoli.scorza.navigation.LauncherScreen.SaveSlots ?: return
+                    ioScope.launch {
+                        runCatching { slotManager.rename(s.gameKey, s.tag, s.base, s.romId, s.emulator, target.slot, newSlot) }
+                            .onFailure { ErrorLog.write("save slot rename failed: ${it.message}") }
+                        withContext(Dispatchers.Main) { saveSlotsHandler.refreshSlots() }
+                    }
                 }
             }
-            return
-        }
-        if (state.gameName == "launcher_global_search") {
-            if (nav.navigating) return
-            val term = state.currentName.trim()
-            if (term.isBlank()) {
+            is RenameTarget.LauncherTitle -> {
+                settings.title = state.currentName.trim()
+                settingsViewModel.refreshSubList()
+                settingsViewModel.load()
                 nav.dialogState.value = DialogState.None
-                return
             }
-            // Keep the keyboard up until results are ready so the screen underneath never flashes,
-            // then dismiss it and reveal the populated results in the same frame.
-            nav.navigating = true
-            gameListViewModel.loadGlobalSearch(dev.cannoli.scorza.model.GameSearchQuery(term)) {
-                launcherActions.scanResumableGames()
-                nav.screenStack.add(LauncherScreen.GameList)
-                nav.dialogState.value = DialogState.None
-                nav.navigating = false
+            is RenameTarget.RaGameId -> {
+                val gameId = state.currentName.trim().toIntOrNull()
+                ioScope.launch {
+                    romsRepository.gameByPath(target.romPath)?.let { romsRepository.setRaGameId(it.id, gameId) }
+                    gameListViewModel.reload()
+                }
+                restoreContextMenu()
             }
-            return
+            is RenameTarget.SystemListItem -> launcherActions.handleSystemListRename(target.currentName, state.currentName.trim())
+            is RenameTarget.GameListItem -> renameSelectedGameListItem(state.currentName.trim())
         }
-        if (state.gameName == "title") {
-            settings.title = state.currentName.trim()
-            settingsViewModel.refreshSubList()
-            settingsViewModel.load()
-            nav.dialogState.value = DialogState.None
-            return
-        }
-        if (state.gameName.startsWith("ra_game_id:")) {
-            val romPath = state.gameName.removePrefix("ra_game_id:")
-            val gameId = state.currentName.trim().toIntOrNull()
-            ioScope.launch {
-                romsRepository.gameByPath(romPath)?.let { romsRepository.setRaGameId(it.id, gameId) }
-                gameListViewModel.reload()
-            }
-            restoreContextMenu()
-            return
-        }
-        if (nav.currentScreen == LauncherScreen.SystemList) {
-            launcherActions.handleSystemListRename(state)
-            return
-        }
+    }
+
+    private fun renameSelectedGameListItem(newName: String) {
         val item = gameListViewModel.getSelectedItem() ?: return
-        val newName = state.currentName.trim()
         val currentName = when (item) {
             is ListItem.RomItem -> item.rom.displayName
             is ListItem.SubfolderItem -> item.name
