@@ -46,7 +46,6 @@ val CREDITS_FONTS: List<CreditEntry> = listOf(
 
 val CREDITS_LIBRARIES: List<CreditEntry> = listOf(
     CreditEntry("Apache Commons Compress", "Apache 2.0"),
-    CreditEntry("PdfiumAndroid (io.legere)", "Apache 2.0"),
     CreditEntry("XZ for Java", "Public domain"),
     CreditEntry("ZXing", "Apache 2.0"),
 )

@@ -177,7 +177,6 @@ dependencies {
     implementation("com.google.zxing:core:3.5.3")
     implementation("org.apache.commons:commons-compress:1.27.1")
     implementation("org.tukaani:xz:1.10")
-    implementation("io.legere:pdfiumandroid:1.0.35")
     implementation(libs.nanohttpd)
     implementation(libs.commons.fileupload.core)
     implementation(libs.kotlinx.serialization.json)

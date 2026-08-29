@@ -11,7 +11,6 @@
   ],
   "libraries": [
     { "name": "Apache Commons Compress", "what": "Archive Extraction", "license": "Apache 2.0" },
-    { "name": "PdfiumAndroid (io.legere)", "what": "PDF Renderer", "license": "Apache 2.0" },
     { "name": "XZ for Java", "what": "7z Decompression", "license": "Public domain" },
     { "name": "ZXing", "what": "QR Code Library", "license": "Apache 2.0" }
   ],
@@ -32,18 +31,14 @@
     { "name": "Stella", "id": "stella", "what": "Atari 2600", "license": "GPLv2" },
     { "name": "SwanStation", "id": "swanstation", "what": "PlayStation", "license": "GPLv3" }
   ],
+  "shaders_note": [
+    "Only what Cannoli ships. Every other shader now comes from the libretro shader database at",
+    "runtime, and those carry their own licences in the archive rather than being restated here,",
+    "where a list of several hundred could only go out of date."
+  ],
   "shaders": [
-    { "name": "EasyMode", "shader": "crt-aperture", "license": "GPL" },
     { "name": "Cannoli (based on EasyMode)", "shader": "crt-cannoli", "license": "GPL" },
-    { "name": "EasyMode", "shader": "crt-easymode", "license": "GPL" },
-    { "name": "cgwg / Themaister / DOLLS", "shader": "crt-geom", "license": "GPLv2" },
-    { "name": "Timothy Lottes / hunterk", "shader": "crt-lottes-fast", "license": "Public domain" },
-    { "name": "Themaister", "shader": "dot", "license": "Public domain" },
-    { "name": "Gigaherz", "shader": "lcd3x", "license": "Public domain" },
-    { "name": "hunterk", "shader": "scanline", "license": "Public domain" },
-    { "name": "rsn8887", "shader": "sharp-bilinear-simple", "license": "Public domain" },
-    { "name": "SoltanGris42", "shader": "zfast-crt", "license": "GPLv2" },
-    { "name": "SoltanGris42", "shader": "zfast-lcd", "license": "GPLv2" }
+    { "shader": "libretro shader database", "license": "See each preset" }
   ],
   "localization": [
     { "language": "zh-CN", "contributors": ["Bobby Chiang"] },

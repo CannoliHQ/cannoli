@@ -21,13 +21,14 @@ def kt_string(value):
     return f'"{escaped}"'
 
 
-def entry_list(name, entries):
+def entry_list(name, entries, note=None):
+    header = "".join(f"// {line}\n" for line in note) if note else ""
     if not entries:
-        return f"val {name}: List<CreditEntry> = emptyList()\n"
+        return f"{header}val {name}: List<CreditEntry> = emptyList()\n"
     body = "\n".join(
         f"    CreditEntry({kt_string(label)}, {kt_string(detail)})," for label, detail in entries
     )
-    return f"val {name}: List<CreditEntry> = listOf(\n{body}\n)\n"
+    return f"{header}val {name}: List<CreditEntry> = listOf(\n{body}\n)\n"
 
 
 def sync_credits_data(credits):
@@ -62,7 +63,11 @@ def sync_credits_data(credits):
         + "\n"
         + entry_list(
             "CREDITS_SHADERS",
-            [(f'{i["shader"]} by {i["name"]}', i["license"]) for i in credits["shaders"]],
+            [
+                (f'{i["shader"]} by {i["name"]}' if i.get("name") else i["shader"], i["license"])
+                for i in credits["shaders"]
+            ],
+            note=credits.get("shaders_note"),
         )
         + "\n"
         + entry_list(
