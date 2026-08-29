@@ -642,8 +642,6 @@ class GameListViewModel @Inject constructor(
         }
     }
 
-    fun hasChildCollections(): Boolean = _state.value.items.any { it is ListItem.ChildCollectionItem }
-
     fun enterReorderMode() {
         _state.update { current ->
             val isApkList = VirtualPlatformTags.isAppList(current.platformTag)

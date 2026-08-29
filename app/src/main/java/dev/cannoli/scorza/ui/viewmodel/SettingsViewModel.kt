@@ -10,7 +10,6 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.scopes.ActivityScoped
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.db.CollectionsRepository
-import dev.cannoli.scorza.launcher.InstalledCoreService
 import dev.cannoli.scorza.model.CollectionType
 import dev.cannoli.scorza.settings.ArtScale
 import dev.cannoli.scorza.settings.BatteryDisplay
@@ -364,15 +363,6 @@ class SettingsViewModel @Inject constructor(
         val cat = current.activeCategory ?: return
         val items = buildItemsForCategory(cat)
         _state.update { it.copy(items = items, selectedIndex = it.selectedIndex.coerceIn(0, (items.size - 1).coerceAtLeast(0))) }
-    }
-
-    fun selectItem(key: String) {
-        val index = _state.value.items.indexOfFirst { it.key == key }
-        if (index >= 0) _state.update { it.copy(selectedIndex = index) }
-    }
-
-    fun refreshAppSettings() {
-        _appSettings.value = readAppSettings()
     }
 
     fun refreshItemsAndSettings() {

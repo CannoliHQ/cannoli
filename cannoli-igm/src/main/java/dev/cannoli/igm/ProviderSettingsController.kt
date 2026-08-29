@@ -40,11 +40,6 @@ class ProviderSettingsController(val provider: IgmSettingsProvider) {
         var precedingKey: String? = null,
     )
 
-    fun descriptionAt(index: Int): String? {
-        val level = levels.lastOrNull() ?: return null
-        return descriptionOf(provider.screen(level.path).items, index)
-    }
-
     private fun descriptionOf(items: List<GenericIgmSettingsItem>, index: Int): String? =
         (items.getOrNull(index) as? GenericIgmSettingsItem.Choice)?.description
 
@@ -151,6 +146,8 @@ class ProviderSettingsController(val provider: IgmSettingsProvider) {
 
     // Clamped rather than wrapped: paging is for crossing a long list, and wrapping from the top to
     // the end makes it impossible to reach the start by holding a direction.
+    // Clamped where Up and Down wrap: wrapping a page jump from the top to the end leaves no way to
+    // reach the start of a long list by paging.
     private fun pageBy(level: Level, delta: Int, count: Int): State {
         if (count > 0) {
             level.select(provider.screen(level.path).items, (level.cursor + delta).coerceIn(0, count - 1))
@@ -179,10 +176,6 @@ class ProviderSettingsController(val provider: IgmSettingsProvider) {
         when (button) {
             Nav.UP -> if (count > 0) level.select(items, (level.cursor - 1 + count) % count)
             Nav.DOWN -> if (count > 0) level.select(items, (level.cursor + 1) % count)
-            // Clamped rather than wrapped: a page jump is for crossing a long list, and wrapping
-            // from the top to the end makes it impossible to reach the start by holding a shoulder.
-            // A shader category can hold a hundred presets, which is the reason this exists.
-
             Nav.LEFT, Nav.RIGHT -> {
                 // Left and Right cycle a row that has a value, and page the list when the row has
                 // none. A shader browser is folders and presets, so nothing there cycles and paging

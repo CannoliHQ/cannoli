@@ -328,12 +328,6 @@ class SystemListViewModel @Inject constructor(
         return (getSelectedItem() as? ListItem.PlatformItem)?.platform?.tag
     }
 
-    fun getPlatformTags(): List<String> =
-        _state.value.items.filterIsInstance<ListItem.PlatformItem>().map { it.platform.tag }
-
-    fun getNavigableItems(): List<ListItem> =
-        _state.value.items
-
     fun enterReorderMode() {
         _state.update { current ->
             val item = current.items.getOrNull(current.selectedIndex) ?: return@update current

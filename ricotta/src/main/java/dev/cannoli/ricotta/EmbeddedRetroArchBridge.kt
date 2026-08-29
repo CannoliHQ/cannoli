@@ -709,19 +709,6 @@ class EmbeddedRetroArchBridge(
     private external fun nativeRaIntegerScale(): Boolean
 
     companion object {
-        /**
-         * Not a RetroArch setting, so its native writer skips it. Staging it is purely what marks
-         * the settings tree dirty, so the save prompt appears and offers platform or game.
-         */
-        /** Mirrors RICOTTA_RA_SETTING_FIELDS. Both describers allocate this many. */
-        private const val RA_SETTING_FIELDS = 10
-
-
-        /**
-         * Cannoli's own, for the same reason as the overlay: RetroArch has no config key naming the
-         * preset in force, so there is nothing of its own to write into.
-         */
-
         /** Characters a filename cannot carry, dropped from a name taken off a tag or a rom. */
         private val FILENAME_RESERVED = setOf('/', '\\', ':', '*', '?', '"', '<', '>', '|')
 
@@ -814,11 +801,6 @@ class EmbeddedRetroArchBridge(
             }
             out.add(field.toString())
             return out
-        }
-
-        init {
-            // The native library is already loaded by RetroActivityCommon
-            // System.loadLibrary("retroarch-activity")
         }
     }
 }

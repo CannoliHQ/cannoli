@@ -7,26 +7,6 @@ import dev.cannoli.scorza.input.DeviceMapping
 import dev.cannoli.scorza.input.GlyphStyle
 import dev.cannoli.scorza.input.InputBinding
 
-/**
- * The bare printed glyph for a face position, for legends that cannot go through a [DeviceMapping]:
- * the setup wizard classifies a pad before any mapping exists for it. Null for everything that has
- * no printed face glyph.
- */
-fun faceGlyph(button: CanonicalButton, style: GlyphStyle): String? {
-    val set = when (style) {
-        GlyphStyle.PLUMBER -> dev.cannoli.ui.ButtonLabelSet.PLUMBER
-        GlyphStyle.REDMOND -> dev.cannoli.ui.ButtonLabelSet.REDMOND
-        GlyphStyle.SHAPES -> dev.cannoli.ui.ButtonLabelSet.SHAPES
-    }
-    return when (button) {
-        CanonicalButton.BTN_SOUTH -> set.south
-        CanonicalButton.BTN_EAST -> set.east
-        CanonicalButton.BTN_WEST -> set.west
-        CanonicalButton.BTN_NORTH -> set.north
-        else -> null
-    }
-}
-
 fun canonicalLabel(context: Context, button: CanonicalButton, style: GlyphStyle): String {
     val face = when (button) {
         CanonicalButton.BTN_SOUTH -> R.string.canonical_south to when (style) {

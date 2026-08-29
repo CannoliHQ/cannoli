@@ -3,7 +3,6 @@ package dev.cannoli.ui.theme
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
-import kotlin.math.roundToInt
 import kotlin.math.roundToLong
 import dev.cannoli.ui.R
 
@@ -61,13 +60,6 @@ val COLOR_PRESETS = listOf(
     ColorPreset(R.string.color_grape, 0xFF7B3FA0),
     ColorPreset(R.string.color_midnight_purple, 0xFF4A1A6E)
 )
-
-fun colorToHex(color: Color): String {
-    val r = (color.red * 255).roundToInt()
-    val g = (color.green * 255).roundToInt()
-    val b = (color.blue * 255).roundToInt()
-    return "#%02X%02X%02X".format(r, g, b)
-}
 
 fun hexToColor(hex: String): Color? {
     val clean = hex.removePrefix("#")

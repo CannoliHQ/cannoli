@@ -202,13 +202,6 @@ class CoreInfoRepository(private val assets: AssetManager, private val cacheDir:
             .sortedBy { it.displayName }
     }
 
-    /**
-     * Whether this core is one Cannoli ships. Every curated core builds for both ABIs, which
-     * CuratedCatalogueTest enforces, so membership is the whole question: a core outside the
-     * catalogue is one the picker will never offer, and putting it on disk would help nobody.
-     */
-    fun isCurated(coreId: String): Boolean = coreId in coreById
-
     fun getFirmwareFor(coreId: String): List<FirmwareEntry> {
         val filename = "$coreId.info"
         val fields = mutableMapOf<String, String>()
@@ -239,21 +232,5 @@ class CoreInfoRepository(private val assets: AssetManager, private val cacheDir:
         val all = getFirmwareFor(coreId)
         if (all.isEmpty()) return emptyList()
         return all.filter { !it.optional && !File(biosDir, it.path).exists() }
-    }
-
-    fun requiresHwRender(coreId: String): Boolean {
-        val filename = "$coreId.info"
-        return try {
-            assets.open("core_info/$filename").bufferedReader().useLines { lines ->
-                for (line in lines) {
-                    val trimmed = line.trim()
-                    if (trimmed.startsWith("#")) continue
-                    if (!trimmed.startsWith("hw_render")) continue
-                    val value = trimmed.substringAfter('=').trim().removeSurrounding("\"")
-                    return@useLines value.equals("true", ignoreCase = true)
-                }
-                false
-            }
-        } catch (_: Exception) { false }
     }
 }

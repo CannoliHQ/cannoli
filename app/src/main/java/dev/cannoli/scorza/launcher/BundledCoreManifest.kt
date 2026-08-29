@@ -64,8 +64,4 @@ object BundledCoreManifest {
     /** When the bundled binary was built, or null when this core was not bundled. */
     fun builtFor(assets: AssetManager, coreId: String): String? =
         read(assets)[normalise(coreId)]?.built?.takeIf { it != "?" && it.isNotBlank() }
-
-    internal fun resetForTest() {
-        cached = null
-    }
 }

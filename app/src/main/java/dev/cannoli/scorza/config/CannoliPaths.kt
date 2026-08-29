@@ -45,8 +45,6 @@ class CannoliPaths(val root: File) {
     val configLaunchScripts: File get() = File(configDir, "Launch Scripts")
     val configInput: File get() = File(configDir, "Input")
 
-    // Superseded by the database and archived on import; kept only so the importer can find them.
-    val configProfiles: File get() = File(configDir, "Profiles")
     val configOrdering: File get() = File(configDir, "Ordering")
     val configInputMappings: File get() = File(configInput, "Mappings")
     val configInputAutoconfig: File get() = File(configInput, "Autoconfig")
@@ -92,8 +90,6 @@ class CannoliPaths(val root: File) {
     fun guidesFor(tag: String): File = File(guidesDir, tag)
 
     fun cheatsFor(tag: String): File = File(cheatsDir, tag)
-    fun overlaysFor(tag: String): File = OverlayCatalog.platformDir(root, tag)
-    fun romsFor(tag: String): File = File(romsDir, tag)
 
     // Per-game helpers
     /** The per-game folder. Every core's states for that game live under it, one folder each. */
@@ -114,17 +110,13 @@ class CannoliPaths(val root: File) {
     fun saveStateBase(tag: String, romBaseName: String, coreId: String): File =
         File(saveStateDir(tag, romBaseName, coreId), "$romBaseName.state")
 
-    fun sramFile(tag: String, romBaseName: String): File =
-        File(savesFor(tag), "$romBaseName.srm")
-
     fun guideDir(tag: String, romBaseName: String): File =
         File(guidesFor(tag), romBaseName)
 
     fun cheatDir(tag: String, gameTitle: String): File =
         File(cheatsFor(tag), gameTitle)
 
-    // Profiles & overrides
-    fun profileFile(name: String): File = File(configProfiles, "$name.ini")
+    // Overrides
     fun systemOverrideCfg(tag: String, core: String): File =
         File(File(configOverridesSystems, tag), "$core.cfg")
 
@@ -156,8 +148,4 @@ class CannoliPaths(val root: File) {
 
     // Regenerated every launch from the tiers above; RetroArch reads and flushes to this one.
     val coreOptionsLaunchOpt: File get() = File(configRetroArch, "core_options_launch.opt")
-
-    // Logs
-    fun coreLogDir(coreName: String): File = File(logsDir, coreName)
-
 }

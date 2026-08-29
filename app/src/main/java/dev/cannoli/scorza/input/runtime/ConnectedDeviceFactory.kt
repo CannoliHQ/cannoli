@@ -1,7 +1,5 @@
 package dev.cannoli.scorza.input.runtime
 
-import android.os.Build
-import android.view.InputDevice
 import dev.cannoli.scorza.input.ConnectedDevice
 
 object ConnectedDeviceFactory {
@@ -28,22 +26,5 @@ object ConnectedDeviceFactory {
         connectedAtMillis = connectedAtMillis,
         isBuiltIn = isBuiltIn,
         isExternal = isExternal,
-    )
-
-    fun fromInputDevice(
-        device: InputDevice,
-        connectedAtMillis: Long,
-        isBuiltIn: Boolean = false,
-    ): ConnectedDevice = fromFields(
-        androidDeviceId = device.id,
-        descriptor = device.descriptor,
-        name = device.name,
-        vendorId = device.vendorId,
-        productId = device.productId,
-        androidBuildModel = Build.MODEL ?: "",
-        sourceMask = device.sources,
-        connectedAtMillis = connectedAtMillis,
-        isBuiltIn = isBuiltIn,
-        isExternal = device.isExternalCompat(),
     )
 }

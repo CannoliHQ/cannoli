@@ -54,8 +54,5 @@ class InstalledCoreService @Inject constructor(
         )
 
         fun getPackageLabel(pkg: String): String = PACKAGE_LABELS[pkg] ?: pkg
-
-        fun soToCoreId(filename: String): String =
-            filename.removeSuffix("_android.so").removeSuffix(".so")
     }
 }

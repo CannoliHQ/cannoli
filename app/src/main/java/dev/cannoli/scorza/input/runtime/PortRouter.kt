@@ -85,28 +85,6 @@ class PortRouter(private val maxPorts: Int = 4) {
         aliases.remove(aliasId)
     }
 
-    /**
-     * Move the entry at [oldPrimary] to [newPrimary]. Aliases that pointed to [oldPrimary]
-     * are re-pointed to [newPrimary] (except [newPrimary] itself, which becomes a real entry
-     * and is removed from the alias map). Used when the kernel removes the original
-     * androidDeviceId of a controller we'd already aliased a phantom onto -- promoting the
-     * surviving phantom to primary keeps the controller bound to its port.
-     */
-    fun promoteAlias(oldPrimary: Int, newPrimary: Int) {
-        if (oldPrimary == newPrimary) return
-        val entry = entries.remove(oldPrimary) ?: return
-        val rewired = entry.copy(device = entry.device.copy(androidDeviceId = newPrimary))
-        entries[newPrimary] = rewired
-        if (launcherTriggerDeviceId == oldPrimary) launcherTriggerDeviceId = newPrimary
-        // Re-point or remove aliases.
-        val toRepoint = aliases.entries.filter { it.value == oldPrimary }.map { it.key }
-        for (aliasId in toRepoint) {
-            if (aliasId == newPrimary) aliases.remove(aliasId)
-            else aliases[aliasId] = newPrimary
-        }
-        publish()
-    }
-
     fun markLaunchTrigger(androidDeviceId: Int) {
         launcherTriggerDeviceId = androidDeviceId
         recompute()
@@ -213,9 +191,6 @@ class PortRouter(private val maxPorts: Int = 4) {
 
     fun mappingForPort(port: Int): DeviceMapping? =
         entries.values.firstOrNull { it.port == port }?.mapping
-
-    fun snapshotForPort(port: Int): PortSnapshot? =
-        entries.values.firstOrNull { it.port == port }?.evaluator?.snapshot()
 
     fun isCanonicalPressedAt(port: Int, button: CanonicalButton): Boolean {
         val entry = entries.values.firstOrNull { it.port == port } ?: return false

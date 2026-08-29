@@ -62,12 +62,6 @@ class CoreDownloadService @Inject constructor(
     private val _progress = MutableStateFlow<UpdateProgress?>(null)
     val progress: StateFlow<UpdateProgress?> = _progress
 
-    /** The size of a fresh build is close enough to the one on disk to state before downloading. */
-    fun estimatedBytes(installed: Collection<String>): Long {
-        val dir = EmbeddedCoreDownloader.coresDir(context)
-        return installed.sumOf { File(dir, "${it}_android.so").length() }
-    }
-
     /** What a pass would actually fetch. [bytes] is 0 when nothing needs downloading. */
     data class Preflight(val stale: List<String>, val bytes: Long, val indexUsable: Boolean)
 

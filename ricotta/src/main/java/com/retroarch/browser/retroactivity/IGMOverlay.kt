@@ -36,8 +36,6 @@ import dev.cannoli.igm.IGMHostConfig
 import dev.cannoli.igm.CuratedCatalog
 import dev.cannoli.core.overlay.OverlayCatalog
 import java.io.File
-import dev.cannoli.igm.IGMSettingsItem
-import dev.cannoli.igm.RaValueCycler
 import dev.cannoli.igm.RaOptionStrings
 import dev.cannoli.ui.R
 import dev.cannoli.ui.theme.CannoliColors
@@ -442,8 +440,6 @@ class IGMOverlay(
                 if (controller.overlayPicker.activeImage.value != null) View.VISIBLE else View.GONE
         }
     }
-
-    fun isVisible(): Boolean = showing
 
     /**
      * Cannoli owns which overlay is in force, so the picker drives RetroArch directly, then stages
