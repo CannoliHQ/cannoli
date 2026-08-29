@@ -152,7 +152,7 @@ fun GuideScreen(
         if (colors.text.luminance() > 0.5f) Color.Black else Color.White
     } else null
 
-    val osd = remember { OsdController(defaultDurationMs = HINT_MS, defaultPosition = OsdPosition.BottomCenter) }
+    val osd = remember { OsdController(defaultDurationMs = HINT_MS, defaultPosition = OsdPosition.TopEnd) }
 
     LaunchedEffect(filePath) { helpHint?.let { osd.show(it) } }
 

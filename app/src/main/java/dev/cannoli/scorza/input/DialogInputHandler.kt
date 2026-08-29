@@ -168,11 +168,13 @@ class DialogInputHandler @Inject constructor(
         return true
     }
 
+    // Screens that mean something else by the menu button, so it has to reach their own handler.
     private fun isQuickMenuBlockedScreen(): Boolean = when (nav.currentScreen) {
         is LauncherScreen.Settings,
         is LauncherScreen.InputTester,
         is LauncherScreen.EditButtons,
         is LauncherScreen.ShortcutBinding,
+        is LauncherScreen.Guide,
         is LauncherScreen.OnboardingScreen -> true
         else -> false
     }

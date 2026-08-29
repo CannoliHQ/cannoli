@@ -109,9 +109,15 @@ class GuideInputHandler @Inject constructor(
         nav.replaceTop(g.copy(textZoom = if (g.textZoom >= GuideZoom.levels) 1 else g.textZoom + 1))
     }
 
+    // Menu opens the help and closes it again. The dialog handler passes menu through on this
+    // screen, so once help is up this is still what a second press reaches.
     override fun onMenu() {
         val g = guide() ?: return
-        nav.dialogState.value = DialogState.GuideHelp(g.guideType)
+        nav.dialogState.value = if (nav.dialogState.value is DialogState.GuideHelp) {
+            DialogState.None
+        } else {
+            DialogState.GuideHelp(g.guideType)
+        }
     }
 
     override fun onConfirm() {
