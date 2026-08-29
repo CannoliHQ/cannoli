@@ -264,15 +264,20 @@ class IGMOverlay(
             }
 
             setOnKeyListener { _, keyCode, event ->
-                if (event.action == KeyEvent.ACTION_DOWN) {
-                    val isMenuKey = keyCode == KeyEvent.KEYCODE_BACK
-                            || keyCode == KeyEvent.KEYCODE_BUTTON_MODE
-                            || keyCode == KeyEvent.KEYCODE_MENU
-                    if (isMenuKey && System.currentTimeMillis() - showTimeMs < 500) {
-                        // Same press that opened the menu.
-                    } else {
-                        controller.handleKeyDown(keyCode)
+                when (event.action) {
+                    KeyEvent.ACTION_DOWN -> {
+                        val isMenuKey = keyCode == KeyEvent.KEYCODE_BACK
+                                || keyCode == KeyEvent.KEYCODE_BUTTON_MODE
+                                || keyCode == KeyEvent.KEYCODE_MENU
+                        if (isMenuKey && System.currentTimeMillis() - showTimeMs < 500) {
+                            // Same press that opened the menu.
+                        } else {
+                            controller.handleKeyDown(keyCode)
+                        }
                     }
+                    // The guide scrolls for as long as a direction is held, so the release has to
+                    // arrive or it never stops.
+                    KeyEvent.ACTION_UP -> controller.handleKeyUp(keyCode)
                 }
                 true
             }

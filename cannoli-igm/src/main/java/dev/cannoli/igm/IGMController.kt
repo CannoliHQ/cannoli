@@ -582,6 +582,20 @@ class IGMController(
      * Android keycodes: DPAD_UP=19, DPAD_DOWN=20, DPAD_LEFT=21, DPAD_RIGHT=22,
      * BUTTON_A=96, BUTTON_B=97, BACK=4
      */
+    /**
+     * The guide is the only screen that holds a direction rather than acting once on the press, so
+     * it is the only one with anything to release. Without this the scroll set on key down is never
+     * cleared and a guide keeps moving on its own until it reaches the end of the document.
+     */
+    fun handleKeyUp(keycode: Int) {
+        val screen = currentScreen as? IGMScreen.Guide ?: return
+        if (screen.help) return
+        when (inputTranslator.normalize(keycode)) {
+            19, 20 -> guideController.scroll(0)
+            21, 22 -> guideController.scrollX(0)
+        }
+    }
+
     fun handleKeyDown(keycode: Int) {
         val screen = currentScreen ?: return
         val normalized = inputTranslator.normalize(keycode)
