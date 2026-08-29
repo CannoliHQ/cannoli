@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredWidth
@@ -31,6 +33,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
@@ -63,6 +67,11 @@ private const val DEFAULT_PAGE_ASPECT = 1.4f
 /** What a tile was rendered for, so one made for another page or zoom is never mistaken for current. */
 private data class TileKey(val page: Int, val contentWidth: Int, val contentHeight: Int)
 
+// Deep enough to cover a bottom bar at the largest text size the user can pick, since the guide
+// screen never sees the bar its host draws over it.
+private val LEGEND_SCRIM_HEIGHT = 96.dp
+private val COUNTER_SCRIM_HEIGHT = 48.dp
+
 @Composable
 fun GuideScreen(
     filePath: String,
@@ -86,8 +95,11 @@ fun GuideScreen(
     val colors = LocalCannoliColors.current
     val zoomIndex = (textZoom - 1).coerceIn(0, GuideZoom.pdfScales.lastIndex)
 
+    // A PDF page goes edge to edge; text still wants its margin.
+    val inset = if (guideType == GuideType.PDF) 0.dp else 12.dp
+
     ScreenBackground(backgroundImagePath = null, backgroundAlpha = 1f) {
-        Box(modifier = Modifier.fillMaxSize().padding(12.dp)) {
+        Box(modifier = Modifier.fillMaxSize().padding(inset)) {
             when (guideType) {
                 GuideType.PDF -> PdfContent(
                     filePath = filePath,
@@ -131,6 +143,32 @@ fun GuideScreen(
                     onPageStep = onPageStep,
                     onTapped = onTapped,
                 )
+            }
+
+            // A page can be any brightness, and white is the common one, so the host's legend and
+            // the page counter would otherwise sit as theme-coloured text on a white page and
+            // disappear. These fade the page out behind them instead of boxing them in.
+            if (guideType != GuideType.TXT) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .height(LEGEND_SCRIM_HEIGHT)
+                        .background(
+                            Brush.verticalGradient(listOf(Color.Transparent, colors.background))
+                        )
+                )
+                if (guideType == GuideType.PDF && pageCount > 0) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .fillMaxWidth()
+                            .height(COUNTER_SCRIM_HEIGHT)
+                            .background(
+                                Brush.verticalGradient(listOf(colors.background, Color.Transparent))
+                            )
+                    )
+                }
             }
 
             if (guideType == GuideType.PDF && pageCount > 0) {
@@ -217,11 +255,10 @@ private fun PdfContent(
     ) {
         val viewportW = with(density) { maxWidth.roundToPx() }
         val viewportH = with(density) { maxHeight.roundToPx() }
-        // Zoom 1 shows the whole page, so it is bounded by whichever edge runs out first. Above
-        // that the width follows the zoom and the height follows the page, which is what makes the
-        // content bigger than the viewport and gives the scroll states something to travel over.
-        val fitted = scale <= 1f
-        val contentW = if (fitted) minOf(viewportW, (viewportH / aspect).toInt()) else (viewportW * scale).toInt()
+        // The width always follows the zoom and the height follows the page, so even at zoom 1 the
+        // page spans the screen and is read by scrolling down it. Fitting the whole page instead
+        // would letterbox a portrait page against a landscape screen, which is most of a handheld.
+        val contentW = (viewportW * scale).toInt()
         val contentH = (contentW * aspect).toInt()
 
         LaunchedEffect(renderer, page, contentW, contentH, viewportW, viewportH) {
@@ -256,43 +293,28 @@ private fun PdfContent(
             }
         }
 
-        if (fitted) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Box(
+            modifier = Modifier
+                .horizontalScroll(hScrollState)
+                .verticalScroll(scrollState)
+        ) {
+            Box(
+                modifier = Modifier.size(
+                    with(density) { contentW.toDp() },
+                    with(density) { contentH.toDp() },
+                )
+            ) {
                 tile?.let { bmp ->
                     Image(
                         bitmap = bmp.asImageBitmap(),
                         contentDescription = null,
-                        modifier = Modifier.size(
-                            with(density) { bmp.width.toDp() },
-                            with(density) { bmp.height.toDp() },
-                        ),
+                        modifier = Modifier
+                            .offset { IntOffset(tileX, tileY) }
+                            .size(
+                                with(density) { bmp.width.toDp() },
+                                with(density) { bmp.height.toDp() },
+                            ),
                     )
-                }
-            }
-        } else {
-            Box(
-                modifier = Modifier
-                    .horizontalScroll(hScrollState)
-                    .verticalScroll(scrollState)
-            ) {
-                Box(
-                    modifier = Modifier.size(
-                        with(density) { contentW.toDp() },
-                        with(density) { contentH.toDp() },
-                    )
-                ) {
-                    tile?.let { bmp ->
-                        Image(
-                            bitmap = bmp.asImageBitmap(),
-                            contentDescription = null,
-                            modifier = Modifier
-                                .offset { IntOffset(tileX, tileY) }
-                                .size(
-                                    with(density) { bmp.width.toDp() },
-                                    with(density) { bmp.height.toDp() },
-                                ),
-                        )
-                    }
                 }
             }
         }
