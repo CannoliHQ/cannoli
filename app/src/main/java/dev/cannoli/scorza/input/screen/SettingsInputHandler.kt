@@ -128,6 +128,11 @@ class SettingsInputHandler @Inject constructor(
                 dev.cannoli.scorza.R.string.setting_fgh_collection,
                 settingsViewModel.fghPickerInitialIndex()
             )
+            SettingsKey.START_ON_PLATFORM -> settingsViewModel.enterSubCategory(
+                SettingsCategory.START_ON_PICKER,
+                dev.cannoli.ui.R.string.setting_start_on,
+                settingsViewModel.startOnPickerInitialIndex()
+            )
             SettingsKey.SD_ROOT -> pushDirectoryBrowser(BrowsePurpose.SD_ROOT, settings.sdCardRoot)
             SettingsKey.ROM_DIRECTORY -> {
                 val startPath = settings.romDirectory.ifEmpty { settings.sdCardRoot }
@@ -211,13 +216,18 @@ class SettingsInputHandler @Inject constructor(
                 nav.push(LauncherScreen.ColorList(colors = entries, selectedIndex = idx))
                 launcherActions.openColorPicker(key)
             }
-            // A collection pick carries its id in the key, so it never resolves to a constant.
+            // A pick carries its target in the key, so it never resolves to a constant.
             null -> if (key.startsWith(SettingsKey.FGH_PICK_PREFIX)) {
                 val id = key.removePrefix(SettingsKey.FGH_PICK_PREFIX).toLongOrNull()
                 settingsViewModel.selectFghCollectionId(id)
                 settingsViewModel.save()
                 settingsViewModel.exitSubList()
                 launcherActions.rescanSystemList()
+            } else if (key.startsWith(SettingsKey.START_ON_PICK_PREFIX)) {
+                // An empty tag is the System List row, which is the prefix on its own.
+                settingsViewModel.selectStartOnPlatform(key.removePrefix(SettingsKey.START_ON_PICK_PREFIX))
+                settingsViewModel.save()
+                settingsViewModel.exitSubList()
             }
             // Rows that cycle a value rather than open something: Confirm does nothing.
             SettingsKey.LANGUAGE, SettingsKey.SWAP_PLAY_RESUME, SettingsKey.MAIN_MENU_QUIT,

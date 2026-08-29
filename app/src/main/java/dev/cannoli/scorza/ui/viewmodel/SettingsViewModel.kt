@@ -41,6 +41,10 @@ class SettingsViewModel @Inject constructor(
     private var appPackageName: String? = null
     private var collectionsRepository: CollectionsRepository? = null
 
+    // The platforms the system list is showing, which is the only honest answer to what can be
+    // started on: they are already grouped, so two tags sharing a display name are one row here too.
+    private var platformsProvider: (() -> List<dev.cannoli.scorza.model.Platform>)? = null
+
     val isTelevision: Boolean
         get() = dev.cannoli.scorza.util.DeviceType.isTv(context)
 
@@ -296,10 +300,16 @@ class SettingsViewModel @Inject constructor(
         _appSettings.value = readAppSettings()
     }
 
-    fun reinitialize(pm: PackageManager, pkgName: String, cr: CollectionsRepository? = null) {
+    fun reinitialize(
+        pm: PackageManager,
+        pkgName: String,
+        cr: CollectionsRepository? = null,
+        platforms: (() -> List<dev.cannoli.scorza.model.Platform>)? = null,
+    ) {
         packageManager = pm
         appPackageName = pkgName
         if (cr != null) collectionsRepository = cr
+        if (platforms != null) platformsProvider = platforms
         invalidateFontOptions()
         if (isTelevision && !settings.batteryDisplaySet) settings.batteryDisplay = BatteryDisplay.HIDE
         load()
@@ -767,6 +777,28 @@ class SettingsViewModel @Inject constructor(
         return cr.all().filter { it.type == CollectionType.STANDARD }
     }
 
+    /**
+     * Platforms holding at least one game, read fresh on every build so entering Library after a
+     * scan shows what is there now. A platform whose card was not mounted is simply absent until it
+     * is, which is why the saved choice is not cleared when it cannot be found.
+     */
+    private fun startOnPlatforms(): List<dev.cannoli.scorza.model.Platform> =
+        platformsProvider?.invoke().orEmpty()
+            .filter { it.gameCount > 0 }
+            .sortedBy { it.displayName.lowercase() }
+
+    /** Opens the picker on the current choice, or on System List when nothing is set. */
+    fun startOnPickerInitialIndex(): Int {
+        val tag = settings.startOnPlatform
+        if (tag.isEmpty()) return 0
+        val index = startOnPlatforms().indexOfFirst { tag in it.allTags }
+        return if (index >= 0) index + 1 else 0
+    }
+
+    fun selectStartOnPlatform(tag: String) {
+        settings.startOnPlatform = tag
+    }
+
     private fun onOff(value: Boolean) = if (value) R.string.value_on else R.string.value_off
     private fun showHide(value: Boolean) = if (value) R.string.value_show else R.string.value_hide
     private fun buildItemsForCategory(category: SettingsCategory): List<SettingsItem> = when (category) {
@@ -841,7 +873,20 @@ class SettingsViewModel @Inject constructor(
                 add(SettingsItem(SettingsKey.SHOW_RECENTLY_PLAYED.id, R.string.setting_show_recently_played, valueRes = showHide(settings.showRecentlyPlayed)))
                 add(SettingsItem(SettingsKey.SHOW_FAVORITES.id, R.string.setting_show_favorites, valueRes = showHide(settings.showFavorites)))
             }
+            // Only the platform list can be started on: the other two modes build a different system
+            // list, out of collections and out of a flat set of games, so a platform target neither
+            // applies nor should be offered there.
             if (settings.contentMode == ContentMode.PLATFORMS) {
+                val rows = startOnPlatforms()
+                val current = rows.firstOrNull { settings.startOnPlatform in it.allTags }
+                add(SettingsItem(
+                    SettingsKey.START_ON_PLATFORM.id,
+                    R.string.setting_start_on,
+                    valueText = current?.displayName,
+                    valueRes = if (current == null) R.string.value_system_list else null,
+                    isEditable = true,
+                    canCycle = false,
+                ))
             }
             add(SettingsItem(SettingsKey.MANAGE_PORTS.id, R.string.setting_manage_ports, isEditable = true))
             add(SettingsItem(SettingsKey.MANAGE_TOOLS.id, R.string.setting_manage_tools, isEditable = true))
@@ -850,6 +895,26 @@ class SettingsViewModel @Inject constructor(
             add(SettingsItem(SettingsKey.SD_ROOT.id, R.string.setting_sd_root, valueText = settings.sdCardRoot, isEditable = true))
             val romDir = settings.romDirectory
             add(SettingsItem(SettingsKey.ROM_DIRECTORY.id, R.string.setting_rom_directory, valueText = romDir.ifEmpty { null }, valueRes = if (romDir.isEmpty()) R.string.value_cannoli_root else null, isEditable = true, canCycle = false))
+        }
+        SettingsCategory.START_ON_PICKER -> buildList {
+            val tag = settings.startOnPlatform
+            add(SettingsItem(
+                key = SettingsKey.START_ON_PICK_PREFIX,
+                labelRes = R.string.value_system_list,
+                valueRes = if (tag.isEmpty()) R.string.value_selected else null,
+                isEditable = true,
+                canCycle = false,
+            ))
+            for (row in startOnPlatforms()) {
+                add(SettingsItem(
+                    key = SettingsKey.START_ON_PICK_PREFIX + row.tag,
+                    labelRes = R.string.setting_start_on,
+                    labelText = row.displayName,
+                    valueRes = if (tag in row.allTags) R.string.value_selected else null,
+                    isEditable = true,
+                    canCycle = false,
+                ))
+            }
         }
         SettingsCategory.FGH_COLLECTION_PICKER -> buildList {
             val rows = fghCollections()

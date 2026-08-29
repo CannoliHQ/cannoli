@@ -45,6 +45,23 @@ sealed interface BootResult {
     data class Failure(val message: String) : BootResult
 }
 
+/**
+ * The platform to open on instead of the system list, or null for the list itself.
+ *
+ * Matched against the list the user picked from rather than against raw tags, so a platform merged
+ * with another under one display name opens with both tags instead of half its games. A tag that no
+ * longer resolves, or one whose platform is empty because its card has not mounted, returns null and
+ * leaves the setting alone: forgetting the choice would punish a slow card.
+ */
+internal fun startOnTarget(
+    tag: String,
+    mode: ContentMode,
+    platforms: List<dev.cannoli.scorza.model.Platform>,
+): dev.cannoli.scorza.model.Platform? {
+    if (tag.isEmpty() || mode != ContentMode.PLATFORMS) return null
+    return platforms.firstOrNull { tag in it.allTags && it.gameCount > 0 }
+}
+
 @ActivityScoped
 class BootInitializer @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -55,6 +72,7 @@ class BootInitializer @Inject constructor(
     private val cannoliPaths: CannoliPathsProvider,
     @IoScope private val ioScope: CoroutineScope,
     private val gameListViewModel: GameListViewModel,
+    private val systemListViewModel: dev.cannoli.scorza.ui.viewmodel.SystemListViewModel,
     private val settingsViewModel: SettingsViewModel,
     private val collectionsRepository: CollectionsRepository,
     private val updateManager: UpdateManager,
@@ -148,7 +166,9 @@ class BootInitializer @Inject constructor(
 
         withContext(Dispatchers.Main) {
             gameListViewModel.showFavoriteStars = settings.contentMode != ContentMode.FIVE_GAME_HANDHELD
-            settingsViewModel.reinitialize(context.packageManager, context.packageName, collectionsRepository)
+            settingsViewModel.reinitialize(
+                context.packageManager, context.packageName, collectionsRepository,
+            ) { systemListViewModel.state.value.platforms }
 
             ioScope.launch { updateManager.purgeStaleDownloads() }
 
@@ -193,8 +213,28 @@ class BootInitializer @Inject constructor(
                 onProgress = { tag, current, total ->
                     onPhase(BootPhase.LIBRARY_REFRESH, current.toFloat() / total.coerceAtLeast(1), tag)
                 },
-                onComplete = { cont.resume(BootResult.Success) },
+                onComplete = { landOnStartPlatform { cont.resume(BootResult.Success) } },
             )
+        }
+    }
+
+    /**
+     * Opens one platform's list on top of the system list, when the user named one to start on.
+     *
+     * The system list stays underneath, so Back still walks out to it and the shortcut takes nothing
+     * away. A tag that no longer resolves lands on the system list and keeps the setting: on a
+     * handheld whose card mounts after boot that is the ordinary case, not an error.
+     */
+    private fun landOnStartPlatform(done: () -> Unit) {
+        val platform = startOnTarget(
+            settings.startOnPlatform,
+            settings.contentMode,
+            systemListViewModel.state.value.platforms,
+        ) ?: return done()
+        gameListViewModel.loadPlatform(platform.tag, platform.allTags) {
+            launcherActions.scanResumableGames()
+            nav.screenStack.add(LauncherScreen.GameList)
+            done()
         }
     }
 

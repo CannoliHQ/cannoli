@@ -14,6 +14,7 @@ enum class SettingsCategory {
     STATUS_BAR,
     SCREEN_GEOMETRY,
     FGH_COLLECTION_PICKER,
+    START_ON_PICKER,
     RETROACHIEVEMENTS,
     ROMM,
 }
@@ -38,6 +39,7 @@ enum class SettingsKey(val id: String) {
 
     CONTENT_MODE("content_mode"),
     FGH_COLLECTION("fgh_collection"),
+    START_ON_PLATFORM("start_on_platform"),
     SHOW_RECENTLY_PLAYED("show_recently_played"),
     SHOW_FAVORITES("show_favorites"),
     MANAGE_PORTS("manage_ports"),
@@ -106,6 +108,7 @@ enum class SettingsKey(val id: String) {
     companion object {
         /** One row per pickable collection, so the id rides in the key. */
         const val FGH_PICK_PREFIX = "fgh_pick:"
+        const val START_ON_PICK_PREFIX = "start_on_pick:"
 
         val COLOR_ROWS = setOf(
             COLOR_BACKGROUND, COLOR_TEXT, COLOR_STATUS_BAR, COLOR_HIGHLIGHT,

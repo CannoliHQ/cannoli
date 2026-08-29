@@ -319,6 +319,13 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         get() = jsonRead { if (has(KEY_FGH_COLLECTION)) optLong(KEY_FGH_COLLECTION).takeIf { it > 0 } else null }
         set(value) = jsonWrite { if (value == null) remove(KEY_FGH_COLLECTION) else put(KEY_FGH_COLLECTION, value) }
 
+    // The platform to open on instead of the system list, or empty for the list itself. A tag that
+    // stops resolving is left alone rather than cleared: on a handheld whose card mounts after boot
+    // that is the ordinary case, and forgetting the choice would punish a slow card.
+    var startOnPlatform: String
+        get() = jsonRead { optString(KEY_START_ON_PLATFORM, "") }
+        set(value) = jsonWrite { put(KEY_START_ON_PLATFORM, value) }
+
     var artWidth: Int
         get() = jsonRead { optInt(KEY_ART_WIDTH, 40) }
         set(value) = jsonWrite { put(KEY_ART_WIDTH, value) }
@@ -567,6 +574,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         private const val KEY_SCREEN_GEOMETRY_X = "screen_geometry_x"
         private const val KEY_SCREEN_GEOMETRY_Y = "screen_geometry_y"
         private const val KEY_FGH_COLLECTION = "fgh_collection"
+        private const val KEY_START_ON_PLATFORM = "start_on_platform"
         private const val KEY_ROMM_DEVICE_ID = "romm_device_id"
         private const val KEY_ROMM_DEVICE_NAME = "romm_device_name"
         private const val KEY_ROMM_DEVICE_CLIENT_VERSION = "romm_device_client_version"

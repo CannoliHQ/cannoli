@@ -242,6 +242,8 @@
     <string name="setting_content_mode">Content Mode</string>
     <!-- Library setting for the Five Game Handheld collection. Keep "5GH" as-is. -->
     <string name="setting_fgh_collection">5GH Collection</string>
+    <!-- Library setting naming the platform the launcher opens on, instead of the list of systems. -->
+    <string name="setting_start_on">Start On</string>
     <string name="setting_show_recently_played">Recently Played</string>
     <!-- Library setting: show or hide the Favorites entry on the main list. -->
     <string name="setting_show_favorites">Favorites</string>
@@ -540,6 +542,8 @@
     <string name="value_hide">Hide</string>
     <string name="value_none">None</string>
     <string name="value_selected">Selected</string>
+    <!-- Value of Start On when the launcher opens on the list of systems rather than one platform. -->
+    <string name="value_system_list">System List</string>
     <string name="value_cannoli_root">Cannoli Root</string>
     <!-- In-Game Settings value: a short, hand-picked list of settings. -->
     <string name="value_igm_mode_curated">Curated</string>
