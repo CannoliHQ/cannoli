@@ -13,7 +13,6 @@ import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
@@ -48,7 +47,6 @@ class LaunchManagerRecoveryTargetTest {
             settings = settings,
             platformConfig = platformConfig,
             retroArchLauncher = retroArchLauncher,
-            emuLauncher = mockk(relaxed = true),
             apkLauncher = apkLauncher,
             delfinoLauncher = mockk(relaxed = true),
             launchState = mockk(relaxed = true),

@@ -3,9 +3,7 @@ package dev.cannoli.scorza.config
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.AssetManager
-import dev.cannoli.scorza.launcher.InstalledCoreService
 import dev.cannoli.scorza.launcher.isPackageInstalled
-import dev.cannoli.scorza.model.LaunchTarget
 import dev.cannoli.scorza.model.Platform
 import dev.cannoli.scorza.ui.screens.CoreAvailability
 import dev.cannoli.scorza.ui.screens.EmulatorMappingStatus
@@ -497,7 +495,6 @@ class PlatformConfig(
     // The caption is derived, never stored, so a choice that names a different RetroArch package
     // updates every label instead of leaving stale ones behind.
     fun getRunnerLabel(tag: String, coreId: String): String {
-        if (File(romsTagDir(tag), ".emu_launch").exists()) return "External"
         val choice = userChoices[tag]
         return when (choice?.source ?: EmulatorSource.Embedded) {
             EmulatorSource.Embedded -> internalLabel
@@ -736,28 +733,13 @@ class PlatformConfig(
     // screen describe one core while a different one launched.
     fun getCoreName(tag: String): String? = getCoreMapping(tag).ifEmpty { null }
 
-    fun getEmuLaunch(tag: String, romsDir: File): LaunchTarget.EmuLaunch? {
-        val emuFile = File(romsTagDir(tag, romsDir), ".emu_launch")
-        if (!emuFile.exists()) return null
-
-        val emu = IniParser.parse(emuFile)
-        val pkg = emu.get("emulator", "package") ?: return null
-        val activity = emu.get("emulator", "activity") ?: return null
-        val action = emu.get("emulator", "action") ?: "android.intent.action.VIEW"
-
-        return LaunchTarget.EmuLaunch(pkg, activity, action)
-    }
-
-    fun resolvePlatform(tag: String, romsDir: File, gameCount: Int): Platform {
-        val hasEmu = File(romsTagDir(tag, romsDir), ".emu_launch").exists()
-        return Platform(
+    fun resolvePlatform(tag: String, romsDir: File, gameCount: Int): Platform =
+        Platform(
             tag = tag,
             displayName = getDisplayName(tag),
             coreName = getCoreName(tag),
-            hasEmuLaunch = hasEmu,
             gameCount = gameCount
         )
-    }
 
     private fun writeDefaultIni(file: File) {
         file.parentFile?.mkdirs()

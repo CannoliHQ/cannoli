@@ -12,7 +12,6 @@ import dev.cannoli.scorza.db.RomsRepository
 import dev.cannoli.scorza.launcher.ApkLauncher
 import dev.cannoli.scorza.launcher.CheevosOverrideMigration
 import dev.cannoli.scorza.launcher.DelfinoLauncher
-import dev.cannoli.scorza.launcher.EmuLauncher
 import dev.cannoli.scorza.launcher.GuidesKeyMigration
 import dev.cannoli.scorza.launcher.InstalledCoreService
 import dev.cannoli.scorza.launcher.LaunchManager
@@ -59,7 +58,6 @@ object LaunchModule {
         settings: SettingsRepository,
         platformConfig: PlatformConfig,
         retroArchLauncher: RetroArchLauncher,
-        emuLauncher: EmuLauncher,
         apkLauncher: ApkLauncher,
         delfinoLauncher: DelfinoLauncher,
         launchState: LaunchState,
@@ -70,7 +68,7 @@ object LaunchModule {
         gameOverrides: dev.cannoli.scorza.db.GameOverrideStore,
     ): LaunchManager = LaunchManager(
         context, settings, platformConfig,
-        retroArchLauncher, emuLauncher, apkLauncher, delfinoLauncher, launchState, activeMappingHolder,
+        retroArchLauncher, apkLauncher, delfinoLauncher, launchState, activeMappingHolder,
         portRouter, atomicRename, installedCoreService, gameOverrides
     )
 }

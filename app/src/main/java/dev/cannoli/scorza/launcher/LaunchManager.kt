@@ -1,9 +1,6 @@
 package dev.cannoli.scorza.launcher
 
-import android.app.ActivityOptions
 import android.content.Context
-import android.content.Intent
-import android.content.pm.PackageManager
 import dev.cannoli.igm.BatteryDisplayMode
 import dev.cannoli.igm.IgmColors
 import dev.cannoli.igm.IgmDisplaySettings
@@ -47,7 +44,6 @@ class LaunchManager(
     private val settings: SettingsRepository,
     private val platformConfig: PlatformConfig,
     private val retroArchLauncher: RetroArchLauncher,
-    private val emuLauncher: EmuLauncher,
     private val apkLauncher: ApkLauncher,
     private val delfinoLauncher: DelfinoLauncher,
     private val launchState: LaunchState,
@@ -537,9 +533,6 @@ class LaunchManager(
                         }
                     }
                 }
-            }
-            is LaunchTarget.EmuLaunch -> {
-                emuLauncher.launch(launchFile, target.packageName, target.activityName, target.action)
             }
             is LaunchTarget.ApkLaunch -> {
                 val pkg = if (context.isPackageInstalled(target.packageName)) {

@@ -48,7 +48,6 @@ abstract class LaunchConfigHarness {
             settings = settings,
             platformConfig = platformConfig,
             retroArchLauncher = retroArchLauncher,
-            emuLauncher = mockk(relaxed = true),
             apkLauncher = mockk(relaxed = true),
             delfinoLauncher = mockk(relaxed = true),
             launchState = mockk(relaxed = true),

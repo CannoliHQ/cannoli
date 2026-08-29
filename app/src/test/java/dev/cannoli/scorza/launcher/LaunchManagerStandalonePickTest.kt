@@ -61,7 +61,6 @@ class LaunchManagerStandalonePickTest {
             settings = settings,
             platformConfig = platformConfig,
             retroArchLauncher = retroArchLauncher,
-            emuLauncher = mockk(relaxed = true),
             apkLauncher = apkLauncher,
             delfinoLauncher = delfinoLauncher,
             launchState = mockk(relaxed = true),
