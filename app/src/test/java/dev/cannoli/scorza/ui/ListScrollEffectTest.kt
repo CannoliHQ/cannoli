@@ -8,7 +8,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.cannoli.ui.components.List
 import org.junit.Assert.assertNotNull

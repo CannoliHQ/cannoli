@@ -3,7 +3,6 @@ package dev.cannoli.scorza.ui.viewmodel
 import dev.cannoli.scorza.romm.LocalState
 import dev.cannoli.scorza.romm.RommCollection
 import dev.cannoli.scorza.romm.RommCollectionGroup
-import dev.cannoli.scorza.romm.RommFoldedGame
 import dev.cannoli.scorza.romm.RommGame
 import dev.cannoli.scorza.romm.RommLibrary
 import dev.cannoli.scorza.romm.RommPage

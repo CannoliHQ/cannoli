@@ -1,6 +1,5 @@
 package dev.cannoli.scorza.romm
 
-import dev.cannoli.scorza.romm.cache.RommSyncCoordinator
 import dev.cannoli.scorza.ui.viewmodel.RommBrowseViewModel
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals

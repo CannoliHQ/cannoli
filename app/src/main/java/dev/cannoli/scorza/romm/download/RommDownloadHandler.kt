@@ -11,10 +11,6 @@ import dev.cannoli.scorza.romm.RommGame
 import dev.cannoli.scorza.romm.RommHttp
 import dev.cannoli.scorza.util.ArtworkLookup
 import dev.cannoli.scorza.util.RommLog
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
 import okhttp3.Request
 import java.io.File
 import dev.cannoli.scorza.download.DownloadCancelled

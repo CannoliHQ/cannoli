@@ -1,8 +1,6 @@
 package dev.cannoli.scorza.config
 
 import androidx.test.core.app.ApplicationProvider
-import dev.cannoli.scorza.ui.screens.CoreAvailability
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assert.assertFalse
 import org.junit.Test

@@ -1,9 +1,6 @@
 package dev.cannoli.scorza.ui.viewmodel
 
 import dev.cannoli.scorza.config.PlatformConfig
-import dev.cannoli.scorza.db.AppsRepository
-import dev.cannoli.scorza.db.CollectionsRepository
-import dev.cannoli.scorza.db.RecentlyPlayedRepository
 import dev.cannoli.scorza.db.RomScanner
 import dev.cannoli.scorza.db.RomsRepository
 import dev.cannoli.scorza.db.ScanScheduler

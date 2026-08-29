@@ -2,7 +2,6 @@ package dev.cannoli.igm
 
 import android.content.res.Configuration
 import android.graphics.Bitmap
-import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,21 +12,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
@@ -52,20 +46,14 @@ import dev.cannoli.ui.components.KeyboardHelpOverlay
 import dev.cannoli.ui.components.KeyboardOverlay
 import dev.cannoli.ui.components.LocalStatusBarLeftEdge
 import dev.cannoli.ui.components.ScreenBackground
-import dev.cannoli.ui.components.ScreenTitle
 import dev.cannoli.ui.components.StatusBar
-import dev.cannoli.ui.components.footerReservation
-import dev.cannoli.ui.components.pillInternalPadding
 import dev.cannoli.ui.components.screenInsets
-import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.LocalCannoliFont
 import dev.cannoli.ui.theme.LocalCannoliTypography
 import dev.cannoli.ui.theme.LocalPillScale
 import dev.cannoli.ui.theme.LocalScaleFactor
-import dev.cannoli.ui.theme.Radius
 import dev.cannoli.ui.theme.Spacing
 import dev.cannoli.ui.theme.buildCannoliTypography
-import kotlinx.coroutines.delay
 
 @Composable
 fun CannoliIGM(

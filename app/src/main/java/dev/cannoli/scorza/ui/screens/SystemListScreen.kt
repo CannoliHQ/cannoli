@@ -43,7 +43,6 @@ import dev.cannoli.scorza.ui.viewmodel.SystemListViewModel.ListItem
 import dev.cannoli.ui.ButtonStyle
 import dev.cannoli.ui.MENU_GLYPH
 import dev.cannoli.ui.components.BottomBar
-import dev.cannoli.ui.components.ConfirmOverlay
 import dev.cannoli.ui.components.List
 import dev.cannoli.ui.components.PillRowText
 import dev.cannoli.ui.components.ScreenBackground

@@ -22,7 +22,6 @@ import dev.cannoli.scorza.input.screen.SaveSlotsInputHandler
 import dev.cannoli.scorza.input.screen.SaveStatePickerInputHandler
 import dev.cannoli.scorza.input.screen.SystemListInputHandler
 import dev.cannoli.scorza.launcher.InstalledCoreService
-import dev.cannoli.scorza.launcher.LaunchManager
 import dev.cannoli.scorza.navigation.LauncherScreen
 import dev.cannoli.scorza.navigation.NavigationController
 import dev.cannoli.scorza.settings.GlobalOverridesManager

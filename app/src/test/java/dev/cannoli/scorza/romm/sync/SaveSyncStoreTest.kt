@@ -1,7 +1,6 @@
 package dev.cannoli.scorza.romm.sync
 
 import androidx.test.core.app.ApplicationProvider
-import dev.cannoli.scorza.config.CannoliPaths
 import dev.cannoli.scorza.db.CannoliDatabase
 import dev.cannoli.scorza.di.CannoliPathsProvider
 import dev.cannoli.scorza.settings.SettingsRepository

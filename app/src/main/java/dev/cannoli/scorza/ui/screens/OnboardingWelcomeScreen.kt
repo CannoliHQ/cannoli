@@ -5,10 +5,8 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -37,8 +35,6 @@ import dev.cannoli.scorza.input.legend.CONFIRM_PRESSES_REQUIRED
 import dev.cannoli.scorza.input.legend.CONFIRM_RUN_FADE_MS
 import dev.cannoli.scorza.input.legend.CONFIRM_RUN_TIMEOUT_MS
 import dev.cannoli.scorza.onboarding.OnboardingStep
-import dev.cannoli.ui.BULLET
-import dev.cannoli.ui.CIRCLE_EMPTY
 import dev.cannoli.ui.components.screenInsets
 import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.LocalCannoliTypography
