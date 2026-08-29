@@ -16,6 +16,10 @@ interface RetroArchBridge {
     fun saveState(slot: Int)
     fun loadState(slot: Int)
 
+    /** Puts back what the last save overwrote, and what the last load replaced. */
+    fun undoSaveState()
+    fun undoLoadState()
+
     /** RetroArch writes the auto slot itself while shutting down when this is on. */
     val savesOnQuit: Boolean
 

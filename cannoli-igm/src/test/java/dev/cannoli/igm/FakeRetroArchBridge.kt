@@ -30,6 +30,11 @@ open class FakeRetroArchBridge : RetroArchBridge {
     override fun saveState(slot: Int) { savedSlots += slot }
     override fun loadState(slot: Int) { loadedSlots += slot }
 
+    var undoneSaves = 0
+    var undoneLoads = 0
+    override fun undoSaveState() { undoneSaves++ }
+    override fun undoLoadState() { undoneLoads++ }
+
     override var savesOnQuit = false
 
     var discs = 0

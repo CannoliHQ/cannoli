@@ -130,8 +130,8 @@ class EmbeddedRetroArchBridge(
     override fun saveState(slot: Int) = nativeSaveState(StateSlotPaths.retroArchStateSlot(slot))
     override fun loadState(slot: Int) = nativeLoadState(StateSlotPaths.retroArchStateSlot(slot))
 
-    fun undoSaveState() = nativeUndoSaveState()
-    fun undoLoadState() = nativeUndoLoadState()
+    override fun undoSaveState() = nativeUndoSaveState()
+    override fun undoLoadState() = nativeUndoLoadState()
 
     override fun getAchievements(): List<AchievementInfo> =
         decodeAchievements(nativeGetAchievementData())
