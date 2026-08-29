@@ -4,10 +4,13 @@ import org.apache.commons.fileupload2.core.AbstractFileUpload
 import org.apache.commons.fileupload2.core.FileItemFactory
 import org.apache.commons.fileupload2.core.FileItemInputIterator
 import org.apache.commons.fileupload2.core.RequestContext
+import java.io.BufferedOutputStream
 import java.io.File
 import java.io.InputStream
 
 object KitchenUpload {
+
+    private const val BUFFER = 262144
 
     private class StreamRequestContext(
         private val stream: InputStream,
@@ -52,11 +55,25 @@ object KitchenUpload {
             val dest = destFor(filename)
             dest.parentFile?.mkdirs()
             item.inputStream.use { src ->
-                dest.outputStream().use { out -> src.copyTo(out, 262144) }
+                dest.outputStream().use { out -> src.copyTo(out, BUFFER) }
             }
             written.add(filename)
         }
         return written
+    }
+
+    /** The sibling of [streamTo] for a body that is the file itself rather than a multipart envelope. */
+    fun streamRawBody(input: InputStream, contentLength: Long, dest: File) {
+        BufferedOutputStream(dest.outputStream(), BUFFER).use { out ->
+            val buf = ByteArray(BUFFER)
+            var remaining = contentLength
+            while (remaining > 0) {
+                val n = input.read(buf, 0, minOf(buf.size.toLong(), remaining).toInt())
+                if (n <= 0) break
+                out.write(buf, 0, n)
+                remaining -= n
+            }
+        }
     }
 
     private fun sanitize(name: String): String =

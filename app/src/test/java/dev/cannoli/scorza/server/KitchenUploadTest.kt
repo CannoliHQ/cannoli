@@ -1,6 +1,7 @@
 package dev.cannoli.scorza.server
 
 import org.junit.After
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -54,6 +55,38 @@ class KitchenUploadTest {
         assertEquals(listOf("a.nes", "b.nes"), saved)
         assertEquals("AAA", File(dir, "a.nes").readText())
         assertEquals("BBBB", File(dir, "b.nes").readText())
+    }
+
+    @Test fun rawBodyWritesExactlyContentLength() {
+        val dest = File(dir, "state.srm")
+        KitchenUpload.streamRawBody(ByteArrayInputStream("SAVEDATAtrailing".toByteArray()), 8L, dest)
+
+        assertEquals("SAVEDATA", dest.readText())
+    }
+
+    // A client that dies mid-upload leaves the body short of the length it declared. Writing what
+    // arrived and returning beats blocking for bytes that are never coming.
+    @Test fun rawBodyStopsWhenTheStreamEndsEarly() {
+        val dest = File(dir, "state.srm")
+        KitchenUpload.streamRawBody(ByteArrayInputStream("SHORT".toByteArray()), 4096L, dest)
+
+        assertEquals("SHORT", dest.readText())
+    }
+
+    @Test fun rawBodySpansMoreThanOneBufferFill() {
+        val dest = File(dir, "big.srm")
+        val body = ByteArray(700_000) { (it % 251).toByte() }
+        KitchenUpload.streamRawBody(ByteArrayInputStream(body), body.size.toLong(), dest)
+
+        assertArrayEquals(body, dest.readBytes())
+    }
+
+    @Test fun rawBodyWritesAnEmptyFileForAnEmptyBody() {
+        val dest = File(dir, "empty.srm")
+        KitchenUpload.streamRawBody(ByteArrayInputStream(ByteArray(0)), 0L, dest)
+
+        assertTrue(dest.exists())
+        assertEquals(0L, dest.length())
     }
 
     @Test fun skipsPathTraversalFilename() {

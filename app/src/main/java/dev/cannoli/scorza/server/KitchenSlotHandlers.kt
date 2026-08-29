@@ -142,17 +142,7 @@ internal fun KitchenHttpServer.handleSlotUpload(
             return errorResponse(500, "upload failed")
         }
     } else {
-        java.io.BufferedOutputStream(destFile.outputStream(), 262144).use { bos ->
-            val buf = ByteArray(262144)
-            var remaining = contentLength
-            val input = session.inputStream
-            while (remaining > 0) {
-                val n = input.read(buf, 0, minOf(buf.size.toLong(), remaining).toInt())
-                if (n <= 0) break
-                bos.write(buf, 0, n)
-                remaining -= n
-            }
-        }
+        KitchenUpload.streamRawBody(session.inputStream, contentLength, destFile)
     }
 
     return jsonResponse(

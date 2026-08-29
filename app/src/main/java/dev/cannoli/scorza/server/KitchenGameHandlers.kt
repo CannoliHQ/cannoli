@@ -67,19 +67,7 @@ internal fun KitchenHttpServer.streamUploadToFile(destFile: File, session: NanoH
     if (contentType.startsWith("multipart/form-data")) {
         KitchenUpload.streamTo(session.inputStream, contentType, contentLength) { destFile }
     } else {
-        destFile.outputStream().use { fos ->
-            val bos = java.io.BufferedOutputStream(fos, 262144)
-            val buf = ByteArray(262144)
-            var remaining = contentLength
-            val input = session.inputStream
-            while (remaining > 0) {
-                val n = input.read(buf, 0, minOf(buf.size.toLong(), remaining).toInt())
-                if (n <= 0) break
-                bos.write(buf, 0, n)
-                remaining -= n
-            }
-            bos.flush()
-        }
+        KitchenUpload.streamRawBody(session.inputStream, contentLength, destFile)
     }
     return null
 }
