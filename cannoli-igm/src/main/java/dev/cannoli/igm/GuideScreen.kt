@@ -46,10 +46,8 @@ import androidx.compose.ui.unit.sp
 import dev.cannoli.ui.components.ScreenBackground
 import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.LocalCannoliTypography
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.withContext
 import java.io.File
 
 private const val SCROLL_SPEED = 14f
@@ -187,11 +185,13 @@ private fun PdfContent(
             .collect { (y, x) -> currentOnScrollPosChanged(y, x) }
     }
 
-    DisposableEffect(filePath) {
+    LaunchedEffect(filePath) {
         val file = File(filePath)
-        renderer = if (file.exists()) runCatching { PdfTileRenderer(context, file) }.getOrNull() else null
+        renderer = if (file.exists()) PdfTileRenderer.open(context, file) else null
+    }
+
+    DisposableEffect(filePath) {
         onDispose {
-            tile?.recycle()
             tile = null
             renderer?.close()
             renderer = null
@@ -244,9 +244,7 @@ private fun PdfContent(
                 val originX = (x - TILE_OVERSCAN).coerceIn(0, maxOf(0, contentW - wanted))
                 val originY = (y - TILE_OVERSCAN).coerceIn(0, maxOf(0, contentH - tallWanted))
                 val next = runCatching {
-                    withContext(Dispatchers.IO) {
-                        r.renderTile(page, contentW, contentH, originX, originY, wanted, tallWanted)
-                    }
+                    r.renderTile(page, contentW, contentH, originX, originY, wanted, tallWanted)
                 }.getOrNull() ?: return@collectLatest
 
                 // The outgoing tile is dropped rather than recycled: a pan swaps tiles often, and a
