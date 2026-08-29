@@ -909,8 +909,10 @@ class IGMController(
             if (settingsCanReorder.value) settingsReordering.value = true
             return
         }
-        if (keycode == 100) {
-            if (settingsCanRemovePass.value) renderProviderState(nav.removeSelection())
+        // Consumed only where there is a pass to remove. Claiming it unconditionally left the north
+        // button doing nothing on every other row, which is where it shows the setting's description.
+        if (keycode == 100 && settingsCanRemovePass.value) {
+            renderProviderState(nav.removeSelection())
             return
         }
         // Nothing else claims this button in the tree, and the legend only offers it where there is

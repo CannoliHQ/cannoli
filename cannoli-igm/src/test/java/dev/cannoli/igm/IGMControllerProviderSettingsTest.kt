@@ -22,6 +22,21 @@ private class IntProvider : IgmSettingsProvider {
     override fun setOnChanged(callback: () -> Unit) {}
 }
 
+private class DescribedProvider : IgmSettingsProvider {
+    override fun screen(path: List<String>): GenericIgmSettingsScreen = GenericIgmSettingsScreen(
+        "Settings",
+        listOf(GenericIgmSettingsItem.Choice("vsync", "VSync", "On", description = "Synchronises to the display.")),
+    )
+    override fun cycle(itemKey: String, direction: Int) {}
+    override fun activate(itemKey: String): IgmSettingsExit.Prompt? = null
+    override fun exitPrompt(): IgmSettingsExit = IgmSettingsExit.Close
+    override fun setOnChanged(callback: () -> Unit) {}
+}
+
+private class DescribedBridge : FakeRetroArchBridge() {
+    override fun settingsProvider(): IgmSettingsProvider = DescribedProvider()
+}
+
 private class ProviderBridge : FakeRetroArchBridge() {
     override fun settingsProvider(): IgmSettingsProvider = IntProvider()
 }
@@ -36,6 +51,24 @@ class IGMControllerProviderSettingsTest {
         repeat(settingsIndex) { c.handleKeyDown(20) }
         c.handleKeyDown(96)
         return c
+    }
+
+    // North removes a shader pass, but it claimed the key on every row rather than only where
+    // there was a pass, so the description it shows everywhere else could never open.
+    @Test
+    fun `north opens the setting description`() {
+        val c = testController(DescribedBridge())
+        c.openMenu()
+        val settingsIndex = c.buildMenuOptions().settingsIndex
+        repeat(settingsIndex) { c.handleKeyDown(20) }
+        c.handleKeyDown(96)
+
+        assertEquals(null, (c.currentScreen as IGMScreen.ProviderSettings).description)
+        c.handleKeyDown(100)
+        assertEquals(
+            "Synchronises to the display.",
+            (c.currentScreen as IGMScreen.ProviderSettings).description,
+        )
     }
 
     @Test
