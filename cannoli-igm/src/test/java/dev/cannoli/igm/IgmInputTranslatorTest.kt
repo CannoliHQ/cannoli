@@ -48,6 +48,21 @@ class IgmInputTranslatorTest {
         assertEquals(97, t.normalize(4))
     }
 
+    // The Retroid Pocket Nova's menu button reports KEYCODE_BACK, and its cfg says so. Answering
+    // from the pass-through first made that button back once you were inside the menu, so menu and
+    // back were one key and nothing could be bound to menu.
+    @Test fun `a menu button that reports back is still menu`() {
+        val withMenu = retroid.copy(
+            buttonKeycodes = retroid.buttonKeycodes + (CanonicalButton.BTN_MENU to listOf(4))
+        )
+        assertEquals(82, IgmInputTranslator(withMenu).normalize(4))
+    }
+
+    @Test fun `back still passes through where the device binds nothing to it`() {
+        assertEquals(97, IgmInputTranslator(retroid).normalize(4))
+        assertEquals(97, IgmInputTranslator(null).normalize(4))
+    }
+
     @Test fun standardLayoutMapsCorrectly() {
         val xbox = IgmInputMapping(
             buttonKeycodes = mapOf(

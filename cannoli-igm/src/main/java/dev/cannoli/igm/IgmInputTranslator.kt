@@ -16,14 +16,20 @@ class IgmInputTranslator(private val mapping: IgmInputMapping?) {
 
     /** Raw Android keycode -> normalized IGM keycode (19/20/21/22/96/97/99/100/102/103). */
     fun normalize(rawKeycode: Int): Int {
+        val m = mapping
+        val canonical = rawToCanonical[rawKeycode]
+        if (m != null && canonical != null) {
+            // Confirm and back are whichever face buttons this device calls them, so the device's
+            // own answer wins over the button's position on the pad.
+            if (canonical == m.menuConfirm) return CONFIRM
+            if (canonical == m.menuBack) return BACK
+            normalized(canonical)?.let { return it }
+        }
+        // Reached only where the device's mapping said nothing about this key. A handheld whose
+        // menu button reports KEYCODE_BACK has said something, and letting the fallback answer
+        // first made menu and back the same button once you were inside the menu.
         PASS_THROUGH[rawKeycode]?.let { return it }
-        val m = mapping ?: return rawKeycode
-        val canonical = rawToCanonical[rawKeycode] ?: return rawKeycode
-        // Confirm and back are whichever face buttons this device calls them, so the device's own
-        // answer wins over the button's position on the pad.
-        if (canonical == m.menuConfirm) return CONFIRM
-        if (canonical == m.menuBack) return BACK
-        return normalized(canonical) ?: rawKeycode
+        return rawKeycode
     }
 
     companion object {
