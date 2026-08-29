@@ -42,6 +42,9 @@ dependencies {
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.material3)
+    // Renders a window of a PDF page rather than the whole page, which is what keeps the guide
+    // viewer's allocation tied to the screen instead of the page. See PdfTileRenderer.
+    implementation("io.legere:pdfiumandroid:1.0.35")
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation("org.robolectric:robolectric:4.13")

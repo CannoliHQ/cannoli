@@ -2,8 +2,6 @@ package dev.cannoli.igm
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.pdf.PdfRenderer
-import android.os.ParcelFileDescriptor
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.gestures.calculateZoom
@@ -14,14 +12,18 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredWidth
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -34,18 +36,34 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.ui.components.ScreenBackground
 import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.LocalCannoliTypography
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.withContext
 import java.io.File
 
 private const val SCROLL_SPEED = 14f
 private const val FRAME_MS = 16L
+
+// Rendered past each edge of the viewport so a small pan lands inside the tile already on screen
+// instead of waiting on pdfium.
+private const val TILE_OVERSCAN = 256
+
+// Only until the real page is measured, and only ever used for one frame.
+private const val DEFAULT_PAGE_ASPECT = 1.4f
+
+/** What a tile was rendered for, so one made for another page or zoom is never mistaken for current. */
+private data class TileKey(val page: Int, val contentWidth: Int, val contentHeight: Int)
 
 @Composable
 fun GuideScreen(
@@ -140,9 +158,14 @@ private fun PdfContent(
     onPageStep: (Int) -> Unit,
     onTapped: () -> Unit
 ) {
-    var bitmap by remember { mutableStateOf<Bitmap?>(null) }
-    var renderer by remember { mutableStateOf<PdfRenderer?>(null) }
-    var fd by remember { mutableStateOf<ParcelFileDescriptor?>(null) }
+    val context = LocalContext.current
+    val density = LocalDensity.current
+    var renderer by remember { mutableStateOf<PdfTileRenderer?>(null) }
+    var aspect by remember { mutableFloatStateOf(DEFAULT_PAGE_ASPECT) }
+    var tile by remember { mutableStateOf<Bitmap?>(null) }
+    var tileX by remember { mutableIntStateOf(0) }
+    var tileY by remember { mutableIntStateOf(0) }
+    var tileKey by remember { mutableStateOf<TileKey?>(null) }
     val scrollState = remember(initialScrollY) { ScrollState(initialScrollY) }
     val hScrollState = remember(initialScrollX) { ScrollState(initialScrollX) }
 
@@ -166,33 +189,19 @@ private fun PdfContent(
 
     DisposableEffect(filePath) {
         val file = File(filePath)
-        if (file.exists()) {
-            val pfd = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
-            fd = pfd
-            renderer = PdfRenderer(pfd)
-        }
+        renderer = if (file.exists()) runCatching { PdfTileRenderer(context, file) }.getOrNull() else null
         onDispose {
-            bitmap?.recycle()
-            bitmap = null
+            tile?.recycle()
+            tile = null
             renderer?.close()
-            fd?.close()
+            renderer = null
         }
     }
 
-    LaunchedEffect(page, scale, renderer) {
+    LaunchedEffect(renderer, page) {
         val r = renderer ?: return@LaunchedEffect
         if (page < 0 || page >= r.pageCount) return@LaunchedEffect
-        val pdfPage = r.openPage(page)
-        val renderScale = scale + 1
-        val bmp = Bitmap.createBitmap(
-            (pdfPage.width * renderScale).toInt(), (pdfPage.height * renderScale).toInt(), Bitmap.Config.ARGB_8888
-        )
-        bmp.eraseColor(android.graphics.Color.WHITE)
-        pdfPage.render(bmp, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
-        pdfPage.close()
-        val old = bitmap
-        bitmap = bmp
-        old?.recycle()
+        aspect = runCatching { r.aspectOf(page) }.getOrDefault(DEFAULT_PAGE_ASPECT)
     }
 
     BoxWithConstraints(
@@ -206,24 +215,87 @@ private fun PdfContent(
                 onTapped = onTapped,
             )
     ) {
-        bitmap?.let { bmp ->
-            if (scale <= 1f) {
-                Image(
-                    bitmap = bmp.asImageBitmap(),
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Fit
-                )
-            } else {
-                Image(
-                    bitmap = bmp.asImageBitmap(),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .horizontalScroll(hScrollState)
-                        .verticalScroll(scrollState)
-                        .requiredWidth(maxWidth * scale),
-                    contentScale = ContentScale.FillWidth
-                )
+        val viewportW = with(density) { maxWidth.roundToPx() }
+        val viewportH = with(density) { maxHeight.roundToPx() }
+        // Zoom 1 shows the whole page, so it is bounded by whichever edge runs out first. Above
+        // that the width follows the zoom and the height follows the page, which is what makes the
+        // content bigger than the viewport and gives the scroll states something to travel over.
+        val fitted = scale <= 1f
+        val contentW = if (fitted) minOf(viewportW, (viewportH / aspect).toInt()) else (viewportW * scale).toInt()
+        val contentH = (contentW * aspect).toInt()
+
+        LaunchedEffect(renderer, page, contentW, contentH, viewportW, viewportH) {
+            val key = TileKey(page, contentW, contentH)
+            snapshotFlow { scrollState.value to hScrollState.value }.collectLatest { (y, x) ->
+                val r = renderer ?: return@collectLatest
+                if (contentW <= 0 || contentH <= 0) return@collectLatest
+                if (page < 0 || page >= r.pageCount) return@collectLatest
+                val current = tile
+                // A tile drawn for another page or another zoom can still span the viewport, so the
+                // rect alone would keep a stale one on screen. It has to match what it was made for.
+                val covers = current != null && tileKey == key &&
+                    x >= tileX && y >= tileY &&
+                    x + viewportW <= tileX + current.width &&
+                    y + viewportH <= tileY + current.height
+                if (covers) return@collectLatest
+
+                val wanted = minOf(contentW, viewportW + TILE_OVERSCAN * 2)
+                val tallWanted = minOf(contentH, viewportH + TILE_OVERSCAN * 2)
+                val originX = (x - TILE_OVERSCAN).coerceIn(0, maxOf(0, contentW - wanted))
+                val originY = (y - TILE_OVERSCAN).coerceIn(0, maxOf(0, contentH - tallWanted))
+                val next = runCatching {
+                    withContext(Dispatchers.IO) {
+                        r.renderTile(page, contentW, contentH, originX, originY, wanted, tallWanted)
+                    }
+                }.getOrNull() ?: return@collectLatest
+
+                // The outgoing tile is dropped rather than recycled: a pan swaps tiles often, and a
+                // frame still drawing the old one would take a recycled bitmap and crash.
+                tileX = originX
+                tileY = originY
+                tileKey = key
+                tile = next
+            }
+        }
+
+        if (fitted) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                tile?.let { bmp ->
+                    Image(
+                        bitmap = bmp.asImageBitmap(),
+                        contentDescription = null,
+                        modifier = Modifier.size(
+                            with(density) { bmp.width.toDp() },
+                            with(density) { bmp.height.toDp() },
+                        ),
+                    )
+                }
+            }
+        } else {
+            Box(
+                modifier = Modifier
+                    .horizontalScroll(hScrollState)
+                    .verticalScroll(scrollState)
+            ) {
+                Box(
+                    modifier = Modifier.size(
+                        with(density) { contentW.toDp() },
+                        with(density) { contentH.toDp() },
+                    )
+                ) {
+                    tile?.let { bmp ->
+                        Image(
+                            bitmap = bmp.asImageBitmap(),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .offset { IntOffset(tileX, tileY) }
+                                .size(
+                                    with(density) { bmp.width.toDp() },
+                                    with(density) { bmp.height.toDp() },
+                                ),
+                        )
+                    }
+                }
             }
         }
     }

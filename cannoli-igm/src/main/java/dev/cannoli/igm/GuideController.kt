@@ -53,6 +53,9 @@ class GuideController {
         guidePageJump.intValue = 0
         guideScrollXPos = saved.scrollX
         guideInitialScrollX.intValue = saved.scrollX
+        // Counting pages stays on the platform renderer while PdfTileRenderer draws them. Opening a
+        // pdfium document needs a Context, and this controller is deliberately host-agnostic and
+        // takes none; a page count allocates nothing, so the split costs only this explanation.
         guidePageCount.intValue = if (guide.type == GuideType.PDF) {
             try {
                 val pfd = android.os.ParcelFileDescriptor.open(
