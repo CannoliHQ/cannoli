@@ -553,9 +553,15 @@ class IGMController(
             103 -> if (type == GuideType.PDF) {
                 replaceTop(screen.copy(page = (screen.page + 1).coerceAtMost(guidePageCount.intValue - 1)))
             } else guideController.pageJump(1)
+            // Clamped rather than wrapped, now that zooming out has a button of its own: at the
+            // top, the wrap dropped you to the smallest size when you asked for a bigger one.
             100 -> {
                 guideController.beginZoomReseed()
-                replaceTop(screen.copy(textZoom = if (screen.textZoom >= GuideZoom.levels) 1 else screen.textZoom + 1))
+                replaceTop(screen.copy(textZoom = (screen.textZoom + 1).coerceAtMost(GuideZoom.levels)))
+            }
+            99 -> {
+                guideController.beginZoomReseed()
+                replaceTop(screen.copy(textZoom = (screen.textZoom - 1).coerceAtLeast(1)))
             }
             97, 4 -> {
                 guideController.saveGuide(guide, if (type == GuideType.PDF) screen.page else null, screen.textZoom)

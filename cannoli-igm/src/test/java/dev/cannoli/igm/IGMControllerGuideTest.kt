@@ -60,6 +60,17 @@ class IGMControllerGuideTest {
         assertEquals(0, c.guideScrollDir.intValue)
     }
 
+    // Zoom used to wrap, because one button had to reach every level. With a button each way, the
+    // wrap would drop you to the smallest size at the very moment you asked for a bigger one.
+    @Test fun `zoom stops at the top and the bottom instead of wrapping`() {
+        val c = openGuide()
+        repeat(GuideZoom.levels + 2) { c.handleKeyDown(100) }
+        assertEquals(GuideZoom.levels, (c.currentScreen as IGMScreen.Guide).textZoom)
+
+        repeat(GuideZoom.levels + 2) { c.handleKeyDown(99) }
+        assertEquals(1, (c.currentScreen as IGMScreen.Guide).textZoom)
+    }
+
     // Text reflows rather than overflowing, so only a page that can be wider than the screen pans.
     @Test fun `releasing a direction stops the guide panning`() {
         val c = openGuide("only.png")

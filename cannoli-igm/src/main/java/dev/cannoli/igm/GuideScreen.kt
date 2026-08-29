@@ -98,7 +98,8 @@ fun guideHelpGroups(guideType: GuideType): List<HelpGroup> {
         dev.cannoli.ui.R.string.guide_help_jump
     }
     val view = buildList {
-        add(HelpEntry(listOf(HelpGlyph.NORTH), dev.cannoli.ui.R.string.guide_help_zoom))
+        add(HelpEntry(listOf(HelpGlyph.NORTH), dev.cannoli.ui.R.string.guide_help_zoom_in))
+        add(HelpEntry(listOf(HelpGlyph.WEST), dev.cannoli.ui.R.string.guide_help_zoom_out))
         // Text reflows to the width instead of overflowing it, so there is nothing to pan across.
         if (guideType != GuideType.TXT) {
             add(HelpEntry(listOf(HelpGlyph.DPAD), dev.cannoli.ui.R.string.guide_help_pan))

@@ -11,8 +11,6 @@
     <string name="label_change">CHANGE</string>
     <!-- Legend for the shoulder buttons on numeric rows, where they step by a large amount. -->
     <string name="label_jump">JUMP</string>
-    <!-- Legend for the shoulder buttons in a guide, where they turn to the next or previous page. -->
-    <string name="label_page">PAGE</string>
     <string name="label_firmware">FIRMWARE</string>
     <string name="label_choose">CHOOSE</string>
     <string name="label_close">CLOSE</string>
@@ -934,7 +932,6 @@
     <!-- D-Pad Mode value: 8 directions. -->
     <!-- D-Pad Mode value: 4 directions. -->
     <string name="title_guide">Guide</string>
-    <string name="guide_zoom">ZOOM</string>
 
     <!-- IGM dialogs -->
     <!-- %1$s = save slot name. -->
@@ -1133,7 +1130,8 @@
     <!-- Shoulder buttons on text or an image, which have no pages, so they move a screenful. -->
     <string name="guide_help_jump">JUMP A SCREENFUL</string>
     <string name="guide_help_pan">PAN LEFT / RIGHT WHEN ZOOMED</string>
-    <string name="guide_help_zoom">CHANGE ZOOM</string>
+    <string name="guide_help_zoom_in">ZOOM IN</string>
+    <string name="guide_help_zoom_out">ZOOM OUT</string>
     <string name="guide_help_close">CLOSE THE GUIDE</string>
 
     <!-- Permissions review page -->

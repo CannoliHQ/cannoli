@@ -103,10 +103,18 @@ class GuideInputHandler @Inject constructor(
         }
     }
 
+    // Clamped rather than wrapped, now that zooming out has a button of its own: at the top, the
+    // wrap dropped you to the smallest size when you asked for a bigger one.
     override fun onNorth() {
         val g = guide() ?: return
         controller.beginZoomReseed()
-        nav.replaceTop(g.copy(textZoom = if (g.textZoom >= GuideZoom.levels) 1 else g.textZoom + 1))
+        nav.replaceTop(g.copy(textZoom = (g.textZoom + 1).coerceAtMost(GuideZoom.levels)))
+    }
+
+    override fun onWest() {
+        val g = guide() ?: return
+        controller.beginZoomReseed()
+        nav.replaceTop(g.copy(textZoom = (g.textZoom - 1).coerceAtLeast(1)))
     }
 
     // Menu opens the help and closes it again. The dialog handler passes menu through on this
