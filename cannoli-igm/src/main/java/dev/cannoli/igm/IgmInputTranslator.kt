@@ -32,9 +32,21 @@ class IgmInputTranslator(private val mapping: IgmInputMapping?) {
         return rawKeycode
     }
 
+    /**
+     * Whether this raw keycode is the button that opens and closes the menu on this device.
+     *
+     * A mapping names BTN_MENU, so it answers for whatever button this pad calls menu. Without one
+     * there is nothing to ask, and the platform's own menu keys are all that can be assumed.
+     */
+    fun isMenuKey(rawKeycode: Int): Boolean =
+        if (mapping == null) rawKeycode in MENU_DEFAULTS else normalize(rawKeycode) == MENU
+
     companion object {
         private const val CONFIRM = 96
         private const val BACK = 97
+        private const val MENU = 82
+
+        private val MENU_DEFAULTS = setOf(4, MENU, 110)
 
         private val PASS_THROUGH = mapOf(19 to 19, 20 to 20, 21 to 21, 22 to 22, 4 to BACK)
 
@@ -62,7 +74,7 @@ class IgmInputTranslator(private val mapping: IgmInputMapping?) {
             CanonicalButton.BTN_R3 -> 107
             CanonicalButton.BTN_START -> 108
             CanonicalButton.BTN_SELECT -> 109
-            CanonicalButton.BTN_MENU -> 82
+            CanonicalButton.BTN_MENU -> MENU
             // Axes rather than buttons, so they never appear in a keycode map. Null rather than a
             // keycode, because inventing one would give a stick a button's meaning.
             CanonicalButton.BTN_LSTICK_X,

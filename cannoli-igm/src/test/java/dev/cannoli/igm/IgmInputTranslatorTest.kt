@@ -1,6 +1,8 @@
 package dev.cannoli.igm
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class IgmInputTranslatorTest {
@@ -56,6 +58,23 @@ class IgmInputTranslatorTest {
             buttonKeycodes = retroid.buttonKeycodes + (CanonicalButton.BTN_MENU to listOf(4))
         )
         assertEquals(82, IgmInputTranslator(withMenu).normalize(4))
+    }
+
+    @Test fun `the menu key is whichever button the mapping names`() {
+        val withMenu = retroid.copy(
+            buttonKeycodes = retroid.buttonKeycodes + (CanonicalButton.BTN_MENU to listOf(109))
+        )
+        val t = IgmInputTranslator(withMenu)
+        assertTrue(t.isMenuKey(109))
+        assertFalse("the platform default is not this pad's menu button", t.isMenuKey(4))
+    }
+
+    @Test fun `with no mapping the platform's own menu keys are all there is to go on`() {
+        val t = IgmInputTranslator(null)
+        assertTrue(t.isMenuKey(4))
+        assertTrue(t.isMenuKey(82))
+        assertTrue(t.isMenuKey(110))
+        assertFalse(t.isMenuKey(96))
     }
 
     @Test fun `back still passes through where the device binds nothing to it`() {
