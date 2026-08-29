@@ -909,8 +909,10 @@ class IGMController(
             if (settingsCanReorder.value) settingsReordering.value = true
             return
         }
-        if (keycode == 100) {
-            if (settingsCanRemovePass.value) renderProviderState(nav.removeSelection())
+        // Claimed only on a row that is a shader pass, which is the only place the legend offers it.
+        // Taking the key everywhere is what left the description with no button to open it.
+        if (keycode == 100 && settingsCanRemovePass.value) {
+            renderProviderState(nav.removeSelection())
             return
         }
         // Nothing else claims this button in the tree, and the legend only offers it where there is
