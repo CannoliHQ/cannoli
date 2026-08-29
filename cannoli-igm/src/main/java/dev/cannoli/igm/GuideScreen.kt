@@ -36,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -98,7 +99,18 @@ fun GuideScreen(
     // A PDF page goes edge to edge; text still wants its margin.
     val inset = if (guideType == GuideType.PDF) 0.dp else 12.dp
 
-    ScreenBackground(backgroundImagePath = null, backgroundAlpha = 1f) {
+    // A PDF or an image is someone else's page, usually white, and the colour the user picked for
+    // Cannoli's own screens has no business tinting it or the space around it. Text is Cannoli
+    // drawing the guide itself, so that stays on the theme.
+    //
+    // The neutral is chosen against the legend rather than against the page: the host draws that
+    // legend in the theme's text colour and never tells this screen, so whatever the scrim is has
+    // to be the side that colour reads on.
+    val document = guideType != GuideType.TXT
+    val neutral = if (colors.text.luminance() > 0.5f) Color.Black else Color.White
+    val ground = if (document) neutral else null
+
+    ScreenBackground(backgroundImagePath = null, backgroundAlpha = 1f, backgroundColor = ground) {
         Box(modifier = Modifier.fillMaxSize().padding(inset)) {
             when (guideType) {
                 GuideType.PDF -> PdfContent(
@@ -147,15 +159,16 @@ fun GuideScreen(
 
             // A page can be any brightness, and white is the common one, so the host's legend and
             // the page counter would otherwise sit as theme-coloured text on a white page and
-            // disappear. These fade the page out behind them instead of boxing them in.
-            if (guideType != GuideType.TXT) {
+            // disappear. These fade the page out behind them instead of boxing them in, in the
+            // neutral rather than the theme colour: the job is to back the legend, not decorate.
+            if (document) {
                 Box(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .fillMaxWidth()
                         .height(LEGEND_SCRIM_HEIGHT)
                         .background(
-                            Brush.verticalGradient(listOf(Color.Transparent, colors.background))
+                            Brush.verticalGradient(listOf(Color.Transparent, neutral))
                         )
                 )
                 if (guideType == GuideType.PDF && pageCount > 0) {
@@ -165,7 +178,7 @@ fun GuideScreen(
                             .fillMaxWidth()
                             .height(COUNTER_SCRIM_HEIGHT)
                             .background(
-                                Brush.verticalGradient(listOf(colors.background, Color.Transparent))
+                                Brush.verticalGradient(listOf(neutral, Color.Transparent))
                             )
                     )
                 }
