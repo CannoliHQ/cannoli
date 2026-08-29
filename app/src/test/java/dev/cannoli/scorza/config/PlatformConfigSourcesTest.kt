@@ -12,8 +12,6 @@ import java.io.File
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class PlatformConfigSourcesTest {
-    private val RA = "com.retroarch"
-
     private fun config(): PlatformConfig {
         val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
         return PlatformConfig(File(ctx.cacheDir, "src-root").apply { mkdirs() }, ctx.assets)

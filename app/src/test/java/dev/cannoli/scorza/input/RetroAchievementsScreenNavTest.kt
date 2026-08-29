@@ -94,7 +94,6 @@ class RetroAchievementsScreenNavTest {
         scrollListFactory = scrollFactory(),
         platformConfig = mockk(relaxed = true),
         gameOverrideStore = mockk(relaxed = true),
-        installedCoreService = mockk(relaxed = true),
         emulatorMappingBuilder = mockk(relaxed = true),
         globalOverrides = mockk(relaxed = true),
         launcherActions = mockk(relaxed = true),

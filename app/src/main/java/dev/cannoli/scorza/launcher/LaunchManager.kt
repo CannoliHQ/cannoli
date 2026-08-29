@@ -49,7 +49,6 @@ class LaunchManager(
     private val launchState: LaunchState,
     private val activeMappingHolder: dev.cannoli.scorza.input.runtime.ActiveMappingHolder,
     private val portRouter: dev.cannoli.scorza.input.runtime.PortRouter,
-    private val atomicRename: dev.cannoli.scorza.util.AtomicRename,
     private val installedCoreService: InstalledCoreService? = null,
     private val gameOverrides: dev.cannoli.scorza.db.GameOverrideStore? = null,
 ) {
@@ -369,12 +368,6 @@ class LaunchManager(
 
     private fun applyOverrides(source: String, overrides: Map<String, String>): String =
         RetroArchConfigComposer.compose(source, listOf(overrides))
-
-    private fun sha256(vararg parts: ByteArray): String {
-        val digest = MessageDigest.getInstance("SHA-256")
-        for (part in parts) digest.update(part)
-        return digest.digest().joinToString("") { "%02x".format(it) }
-    }
 
     fun resolveLaunchFile(rom: Rom, extractArchives: Boolean): File? {
         if (extractArchives && ArchiveExtractor.isArchive(rom.path) && !platformConfig.isArcade(rom.platformTag)) {

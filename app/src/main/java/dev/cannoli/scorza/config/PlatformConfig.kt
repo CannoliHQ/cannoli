@@ -116,12 +116,6 @@ class PlatformConfig(
     private val paths: CannoliPaths get() = CannoliPaths(cannoliRootProvider())
     private val coresFile get() = paths.coresJson
 
-    private fun romsTagDir(tag: String, romsDir: File = paths.romsDir): File {
-        val direct = File(romsDir, tag)
-        if (direct.exists()) return direct
-        return romsDir.listFiles()?.firstOrNull { it.isDirectory && it.name.equals(tag, ignoreCase = true) } ?: direct
-    }
-
     fun load() {
         loadPlatformsAsset()
         val configFile = paths.platformsIni

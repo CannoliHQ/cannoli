@@ -279,7 +279,7 @@ object RommModule {
                 romm(DownloadKind.MANUAL),
                 romm(DownloadKind.FIRMWARE),
                 dev.cannoli.scorza.launcher.CoreDownloadHandler(context),
-                dev.cannoli.scorza.launcher.ShaderDownloadHandler(context, settings),
+                dev.cannoli.scorza.launcher.ShaderDownloadHandler(settings),
             ),
             lanes = listOf(
                 // Cores get their own lane rather than a share of the RomM one: installing a core

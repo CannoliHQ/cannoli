@@ -18,7 +18,6 @@ internal fun testSettingsInputHandler(
     ioScope = ioScope,
     settings = mockk(relaxed = true),
     platformConfig = mockk(relaxed = true),
-    installedCoreService = mockk(relaxed = true),
     globalOverrides = mockk(relaxed = true),
     appsRepository = mockk(relaxed = true),
     setupCoordinator = mockk(relaxed = true),
@@ -35,7 +34,6 @@ internal fun testSettingsInputHandler(
     cannoliPaths = mockk(relaxed = true),
     raLoginController = mockk(relaxed = true),
     permissionsInputHandler = mockk(relaxed = true),
-    osdController = mockk(relaxed = true),
     coreUpdateController = mockk(relaxed = true),
     shaderUpdateController = mockk(relaxed = true),
 )

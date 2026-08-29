@@ -23,7 +23,6 @@ import dev.cannoli.igm.RaScreenRow
 import dev.cannoli.igm.RaSettingsHost
 
 class EmbeddedRetroArchBridge(
-    private val stateBasePath: String,
     private val hardcoreInEffect: Boolean,
     private val cannoliRoot: String,
     private val platformTag: String,

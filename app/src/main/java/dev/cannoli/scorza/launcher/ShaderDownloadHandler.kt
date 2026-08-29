@@ -1,6 +1,5 @@
 package dev.cannoli.scorza.launcher
 
-import android.content.Context
 import dev.cannoli.scorza.config.CannoliPaths
 import dev.cannoli.scorza.download.DownloadCancelled
 import dev.cannoli.scorza.download.DownloadHandler
@@ -21,7 +20,6 @@ import java.util.zip.ZipInputStream
  * that glsl means GL and slang means Vulkan.
  */
 class ShaderDownloadHandler(
-    private val context: Context,
     private val settings: SettingsRepository,
 ) : DownloadHandler {
 

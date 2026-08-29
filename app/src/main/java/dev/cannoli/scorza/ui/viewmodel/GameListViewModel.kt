@@ -10,7 +10,6 @@ import dev.cannoli.scorza.db.LibraryRef
 import dev.cannoli.scorza.db.RecentlyPlayedRepository
 import dev.cannoli.scorza.db.RomsRepository
 import dev.cannoli.scorza.db.ScanScheduler
-import dev.cannoli.scorza.di.CannoliPathsProvider
 import dev.cannoli.scorza.model.AppType
 import dev.cannoli.scorza.model.Collection
 import dev.cannoli.scorza.model.CollectionType
@@ -99,7 +98,6 @@ class GameListViewModel @Inject constructor(
     private val recentlyPlayedRepository: RecentlyPlayedRepository,
     private val platformConfig: PlatformConfig,
     private val scanScheduler: ScanScheduler,
-    private val cannoliPaths: CannoliPathsProvider,
     private val osdController: OsdController,
     @ApplicationContext private val context: android.content.Context,
 ) {

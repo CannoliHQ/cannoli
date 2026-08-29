@@ -18,7 +18,6 @@ import dev.cannoli.scorza.launcher.LaunchManager
 import dev.cannoli.scorza.launcher.LaunchState
 import dev.cannoli.scorza.launcher.RetroArchLauncher
 import dev.cannoli.scorza.settings.SettingsRepository
-import dev.cannoli.scorza.util.AtomicRename
 import javax.inject.Singleton
 
 @Module
@@ -63,12 +62,11 @@ object LaunchModule {
         launchState: LaunchState,
         activeMappingHolder: dev.cannoli.scorza.input.runtime.ActiveMappingHolder,
         portRouter: dev.cannoli.scorza.input.runtime.PortRouter,
-        atomicRename: AtomicRename,
         installedCoreService: InstalledCoreService,
         gameOverrides: dev.cannoli.scorza.db.GameOverrideStore,
     ): LaunchManager = LaunchManager(
         context, settings, platformConfig,
         retroArchLauncher, apkLauncher, delfinoLauncher, launchState, activeMappingHolder,
-        portRouter, atomicRename, installedCoreService, gameOverrides
+        portRouter, installedCoreService, gameOverrides
     )
 }

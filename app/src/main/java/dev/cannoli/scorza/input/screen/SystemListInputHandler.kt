@@ -1,7 +1,6 @@
 package dev.cannoli.scorza.input.screen
 
 import dagger.hilt.android.scopes.ActivityScoped
-import dev.cannoli.scorza.config.PlatformConfig
 import dev.cannoli.scorza.db.CollectionsRepository
 import dev.cannoli.scorza.input.LauncherActions
 import dev.cannoli.scorza.input.MENU_ADD_FAVORITE
@@ -30,7 +29,6 @@ class SystemListInputHandler @Inject constructor(
     private val nav: NavigationController,
     private val settings: SettingsRepository,
     private val collectionsRepository: CollectionsRepository,
-    private val platformConfig: PlatformConfig,
     private val systemListViewModel: SystemListViewModel,
     private val gameListViewModel: GameListViewModel,
     private val launcherActions: LauncherActions,

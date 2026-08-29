@@ -7,8 +7,6 @@ import java.util.TimeZone
 
 class BuildIdentityTest {
 
-    private val utc = TimeZone.getTimeZone("UTC")
-
     // 2026-08-08 18:41 UTC
     private val stamp = 1786214460000L
 

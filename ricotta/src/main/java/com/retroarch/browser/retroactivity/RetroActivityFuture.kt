@@ -111,7 +111,7 @@ class RetroActivityFuture : RetroActivityCamera() {
             osdContext = localeContext(this, localeTag)
 
             val bridge = EmbeddedRetroArchBridge(
-                stateBasePath, params?.hardcoreInEffect ?: false, cannoliRoot, platformTag, romBaseName,
+                params?.hardcoreInEffect ?: false, cannoliRoot, platformTag, romBaseName,
                 params?.coreId ?: "",
             )
             raBridge = bridge

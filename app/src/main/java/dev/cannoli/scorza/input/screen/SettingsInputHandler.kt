@@ -15,7 +15,6 @@ import dev.cannoli.scorza.input.LauncherActions
 import dev.cannoli.scorza.input.PageJump
 import dev.cannoli.scorza.input.ScreenInputHandler
 import dev.cannoli.scorza.launcher.ApkLauncher
-import dev.cannoli.scorza.launcher.InstalledCoreService
 import dev.cannoli.scorza.launcher.IntentAuditor
 import dev.cannoli.scorza.model.AppType
 import dev.cannoli.scorza.model.VirtualPlatformTags
@@ -44,7 +43,6 @@ class SettingsInputHandler @Inject constructor(
     @IoScope private val ioScope: CoroutineScope,
     private val settings: SettingsRepository,
     private val platformConfig: PlatformConfig,
-    private val installedCoreService: InstalledCoreService,
     private val globalOverrides: GlobalOverridesManager,
     private val appsRepository: AppsRepository,
     private val setupCoordinator: SetupCoordinator,
@@ -61,7 +59,6 @@ class SettingsInputHandler @Inject constructor(
     private val cannoliPaths: CannoliPathsProvider,
     private val raLoginController: dev.cannoli.scorza.achievements.RaLoginController,
     private val permissionsInputHandler: PermissionsInputHandler,
-    private val osdController: dev.cannoli.ui.components.OsdController,
     private val coreUpdateController: dev.cannoli.scorza.input.CoreUpdateController,
     private val shaderUpdateController: dev.cannoli.scorza.input.ShaderUpdateController,
 ) : ScreenInputHandler {

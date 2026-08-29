@@ -21,7 +21,6 @@ import dev.cannoli.scorza.input.screen.PermissionsInputHandler
 import dev.cannoli.scorza.input.screen.SaveSlotsInputHandler
 import dev.cannoli.scorza.input.screen.SaveStatePickerInputHandler
 import dev.cannoli.scorza.input.screen.SystemListInputHandler
-import dev.cannoli.scorza.launcher.InstalledCoreService
 import dev.cannoli.scorza.navigation.LauncherScreen
 import dev.cannoli.scorza.navigation.NavigationController
 import dev.cannoli.scorza.settings.GlobalOverridesManager
@@ -63,7 +62,6 @@ class InputRouter @Inject constructor(
     private val scrollListFactory: ScrollListInputHandler.Factory,
     private val platformConfig: PlatformConfig,
     private val gameOverrideStore: dev.cannoli.scorza.db.GameOverrideStore,
-    private val installedCoreService: InstalledCoreService,
     private val emulatorMappingBuilder: EmulatorMappingBuilder,
     private val globalOverrides: GlobalOverridesManager,
     private val launcherActions: LauncherActions,
