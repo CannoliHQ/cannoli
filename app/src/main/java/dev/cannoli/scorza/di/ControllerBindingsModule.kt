@@ -56,7 +56,6 @@ object ControllerBindingsModule {
     ): AutoconfigSeeder = AutoconfigSeeder(
         source = bundledCfgSource(context),
         targetDirProvider = { CannoliPaths(paths.root).configInputAutoconfigAndroid },
-        legacyMappingsDirProvider = { CannoliPaths(paths.root).configInputMappings },
         assetsDigest = dev.cannoli.scorza.BuildConfig.AUTOCONFIG_DIGEST,
         buildModel = android.os.Build.MODEL ?: "",
     )

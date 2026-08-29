@@ -5,13 +5,11 @@ import java.io.File
 class AutoconfigSeeder(
     private val source: CfgSource,
     private val targetDirProvider: () -> File,
-    private val legacyMappingsDirProvider: () -> File,
     private val assetsDigest: String,
     private val buildModel: String,
 ) {
 
     private val targetDir: File get() = targetDirProvider()
-    private val legacyMappingsDir: File get() = legacyMappingsDirProvider()
 
     fun seedIfNeeded() {
         val stamp = File(targetDir, STAMP_FILE)
@@ -33,7 +31,6 @@ class AutoconfigSeeder(
         }
 
         prune(seeded, bundledNames)
-        legacyMappingsDir.deleteRecursively()
         stamp.writeText(want)
     }
 
