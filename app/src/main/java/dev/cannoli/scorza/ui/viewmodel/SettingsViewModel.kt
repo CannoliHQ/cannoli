@@ -41,8 +41,6 @@ class SettingsViewModel @Inject constructor(
     private var appPackageName: String? = null
     private var collectionsRepository: CollectionsRepository? = null
 
-    // The platforms the system list is showing, which is the only honest answer to what can be
-    // started on: they are already grouped, so two tags sharing a display name are one row here too.
     private var platformsProvider: (() -> List<dev.cannoli.scorza.model.Platform>)? = null
 
     val isTelevision: Boolean
@@ -777,17 +775,12 @@ class SettingsViewModel @Inject constructor(
         return cr.all().filter { it.type == CollectionType.STANDARD }
     }
 
-    /**
-     * Platforms holding at least one game, read fresh on every build so entering Library after a
-     * scan shows what is there now. A platform whose card was not mounted is simply absent until it
-     * is, which is why the saved choice is not cleared when it cannot be found.
-     */
+    /** Read on every build, so a card that mounts late shows up the next time Library is opened. */
     private fun startOnPlatforms(): List<dev.cannoli.scorza.model.Platform> =
         platformsProvider?.invoke().orEmpty()
             .filter { it.gameCount > 0 }
             .sortedBy { it.displayName.lowercase() }
 
-    /** Opens the picker on the current choice, or on System List when nothing is set. */
     fun startOnPickerInitialIndex(): Int {
         val tag = settings.startOnPlatform
         if (tag.isEmpty()) return 0
@@ -853,6 +846,18 @@ class SettingsViewModel @Inject constructor(
                 ContentMode.FIVE_GAME_HANDHELD -> R.string.value_five_game_handheld
             }
             add(SettingsItem(SettingsKey.CONTENT_MODE.id, R.string.setting_content_mode, valueRes = contentModeRes))
+            if (settings.contentMode == ContentMode.PLATFORMS) {
+                val rows = startOnPlatforms()
+                val current = rows.firstOrNull { settings.startOnPlatform in it.allTags }
+                add(SettingsItem(
+                    SettingsKey.START_ON_PLATFORM.id,
+                    R.string.setting_start_on,
+                    valueText = current?.displayName,
+                    valueRes = if (current == null) R.string.value_system_list else null,
+                    isEditable = true,
+                    canCycle = false,
+                ))
+            }
             if (settings.contentMode == ContentMode.FIVE_GAME_HANDHELD) {
                 val rows = fghCollections()
                 val curId = settings.fghCollectionId
@@ -872,21 +877,6 @@ class SettingsViewModel @Inject constructor(
             if (settings.contentMode != ContentMode.FIVE_GAME_HANDHELD) {
                 add(SettingsItem(SettingsKey.SHOW_RECENTLY_PLAYED.id, R.string.setting_show_recently_played, valueRes = showHide(settings.showRecentlyPlayed)))
                 add(SettingsItem(SettingsKey.SHOW_FAVORITES.id, R.string.setting_show_favorites, valueRes = showHide(settings.showFavorites)))
-            }
-            // Only the platform list can be started on: the other two modes build a different system
-            // list, out of collections and out of a flat set of games, so a platform target neither
-            // applies nor should be offered there.
-            if (settings.contentMode == ContentMode.PLATFORMS) {
-                val rows = startOnPlatforms()
-                val current = rows.firstOrNull { settings.startOnPlatform in it.allTags }
-                add(SettingsItem(
-                    SettingsKey.START_ON_PLATFORM.id,
-                    R.string.setting_start_on,
-                    valueText = current?.displayName,
-                    valueRes = if (current == null) R.string.value_system_list else null,
-                    isEditable = true,
-                    canCycle = false,
-                ))
             }
             add(SettingsItem(SettingsKey.MANAGE_PORTS.id, R.string.setting_manage_ports, isEditable = true))
             add(SettingsItem(SettingsKey.MANAGE_TOOLS.id, R.string.setting_manage_tools, isEditable = true))

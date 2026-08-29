@@ -140,6 +140,8 @@ fun SettingsScreen(
                 listOf(buttonStyle.confirm to stringResource(R.string.label_select))
             } else if (isFghCollection) {
                 listOf(buttonStyle.confirm to stringResource(R.string.label_choose))
+            } else if (selectedKey == SettingsKey.START_ON_PLATFORM) {
+                listOf(buttonStyle.confirm to stringResource(R.string.label_change))
             } else if (state.activeCategory == SettingsCategory.SCREEN_GEOMETRY) {
                 listOf(buttonStyle.north to stringResource(R.string.label_reset))
             } else if (showClear) {

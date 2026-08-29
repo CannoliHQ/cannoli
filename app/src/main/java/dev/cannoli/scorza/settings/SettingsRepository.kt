@@ -319,9 +319,8 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         get() = jsonRead { if (has(KEY_FGH_COLLECTION)) optLong(KEY_FGH_COLLECTION).takeIf { it > 0 } else null }
         set(value) = jsonWrite { if (value == null) remove(KEY_FGH_COLLECTION) else put(KEY_FGH_COLLECTION, value) }
 
-    // The platform to open on instead of the system list, or empty for the list itself. A tag that
-    // stops resolving is left alone rather than cleared: on a handheld whose card mounts after boot
-    // that is the ordinary case, and forgetting the choice would punish a slow card.
+    // Empty is the system list. A tag that stops resolving is kept, not cleared: a card that mounts
+    // after boot would otherwise silently lose the choice.
     var startOnPlatform: String
         get() = jsonRead { optString(KEY_START_ON_PLATFORM, "") }
         set(value) = jsonWrite { put(KEY_START_ON_PLATFORM, value) }

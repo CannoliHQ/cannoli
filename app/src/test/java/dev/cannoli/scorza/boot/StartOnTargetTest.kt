@@ -22,15 +22,13 @@ class StartOnTargetTest {
         assertEquals(gba, startOnTarget("GBA", ContentMode.PLATFORMS, listOf(gba, snes)))
     }
 
-    // The other two modes build a different system list, out of collections and out of a flat set of
-    // games, so a platform target neither applies nor should be acted on there.
+    // The other two modes build a different system list, so a platform target does not apply.
     @Test fun `the other content modes ignore the choice`() {
         assertNull(startOnTarget("GBA", ContentMode.COLLECTIONS, listOf(gba, snes)))
         assertNull(startOnTarget("GBA", ContentMode.FIVE_GAME_HANDHELD, listOf(gba, snes)))
     }
 
-    // The case this is built around: a handheld whose card has not mounted at boot. The platform is
-    // simply absent, and landing on the system list is the answer rather than an error.
+    // A card that has not mounted at boot, which is the case this is built around.
     @Test fun `a platform that no longer resolves opens the system list`() {
         assertNull(startOnTarget("GBA", ContentMode.PLATFORMS, listOf(snes)))
     }
@@ -39,8 +37,7 @@ class StartOnTargetTest {
         assertNull(startOnTarget("GBA", ContentMode.PLATFORMS, listOf(platform("GBA", games = 0))))
     }
 
-    // Two tags sharing a display name are one row in the system list, carrying both tags. Matching on
-    // the group rather than the tag is what makes the shortcut open all of its games.
+    // Matching the group rather than the tag is what opens all of its games, not half.
     @Test fun `a merged platform is matched by either of its tags`() {
         val merged = platform("GB", "Game Boy", games = 20, tags = listOf("GB", "GBC"))
         assertEquals(merged, startOnTarget("GBC", ContentMode.PLATFORMS, listOf(merged)))

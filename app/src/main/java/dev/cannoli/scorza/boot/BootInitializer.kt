@@ -46,12 +46,9 @@ sealed interface BootResult {
 }
 
 /**
- * The platform to open on instead of the system list, or null for the list itself.
- *
- * Matched against the list the user picked from rather than against raw tags, so a platform merged
- * with another under one display name opens with both tags instead of half its games. A tag that no
- * longer resolves, or one whose platform is empty because its card has not mounted, returns null and
- * leaves the setting alone: forgetting the choice would punish a slow card.
+ * Matched against the grouped rows rather than raw tags, so a platform merged with another under one
+ * display name opens with both. Null where the tag no longer resolves, which on a handheld whose card
+ * mounts after boot is the ordinary case, so the caller lands on the system list and keeps the choice.
  */
 internal fun startOnTarget(
     tag: String,
@@ -218,13 +215,7 @@ class BootInitializer @Inject constructor(
         }
     }
 
-    /**
-     * Opens one platform's list on top of the system list, when the user named one to start on.
-     *
-     * The system list stays underneath, so Back still walks out to it and the shortcut takes nothing
-     * away. A tag that no longer resolves lands on the system list and keeps the setting: on a
-     * handheld whose card mounts after boot that is the ordinary case, not an error.
-     */
+    /** On top of the system list, not instead of it, so Back still walks out to it. */
     private fun landOnStartPlatform(done: () -> Unit) {
         val platform = startOnTarget(
             settings.startOnPlatform,
