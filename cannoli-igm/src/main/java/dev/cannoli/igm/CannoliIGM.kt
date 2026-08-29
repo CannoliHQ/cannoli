@@ -341,7 +341,8 @@ fun CannoliIGM(
                         pageJumpDir = guidePageJumpDir,
                         pageCount = guidePageCount,
                         textZoom = screen.textZoom,
-                        onScrollPosChanged = onGuideScrollChanged
+                        onScrollPosChanged = onGuideScrollChanged,
+                        controlHints = guideControlHints(type, labels.north, labels.back),
                     )
                 }
                 is IGMScreen.Cheats -> {

@@ -31,9 +31,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.luminance
@@ -43,14 +41,19 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.cannoli.ui.DPAD_VERTICAL
+import dev.cannoli.ui.SHOULDERS
+import dev.cannoli.ui.components.OsdController
+import dev.cannoli.ui.components.OsdHost
+import dev.cannoli.ui.components.OsdPosition
 import dev.cannoli.ui.components.ScreenBackground
 import dev.cannoli.ui.theme.LocalCannoliColors
-import dev.cannoli.ui.theme.LocalCannoliTypography
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import java.io.File
@@ -68,10 +71,31 @@ private const val DEFAULT_PAGE_ASPECT = 1.4f
 /** What a tile was rendered for, so one made for another page or zoom is never mistaken for current. */
 private data class TileKey(val page: Int, val contentWidth: Int, val contentHeight: Int)
 
-// Deep enough to cover a bottom bar at the largest text size the user can pick, since the guide
-// screen never sees the bar its host draws over it.
-private val LEGEND_SCRIM_HEIGHT = 96.dp
-private val COUNTER_SCRIM_HEIGHT = 48.dp
+// The controls are worth reading once; a page number is worth a glance.
+private const val HINT_MS = 4000L
+private const val STATE_MS = 1500L
+
+/**
+ * The controls a guide answers to, for the pill shown on entry. Both hosts bind the same keys, so
+ * they compose the same line; only the glyphs differ, because only the host knows the pad.
+ *
+ * What the shoulders do is the one thing the old legend never said, and it is the control a reader
+ * actually reaches for: a page in a PDF, a screenful in anything else.
+ */
+@Composable
+fun guideControlHints(guideType: GuideType, north: String, back: String): String {
+    val shoulders = if (guideType == GuideType.PDF) {
+        stringResource(dev.cannoli.ui.R.string.label_page)
+    } else {
+        stringResource(dev.cannoli.ui.R.string.label_jump)
+    }
+    return listOf(
+        DPAD_VERTICAL to stringResource(dev.cannoli.ui.R.string.label_scroll),
+        SHOULDERS to shoulders,
+        north to stringResource(dev.cannoli.ui.R.string.guide_zoom),
+        back to stringResource(dev.cannoli.ui.R.string.label_back),
+    ).joinToString("   ") { (glyph, label) -> "$glyph $label" }
+}
 
 @Composable
 fun GuideScreen(
@@ -90,9 +114,9 @@ fun GuideScreen(
     onZoomLevelChanged: (Int) -> Unit = {},
     onPageStep: (Int) -> Unit = {},
     onTapped: () -> Unit = {},
-    pageLabel: String = "%d / %d"
+    pageLabel: String = "%d / %d",
+    controlHints: String? = null,
 ) {
-    val typo = LocalCannoliTypography.current
     val colors = LocalCannoliColors.current
     val zoomIndex = (textZoom - 1).coerceIn(0, GuideZoom.pdfScales.lastIndex)
 
@@ -100,15 +124,26 @@ fun GuideScreen(
     val inset = if (guideType == GuideType.PDF) 0.dp else 12.dp
 
     // A PDF or an image is someone else's page, usually white, and the colour the user picked for
-    // Cannoli's own screens has no business tinting it or the space around it. Text is Cannoli
-    // drawing the guide itself, so that stays on the theme.
-    //
-    // The neutral is chosen against the legend rather than against the page: the host draws that
-    // legend in the theme's text colour and never tells this screen, so whatever the scrim is has
-    // to be the side that colour reads on.
+    // Cannoli's own screens has no business tinting the space around it. Text is Cannoli drawing
+    // the guide itself, so that keeps the theme. The neutral takes the side away from the theme's
+    // text, so paper never sits on a ground its own edges disappear into.
     val document = guideType != GuideType.TXT
-    val neutral = if (colors.text.luminance() > 0.5f) Color.Black else Color.White
-    val ground = if (document) neutral else null
+    val ground = if (document) {
+        if (colors.text.luminance() > 0.5f) Color.Black else Color.White
+    } else null
+
+    val osd = remember { OsdController(defaultDurationMs = HINT_MS, defaultPosition = OsdPosition.BottomCenter) }
+
+    LaunchedEffect(filePath) { controlHints?.let { osd.show(it) } }
+
+    // Only on a change, so opening a guide shows the controls rather than the page it opened on.
+    var shownPage by remember(filePath) { mutableIntStateOf(page) }
+    LaunchedEffect(page) {
+        if (page != shownPage) {
+            shownPage = page
+            if (pageCount > 0) osd.show(String.format(pageLabel, page + 1, pageCount), durationMs = STATE_MS)
+        }
+    }
 
     ScreenBackground(backgroundImagePath = null, backgroundAlpha = 1f, backgroundColor = ground) {
         Box(modifier = Modifier.fillMaxSize().padding(inset)) {
@@ -157,42 +192,10 @@ fun GuideScreen(
                 )
             }
 
-            // A page can be any brightness, and white is the common one, so the host's legend and
-            // the page counter would otherwise sit as theme-coloured text on a white page and
-            // disappear. These fade the page out behind them instead of boxing them in, in the
-            // neutral rather than the theme colour: the job is to back the legend, not decorate.
-            if (document) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .height(LEGEND_SCRIM_HEIGHT)
-                        .background(
-                            Brush.verticalGradient(listOf(Color.Transparent, neutral))
-                        )
-                )
-                if (guideType == GuideType.PDF && pageCount > 0) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.TopCenter)
-                            .fillMaxWidth()
-                            .height(COUNTER_SCRIM_HEIGHT)
-                            .background(
-                                Brush.verticalGradient(listOf(neutral, Color.Transparent))
-                            )
-                    )
-                }
-            }
-
-            if (guideType == GuideType.PDF && pageCount > 0) {
-                Text(
-                    text = String.format(pageLabel, page + 1, pageCount),
-                    style = typo.labelSmall.copy(color = colors.text.copy(alpha = 0.6f)),
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(8.dp)
-                )
-            }
+            // Nothing here stays on the page. A pill brings its own background, so it reads on
+            // white paper or black without a scrim darkening what you came to read, and it leaves
+            // once it has said its piece, which is how every other message over a game behaves.
+            OsdHost(osd)
         }
     }
 }

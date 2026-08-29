@@ -11,6 +11,8 @@
     <string name="label_change">CHANGE</string>
     <!-- Legend for the shoulder buttons on numeric rows, where they step by a large amount. -->
     <string name="label_jump">JUMP</string>
+    <!-- Legend for the shoulder buttons in a guide, where they turn to the next or previous page. -->
+    <string name="label_page">PAGE</string>
     <string name="label_firmware">FIRMWARE</string>
     <string name="label_choose">CHOOSE</string>
     <string name="label_close">CLOSE</string>
