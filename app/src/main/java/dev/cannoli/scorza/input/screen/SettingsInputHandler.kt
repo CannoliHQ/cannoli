@@ -230,7 +230,7 @@ class SettingsInputHandler @Inject constructor(
             SettingsKey.SCREEN_GEO_WIDTH, SettingsKey.SCREEN_GEO_HEIGHT, SettingsKey.SCREEN_GEO_X,
             SettingsKey.SCREEN_GEO_Y, SettingsKey.ALWAYS_SAVE_ON_QUIT, SettingsKey.IGM_SETTINGS_MODE,
             SettingsKey.DEFAULT_VIDEO_DRIVER, SettingsKey.ROMM_ALLOW_SELF_SIGNED,
-            SettingsKey.KITCHEN_CODE_BYPASS, SettingsKey.EXPERIMENTAL_FEATURES,
+            SettingsKey.KITCHEN_CODE_BYPASS,
             SettingsKey.RELEASE_CHANNEL -> {}
         }
     }

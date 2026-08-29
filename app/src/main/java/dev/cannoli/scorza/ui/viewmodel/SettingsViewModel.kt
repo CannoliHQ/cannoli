@@ -571,9 +571,6 @@ class SettingsViewModel @Inject constructor(
                 settings.kitchenCodeBypass = !settings.kitchenCodeBypass
                 dev.cannoli.scorza.server.KitchenManager.setCodeBypass(settings.kitchenCodeBypass)
             }
-            SettingsKey.EXPERIMENTAL_FEATURES -> {
-                settings.experimentalFeatures = !settings.experimentalFeatures
-            }
             SettingsKey.RELEASE_CHANNEL -> {
                 val channels = dev.cannoli.scorza.updater.ReleaseChannel.entries
                 val cur = channels.indexOf(settings.releaseChannel).coerceAtLeast(0)
@@ -980,7 +977,6 @@ class SettingsViewModel @Inject constructor(
             add(SettingsItem(SettingsKey.REGENERATE_SYSTEM_FOLDERS.id, R.string.setting_regenerate_system_folders, isEditable = true))
             add(SettingsItem(SettingsKey.RESET_CUSTOM_CONFIG.id, R.string.setting_reset_custom_config, isEditable = true))
             add(SettingsItem(SettingsKey.KITCHEN_CODE_BYPASS.id, R.string.setting_kitchen_code_bypass, valueRes = onOff(settings.kitchenCodeBypass)))
-            add(SettingsItem(SettingsKey.EXPERIMENTAL_FEATURES.id, R.string.setting_experimental_features, valueRes = onOff(settings.experimentalFeatures)))
             add(SettingsItem(
                 SettingsKey.RELEASE_CHANNEL.id,
                 R.string.settings_release_channel,

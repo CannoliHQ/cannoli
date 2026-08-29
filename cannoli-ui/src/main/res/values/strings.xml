@@ -231,7 +231,6 @@
     <string name="value_video_driver_vulkan">Vulkan</string>
     <!-- Advanced setting toggle: skip the passcode gate for Nonna's Kitchen. Keep "Kitchen" consistent with the feature name. -->
     <string name="setting_kitchen_code_bypass">Kitchen Code Bypass</string>
-    <string name="setting_experimental_features">Experimental Features</string>
     <string name="setting_set_default_launcher">Set as Default Launcher</string>
     <!-- Same row as setting_set_default_launcher, shown when Cannoli is already the default launcher and the user wants to pick another one. -->
     <string name="setting_change_default_launcher">Use a Different Launcher</string>

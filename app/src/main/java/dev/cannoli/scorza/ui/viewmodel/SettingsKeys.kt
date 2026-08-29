@@ -98,7 +98,6 @@ enum class SettingsKey(val id: String) {
     REGENERATE_SYSTEM_FOLDERS("regenerate_system_folders"),
     RESET_CUSTOM_CONFIG("reset_custom_config"),
     KITCHEN_CODE_BYPASS("kitchen_code_bypass"),
-    EXPERIMENTAL_FEATURES("experimental_features"),
     RELEASE_CHANNEL("release_channel"),
 
     AUDIT_EMULATOR_INTENTS("audit_emulator_intents"),
