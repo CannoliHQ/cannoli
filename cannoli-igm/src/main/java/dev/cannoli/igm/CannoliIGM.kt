@@ -41,6 +41,7 @@ import dev.cannoli.ui.CIRCLE_EMPTY
 import dev.cannoli.ui.DPAD_HORIZONTAL
 import dev.cannoli.ui.DPAD_VERTICAL
 import dev.cannoli.ui.HALF_CIRCLE
+import dev.cannoli.ui.MENU_GLYPH
 import dev.cannoli.ui.components.BottomBar
 import dev.cannoli.ui.components.HelpOverlay
 import dev.cannoli.ui.components.KeyboardHelpOverlay
@@ -271,7 +272,7 @@ fun CannoliIGM(
                             )
                         }
                         hasDescription -> listOf(
-                            labels.north to stringResource(dev.cannoli.ui.R.string.igm_help)
+                            MENU_GLYPH to stringResource(dev.cannoli.ui.R.string.igm_help)
                         )
                         rowCycles -> emptyList()
                         else -> listOf(labels.confirm to selectLabel)

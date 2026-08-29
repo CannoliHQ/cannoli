@@ -85,7 +85,7 @@ class DescriptionToggleTest {
         val c = ProviderSettingsController(OneRowProvider("Softens hard pixel edges."))
         c.enter()
         assertNull(menu(c.state()).description)
-        assertEquals("Softens hard pixel edges.", menu(c.onNav(ProviderSettingsController.Nav.NORTH)).description)
+        assertEquals("Softens hard pixel edges.", menu(c.onNav(ProviderSettingsController.Nav.HELP)).description)
         assertNull(menu(c.onNav(ProviderSettingsController.Nav.BACK)).description)
     }
 
@@ -94,7 +94,7 @@ class DescriptionToggleTest {
     fun `back out of a description does not leave the settings screen`() {
         val c = ProviderSettingsController(OneRowProvider("Softens hard pixel edges."))
         c.enter()
-        c.onNav(ProviderSettingsController.Nav.NORTH)
+        c.onNav(ProviderSettingsController.Nav.HELP)
         val after = c.onNav(ProviderSettingsController.Nav.BACK)
         assertEquals(ProviderSettingsController.State.Menu::class, after::class)
     }
@@ -103,7 +103,7 @@ class DescriptionToggleTest {
     fun `north does nothing on a row with no description`() {
         val c = ProviderSettingsController(OneRowProvider(null))
         c.enter()
-        assertNull(menu(c.onNav(ProviderSettingsController.Nav.NORTH)).description)
+        assertNull(menu(c.onNav(ProviderSettingsController.Nav.HELP)).description)
     }
 
     // The description covers the list, so the list stops taking input. Moving a selection the user
@@ -112,12 +112,12 @@ class DescriptionToggleTest {
     fun `the list is frozen while the description is up`() {
         val c = ProviderSettingsController(OneRowProvider("Softens hard pixel edges."))
         c.enter()
-        c.onNav(ProviderSettingsController.Nav.NORTH)
+        c.onNav(ProviderSettingsController.Nav.HELP)
         for (nav in listOf(
             ProviderSettingsController.Nav.LEFT,
             ProviderSettingsController.Nav.RIGHT,
             ProviderSettingsController.Nav.CONFIRM,
-            ProviderSettingsController.Nav.NORTH,
+            ProviderSettingsController.Nav.HELP,
         )) {
             val s = menu(c.onNav(nav))
             assertEquals("$nav must not move the selection", 0, s.selectedIndex)
@@ -131,7 +131,7 @@ class DescriptionToggleTest {
     fun `up and down scroll the description without moving the selection`() {
         val c = ProviderSettingsController(OneRowProvider("Softens hard pixel edges."))
         c.enter()
-        c.onNav(ProviderSettingsController.Nav.NORTH)
+        c.onNav(ProviderSettingsController.Nav.HELP)
         val down = menu(c.onNav(ProviderSettingsController.Nav.DOWN))
         assertEquals(1, down.descriptionScroll)
         assertEquals(0, down.selectedIndex)
@@ -144,11 +144,11 @@ class DescriptionToggleTest {
     fun `the scroll position resets each time the description opens`() {
         val c = ProviderSettingsController(OneRowProvider("Softens hard pixel edges."))
         c.enter()
-        c.onNav(ProviderSettingsController.Nav.NORTH)
+        c.onNav(ProviderSettingsController.Nav.HELP)
         c.onNav(ProviderSettingsController.Nav.DOWN)
         c.onNav(ProviderSettingsController.Nav.DOWN)
         c.onNav(ProviderSettingsController.Nav.BACK)
-        assertEquals(0, menu(c.onNav(ProviderSettingsController.Nav.NORTH)).descriptionScroll)
+        assertEquals(0, menu(c.onNav(ProviderSettingsController.Nav.HELP)).descriptionScroll)
     }
 
     @Test
@@ -166,7 +166,7 @@ class DescriptionToggleTest {
         }
         val c = ProviderSettingsController(provider)
         c.enter()
-        c.onNav(ProviderSettingsController.Nav.NORTH)
+        c.onNav(ProviderSettingsController.Nav.HELP)
         c.onNav(ProviderSettingsController.Nav.RIGHT)
         c.onNav(ProviderSettingsController.Nav.LEFT)
         assertEquals(0, cycles)

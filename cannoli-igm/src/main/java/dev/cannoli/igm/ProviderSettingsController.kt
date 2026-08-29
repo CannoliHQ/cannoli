@@ -2,7 +2,7 @@ package dev.cannoli.igm
 
 class ProviderSettingsController(val provider: IgmSettingsProvider) {
 
-    enum class Nav { UP, DOWN, LEFT, RIGHT, CONFIRM, BACK, NORTH, WEST }
+    enum class Nav { UP, DOWN, LEFT, RIGHT, CONFIRM, BACK, HELP, WEST }
 
     sealed interface State {
         data class Menu(
@@ -113,13 +113,6 @@ class ProviderSettingsController(val provider: IgmSettingsProvider) {
         return State.Menu(level.path, screen.title, level.cursor, screen.items, description, descriptionScroll)
     }
 
-    /**
-     * Puts the highlight back on the row it was on, wherever that row now is.
-     *
-     * A row that has gone takes the selection to the one that preceded it, which is the setting
-     * that governs it and so the way to bring it back. Only when that is gone too does this fall
-     * back to the position, clamped.
-     */
     /** Moves the highlight to [index] and records the row it landed on. */
     private fun Level.select(items: List<GenericIgmSettingsItem>, index: Int) {
         cursor = index
@@ -127,6 +120,13 @@ class ProviderSettingsController(val provider: IgmSettingsProvider) {
         precedingKey = items.getOrNull(index - 1)?.key
     }
 
+    /**
+     * Puts the highlight back on the row it was on, wherever that row now is.
+     *
+     * A row that has gone takes the selection to the one that preceded it, which is the setting
+     * that governs it and so the way to bring it back. Only when that is gone too does this fall
+     * back to the position, clamped.
+     */
     private fun Level.follow(items: List<GenericIgmSettingsItem>) {
         val last = (items.size - 1).coerceAtLeast(0)
         val moved = selectedKey?.let { key -> items.indexOfFirst { it.key == key } } ?: -1
@@ -144,8 +144,6 @@ class ProviderSettingsController(val provider: IgmSettingsProvider) {
     // owns layout and the navigator owns the cursor, and a constant keeps that boundary.
     private val PAGE = 10
 
-    // Clamped rather than wrapped: paging is for crossing a long list, and wrapping from the top to
-    // the end makes it impossible to reach the start by holding a direction.
     // Clamped where Up and Down wrap: wrapping a page jump from the top to the end leaves no way to
     // reach the start of a long list by paging.
     private fun pageBy(level: Level, delta: Int, count: Int): State {
@@ -205,7 +203,7 @@ class ProviderSettingsController(val provider: IgmSettingsProvider) {
                 }
                 else -> {}
             }
-            Nav.NORTH -> if (descriptionOf(items, level.cursor) != null) {
+            Nav.HELP -> if (descriptionOf(items, level.cursor) != null) {
                 showingDescription = true
                 descriptionScroll = 0
             }

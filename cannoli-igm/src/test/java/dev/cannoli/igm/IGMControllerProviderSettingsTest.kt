@@ -53,10 +53,8 @@ class IGMControllerProviderSettingsTest {
         return c
     }
 
-    // North removes a shader pass, but it claimed the key on every row rather than only where
-    // there was a pass, so the description it shows everywhere else could never open.
     @Test
-    fun `north opens the setting description`() {
+    fun `menu opens the setting description`() {
         val c = testController(DescribedBridge())
         c.openMenu()
         val settingsIndex = c.buildMenuOptions().settingsIndex
@@ -64,11 +62,12 @@ class IGMControllerProviderSettingsTest {
         c.handleKeyDown(96)
 
         assertEquals(null, (c.currentScreen as IGMScreen.ProviderSettings).description)
-        c.handleKeyDown(100)
+        c.handleKeyDown(82)
         assertEquals(
             "Synchronises to the display.",
             (c.currentScreen as IGMScreen.ProviderSettings).description,
         )
+
     }
 
     @Test

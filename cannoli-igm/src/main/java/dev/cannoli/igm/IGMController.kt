@@ -909,10 +909,8 @@ class IGMController(
             if (settingsCanReorder.value) settingsReordering.value = true
             return
         }
-        // Consumed only where there is a pass to remove. Claiming it unconditionally left the north
-        // button doing nothing on every other row, which is where it shows the setting's description.
-        if (keycode == 100 && settingsCanRemovePass.value) {
-            renderProviderState(nav.removeSelection())
+        if (keycode == 100) {
+            if (settingsCanRemovePass.value) renderProviderState(nav.removeSelection())
             return
         }
         // Nothing else claims this button in the tree, and the legend only offers it where there is
@@ -926,7 +924,7 @@ class IGMController(
             96 -> ProviderSettingsController.Nav.CONFIRM
             97, 4 -> ProviderSettingsController.Nav.BACK
             99 -> ProviderSettingsController.Nav.WEST
-            100 -> ProviderSettingsController.Nav.NORTH
+            82 -> ProviderSettingsController.Nav.HELP
             else -> return
         }
         val wasBuildingChain = inShaderTree()
