@@ -3,7 +3,6 @@ package dev.cannoli.scorza.server
 import android.content.res.AssetManager
 import dev.cannoli.scorza.db.RomsRepository
 import dev.cannoli.scorza.di.CannoliPathsProvider
-import dev.cannoli.scorza.model.LaunchTarget
 import dev.cannoli.scorza.model.Rom
 import dev.cannoli.scorza.util.ArcadeTitleLookup
 import dev.cannoli.scorza.util.RomDirectoryWalker
@@ -34,7 +33,6 @@ class GamesResponseTest {
         displayName = displayName,
         tags = null,
         artFile = art,
-        launchTarget = LaunchTarget.RetroArch,
         raGameId = null,
     )
 
@@ -234,7 +232,6 @@ class GamesResponseTest {
             displayName = "Metal Gear Solid",
             tags = null,
             artFile = null,
-            launchTarget = dev.cannoli.scorza.model.LaunchTarget.RetroArch,
             raGameId = null,
         )
         val repo = mockk<RomsRepository>()
@@ -273,7 +270,6 @@ class GamesResponseTest {
             displayName = "Some Game",
             tags = null,
             artFile = null,
-            launchTarget = LaunchTarget.RetroArch,
             raGameId = null,
         )
         val romLoose = Rom(
@@ -283,7 +279,6 @@ class GamesResponseTest {
             displayName = "Loose Game",
             tags = null,
             artFile = null,
-            launchTarget = LaunchTarget.RetroArch,
             raGameId = null,
         )
 
@@ -334,7 +329,6 @@ class GamesResponseTest {
                 displayName = "Game $i",
                 tags = null,
                 artFile = null,
-                launchTarget = LaunchTarget.RetroArch,
                 raGameId = null,
             )
         }
@@ -362,7 +356,6 @@ class GamesResponseTest {
                 displayName = "Game $i",
                 tags = null,
                 artFile = null,
-                launchTarget = LaunchTarget.RetroArch,
                 raGameId = null,
             )
         }
@@ -390,7 +383,6 @@ class GamesResponseTest {
                 displayName = "Game $i",
                 tags = null,
                 artFile = null,
-                launchTarget = LaunchTarget.RetroArch,
                 raGameId = null,
             )
         }

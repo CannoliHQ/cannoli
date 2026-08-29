@@ -9,7 +9,6 @@ data class Rom(
     val displayName: String,
     val tags: String? = null,
     val artFile: File? = null,
-    val launchTarget: LaunchTarget = LaunchTarget.RetroArch,
     val raGameId: Int? = null,
     val lastPlayedAt: Long? = null,
     val raCachedGameId: Int? = null,

@@ -2,7 +2,6 @@ package dev.cannoli.scorza.server
 
 import android.content.res.AssetManager
 import dev.cannoli.scorza.db.RomsRepository
-import dev.cannoli.scorza.model.LaunchTarget
 import dev.cannoli.scorza.model.Rom
 import dev.cannoli.scorza.util.RomDirectoryWalker
 import fi.iki.elonen.NanoHTTPD
@@ -30,7 +29,6 @@ class GameMoveHandlerTest {
         displayName = path.nameWithoutExtension,
         tags = null,
         artFile = null,
-        launchTarget = LaunchTarget.RetroArch,
         raGameId = null,
     )
 

@@ -2,7 +2,6 @@ package dev.cannoli.scorza.db
 
 import androidx.sqlite.SQLiteStatement
 import dev.cannoli.scorza.model.GameSearchQuery
-import dev.cannoli.scorza.model.LaunchTarget
 import dev.cannoli.scorza.model.ListItem
 import dev.cannoli.scorza.model.Rom
 import dev.cannoli.scorza.di.CannoliPathsProvider
@@ -185,7 +184,6 @@ class RomsRepository(
             displayName = stmt.getText(3),
             tags = if (stmt.isNull(4)) null else stmt.getText(4),
             artFile = artwork.find(platformTag, absoluteFile),
-            launchTarget = LaunchTarget.RetroArch,
             raGameId = if (stmt.isNull(5)) null else stmt.getLong(5).toInt(),
             lastPlayedAt = if (stmt.isNull(6)) null else stmt.getLong(6),
             raCachedGameId = if (stmt.isNull(7)) null else stmt.getLong(7).toInt(),

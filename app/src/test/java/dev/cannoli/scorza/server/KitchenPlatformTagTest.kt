@@ -3,7 +3,6 @@ package dev.cannoli.scorza.server
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import dev.cannoli.scorza.db.RomsRepository
-import dev.cannoli.scorza.model.LaunchTarget
 import dev.cannoli.scorza.model.Rom
 import io.mockk.every
 import io.mockk.mockk
@@ -57,7 +56,6 @@ class KitchenPlatformTagTest {
         displayName = "Tetris",
         tags = null,
         artFile = null,
-        launchTarget = LaunchTarget.RetroArch,
         raGameId = null,
     )
 
