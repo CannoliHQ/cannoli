@@ -34,7 +34,6 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -55,7 +54,6 @@ import dev.cannoli.ui.components.OsdController
 import dev.cannoli.ui.components.OsdHost
 import dev.cannoli.ui.components.OsdPosition
 import dev.cannoli.ui.components.ScreenBackground
-import dev.cannoli.ui.theme.LocalCannoliColors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import java.io.File
@@ -138,20 +136,10 @@ fun GuideScreen(
     pageLabel: String = "%d / %d",
     helpHint: String? = null,
 ) {
-    val colors = LocalCannoliColors.current
     val zoomIndex = (textZoom - 1).coerceIn(0, GuideZoom.pdfScales.lastIndex)
 
     // A PDF page goes edge to edge; text still wants its margin.
     val inset = if (guideType == GuideType.PDF) 0.dp else 12.dp
-
-    // A PDF or an image is someone else's page, usually white, and the colour the user picked for
-    // Cannoli's own screens has no business tinting the space around it. Text is Cannoli drawing
-    // the guide itself, so that keeps the theme. The neutral takes the side away from the theme's
-    // text, so paper never sits on a ground its own edges disappear into.
-    val document = guideType != GuideType.TXT
-    val ground = if (document) {
-        if (colors.text.luminance() > 0.5f) Color.Black else Color.White
-    } else null
 
     val osd = remember { OsdController(defaultDurationMs = HINT_MS, defaultPosition = OsdPosition.TopEnd) }
 
@@ -166,7 +154,10 @@ fun GuideScreen(
         }
     }
 
-    ScreenBackground(backgroundImagePath = null, backgroundAlpha = 1f, backgroundColor = ground) {
+    // Reading is its own mode, so a guide never wears the colour picked for Cannoli's own screens:
+    // that colour tinted the space around a page, and a light one left white paper with no edge.
+    // Text is paper too, so it reads white on black whatever the theme is doing elsewhere.
+    ScreenBackground(backgroundImagePath = null, backgroundAlpha = 1f, backgroundColor = Color.Black) {
         Box(modifier = Modifier.fillMaxSize().padding(inset)) {
             when (guideType) {
                 GuideType.PDF -> PdfContent(
@@ -367,7 +358,6 @@ private fun TxtContent(
     onPageStep: (Int) -> Unit,
     onTapped: () -> Unit
 ) {
-    val colors = LocalCannoliColors.current
     var text by remember { mutableStateOf("") }
     val scrollState = remember(initialScrollY) { ScrollState(initialScrollY) }
     var viewportHeight by remember { mutableStateOf(0) }
@@ -401,7 +391,7 @@ private fun TxtContent(
             style = TextStyle(
                 fontFamily = FontFamily.Monospace,
                 fontSize = fontSize.sp,
-                color = colors.text,
+                color = Color.White,
                 lineHeight = (fontSize * 1.5).sp
             ),
             modifier = Modifier
