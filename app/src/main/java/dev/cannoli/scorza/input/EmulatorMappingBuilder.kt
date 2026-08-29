@@ -290,13 +290,10 @@ class EmulatorMappingBuilder @Inject constructor(
     }
 
     companion object {
-        // Worst-first, so the section notice reports the most severe state among the installs.
-
         // Downloadable only for the embedded RetroArch, which installs cores into a directory
         // Cannoli owns. Cores for a separately installed RetroArch are the user's own to manage.
         fun isDownloadable(source: EmulatorSource, availability: CoreAvailability): Boolean =
             source == EmulatorSource.Embedded && availability != CoreAvailability.AVAILABLE
-
     }
 
     /**

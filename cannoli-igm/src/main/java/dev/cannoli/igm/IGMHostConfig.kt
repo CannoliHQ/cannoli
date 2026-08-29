@@ -21,10 +21,8 @@ enum class TimeFormatMode {
     }
 }
 
-// port >= 0 is an assigned controller port; a negative port means unassigned.
-
-// Launcher-specific data the shared IGM needs, passed in by each host (the launcher's
-// built-in runner and ricotta) so cannoli-igm stays free of app/settings dependencies.
+// Launcher-specific data the shared IGM needs, passed in by its host so cannoli-igm stays free of
+// app/settings dependencies.
 data class IGMHostConfig(
     val fontSizeSp: Int,
     val lineHeightSp: Float,
