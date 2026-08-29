@@ -78,7 +78,6 @@ internal fun GameScreens(
                 pageJumpDir = c?.guidePageJumpDir?.intValue ?: 0,
                 pageCount = c?.guidePageCount?.intValue ?: 0,
                 onScrollPosChanged = { y, x -> c?.onScrollChanged(y, x) },
-                buttonStyle = labels,
             )
         }
         else -> {}

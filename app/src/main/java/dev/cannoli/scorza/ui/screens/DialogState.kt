@@ -205,6 +205,7 @@ sealed interface DialogState {
         override fun withKeyboard(keyboard: KeyboardState) = copy(keyboard = keyboard)
     }
     data class KeyboardHelp(val restore: DialogState, val layout: KeyboardLayout) : DialogState
+    data class GuideHelp(val guideType: dev.cannoli.igm.GuideType) : DialogState
     data object QuitConfirm : DialogState
     data class UpdateDownload(val versionName: String, val changelog: String, val fromQuickMenu: Boolean = false) : DialogState
     data object RestartRequired : DialogState

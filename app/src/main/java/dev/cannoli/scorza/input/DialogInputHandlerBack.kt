@@ -13,6 +13,7 @@ internal fun DialogInputHandler.backDialog(): Boolean {
     if (ds == DialogState.None) return false
     when (ds) {
         is DialogState.KeyboardHelp -> nav.dialogState.value = ds.restore
+        is DialogState.GuideHelp -> nav.dialogState.value = DialogState.None
         is KeyboardHost -> nav.dialogState.value = ds.withKeyboard(KeyboardController.backspace(ds.keyboard))
         is DialogState.ColorPicker -> {
             val entries = settingsViewModel.getColorEntries()

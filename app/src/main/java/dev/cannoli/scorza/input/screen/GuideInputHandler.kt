@@ -109,6 +109,11 @@ class GuideInputHandler @Inject constructor(
         nav.replaceTop(g.copy(textZoom = if (g.textZoom >= GuideZoom.levels) 1 else g.textZoom + 1))
     }
 
+    override fun onMenu() {
+        val g = guide() ?: return
+        nav.dialogState.value = DialogState.GuideHelp(g.guideType)
+    }
+
     override fun onConfirm() {
         val p = picker() ?: return
         p.files.getOrNull(p.selectedIndex)?.let { openGuide(it) }

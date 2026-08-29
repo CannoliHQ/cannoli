@@ -47,8 +47,10 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.cannoli.ui.DPAD_VERTICAL
-import dev.cannoli.ui.SHOULDERS
+import dev.cannoli.ui.MENU_GLYPH
+import dev.cannoli.ui.components.HelpEntry
+import dev.cannoli.ui.components.HelpGlyph
+import dev.cannoli.ui.components.HelpGroup
 import dev.cannoli.ui.components.OsdController
 import dev.cannoli.ui.components.OsdHost
 import dev.cannoli.ui.components.OsdPosition
@@ -71,30 +73,48 @@ private const val DEFAULT_PAGE_ASPECT = 1.4f
 /** What a tile was rendered for, so one made for another page or zoom is never mistaken for current. */
 private data class TileKey(val page: Int, val contentWidth: Int, val contentHeight: Int)
 
-// The controls are worth reading once; a page number is worth a glance.
-private const val HINT_MS = 4000L
+// Long enough to notice help exists; a page number only needs a glance.
+private const val HINT_MS = 3000L
 private const val STATE_MS = 1500L
 
 /**
- * The controls a guide answers to, for the pill shown on entry. Both hosts bind the same keys, so
- * they compose the same line; only the glyphs differ, because only the host knows the pad.
- *
- * What the shoulders do is the one thing the old legend never said, and it is the control a reader
- * actually reaches for: a page in a PDF, a screenful in anything else.
+ * The pill shown on entry. Short on purpose: it exists to say that help is a button away, not to be
+ * the help. Both hosts bind the menu button to the overlay, so both show the same line.
  */
 @Composable
-fun guideControlHints(guideType: GuideType, north: String, back: String): String {
+fun guideHelpHint(): String = "$MENU_GLYPH ${stringResource(dev.cannoli.ui.R.string.label_help)}"
+
+/**
+ * What a guide answers to, for [HelpOverlay]. Both hosts bind the same keys, so they list the same
+ * controls; only the glyphs differ, because only the host knows the pad.
+ *
+ * The shoulders are the reason this exists. They are how a reader actually moves through a guide,
+ * and the legend that used to sit on the page never mentioned them.
+ */
+fun guideHelpGroups(guideType: GuideType): List<HelpGroup> {
     val shoulders = if (guideType == GuideType.PDF) {
-        stringResource(dev.cannoli.ui.R.string.label_page)
+        dev.cannoli.ui.R.string.guide_help_page
     } else {
-        stringResource(dev.cannoli.ui.R.string.label_jump)
+        dev.cannoli.ui.R.string.guide_help_jump
+    }
+    val view = buildList {
+        add(HelpEntry(listOf(HelpGlyph.NORTH), dev.cannoli.ui.R.string.guide_help_zoom))
+        // Text reflows to the width instead of overflowing it, so there is nothing to pan across.
+        if (guideType != GuideType.TXT) {
+            add(HelpEntry(listOf(HelpGlyph.DPAD), dev.cannoli.ui.R.string.guide_help_pan))
+        }
+        add(HelpEntry(listOf(HelpGlyph.BACK), dev.cannoli.ui.R.string.guide_help_close))
     }
     return listOf(
-        DPAD_VERTICAL to stringResource(dev.cannoli.ui.R.string.label_scroll),
-        SHOULDERS to shoulders,
-        north to stringResource(dev.cannoli.ui.R.string.guide_zoom),
-        back to stringResource(dev.cannoli.ui.R.string.label_back),
-    ).joinToString("   ") { (glyph, label) -> "$glyph $label" }
+        HelpGroup(
+            dev.cannoli.ui.R.string.guide_help_group_read,
+            listOf(
+                HelpEntry(listOf(HelpGlyph.DPAD), dev.cannoli.ui.R.string.guide_help_scroll),
+                HelpEntry(listOf(HelpGlyph.L1, HelpGlyph.R1), shoulders),
+            )
+        ),
+        HelpGroup(dev.cannoli.ui.R.string.guide_help_group_view, view),
+    )
 }
 
 @Composable
@@ -115,7 +135,7 @@ fun GuideScreen(
     onPageStep: (Int) -> Unit = {},
     onTapped: () -> Unit = {},
     pageLabel: String = "%d / %d",
-    controlHints: String? = null,
+    helpHint: String? = null,
 ) {
     val colors = LocalCannoliColors.current
     val zoomIndex = (textZoom - 1).coerceIn(0, GuideZoom.pdfScales.lastIndex)
@@ -134,9 +154,9 @@ fun GuideScreen(
 
     val osd = remember { OsdController(defaultDurationMs = HINT_MS, defaultPosition = OsdPosition.BottomCenter) }
 
-    LaunchedEffect(filePath) { controlHints?.let { osd.show(it) } }
+    LaunchedEffect(filePath) { helpHint?.let { osd.show(it) } }
 
-    // Only on a change, so opening a guide shows the controls rather than the page it opened on.
+    // Only on a change, so opening a guide shows the help hint rather than the page it opened on.
     var shownPage by remember(filePath) { mutableIntStateOf(page) }
     LaunchedEffect(page) {
         if (page != shownPage) {

@@ -6,8 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import dev.cannoli.igm.GuideScreen
 import dev.cannoli.igm.GuideType
-import dev.cannoli.igm.guideControlHints
-import dev.cannoli.ui.ButtonStyle
+import dev.cannoli.igm.guideHelpHint
 
 @Composable
 fun GuideViewerScreen(
@@ -23,7 +22,6 @@ fun GuideViewerScreen(
     pageJumpDir: Int,
     pageCount: Int,
     onScrollPosChanged: (y: Int, x: Int) -> Unit,
-    buttonStyle: ButtonStyle,
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         GuideScreen(
@@ -39,7 +37,7 @@ fun GuideViewerScreen(
             pageCount = pageCount,
             textZoom = textZoom,
             onScrollPosChanged = onScrollPosChanged,
-            controlHints = guideControlHints(guideType, buttonStyle.north, buttonStyle.back),
+            helpHint = guideHelpHint(),
         )
     }
 }

@@ -14,6 +14,8 @@ import dev.cannoli.scorza.ui.screens.RenameTarget
 import dev.cannoli.ui.ButtonStyle
 import dev.cannoli.ui.components.ColorPickerOverlay
 import dev.cannoli.ui.components.HexColorInputOverlay
+import dev.cannoli.igm.guideHelpGroups
+import dev.cannoli.ui.components.HelpOverlay
 import dev.cannoli.ui.components.KeyboardHelpOverlay
 import dev.cannoli.ui.components.KeyboardOverlay
 import dev.cannoli.ui.components.LaunchIssue
@@ -157,6 +159,16 @@ internal fun LibraryDialogs(
         is DialogState.KeyboardHelp -> {
             KeyboardHelpOverlay(
                 layout = dialogState.layout,
+                titleFontSize = listFontSize,
+                titleLineHeight = listLineHeight,
+                buttonStyle = buttonStyle
+            )
+        }
+
+        is DialogState.GuideHelp -> {
+            HelpOverlay(
+                titleRes = dev.cannoli.ui.R.string.guide_help_title,
+                groups = guideHelpGroups(dialogState.guideType),
                 titleFontSize = listFontSize,
                 titleLineHeight = listLineHeight,
                 buttonStyle = buttonStyle

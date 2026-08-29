@@ -42,6 +42,7 @@ import dev.cannoli.ui.DPAD_HORIZONTAL
 import dev.cannoli.ui.DPAD_VERTICAL
 import dev.cannoli.ui.HALF_CIRCLE
 import dev.cannoli.ui.components.BottomBar
+import dev.cannoli.ui.components.HelpOverlay
 import dev.cannoli.ui.components.KeyboardHelpOverlay
 import dev.cannoli.ui.components.KeyboardOverlay
 import dev.cannoli.ui.components.LocalStatusBarLeftEdge
@@ -329,6 +330,15 @@ fun CannoliIGM(
                 is IGMScreen.Guide -> {
                     val guide = guideFiles.firstOrNull { it.file.absolutePath == screen.filePath }
                     val type = guide?.type ?: GuideType.TXT
+                    if (screen.help) {
+                        HelpOverlay(
+                            titleRes = dev.cannoli.ui.R.string.guide_help_title,
+                            groups = guideHelpGroups(type),
+                            titleFontSize = igmFontSize,
+                            titleLineHeight = igmLineHeight,
+                            buttonStyle = labels,
+                        )
+                    } else {
                     GuideScreen(
                         filePath = screen.filePath,
                         guideType = type,
@@ -342,8 +352,9 @@ fun CannoliIGM(
                         pageCount = guidePageCount,
                         textZoom = screen.textZoom,
                         onScrollPosChanged = onGuideScrollChanged,
-                        controlHints = guideControlHints(type, labels.north, labels.back),
+                        helpHint = guideHelpHint(),
                     )
+                    }
                 }
                 is IGMScreen.Cheats -> {
                     val onValue = stringResource(dev.cannoli.ui.R.string.value_on)

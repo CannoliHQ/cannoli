@@ -1123,6 +1123,19 @@
     <string name="kbd_help_submit">SUBMIT</string>
     <string name="kbd_help_cancel">CANCEL</string>
 
+    <!-- Help page for the guide viewer, opened with the menu button. -->
+    <string name="guide_help_title">Guide Controls</string>
+    <string name="guide_help_group_read">Read</string>
+    <string name="guide_help_group_view">View</string>
+    <string name="guide_help_scroll">SCROLL UP / DOWN</string>
+    <!-- Shoulder buttons on a PDF, where they move between pages. -->
+    <string name="guide_help_page">PREVIOUS / NEXT PAGE</string>
+    <!-- Shoulder buttons on text or an image, which have no pages, so they move a screenful. -->
+    <string name="guide_help_jump">JUMP A SCREENFUL</string>
+    <string name="guide_help_pan">PAN LEFT / RIGHT WHEN ZOOMED</string>
+    <string name="guide_help_zoom">CHANGE ZOOM</string>
+    <string name="guide_help_close">CLOSE THE GUIDE</string>
+
     <!-- Permissions review page -->
     <!-- Advanced settings row opening the permissions review page. -->
     <string name="setting_permissions">Permissions</string>

@@ -536,7 +536,13 @@ class IGMController(
     private fun handleGuideKey(screen: IGMScreen.Guide, keycode: Int) {
         val guide = guideFiles.value.firstOrNull { it.file.absolutePath == screen.filePath } ?: return
         val type = guide.type
+        // Help covers the page, so nothing behind it should move: only closing it is live.
+        if (screen.help) {
+            if (keycode == 82 || keycode == 97 || keycode == 4) replaceTop(screen.copy(help = false))
+            return
+        }
         when (keycode) {
+            82 -> replaceTop(screen.copy(help = true))
             19 -> guideController.scroll(-1)
             20 -> guideController.scroll(1)
             21 -> if (type != GuideType.TXT && screen.textZoom > 1) guideController.scrollX(-1)
