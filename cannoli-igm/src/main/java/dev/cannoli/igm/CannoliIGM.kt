@@ -68,7 +68,7 @@ fun CannoliIGM(
     slotThumbnailLoaded: Boolean,
     slotExists: Boolean,
     slotOccupied: List<Boolean>,
-    undoLabel: String?,
+    undoAction: UndoAction?,
     settingsItems: List<IGMSettingsItem>,
     previewTitle: String = "",
     previewItems: List<String> = emptyList(),
@@ -159,7 +159,11 @@ fun CannoliIGM(
                         slotThumbnailLoaded = slotThumbnailLoaded,
                         slotExists = slotExists,
                         slotOccupied = slotOccupied,
-                        undoLabel = undoLabel,
+                        undoLabel = when (undoAction) {
+                            UndoAction.SAVE -> stringResource(dev.cannoli.ui.R.string.label_undo_save)
+                            UndoAction.LOAD -> stringResource(dev.cannoli.ui.R.string.label_undo_load)
+                            null -> null
+                        },
                         backLabel = stringResource(dev.cannoli.ui.R.string.label_back),
                         deleteLabel = stringResource(dev.cannoli.ui.R.string.label_delete),
                         slotLabel = stringResource(dev.cannoli.ui.R.string.label_slot),

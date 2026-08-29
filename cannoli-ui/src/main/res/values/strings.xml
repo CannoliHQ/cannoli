@@ -18,6 +18,10 @@
     <string name="label_remove">REMOVE SHORTCUT</string>
     <string name="label_change_emulator">CHANGE EMULATOR</string>
     <string name="label_delete">DELETE</string>
+    <!-- Legend for putting back the save state a write overwrote. -->
+    <string name="label_undo_save">UNDO SAVE</string>
+    <!-- Legend for putting back the game state a save state load replaced. -->
+    <string name="label_undo_load">UNDO LOAD</string>
     <string name="label_confirm">CONFIRM</string>
     <string name="label_proceed">PROCEED</string>
     <string name="label_toggle">TOGGLE</string>

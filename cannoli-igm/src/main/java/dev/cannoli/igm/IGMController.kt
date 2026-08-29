@@ -21,6 +21,9 @@ private const val SHADER_SAVE_SEGMENT = "save"
 // Characters a filename cannot carry. Dropped from a typed name rather than refused.
 private val FILENAME_RESERVED = setOf('/', '\\', ':', '*', '?', '"', '<', '>', '|')
 
+/** Which of RetroArch's two undo buffers the last slot action filled. */
+enum class UndoAction { SAVE, LOAD }
+
 class IGMController(
     val bridge: RetroArchBridge,
     val gameTitle: String,
@@ -37,7 +40,7 @@ class IGMController(
     var slotThumbnailLoaded = mutableStateOf(false)
     var slotExists = mutableStateOf(false)
     var slotOccupied = mutableStateOf(emptyList<Boolean>())
-    var undoLabel = mutableStateOf<String?>(null)
+    var undoAction = mutableStateOf<UndoAction?>(null)
     val settingsItems = mutableStateOf<List<IGMSettingsItem>>(emptyList())
 
     /** Whether the settings level on screen has a game override to drop. Drives the legend. */
@@ -58,6 +61,9 @@ class IGMController(
     fun setInputMapping(mapping: IgmInputMapping?) {
         inputTranslator = IgmInputTranslator(mapping)
     }
+
+    /** Whether this raw keycode is the button that opens and closes the menu on this device. */
+    fun isMenuKey(rawKeycode: Int): Boolean = inputTranslator.isMenuKey(rawKeycode)
 
     // Guide navigation is delegated to the shared GuideController. These pass-through getters
     // preserve the public API that ricotta/IGMOverlay.kt reads (controller.guideFiles.value,
@@ -439,6 +445,9 @@ class IGMController(
         // has to finish before the write is queued, or it would archive the new state instead.
         if (slot == SaveSlotStore.AUTO_SLOT) slots.rotateAutoIntoHistory()
         bridge.saveState(slot)
+        // RetroArch fills the undo buffer with whatever the write displaces, so an empty slot
+        // leaves nothing to put back and the offer would be a lie.
+        undoAction.value = if (slotExists.value) UndoAction.SAVE else null
         // Marked stale but deliberately not read here. Between the rotation above and the write
         // the emulator has only queued, the slot is a hole on disk, so reading now reports an
         // empty slot and then corrects itself. onStateWritten does the reading, once there is
@@ -460,6 +469,7 @@ class IGMController(
 
     fun loadState() {
         bridge.loadState(selectedSlotIndex.intValue)
+        undoAction.value = UndoAction.LOAD
     }
 
     fun suspendForNativeMenu() {
@@ -625,6 +635,20 @@ class IGMController(
         val menuOptions = buildMenuOptions()
         val itemCount = menuOptions.actions.size
 
+        // The confirmation covers the menu, so only answering it is live.
+        if (screen.confirmDeleteSlot) {
+            when (keycode) {
+                100 -> {
+                    slots.delete(selectedSlotIndex.intValue)
+                    invalidateSlotCache()
+                    refreshSlotInfo()
+                    replaceTop(screen.copy(confirmDeleteSlot = false))
+                }
+                97, 4 -> replaceTop(screen.copy(confirmDeleteSlot = false))
+            }
+            return
+        }
+
         when (keycode) {
             19 /* DPAD_UP */ -> {
                 val newIndex = if (screen.selectedIndex <= 0) itemCount - 1 else screen.selectedIndex - 1
@@ -659,7 +683,23 @@ class IGMController(
             96 /* BUTTON_A - confirm */ -> {
                 selectMenuItem(screen.selectedIndex)
             }
-            97, 4 /* BUTTON_B, BACK - back/close */ -> {
+            99 /* BUTTON_X - delete the selected slot */ -> {
+                // Only where the legend offers it, which is the two rows the polaroid is beside.
+                val onSlotRow = screen.selectedIndex == menuOptions.saveStateIndex ||
+                    screen.selectedIndex == menuOptions.loadStateIndex
+                if (onSlotRow && slotExists.value) replaceTop(screen.copy(confirmDeleteSlot = true))
+            }
+            100 /* BUTTON_Y - undo the last save or load */ -> {
+                when (undoAction.value) {
+                    // Undoing a save rewrites the slot file, so what was read off disk is stale.
+                    UndoAction.SAVE -> { bridge.undoSaveState(); invalidateSlotCache() }
+                    UndoAction.LOAD -> bridge.undoLoadState()
+                    null -> return
+                }
+                undoAction.value = null
+                onClose?.invoke()
+            }
+            97, 4, 82 /* BUTTON_B, BACK, MENU - back, and what opened the menu closes it */ -> {
                 onClose?.invoke()
             }
         }

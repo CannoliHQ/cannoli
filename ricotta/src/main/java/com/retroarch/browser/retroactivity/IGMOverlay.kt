@@ -266,10 +266,7 @@ class IGMOverlay(
             setOnKeyListener { _, keyCode, event ->
                 when (event.action) {
                     KeyEvent.ACTION_DOWN -> {
-                        val isMenuKey = keyCode == KeyEvent.KEYCODE_BACK
-                                || keyCode == KeyEvent.KEYCODE_BUTTON_MODE
-                                || keyCode == KeyEvent.KEYCODE_MENU
-                        if (isMenuKey && System.currentTimeMillis() - showTimeMs < 500) {
+                        if (controller.isMenuKey(keyCode) && System.currentTimeMillis() - showTimeMs < 500) {
                             // Same press that opened the menu.
                         } else {
                             controller.handleKeyDown(keyCode)
@@ -549,7 +546,7 @@ class IGMOverlay(
                     slotThumbnailLoaded = controller.slotThumbnailLoaded.value,
                     slotExists = controller.slotExists.value,
                     slotOccupied = controller.slotOccupied.value,
-                    undoLabel = controller.undoLabel.value,
+                    undoAction = controller.undoAction.value,
                     settingsItems = controller.settingsItems.value,
                     previewTitle = controller.overlayPicker.title.value,
                     previewItems = controller.overlayPicker.items.value,
