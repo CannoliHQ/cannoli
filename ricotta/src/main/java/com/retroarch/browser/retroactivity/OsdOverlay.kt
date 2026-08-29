@@ -13,7 +13,6 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalConfiguration
@@ -26,10 +25,9 @@ import dev.cannoli.ui.computeScreenGeometryPadding
 import dev.cannoli.ui.components.OsdController
 import dev.cannoli.ui.components.OsdHost
 import dev.cannoli.ui.components.OsdPosition
-import dev.cannoli.ui.theme.CannoliColors
 import dev.cannoli.ui.theme.CannoliTheme
 import dev.cannoli.ui.theme.LocalCannoliColors
-import dev.cannoli.ui.theme.hexToColor
+import dev.cannoli.ui.theme.cannoliColorsFromHex
 
 /**
  * A persistent, input-transparent Compose overlay that renders Cannoli's OsdHost
@@ -126,12 +124,8 @@ class OsdOverlay(
 
     @Composable
     private fun OsdContent() {
-        val colors = CannoliColors(
-            highlight = colorHighlight?.let { hexToColor(it) } ?: Color.White,
-            text = colorText?.let { hexToColor(it) } ?: Color.White,
-            highlightText = colorHighlightText?.let { hexToColor(it) } ?: Color.Black,
-            accent = colorAccent?.let { hexToColor(it) } ?: Color.White,
-            title = colorTitle?.let { hexToColor(it) } ?: Color.White
+        val colors = cannoliColorsFromHex(
+            colorHighlight, colorText, colorHighlightText, colorAccent, colorTitle,
         )
         CannoliTheme(fontFamily = fontFamily) {
             CompositionLocalProvider(LocalCannoliColors provides colors) {

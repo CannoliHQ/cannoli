@@ -71,6 +71,25 @@ fun hexToColor(hex: String): Color? {
     }
 }
 
+/** For the hosts that carry the theme as hex strings, where an absent or unparseable one is the default. */
+fun cannoliColorsFromHex(
+    highlight: String?,
+    text: String?,
+    highlightText: String?,
+    accent: String?,
+    title: String?,
+): CannoliColors {
+    val defaults = CannoliColors()
+    fun parse(hex: String?, fallback: Color) = hex?.let { hexToColor(it) } ?: fallback
+    return CannoliColors(
+        highlight = parse(highlight, defaults.highlight),
+        text = parse(text, defaults.text),
+        highlightText = parse(highlightText, defaults.highlightText),
+        accent = parse(accent, defaults.accent),
+        title = parse(title, defaults.title),
+    )
+}
+
 fun colorToArgbLong(color: Color): Long {
     val r = (color.red * 255).roundToLong()
     val g = (color.green * 255).roundToLong()
