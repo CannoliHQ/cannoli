@@ -64,8 +64,6 @@
     <string name="label_credits">CREDITS</string>
     <string name="label_update">UPDATE</string>
     <string name="label_logout">LOGOUT</string>
-    <!-- Bottom-bar button opening cached RetroAchievements sets for offline play. RA = RetroAchievements. -->
-    <string name="achievos_offline_sets">OFFLINE SETS</string>
     <string name="label_hex">HEX</string>
     <string name="label_rename">RENAME</string>
     <string name="label_set">SET</string>
@@ -75,8 +73,6 @@
     <!-- Bottom-bar button on the home screen; opens the Quick Menu. -->
     <string name="label_menu">MENU</string>
     <string name="label_hold_buttons" tools:ignore="TypographyEllipsis">HOLD ONE OR MORE BUTTONS...</string>
-    <!-- Bottom-bar button. RA = RetroAchievements. -->
-    <string name="achievos_settings">RA SETTINGS</string>
     <string name="label_details">DETAILS</string>
     <string name="label_all">ALL</string>
     <string name="label_filter">FILTER</string>
@@ -611,7 +607,6 @@
     <string name="update_download_error_network">Download failed. Check your connection and try again.</string>
     <string name="update_download_error_space">Not enough storage. Updating needs about %1$s free, and %2$s is available.</string>
     <string name="launch_error_resolve_file">Failed to resolve launch file</string>
-    <string name="launch_error_extract">Failed to extract archive</string>
     <string name="launch_error_generic">Failed to launch game</string>
     <!-- %1$s = file name. -->
     <string name="launch_error_bad_game_file">Could not read a game ID from %1$s</string>
@@ -667,7 +662,6 @@
     <string name="onboarding_permission_optional">Optional. %1$s</string>
     <string name="onboarding_storage_title">Storage Location</string>
     <string name="onboarding_select_folder">SELECT FOLDER</string>
-    <string name="onboarding_location_label">Location</string>
 
     <!-- Controller setup wizard. Each question asks what a button does, never where it sits. -->
     <!-- Why the wizard appeared. Shown on its first question only. -->
@@ -767,14 +761,9 @@
     <string name="quick_info_not_running">Not running</string>
     <string name="quick_info_unreachable">Unreachable</string>
     <string name="quick_info_value_none">-</string>
-    <!-- URL to reach the Nonna's Kitchen file server. -->
-    <string name="quick_info_kitchen_url">Kitchen URL</string>
-    <string name="quick_info_kitchen_off">Kitchen not running</string>
-    <string name="quick_info_offline">No network</string>
 
     <!-- RetroAchievements -->
     <string name="achievos_title" translatable="false">RetroAchievements</string>
-    <string name="achievos_logged_in_as">Logged in as</string>
     <string name="achievos_account_row_account">Account</string>
     <string name="achievos_account_row_hardcore">Hardcore Mode</string>
     <string name="achievos_account_row_offline_sets">Offline Sets</string>
@@ -789,36 +778,7 @@
     <string name="achievos_login_progress">Logging in...</string>
     <string name="achievos_login_network">Could not reach RetroAchievements. Check your connection.</string>
     <string name="achievos_login_missing_credentials">Enter a username and password first</string>
-    <string name="achievos_status_online">Online</string>
-    <string name="achievos_status_offline">Offline</string>
-    <!-- %1$d = achievements awaiting sync. -->
-    <string name="achievos_status_offline_pending">Offline • %1$d Pending Sync</string>
-    <string name="achievos_detect_not_logged_in">Not logged in</string>
-    <string name="achievos_detect_identifying">Identifying game...</string>
-    <string name="achievos_detect_not_recognized">Game not recognized</string>
-    <string name="achievos_detect_no_achievements">No achievements published</string>
-    <string name="achievos_detect_initializing">Initializing...</string>
-    <string name="achievos_detect_mem_failed">Memory init failed</string>
-    <!-- %d = achievement count. -->
-    <plurals name="achievos_detect_active">
-        <item quantity="one">Active • %d achievement</item>
-        <item quantity="other">Active • %d achievements</item>
-    </plurals>
-    <!-- %d = number of achievements synced. -->
-    <plurals name="achievos_sync_done">
-        <item quantity="one">%d Achievement Synced</item>
-        <item quantity="other">%d Achievements Synced</item>
-    </plurals>
-    <!-- Counts of synced and failed achievements. -->
-    <string name="achievos_sync_partial">%1$d Synced, %2$d Failed</string>
     <string name="osd_reset">Reset</string>
-    <!-- OSD toast. %1$s = game name (setting saved per-game). -->
-    <string name="osd_saved_for">Saved for %1$s</string>
-    <string name="osd_saved_for_game">Saved for this game</string>
-    <!-- OSD toast. %1$s = controller name, %2$s = player slot. -->
-    <string name="osd_controller_connected_named">%1$s connected to %2$s</string>
-    <!-- %1$d = disc number (multi-disc games). -->
-    <string name="osd_disc_fallback">Disc %1$d</string>
     <!-- OSD pill shown when RetroArch itself writes a save state. %1$s = save slot name ("Auto" or "Slot 3"). -->
     <string name="osd_event_saved">Saved · %1$s</string>
     <!-- OSD pill shown when RetroArch itself loads a save state. %1$s = save slot name ("Auto" or "Slot 3"). -->
@@ -843,13 +803,6 @@
     <!-- List row that turns the last set of cheats back on. -->
     <string name="cheats_restore">Restore Last Session</string>
     <string name="cheats_hardcore_warning">Turning on a cheat pauses hardcore achievements for this session.</string>
-    <!-- Scaling mode: use the size the emulator core reports. -->
-    <!-- Scaling mode: integer scaling pushed beyond 1x to fill more of the screen. -->
-    <!-- Scaling mode: fit the screen while keeping the aspect ratio. -->
-    <!-- Indicates a setting applies globally (all games). -->
-    <string name="override_source_global">Global</string>
-    <!-- Indicates a setting applies only to the current game. -->
-    <string name="override_source_game">This Game</string>
     <string name="device_controller">Controller</string>
     <!-- OSD toast. %1$d = player number, %2$s = controller name. -->
     <string name="osd_controller_connected">P%1$d: %2$s</string>
@@ -857,12 +810,6 @@
     <string name="osd_controller_disconnected_port">P%1$d: %2$s disconnected</string>
     <!-- OSD toast. %1$s = controller name. -->
     <string name="osd_controller_disconnected">%1$s disconnected</string>
-    <!-- RA login OSD. %1$s = username, %2$s = display name, %3$d/%4$d = unlocked/total achievements. -->
-    <string name="achievos_login_success">RA: %1$s (%2$s) · %3$d/%4$d unlocked</string>
-    <string name="achievos_init_failed">RA: Initialization failed</string>
-    <string name="achievos_load_not_recognized">RA: Game not recognized</string>
-    <string name="achievos_load_no_achievements">RA: No achievements for this game</string>
-    <string name="achievos_load_offline_pending">RA: Offline (game data unavailable)</string>
     <!-- RA = RetroAchievements. The stored login is no longer good; the player must sign in again. -->
     <string name="achievos_session_expired">RA: Session expired</string>
 
@@ -874,8 +821,6 @@
     <string name="credits_libraries">Libraries</string>
     <string name="credits_localization">Localization Contributors</string>
 
-    <!-- Core picker / nav -->
-    <string name="no_compatible_cores">No compatible cores found</string>
     <string name="no_collections">No collections</string>
     <string name="title_child_collections">Child Collections</string>
     <string name="title_shortcuts">Shortcuts</string>
@@ -989,9 +934,6 @@
     <string name="title_guide">Guide</string>
     <string name="guide_zoom">ZOOM</string>
 
-    <!-- IGM info labels -->
-    <!-- Info label: whether the ROM was extracted from an archive. -->
-
     <!-- IGM dialogs -->
     <!-- %1$s = save slot name. -->
     <string name="igm_delete_slot">Delete %1$s?</string>
@@ -1064,12 +1006,6 @@
         <item quantity="other">%1$d downloads failed</item>
     </plurals>
     <string name="osd_core_queued">%1$s queued</string>
-    <string name="osd_downloading_core">Downloading %1$s</string>
-    <!-- OSD toast. %1$s = core name. -->
-    <string name="osd_core_downloaded">Downloaded %1$s</string>
-    <!-- OSD toast. %1$s = core name or error detail. -->
-    <string name="osd_core_download_failed">Download failed: %1$s</string>
-    <string name="osd_core_download_unknown_error">unknown error</string>
     <string name="bios_required">REQUIRED</string>
     <string name="bios_optional">OPTIONAL</string>
     <string name="bios_present">Present</string>
@@ -1154,7 +1090,6 @@
     </plurals>
     <string name="save_backup_restore">Restore from Backup</string>
     <string name="save_backup_games_title">Restore Save</string>
-    <string name="save_backup_list_title">Backups</string>
     <string name="save_backup_none">No backups</string>
     <string name="save_backup_restore_confirm">Restore this backup?\nYour current save is backed up first, then this becomes your current save on RomM.</string>
     <string name="save_backup_restore_done">Save restored</string>
@@ -1162,11 +1097,6 @@
     <string name="save_backup_restore_pending">Save restored, syncs when online</string>
     <string name="save_backup_restore_conflict">Save restored, resolve the sync conflict</string>
     <string name="save_backup_restore_failed">Restore failed</string>
-    <!-- %1$d = number of backups. -->
-    <plurals name="save_backup_count">
-        <item quantity="one">%1$d backup</item>
-        <item quantity="other">%1$d backups</item>
-    </plurals>
     <string name="conflict_keep_local">Keep Local</string>
     <string name="conflict_use_server">Use Server</string>
     <string name="conflict_skip">Skip</string>
