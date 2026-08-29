@@ -905,8 +905,8 @@ class IGMController(
             }
             return
         }
-        if (keycode == 109) {
-            if (settingsCanReorder.value) settingsReordering.value = true
+        if (keycode == 109 && settingsCanReorder.value) {
+            settingsReordering.value = true
             return
         }
         // Claimed only on a row that is a shader pass, which is the only place the legend offers it.
