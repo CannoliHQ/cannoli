@@ -1,11 +1,13 @@
 package dev.cannoli.scorza.input.resolver
 
+import dev.cannoli.scorza.input.AnalogRole
 import dev.cannoli.scorza.input.CanonicalButton
 import dev.cannoli.scorza.input.ConnectedDevice
 import dev.cannoli.scorza.input.DeviceMatchRule
 import dev.cannoli.scorza.input.DeviceMapping
 import dev.cannoli.scorza.input.InputBinding
 import dev.cannoli.scorza.input.MappingSource
+import dev.cannoli.scorza.input.TriggerAxes
 import dev.cannoli.scorza.input.legend.LegendResolver
 
 class AndroidDefaultMappingFactory(
@@ -35,6 +37,28 @@ class AndroidDefaultMappingFactory(
         CanonicalButton.BTN_MENU to listOf(4, 110),
     )
 
+    // A pad reporting its triggers as axes emits no keycode for them, so the defaults above leave
+    // L2 and R2 unbound on it. Which axis carries a trigger is a choice the pad makes and only it
+    // can answer, so the binding follows what it declares. RetroArch holds one axis per trigger,
+    // so a pad declaring both conventions is taken at whichever TriggerAxes prefers.
+    private fun triggerAxisBindings(declared: Set<Int>): Map<CanonicalButton, List<InputBinding>> {
+        val (resting, activeMin, activeMax) =
+            RetroArchAutoconfigImporter.axisRange(direction = 1, role = AnalogRole.DIGITAL_BUTTON)
+        return TriggerAxes.byButton.mapNotNull { (button, candidates) ->
+            val axis = candidates.firstOrNull { it in declared } ?: return@mapNotNull null
+            button to listOf(
+                InputBinding.Axis(
+                    axis = axis,
+                    restingValue = resting,
+                    activeMin = activeMin,
+                    activeMax = activeMax,
+                    digitalThreshold = 0.5f,
+                    analogRole = AnalogRole.DIGITAL_BUTTON,
+                )
+            )
+        }.toMap()
+    }
+
     fun create(
         device: ConnectedDevice,
     ): DeviceMapping {
@@ -50,6 +74,7 @@ class AndroidDefaultMappingFactory(
         val faceBindings = profile.faceLayout.standardFaceBindings().mapValues { (_, keyCode) ->
             listOf(InputBinding.Button(keyCode))
         }
+        val triggerAxes = triggerAxisBindings(device.declaredTriggerAxes)
         return DeviceMapping(
             id = safeId,
             displayName = device.name.ifEmpty { genericName },
@@ -59,9 +84,9 @@ class AndroidDefaultMappingFactory(
                 productId = device.productId.takeIf { it != 0 },
                 builtin = device.isBuiltIn,
             ),
-            bindings = (DEFAULT_BINDINGS.mapValues { (_, keyCodes) ->
-                keyCodes.map { InputBinding.Button(it) }
-            }) + faceBindings,
+            bindings = DEFAULT_BINDINGS.mapValues { (button, keyCodes) ->
+                keyCodes.map { InputBinding.Button(it) } + triggerAxes[button].orEmpty()
+            } + faceBindings,
             menuConfirm = profile.menuConfirm,
             menuBack = RetroArchAutoconfigImporter.oppositeOf(profile.menuConfirm),
             glyphStyle = profile.glyphStyle,

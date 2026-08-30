@@ -138,7 +138,7 @@ object RetroArchAutoconfigImporter {
     private const val ANDROID_AXIS_HAT_X: Int = 15
     private const val ANDROID_AXIS_HAT_Y: Int = 16
 
-    private fun axisRange(direction: Int, role: AnalogRole): Triple<Float, Float, Float> {
+    internal fun axisRange(direction: Int, role: AnalogRole): Triple<Float, Float, Float> {
         // Trigger axes (DIGITAL_BUTTON) are unipolar: rest at 0, full press at +/-1. Mapping
         // them as bipolar would normalize axis-at-rest to 0.5 -- past the 0.5 digital
         // threshold but below the 0 baseline, so a trigger that just sits at rest reads as

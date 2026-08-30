@@ -9,6 +9,7 @@ import dev.cannoli.scorza.input.GlyphStyle
 import dev.cannoli.scorza.input.HatDirection
 import dev.cannoli.scorza.input.InputBinding
 import dev.cannoli.scorza.input.MappingSource
+import dev.cannoli.scorza.input.resolver.AndroidDefaultMappingFactory
 import dev.cannoli.scorza.input.resolver.RetroArchAutoconfigImporter
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -189,6 +190,25 @@ class RetroArchCfgWriterTest {
         )
         val imported = RetroArchAutoconfigImporter.import(entry, device)
         assertEquals(listOf(InputBinding.Button(318)), imported.bindings[CanonicalButton.BTN_MENU])
+    }
+
+    // The whole point of the declared-axis fallback: a pad with no cfg of its own has to reach
+    // RetroArch with the axis it actually reports, not the one that happens to be listed first.
+    @Test
+    fun `a default mapping writes the trigger axis the pad declares`() {
+        val device = ConnectedDevice(
+            androidDeviceId = 1, descriptor = "abc123", name = "Brake Pad",
+            vendorId = 1, productId = 2, androidBuildModel = "",
+            sourceMask = 0, connectedAtMillis = 0L,
+            declaredTriggerAxes = setOf(23, 22),
+        )
+        val cfg = RetroArchCfgWriter.write(AndroidDefaultMappingFactory().create(device))
+
+        assertTrue(cfg.contains("input_l2_btn = \"104\""))
+        assertTrue(cfg.contains("input_r2_btn = \"105\""))
+        // Android axis 23 (AXIS_BRAKE) is RA slot 8, and 22 (AXIS_GAS) is slot 9.
+        assertTrue(cfg.contains("input_l2_axis = \"+8\""))
+        assertTrue(cfg.contains("input_r2_axis = \"+9\""))
     }
 
     @Test
