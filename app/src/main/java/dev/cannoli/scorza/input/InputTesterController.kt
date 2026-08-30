@@ -129,12 +129,12 @@ class InputTesterController(
         syncAxisTrigger(
             port, deviceId, name, KeyEvent.KEYCODE_BUTTON_L2, leftTrigger, axisTriggerL2Held,
             CanonicalButton.BTN_L2,
-            unbound = triggerUnbound(mapping, CanonicalButton.BTN_L2),
+            unbound = triggerUnbound(mapping, CanonicalButton.BTN_L2) { event.getAxisValue(it) },
         )
         syncAxisTrigger(
             port, deviceId, name, KeyEvent.KEYCODE_BUTTON_R2, rightTrigger, axisTriggerR2Held,
             CanonicalButton.BTN_R2,
-            unbound = triggerUnbound(mapping, CanonicalButton.BTN_R2),
+            unbound = triggerUnbound(mapping, CanonicalButton.BTN_R2) { event.getAxisValue(it) },
         )
 
         return true
@@ -180,20 +180,12 @@ class InputTesterController(
             bindings.any { it is InputBinding.Button && it.keyCode == keyCode }
         }?.key
 
-    // A trigger is bound if its canonical carries any binding, keycode or axis. Pads that report L2/R2
-    // purely as analog axes have no keycode Button, so a keycode-only check wrongly flags them unbound.
-    private fun triggerUnbound(mapping: DeviceMapping?, canonical: CanonicalButton): Boolean =
-        mapping?.bindings?.get(canonical).isNullOrEmpty()
-
     private fun mappingTriggerDisplayValue(
         mapping: DeviceMapping?,
         canonical: CanonicalButton,
         event: MotionEvent,
     ): Float? {
-        val axisBinding = mapping?.bindings?.get(canonical)
-            ?.firstNotNullOfOrNull { it as? InputBinding.Axis }
-            ?.takeIf { it.analogRole == AnalogRole.DIGITAL_BUTTON }
-            ?: return null
+        val axisBinding = boundTriggerAxis(mapping, canonical) ?: return null
         return event.getAxisValue(axisBinding.axis).coerceIn(0f, 1f)
     }
 
@@ -255,6 +247,37 @@ internal fun mappingHatButtons(mapping: DeviceMapping?, axisValue: (Int) -> Floa
         }
     }
     return pressed.takeIf { bound }
+}
+
+/** The axis this mapping reads [canonical] from, if it names one at all. */
+internal fun boundTriggerAxis(mapping: DeviceMapping?, canonical: CanonicalButton): InputBinding.Axis? =
+    mapping?.bindings?.get(canonical)
+        ?.firstNotNullOfOrNull { it as? InputBinding.Axis }
+        ?.takeIf { it.analogRole == AnalogRole.DIGITAL_BUTTON }
+
+// Past this a trigger is pulled rather than resting, matching where syncAxisTrigger reports a press.
+private const val TRIGGER_ACTIVE = 0.5f
+
+/**
+ * Whether the trigger that just moved reached the mapping.
+ *
+ * The tester reads a trigger off the raw axes as well as the bound one, so its bar fills whether or
+ * not the mapping names what the pad reports, which is exactly the case worth flagging: a pad on
+ * AXIS_BRAKE whose mapping names AXIS_LTRIGGER looks healthy here and does nothing in a game. So the
+ * question is not whether a binding exists but whether the axis that moved is the bound one. A pad
+ * reporting one trigger on both axes stays quiet, because the bound axis moves too.
+ */
+internal fun triggerUnbound(
+    mapping: DeviceMapping?,
+    canonical: CanonicalButton,
+    axisValue: (Int) -> Float,
+): Boolean {
+    if (mapping?.bindings?.get(canonical).isNullOrEmpty()) return true
+    val bound = boundTriggerAxis(mapping, canonical)
+    if (bound != null && axisValue(bound.axis).coerceIn(0f, 1f) > TRIGGER_ACTIVE) return false
+    return TriggerAxes.byButton[canonical].orEmpty().any {
+        it != bound?.axis && axisValue(it).coerceIn(0f, 1f) > TRIGGER_ACTIVE
+    }
 }
 
 internal fun rawHatButtons(hatX: Float, hatY: Float): Set<CanonicalButton> = buildSet {
