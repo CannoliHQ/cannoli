@@ -1,7 +1,7 @@
 # Software Information
-display_name = "Sega - Mega Drive - Genesis (BlastEm)"
+display_name = "Sega - MS/GG/MD/CD/32X (BlastEm)"
 authors = "Mike Pavone"
-supported_extensions = "md|bin|smd|gen|68k|sgd"
+supported_extensions = "md|gen|smd|68k|sgd|32x|sms|gg|sg|sg1|sc|sc3|sf7|col|cue|toc|iso|chd|vgm|vgz|flac|wav|bin|rom|gz"
 corename = "BlastEm"
 license = "GPLv3"
 permissions = ""
@@ -11,10 +11,10 @@ categories = "Emulator"
 # Hardware Information
 manufacturer = "Sega"
 systemid = "mega_drive"
-systemname = "Sega Genesis"
+systemname = "Sega 8/16-bit (Various)"
 
 # Libretro Features
-database = "Sega - Mega Drive - Genesis"
+database = "Sega - 32X|Sega - Game Gear|Sega - Master System - Mark III|Sega - Mega Drive - Genesis|Sega - Mega-CD - Sega CD|Sega - PICO|Sega - SG-1000"
 supports_no_game = "false"
 savestate = "true"
 savestate_features = "serialized"
@@ -22,11 +22,11 @@ cheats = "false"
 input_descriptors = "true"
 memory_descriptors = "false"
 libretro_saves = "true"
-core_options = "false"
-core_options_version = "null"
+core_options = "true"
+core_options_version = "0"
 load_subsystem = "false"
 hw_render = "false"
-needs_fullpath = "false"
+needs_fullpath = "true"
 disk_control = "false"
 is_experimental = "false"
 
@@ -39,4 +39,4 @@ firmware0_opt = "true"
 
 notes = "(!) rom.db (sha1): E5414FB1C4CC7D7F5101C07E4547316779BA3D97"
 
-description = "A port of the BlastEm Sega Genesis/Mega Drive emulator to libretro. This emulator is focused on being both extremely accurate and extremely fast. While it is not as mature as Genesis Plus GX, its extreme accuracy makes it capable of running many demos and test ROMs that choke other emulators, including the notoriously complex Titan Overdrive I and II demos."
+description = "A port of the BlastEm emulator to libretro, covering the Sega Genesis/Mega Drive, Sega CD, 32X, Master System, Game Gear, SG-1000, SC-3000, Pico and Copera. This emulator is focused on being both extremely accurate and extremely fast. While it is not as mature as Genesis Plus GX, its extreme accuracy makes it capable of running many demos and test ROMs that choke other emulators, including the notoriously complex Titan Overdrive I and II demos."

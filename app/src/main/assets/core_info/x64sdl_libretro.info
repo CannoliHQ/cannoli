@@ -11,7 +11,7 @@ categories = "Emulator"
 # Hardware Information
 manufacturer = "Commodore"
 systemname = "C64"
-systemid = "commodore_64"
+systemid = "commodore_c64"
 
 # Libretro Features
 supports_no_game = "false"

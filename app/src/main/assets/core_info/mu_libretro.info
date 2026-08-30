@@ -11,6 +11,7 @@ categories = "Emulator"
 # Hardware Information
 manufacturer = "Palm"
 systemname = "Palm OS"
+systemid = "palm_os"
 
 # Libretro Features
 supports_no_game = "true"

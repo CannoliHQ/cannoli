@@ -6,7 +6,7 @@ corename = "native32emu"
 categories = "Emulator"
 license = "BSD-3-Clause"
 permissions = ""
-display_version = "1.2.0"
+display_version = "1.3.0"
 
 # Hardware Information
 manufacturer = "Sunplus"
@@ -29,4 +29,4 @@ needs_fullpath = "true"
 disk_control = "false"
 is_experimental = "false"
 
-description = "Native32Emu is an emulator for the Native32 game format developed by Sunplus for DVD player and TV chipsets. This libretro core supports .smf, .sgm and .ssl content, as well as .zip game packages (extracted automatically, booting the FHUI.smf menu)."
+description = "Native32Emu is an emulator for the Native32 game format developed by Sunplus for DVD player and TV chipsets. This libretro core supports .smf, .sgm and .ssl content, as well as .zip game packages (extracted automatically, booting an FHUI.smf or NA32UI.smf menu)."

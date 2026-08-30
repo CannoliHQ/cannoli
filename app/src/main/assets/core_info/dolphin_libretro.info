@@ -33,7 +33,7 @@ is_experimental = "false"
 
 # BIOS/Firmware
 firmware_count = 4
-firmware0_desc = "Dolphin 'Sys' folder"
+firmware0_desc = "Dolphin 'Sys' folder with dolphin-emu/Sys/codehandler.bin"
 firmware0_path = "dolphin-emu/Sys/codehandler.bin"
 firmware0_opt = "false"
 firmware1_desc = "dolphin-emu/Sys/GC/JAP/IPL.bin (GameCube JP BIOS)"

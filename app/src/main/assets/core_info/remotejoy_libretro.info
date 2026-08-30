@@ -9,6 +9,7 @@ display_version = "v1"
 categories = "Streaming"
 
 # Hardware Information
+systemname = "PSP"
 systemid = "playstation_portable"
 
 # Libretro Features
