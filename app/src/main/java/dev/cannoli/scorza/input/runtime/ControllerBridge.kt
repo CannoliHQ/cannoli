@@ -36,6 +36,7 @@ class ControllerBridge(
         val sourceMask: Int,
         val isExternal: Boolean = true,
         val keyboardType: Int = InputDevice.KEYBOARD_TYPE_NONE,
+        val declaredTriggerAxes: Set<Int> = emptySet(),
     )
 
     private var listener: InputManager.InputDeviceListener? = null
@@ -227,6 +228,7 @@ class ControllerBridge(
                 connectedAtMillis = clock(),
                 isBuiltIn = !gamepadFacts.isExternal || nameLooksInternal,
                 isExternal = gamepadFacts.isExternal,
+                declaredTriggerAxes = gamepadFacts.declaredTriggerAxes,
             )
             targetEntries[connected.androidDeviceId] = connected
             dev.cannoli.scorza.util.InputLog.write(
@@ -368,6 +370,7 @@ class ControllerBridge(
         sourceMask = sources,
         isExternal = isExternalCompat(),
         keyboardType = keyboardType,
+        declaredTriggerAxes = declaredTriggerAxes(),
     )
 
     companion object {

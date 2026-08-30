@@ -15,6 +15,7 @@ object ConnectedDeviceFactory {
         connectedAtMillis: Long,
         isBuiltIn: Boolean = false,
         isExternal: Boolean = true,
+        declaredTriggerAxes: Set<Int> = emptySet(),
     ): ConnectedDevice = ConnectedDevice(
         androidDeviceId = androidDeviceId,
         descriptor = descriptor ?: "",
@@ -26,5 +27,6 @@ object ConnectedDeviceFactory {
         connectedAtMillis = connectedAtMillis,
         isBuiltIn = isBuiltIn,
         isExternal = isExternal,
+        declaredTriggerAxes = declaredTriggerAxes,
     )
 }
