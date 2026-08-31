@@ -77,6 +77,18 @@ class EmbeddedRetroArchBridge(
         }
     }
 
+    /** A key belonging to some shortcut chord went down or up during play. */
+    var onShortcutKey: ((keycode: Int, down: Boolean) -> Unit)? = null
+
+    // Raised from the runloop pump rather than the input poll, for the same reason the trigger is:
+    // a core on its own coroutine stack makes JNI from that poll throw.
+    @Suppress("unused")
+    fun onShortcutKey(keycode: Int, down: Boolean) {
+        mainHandler.post {
+            onShortcutKey?.invoke(keycode, down)
+        }
+    }
+
     // Structured OSD event from a RetroArch source site Cannoli owns.
     // type: 0 save, 1 load, 4 undo-save. slot: RetroArch state_slot (< 0 = auto).
     var onOsdEvent: ((Int, Int) -> Unit)? = null
@@ -98,6 +110,9 @@ class EmbeddedRetroArchBridge(
     }
 
     fun setIgmTriggerKeycodes(keycodes: IntArray) = nativeSetIgmTriggerKeycodes(keycodes)
+
+    /** The union of every key any chord uses. Nothing else is forwarded from the input path. */
+    fun setShortcutKeycodes(keycodes: IntArray) = nativeSetShortcutKeycodes(keycodes)
 
     fun setBuiltinPorts(ports: IntArray) = nativeSetBuiltinPorts(ports)
 
@@ -688,6 +703,7 @@ class EmbeddedRetroArchBridge(
     private external fun nativeSetDiskIndex(index: Int)
     private external fun nativeSetIGMVisible(visible: Boolean)
     private external fun nativeSetIgmTriggerKeycodes(keycodes: IntArray)
+    private external fun nativeSetShortcutKeycodes(keycodes: IntArray)
 
     private external fun nativeSetBuiltinPorts(ports: IntArray)
     private external fun nativeGetAchievementData(): String

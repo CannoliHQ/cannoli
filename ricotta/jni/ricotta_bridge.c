@@ -63,12 +63,26 @@ static volatile int g_igm_visible = 0;
 static volatile int g_igm_trigger_keycodes[RICOTTA_MAX_TRIGGER_KEYS];
 static volatile int g_igm_trigger_keycount = 0;
 
+/* The union of every key any shortcut chord uses, set from Kotlin. Only these are forwarded:
+ * gameplay input is hot, and a JNI call for every button press would be paid on every frame a
+ * game is being played rather than only when a chord might be forming. */
+#define RICOTTA_MAX_SHORTCUT_KEYS 32
+#define RICOTTA_SHORTCUT_QUEUE    64
+static volatile int g_shortcut_keycodes[RICOTTA_MAX_SHORTCUT_KEYS];
+static volatile int g_shortcut_keycount = 0;
+
+/* keycode in the low bits, down in bit 31, so one slot carries a whole event. */
+static volatile int g_shortcut_queue[RICOTTA_SHORTCUT_QUEUE];
+static volatile int g_shortcut_head = 0;
+static volatile int g_shortcut_tail = 0;
+
 /* Ports whose pad the launcher's input DB marks built in, from the launch intent. RetroArch has
  * no notion of built in, so it announces the handheld's own controls on every launch. */
 #define RICOTTA_MAX_PORTS 16
 static volatile int g_builtin_ports[RICOTTA_MAX_PORTS];
 static volatile int g_builtin_port_count = 0;
 static jmethodID g_on_igm_trigger_mid = NULL;
+static jmethodID g_on_shortcut_key_mid = NULL;
 static jmethodID g_on_osd_event_mid = NULL;
 static jmethodID g_on_osd_achievement_mid = NULL;
 static jmethodID g_on_ra_applied_mid = NULL;
@@ -411,6 +425,19 @@ void ricotta_bridge_poll_commands(void)
       {
          (*env)->CallVoidMethod(env, g_bridge_obj, g_on_igm_trigger_mid);
          ricotta_jni_check(env, "onIgmTrigger");
+      }
+   }
+
+   while (g_shortcut_head != g_shortcut_tail)
+   {
+      JNIEnv *env = ricotta_runloop_env();
+      int packed  = g_shortcut_queue[g_shortcut_head];
+      g_shortcut_head = (g_shortcut_head + 1) % RICOTTA_SHORTCUT_QUEUE;
+      if (env && g_bridge_obj && g_on_shortcut_key_mid)
+      {
+         (*env)->CallVoidMethod(env, g_bridge_obj, g_on_shortcut_key_mid,
+               (jint)(packed & 0x7fffffff), (jboolean)((packed < 0) ? JNI_TRUE : JNI_FALSE));
+         ricotta_jni_check(env, "onShortcutKey");
       }
    }
 
@@ -1351,6 +1378,27 @@ int ricotta_bridge_intercept_key(int keycode, int action)
       }
    }
 
+   /* Shortcut chords: forwarded for matching, never consumed. A chord is not known to be one
+    * until its last key arrives, by which time the earlier keys have already reached the core,
+    * so swallowing the rest would mean reporting a release for a button still held. */
+   {
+      int i;
+      for (i = 0; i < g_shortcut_keycount; i++)
+      {
+         if (keycode == g_shortcut_keycodes[i])
+         {
+            int next = (g_shortcut_tail + 1) % RICOTTA_SHORTCUT_QUEUE;
+            if (next != g_shortcut_head) /* drop rather than overwrite an unread event */
+            {
+               g_shortcut_queue[g_shortcut_tail] =
+                     (action == 0) ? (int)(keycode | (int)0x80000000) : keycode;
+               g_shortcut_tail = next;
+            }
+            break;
+         }
+      }
+   }
+
    return 0;
 }
 
@@ -1390,6 +1438,37 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSetIgmTriggerKeycodes(
 
    (*env)->ReleaseIntArrayElements(env, keycodes, elems, JNI_ABORT);
    g_igm_trigger_keycount = (int)n; /* set count last so the reader never sees partial state */
+}
+
+JNIEXPORT void JNICALL
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSetShortcutKeycodes(
+      JNIEnv *env, jobject obj, jintArray keycodes)
+{
+   jsize n;
+   jint *elems;
+   jsize i;
+
+   (void)obj;
+
+   if (!keycodes)
+   {
+      g_shortcut_keycount = 0;
+      return;
+   }
+
+   n = (*env)->GetArrayLength(env, keycodes);
+   if (n > RICOTTA_MAX_SHORTCUT_KEYS)
+      n = RICOTTA_MAX_SHORTCUT_KEYS;
+
+   elems = (*env)->GetIntArrayElements(env, keycodes, NULL);
+   if (!elems)
+      return;
+
+   for (i = 0; i < n; i++)
+      g_shortcut_keycodes[i] = (int)elems[i];
+
+   (*env)->ReleaseIntArrayElements(env, keycodes, elems, JNI_ABORT);
+   g_shortcut_keycount = (int)n; /* set count last so the reader never sees partial state */
 }
 
 JNIEXPORT void JNICALL
@@ -1518,6 +1597,7 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeInit(
    g_on_menu_closed_mid = (*env)->GetMethodID(env, cls, "onNativeMenuClosed", "()V");
    g_on_debug_key_mid = (*env)->GetMethodID(env, cls, "onDebugKey", "(I)V");
    g_on_igm_trigger_mid = (*env)->GetMethodID(env, cls, "onIgmTrigger", "()V");
+   g_on_shortcut_key_mid = (*env)->GetMethodID(env, cls, "onShortcutKey", "(IZ)V");
    g_on_ra_applied_mid = (*env)->GetMethodID(env, cls, "onRaSettingApplied",
          "(Ljava/lang/String;Ljava/lang/String;)V");
    g_on_osd_event_mid = (*env)->GetMethodID(env, cls, "onOsdEvent", "(II)V");

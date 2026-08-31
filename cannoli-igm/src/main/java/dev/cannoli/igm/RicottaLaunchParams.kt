@@ -73,6 +73,8 @@ data class RicottaLaunchParams(
     // Trailing field: a sender that predates it reads back empty, which announces everything, the
     // behaviour before this existed.
     val builtinPorts: List<Int> = emptyList(),
+    /** Chords the launcher has bound, matched in this process because only it sees play input. */
+    val shortcuts: Map<ShortcutAction, Set<Int>> = emptyMap(),
 ) : Parcelable {
     override fun describeContents() = 0
 
@@ -101,6 +103,11 @@ data class RicottaLaunchParams(
         dest.writeInt(if (hardcoreInEffect) 1 else 0)
         dest.writeInt(if (curatedSettings) 1 else 0)
         dest.writeIntArray(builtinPorts.toIntArray())
+        dest.writeInt(shortcuts.size)
+        for ((action, chord) in shortcuts) {
+            dest.writeString(action.name)
+            dest.writeIntArray(chord.toIntArray())
+        }
     }
 
     companion object {
@@ -142,11 +149,24 @@ data class RicottaLaunchParams(
                 val curatedSettings = if (p.dataAvail() > 0) p.readInt() != 0 else true
                 val builtinPorts =
                     if (p.dataAvail() > 0) (p.createIntArray() ?: IntArray(0)).toList() else emptyList()
+                val shortcuts = mutableMapOf<ShortcutAction, Set<Int>>()
+                if (p.dataAvail() > 0) {
+                    repeat(p.readInt()) {
+                        val name = p.readString()
+                        val chord = (p.createIntArray() ?: IntArray(0)).toSet()
+                        // An action this build no longer has is skipped rather than failing the
+                        // parcel, the same way the ini reader skips a name it does not know.
+                        val action = name?.let {
+                            runCatching { ShortcutAction.valueOf(it) }.getOrNull()
+                        }
+                        if (action != null && chord.isNotEmpty()) shortcuts[action] = chord
+                    }
+                }
                 return RicottaLaunchParams(
                     coreId, romPath, configFilePath, gameTitle, stateBasePath,
                     cannoliRoot, platformTag, platformName, igmTriggerKeycodes, quitOnFocusLoss,
                     preferredRefreshRate, colors, displaySettings, inputMapping, localeTag,
-                    romBaseName, hardcoreInEffect, curatedSettings, builtinPorts,
+                    romBaseName, hardcoreInEffect, curatedSettings, builtinPorts, shortcuts,
                 )
             }
 

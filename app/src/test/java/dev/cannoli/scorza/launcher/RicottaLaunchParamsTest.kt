@@ -64,6 +64,10 @@ class RicottaLaunchParamsTest {
         localeTag = "pt-BR",
         romBaseName = "Zelda (USA)",
         hardcoreInEffect = true,
+        shortcuts = mapOf(
+            dev.cannoli.igm.ShortcutAction.SAVE_STATE to setOf(102, 103),
+            dev.cannoli.igm.ShortcutAction.OPEN_MENU to setOf(102, 103, 99),
+        ),
     )
 
     private fun roundTrip(params: RicottaLaunchParams): RicottaLaunchParams {
@@ -75,6 +79,26 @@ class RicottaLaunchParamsTest {
         } finally {
             parcel.recycle()
         }
+    }
+
+    // The chords are matched in the emulator process, so the parcel is the only way they get
+    // there. A chord that does not survive it is a shortcut that silently does nothing.
+    @Test fun `chords survive the trip to the emulator process`() {
+        assertEquals(sample().shortcuts, roundTrip(sample()).shortcuts)
+    }
+
+    @Test fun `no chords round trips as none`() {
+        val bare = sample().copy(shortcuts = emptyMap())
+        assertEquals(emptyMap<dev.cannoli.igm.ShortcutAction, Set<Int>>(), roundTrip(bare).shortcuts)
+    }
+
+    // An empty chord means deliberately unbound; carrying it would hand the matcher something that
+    // can never match, and the ini reader drops these on the way in for the same reason.
+    @Test fun `an unbound action is not carried`() {
+        val unbound = sample().copy(
+            shortcuts = mapOf(dev.cannoli.igm.ShortcutAction.RESET_GAME to emptySet()),
+        )
+        assertEquals(emptyMap<dev.cannoli.igm.ShortcutAction, Set<Int>>(), roundTrip(unbound).shortcuts)
     }
 
     @Test fun `round trips all fields`() {
@@ -119,7 +143,7 @@ class RicottaLaunchParamsTest {
             parcel.setDataPosition(0)
 
             assertEquals(
-                params.copy(localeTag = "", romBaseName = "", hardcoreInEffect = false),
+                params.copy(localeTag = "", romBaseName = "", hardcoreInEffect = false, shortcuts = emptyMap()),
                 RicottaLaunchParams.CREATOR.createFromParcel(parcel),
             )
         } finally {
@@ -150,7 +174,7 @@ class RicottaLaunchParamsTest {
             parcel.setDataPosition(0)
 
             assertEquals(
-                params.copy(romBaseName = "", hardcoreInEffect = false),
+                params.copy(romBaseName = "", hardcoreInEffect = false, shortcuts = emptyMap()),
                 RicottaLaunchParams.CREATOR.createFromParcel(parcel),
             )
         } finally {
@@ -185,7 +209,7 @@ class RicottaLaunchParamsTest {
             parcel.setDataPosition(0)
 
             assertEquals(
-                params.copy(hardcoreInEffect = false),
+                params.copy(hardcoreInEffect = false, shortcuts = emptyMap()),
                 RicottaLaunchParams.CREATOR.createFromParcel(parcel),
             )
         } finally {
@@ -239,7 +263,7 @@ class RicottaLaunchParamsTest {
             parcel.setDataPosition(0)
 
             assertEquals(
-                params.copy(curatedSettings = true),
+                params.copy(curatedSettings = true, shortcuts = emptyMap()),
                 RicottaLaunchParams.CREATOR.createFromParcel(parcel),
             )
         } finally {
