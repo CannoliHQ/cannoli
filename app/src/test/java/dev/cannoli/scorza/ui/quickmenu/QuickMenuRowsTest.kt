@@ -49,7 +49,7 @@ class QuickMenuRowsTest {
     @Test fun `settings row is first when there is nothing to attend to`() {
         val paired = QuickMenuRow.visibleRows(
             rommPaired = true, kitchenRunning = true, saveSyncEnabled = true,
-            pendingConflicts = 0, syncErrors = 0, downloadCount = 4,
+            pendingConflicts = 0, syncErrors = 0, downloadCount = 0,
         )
         val bare = QuickMenuRow.visibleRows(rommPaired = false, kitchenRunning = false)
         assertEquals(QuickMenuRow.SETTINGS, paired.first())
@@ -59,7 +59,7 @@ class QuickMenuRowsTest {
     @Test fun `conflicts then errors lead the menu`() {
         val rows = QuickMenuRow.visibleRows(
             rommPaired = true, kitchenRunning = true, saveSyncEnabled = true,
-            pendingConflicts = 2, syncErrors = 1, downloadCount = 4,
+            pendingConflicts = 2, syncErrors = 1, downloadCount = 0,
         )
         assertEquals(
             listOf(QuickMenuRow.CONFLICTS, QuickMenuRow.ERRORS, QuickMenuRow.SETTINGS),
@@ -70,7 +70,7 @@ class QuickMenuRowsTest {
     @Test fun `errors row is first when only errors are present`() {
         val rows = QuickMenuRow.visibleRows(
             rommPaired = true, kitchenRunning = true, saveSyncEnabled = true,
-            pendingConflicts = 0, syncErrors = 1, downloadCount = 4,
+            pendingConflicts = 0, syncErrors = 1, downloadCount = 0,
         )
         assertEquals(QuickMenuRow.ERRORS, rows.first())
         assertEquals(QuickMenuRow.SETTINGS, rows[1])
@@ -92,17 +92,30 @@ class QuickMenuRowsTest {
         assertEquals(rows.indexOf(QuickMenuRow.CONFLICTS) + 1, rows.indexOf(QuickMenuRow.ERRORS))
     }
 
-    @Test fun `downloads row present immediately after romm when paired`() {
-        val rows = QuickMenuRow.visibleRows(rommPaired = true, kitchenRunning = false, downloadCount = 3)
-        assertEquals(true, rows.contains(QuickMenuRow.DOWNLOADS))
-        assertEquals(rows.indexOf(QuickMenuRow.ROMM) + 1, rows.indexOf(QuickMenuRow.DOWNLOADS))
+    @Test fun `downloads row leads the menu whether or not romm is paired`() {
+        val paired = QuickMenuRow.visibleRows(rommPaired = true, kitchenRunning = false, downloadCount = 3)
+        val bare = QuickMenuRow.visibleRows(rommPaired = false, kitchenRunning = false, downloadCount = 3)
+        assertEquals(QuickMenuRow.DOWNLOADS, paired.first())
+        assertEquals(QuickMenuRow.DOWNLOADS, bare.first())
+        assertEquals(false, bare.contains(QuickMenuRow.ROMM))
     }
 
-    @Test fun `downloads row follows settings when not paired`() {
-        val rows = QuickMenuRow.visibleRows(rommPaired = false, kitchenRunning = false, downloadCount = 3)
-        assertEquals(true, rows.contains(QuickMenuRow.DOWNLOADS))
-        assertEquals(false, rows.contains(QuickMenuRow.ROMM))
-        assertEquals(rows.indexOf(QuickMenuRow.SETTINGS) + 1, rows.indexOf(QuickMenuRow.DOWNLOADS))
+    // A finished queue used to drop to a different position, moving a row under the thumb of anyone
+    // who opened the menu to check on a download that had just landed.
+    @Test fun `a finished queue holds the position a running one had`() {
+        val rows = QuickMenuRow.visibleRows(rommPaired = true, kitchenRunning = false, downloadCount = 3)
+        assertEquals(QuickMenuRow.DOWNLOADS, rows.first())
+    }
+
+    @Test fun `the queue leads even ahead of conflicts and errors`() {
+        val rows = QuickMenuRow.visibleRows(
+            rommPaired = true, kitchenRunning = false, saveSyncEnabled = true,
+            pendingConflicts = 2, syncErrors = 1, downloadCount = 1,
+        )
+        assertEquals(
+            listOf(QuickMenuRow.DOWNLOADS, QuickMenuRow.CONFLICTS, QuickMenuRow.ERRORS),
+            rows.take(3),
+        )
     }
 
     @Test fun `downloads row absent when queue empty`() {

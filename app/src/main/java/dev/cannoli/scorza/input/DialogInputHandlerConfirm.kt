@@ -227,51 +227,9 @@ internal fun DialogInputHandler.confirmDialog(): Boolean {
             rommArtFetcher.dismissResults()
             nav.dialogState.value = DialogState.None
         }
-        is DialogState.RommActionsMenu -> onRommActionsConfirm(ds)
-        is DialogState.RommSettingsMenu -> onRommSettingsConfirm(ds)
-        is DialogState.RommSaveSyncMenu -> onRommSaveSyncConfirm(ds)
-        is DialogState.RommSavesMenu -> onRommSavesConfirm(ds)
-        is DialogState.SaveBackupGames -> ds.games.getOrNull(ds.selectedIndex)?.let { openBackupList(it) }
-        is DialogState.SaveBackupList -> if (ds.backups.isNotEmpty()) confirmRestore(ds)
         is DialogState.SaveBackupRestoreConfirm -> doRestore(ds)
-        is DialogState.RommPlatformToggle -> {
-            val item = ds.items.getOrNull(ds.selectedIndex) ?: return true
-            val nowVisible = !item.visible
-            val hidden = settings.hiddenRommPlatforms.toMutableSet()
-            if (nowVisible) hidden.remove(item.tag) else hidden.add(item.tag)
-            settings.hiddenRommPlatforms = hidden
-            val newItems = ds.items.toMutableList()
-            newItems[ds.selectedIndex] = item.copy(visible = nowVisible)
-            nav.dialogState.value = ds.copy(items = newItems)
-        }
-        is DialogState.RommCollectionToggle -> {
-            val item = ds.items.getOrNull(ds.selectedIndex) ?: return true
-            val nowVisible = !item.visible
-            when (item.group) {
-                dev.cannoli.scorza.romm.RommCollectionGroup.USER -> rommStore.showUserCollections = nowVisible
-                dev.cannoli.scorza.romm.RommCollectionGroup.VIRTUAL -> rommStore.showVirtualCollections = nowVisible
-                dev.cannoli.scorza.romm.RommCollectionGroup.SMART -> rommStore.showSmartCollections = nowVisible
-            }
-            val newItems = ds.items.toMutableList()
-            newItems[ds.selectedIndex] = item.copy(visible = nowVisible)
-            nav.dialogState.value = ds.copy(items = newItems)
-            if (nowVisible) {
-                ioScope.launch { rommBrowseViewModel.refresh(); rommBrowseViewModel.loadCollections() }
-            }
-        }
-        is DialogState.RommAdvancedMenu -> {
-            when (ds.selectedIndex) {
-                0 -> nav.dialogState.value = DialogState.RommConfirm(dev.cannoli.scorza.ui.screens.RommConfirmAction.REBUILD_CACHE)
-                else -> {
-                    val tags = romsRepository.knownPlatformTags()
-                    nav.dialogState.value = DialogState.None
-                    dev.cannoli.scorza.download.DownloadManager.ensureStarted(context)
-                    rommArtFetcher.start(tags)
-                }
-            }
-        }
         is DialogState.RommConfirm -> onRommConfirm(ds)
-        is DialogState.RommVersionPicker -> onRommVersionConfirm(ds)
+        is DialogState.Picker -> ds.onSelect(ds.selectedIndex)
         is DialogState.RAPreloadResult -> {
             nav.dialogState.value = DialogState.None
         }

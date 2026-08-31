@@ -132,18 +132,7 @@ internal fun DialogInputHandler.backDialog(): Boolean {
             rommArtFetcher.dismissResults()
             nav.dialogState.value = DialogState.None
         }
-        is DialogState.RommPlatformToggle -> {
-            ioScope.launch { rommBrowseViewModel.loadPlatforms() }
-            backToRommSettings(dev.cannoli.scorza.ui.components.RommSettingsRow.PLATFORMS)
-        }
-        is DialogState.RommCollectionToggle -> {
-            backToRommSettings(dev.cannoli.scorza.ui.components.RommSettingsRow.COLLECTIONS)
-        }
-        is DialogState.RommActionsMenu -> nav.dialogState.value = DialogState.None
-        is DialogState.RommSettingsMenu -> nav.dialogState.value = DialogState.None
-        is DialogState.RommVersionPicker -> nav.dialogState.value = DialogState.None
-        is DialogState.RommAdvancedMenu -> backToRommSettings(dev.cannoli.scorza.ui.components.RommSettingsRow.ADVANCED)
-        is DialogState.RommSaveSyncMenu -> backToRommSettings(dev.cannoli.scorza.ui.components.RommSettingsRow.SAVE_SYNC)
+        is DialogState.Picker -> ds.onBack?.invoke() ?: run { nav.dialogState.value = DialogState.None }
         is DialogState.SyncHistory -> returnFromSaveSyncChild(
             ds.fromSaveSyncMenu,
             dev.cannoli.scorza.ui.components.RommSaveSyncRow.HISTORY,
@@ -154,12 +143,11 @@ internal fun DialogInputHandler.backDialog(): Boolean {
             dev.cannoli.scorza.ui.components.RommSaveSyncRow.ERRORS,
             dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.ERRORS,
         )
-        is DialogState.RommSavesMenu -> restoreContextMenu()
-        is DialogState.SaveBackupGames -> returnToSaveSyncMenu(dev.cannoli.scorza.ui.components.RommSaveSyncRow.RESTORE)
-        is DialogState.SaveBackupList -> if (ds.fromContextMenu) openRommSavesMenu(MENU_RESTORE_BACKUP) else openBackupGames()
         is DialogState.SaveBackupRestoreConfirm -> ioScope.launch {
             val backups = saveSyncService.listBackups(ds.tag, ds.base)
-            withContext(Dispatchers.Main) { nav.dialogState.value = DialogState.SaveBackupList(ds.tag, ds.base, ds.displayName, backups, fromContextMenu = ds.fromContextMenu) }
+            withContext(Dispatchers.Main) {
+                nav.dialogState.value = saveBackupListPicker(ds.tag, ds.base, ds.displayName, backups, ds.fromContextMenu)
+            }
         }
         is DialogState.ConflictsMenu -> {
             val fromSaveSyncMenu = ds.fromSaveSyncMenu
@@ -171,7 +159,7 @@ internal fun DialogInputHandler.backDialog(): Boolean {
         is DialogState.RommConfirm -> {
             when (ds.action) {
                 dev.cannoli.scorza.ui.screens.RommConfirmAction.REBUILD_CACHE ->
-                    nav.dialogState.value = DialogState.RommAdvancedMenu()
+                    nav.dialogState.value = rommAdvancedPicker()
                 dev.cannoli.scorza.ui.screens.RommConfirmAction.DISCONNECT ->
                     nav.dialogState.value = DialogState.RommConnected(
                         host = rommStore.host,

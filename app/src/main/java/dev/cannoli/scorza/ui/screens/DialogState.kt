@@ -91,8 +91,54 @@ sealed interface ListDialog : DialogState {
     fun withSelectedIndex(index: Int): DialogState
 }
 
+/**
+ * One row of a [DialogState.Picker], in the terms the shared list already draws: a label, an
+ * optional right-hand value, and the dot the list uses to mark a row as already held.
+ *
+ * Display only. A picker's builder resolves glyphs, formats sizes and orders the rows, because
+ * those are the caller's business and putting them here would make one row type answer to every
+ * menu that ever uses it.
+ */
+data class PickerItem(
+    val label: String,
+    val value: String? = null,
+    val dot: Boolean? = null,
+    /** Draws a checkbox. Non-null makes this a toggle row rather than a plain one. */
+    val checked: Boolean? = null,
+    /** Left and right change this row's value, and the legend says so while it is selected. */
+    val cycles: Boolean = false,
+)
+
 sealed interface DialogState {
     data object None : DialogState
+
+    /**
+     * A list of rows and what to do with the chosen one.
+     *
+     * Nineteen states were the same screen with different contents, and each paid for that with a
+     * branch in the renderer, one in the row count, one in back and one in confirm. This carries
+     * its own strings and its own action instead, so a menu is a function that builds one of these
+     * next to the data it belongs to.
+     *
+     * [onSelect] holds a lambda, which makes two equal pickers compare unequal, so a rebuilt one
+     * always re-emits rather than being conflated by StateFlow. That is the safe direction and it
+     * is what the bespoke states it replaces already did.
+     */
+    data class Picker(
+        val title: String,
+        val items: List<PickerItem>,
+        val confirmLabel: String,
+        /** Shown in place of the list when there is nothing in it. Null draws an empty screen. */
+        val emptyMessage: String? = null,
+        override val selectedIndex: Int = 0,
+        /** Where back goes. Null closes, which is what a menu opened from the game list wants. */
+        val onBack: (() -> Unit)? = null,
+        /** Called with the row and the direction when a [PickerItem.cycles] row is nudged. */
+        val onCycle: ((index: Int, delta: Int) -> Unit)? = null,
+        val onSelect: (Int) -> Unit,
+    ) : ListDialog {
+        override fun withSelectedIndex(index: Int) = copy(selectedIndex = index)
+    }
     // romId is set only when the emulator that failed came from a per-game override, so
     // recovery edits the mapping that actually failed instead of the platform-wide one.
     data class MissingCore(
@@ -267,53 +313,11 @@ sealed interface DialogState {
         override fun withSelectedIndex(index: Int) = copy(selectedIndex = index)
     }
     data class RescanProgress(val progress: Float, val label: String) : DialogState
-    data class RommActionsMenu(
-        override val selectedIndex: Int = 0,
-        val hasDownloads: Boolean = false,
-    ) : ListDialog {
-        override fun withSelectedIndex(index: Int) = copy(selectedIndex = index)
-    }
-    data class RommSettingsMenu(
-        override val selectedIndex: Int = 0,
-        val concurrent: Int = 2,
-        val artType: dev.cannoli.scorza.romm.RommArtType = dev.cannoli.scorza.romm.RommArtType.NONE,
-    ) : ListDialog {
-        override fun withSelectedIndex(index: Int) = copy(selectedIndex = index)
-    }
-    data class RommAdvancedMenu(override val selectedIndex: Int = 0) : ListDialog {
-        override fun withSelectedIndex(index: Int) = copy(selectedIndex = index)
-    }
-    data class RommSaveSyncMenu(
-        override val selectedIndex: Int = 0,
-        val supported: Boolean = true,
-        val enabled: Boolean = false,
-        val backupCount: Int = 5,
-        val pendingConflicts: Int = 0,
-        val syncErrors: Int = 0,
-        val hasBackups: Boolean = false,
-    ) : ListDialog {
-        override fun withSelectedIndex(index: Int) = copy(selectedIndex = index)
-    }
     data class RommConfirm(val action: RommConfirmAction, val downloadKey: String? = null, val fromQuickMenu: Boolean = false) : DialogState
-    data class RommPlatformToggle(val items: List<RommPlatformToggleItem>, override val selectedIndex: Int = 0) : ListDialog {
-        override fun withSelectedIndex(index: Int) = copy(selectedIndex = index)
-    }
-    data class RommCollectionToggle(val items: List<RommCollectionToggleItem>, override val selectedIndex: Int = 0) : ListDialog {
-        override fun withSelectedIndex(index: Int) = copy(selectedIndex = index)
-    }
     data class SyncHistory(val entries: List<SyncHistoryRow>, override val selectedIndex: Int = 0, val fromSaveSyncMenu: Boolean = false) : ListDialog {
         override fun withSelectedIndex(index: Int) = copy(selectedIndex = index)
     }
     data class SyncErrors(val errors: List<dev.cannoli.scorza.romm.sync.SyncFailure>, override val selectedIndex: Int = 0, val fromSaveSyncMenu: Boolean = false) : ListDialog {
-        override fun withSelectedIndex(index: Int) = copy(selectedIndex = index)
-    }
-    data class RommSavesMenu(val title: String, val options: List<String>, override val selectedIndex: Int = 0) : ListDialog {
-        override fun withSelectedIndex(index: Int) = copy(selectedIndex = index)
-    }
-    data class SaveBackupGames(val games: List<dev.cannoli.scorza.romm.sync.SaveBackupGame>, override val selectedIndex: Int = 0) : ListDialog {
-        override fun withSelectedIndex(index: Int) = copy(selectedIndex = index)
-    }
-    data class SaveBackupList(val tag: String, val base: String, val displayName: String, val backups: List<dev.cannoli.scorza.romm.sync.SaveBackup>, override val selectedIndex: Int = 0, val fromContextMenu: Boolean = false) : ListDialog {
         override fun withSelectedIndex(index: Int) = copy(selectedIndex = index)
     }
     data class SaveBackupRestoreConfirm(val tag: String, val base: String, val displayName: String, val stamp: Long, val dateLabel: String, val fromContextMenu: Boolean = false) : DialogState
@@ -332,14 +336,6 @@ sealed interface DialogState {
         val base: String,
         val selectedIndex: Int = 0,
     ) : DialogState
-    data class RommVersionPicker(
-        val gameName: String,
-        val tag: String,
-        val members: List<RommVariantEntry>,
-        override val selectedIndex: Int = 0,
-    ) : ListDialog {
-        override fun withSelectedIndex(index: Int) = copy(selectedIndex = index)
-    }
 }
 
 data class RommVariantEntry(val game: dev.cannoli.scorza.romm.RommGame, val label: String, val present: Boolean, val isPrimary: Boolean)

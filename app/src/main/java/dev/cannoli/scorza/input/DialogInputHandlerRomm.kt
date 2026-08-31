@@ -3,6 +3,7 @@ package dev.cannoli.scorza.input
 import dev.cannoli.scorza.model.ListItem
 import dev.cannoli.scorza.navigation.LauncherScreen
 import dev.cannoli.scorza.romm.sync.RomKeys
+import dev.cannoli.scorza.ui.components.RommSaveSyncRow
 import dev.cannoli.scorza.ui.screens.DialogState
 import dev.cannoli.scorza.ui.screens.RenameTarget
 import dev.cannoli.scorza.util.ErrorLog
@@ -24,23 +25,6 @@ internal fun DialogInputHandler.isRommScreen(): Boolean = when (nav.currentScree
     else -> false
 }
 
-internal fun DialogInputHandler.cycleRommSettings(ds: DialogState.RommSettingsMenu, delta: Int) {
-    when (dev.cannoli.scorza.ui.components.RommSettingsRow.entries.getOrNull(ds.selectedIndex)) {
-        dev.cannoli.scorza.ui.components.RommSettingsRow.CONCURRENT -> {
-            val next = ((ds.concurrent - 1 + delta + 4) % 4) + 1
-            settings.concurrentDownloads = next
-            nav.dialogState.value = ds.copy(concurrent = settings.concurrentDownloads)
-        }
-        dev.cannoli.scorza.ui.components.RommSettingsRow.COVER_ART -> {
-            val types = dev.cannoli.scorza.romm.availableArtTypes(rommStore.scanMedia)
-            val cur = types.indexOf(ds.artType).coerceAtLeast(0)
-            val next = types[(cur + delta + types.size) % types.size]
-            rommStore.artType = next
-            nav.dialogState.value = ds.copy(artType = next)
-        }
-        else -> {}
-    }
-}
 
 internal fun DialogInputHandler.onSaveConflictConfirm(ds: DialogState.SaveSyncConflict) {
     val deviceId = saveSyncService.deviceIdOrNull() ?: run {
@@ -77,24 +61,144 @@ internal fun DialogInputHandler.onSaveStaleConfirm(ds: DialogState.SaveSyncStale
 }
 
 internal fun DialogInputHandler.backToRommSettings(row: dev.cannoli.scorza.ui.components.RommSettingsRow) {
-    nav.dialogState.value = DialogState.RommSettingsMenu(
-        concurrent = settings.concurrentDownloads,
-        artType = rommStore.artType,
-        selectedIndex = dev.cannoli.scorza.ui.components.RommSettingsRow.entries.indexOf(row),
+    nav.dialogState.value = rommSettingsPicker(
+        dev.cannoli.scorza.ui.components.RommSettingsRow.entries.indexOf(row)
     )
 }
 
-internal fun DialogInputHandler.onRommActionsConfirm(ds: DialogState.RommActionsMenu) {
-    when (dev.cannoli.scorza.ui.components.RommActionRow.visibleRows(ds.hasDownloads).getOrNull(ds.selectedIndex)) {
-        dev.cannoli.scorza.ui.components.RommActionRow.DOWNLOADS -> {
-            nav.dialogState.value = DialogState.RommDownloads()
+/**
+ * The RomM settings rows, two of which cycle a value rather than opening anything.
+ *
+ * Rebuilt after every cycle rather than copied with a new value: the row labels read the settings
+ * they describe, so building again is what makes the row show what it just changed to.
+ */
+internal fun DialogInputHandler.rommSettingsPicker(selectedIndex: Int = 0): DialogState.Picker {
+    val rows = dev.cannoli.scorza.ui.components.RommSettingsRow.entries.toList()
+    return DialogState.Picker(
+        title = context.getString(dev.cannoli.scorza.R.string.romm_settings_title),
+        confirmLabel = context.getString(dev.cannoli.scorza.R.string.label_select),
+        selectedIndex = selectedIndex,
+        items = rows.map { row ->
+            when (row) {
+                dev.cannoli.scorza.ui.components.RommSettingsRow.CONCURRENT ->
+                    dev.cannoli.scorza.ui.screens.PickerItem(
+                        label = context.getString(dev.cannoli.scorza.R.string.romm_settings_concurrent),
+                        value = settings.concurrentDownloads.toString(),
+                        cycles = true,
+                    )
+                dev.cannoli.scorza.ui.components.RommSettingsRow.COVER_ART ->
+                    dev.cannoli.scorza.ui.screens.PickerItem(
+                        label = context.getString(dev.cannoli.scorza.R.string.romm_settings_cover_art),
+                        value = context.getString(dev.cannoli.scorza.ui.components.rommArtLabelRes(rommStore.artType)),
+                        cycles = true,
+                    )
+                else -> dev.cannoli.scorza.ui.screens.PickerItem(context.getString(row.labelRes))
+            }
+        },
+        onCycle = { index, delta ->
+            when (rows.getOrNull(index)) {
+                dev.cannoli.scorza.ui.components.RommSettingsRow.CONCURRENT -> {
+                    settings.concurrentDownloads = ((settings.concurrentDownloads - 1 + delta + 4) % 4) + 1
+                    nav.dialogState.value = rommSettingsPicker(index)
+                }
+                dev.cannoli.scorza.ui.components.RommSettingsRow.COVER_ART -> {
+                    val types = dev.cannoli.scorza.romm.availableArtTypes(rommStore.scanMedia)
+                    val cur = types.indexOf(rommStore.artType).coerceAtLeast(0)
+                    rommStore.artType = types[(cur + delta + types.size) % types.size]
+                    nav.dialogState.value = rommSettingsPicker(index)
+                }
+                else -> {}
+            }
+        },
+    ) { index -> onRommSettingsSelected(rows.getOrNull(index)) }
+}
+
+internal fun DialogInputHandler.rommActionsPicker(hasDownloads: Boolean): DialogState.Picker {
+    val rows = dev.cannoli.scorza.ui.components.RommActionRow.visibleRows(hasDownloads)
+    return DialogState.Picker(
+        title = context.getString(dev.cannoli.scorza.R.string.romm_actions_title),
+        confirmLabel = context.getString(dev.cannoli.scorza.R.string.label_select),
+        items = rows.map { dev.cannoli.scorza.ui.screens.PickerItem(context.getString(it.labelRes)) },
+    ) { index ->
+        when (rows.getOrNull(index)) {
+            dev.cannoli.scorza.ui.components.RommActionRow.DOWNLOADS -> {
+                nav.dialogState.value = DialogState.RommDownloads()
+            }
+            else -> {}
         }
-        else -> {}
     }
 }
 
-internal fun DialogInputHandler.onRommSettingsConfirm(ds: DialogState.RommSettingsMenu) {
-    when (dev.cannoli.scorza.ui.components.RommSettingsRow.entries.getOrNull(ds.selectedIndex)) {
+internal fun DialogInputHandler.rommAdvancedPicker(): DialogState.Picker = DialogState.Picker(
+    title = context.getString(dev.cannoli.scorza.R.string.romm_settings_advanced),
+    confirmLabel = context.getString(dev.cannoli.scorza.R.string.label_select),
+    items = dev.cannoli.scorza.ui.components.ROMM_ADVANCED_ROWS.map {
+        dev.cannoli.scorza.ui.screens.PickerItem(context.getString(it))
+    },
+    onBack = { backToRommSettings(dev.cannoli.scorza.ui.components.RommSettingsRow.ADVANCED) },
+) { index ->
+    if (index == 0) {
+        nav.dialogState.value = DialogState.RommConfirm(dev.cannoli.scorza.ui.screens.RommConfirmAction.REBUILD_CACHE)
+    } else {
+        val tags = romsRepository.knownPlatformTags()
+        nav.dialogState.value = DialogState.None
+        dev.cannoli.scorza.download.DownloadManager.ensureStarted(context)
+        rommArtFetcher.start(tags)
+    }
+}
+
+/** Rebuilds itself on every toggle, which is what keeps the highlight on the row that flipped. */
+internal fun DialogInputHandler.rommPlatformTogglePicker(
+    items: List<dev.cannoli.scorza.ui.screens.RommPlatformToggleItem>,
+    selectedIndex: Int = 0,
+): DialogState.Picker = DialogState.Picker(
+    title = context.getString(dev.cannoli.scorza.R.string.romm_platforms_title),
+    confirmLabel = context.getString(dev.cannoli.scorza.R.string.label_toggle),
+    emptyMessage = context.getString(dev.cannoli.scorza.R.string.romm_platforms_empty),
+    items = items.map { dev.cannoli.scorza.ui.screens.PickerItem(it.displayName, checked = it.visible) },
+    selectedIndex = selectedIndex,
+    onBack = {
+        ioScope.launch { rommBrowseViewModel.loadPlatforms() }
+        backToRommSettings(dev.cannoli.scorza.ui.components.RommSettingsRow.PLATFORMS)
+    },
+) { index ->
+    val item = items.getOrNull(index) ?: return@Picker
+    val nowVisible = !item.visible
+    val hidden = settings.hiddenRommPlatforms.toMutableSet()
+    if (nowVisible) hidden.remove(item.tag) else hidden.add(item.tag)
+    settings.hiddenRommPlatforms = hidden
+    val newItems = items.toMutableList()
+    newItems[index] = item.copy(visible = nowVisible)
+    nav.dialogState.value = rommPlatformTogglePicker(newItems, index)
+}
+
+internal fun DialogInputHandler.rommCollectionTogglePicker(
+    items: List<dev.cannoli.scorza.ui.screens.RommCollectionToggleItem>,
+    selectedIndex: Int = 0,
+): DialogState.Picker = DialogState.Picker(
+    title = context.getString(dev.cannoli.scorza.R.string.romm_collections_title),
+    confirmLabel = context.getString(dev.cannoli.scorza.R.string.label_toggle),
+    items = items.map { dev.cannoli.scorza.ui.screens.PickerItem(it.displayName, checked = it.visible) },
+    selectedIndex = selectedIndex,
+    onBack = { backToRommSettings(dev.cannoli.scorza.ui.components.RommSettingsRow.COLLECTIONS) },
+) { index ->
+    val item = items.getOrNull(index) ?: return@Picker
+    val nowVisible = !item.visible
+    when (item.group) {
+        dev.cannoli.scorza.romm.RommCollectionGroup.USER -> rommStore.showUserCollections = nowVisible
+        dev.cannoli.scorza.romm.RommCollectionGroup.VIRTUAL -> rommStore.showVirtualCollections = nowVisible
+        dev.cannoli.scorza.romm.RommCollectionGroup.SMART -> rommStore.showSmartCollections = nowVisible
+    }
+    val newItems = items.toMutableList()
+    newItems[index] = item.copy(visible = nowVisible)
+    nav.dialogState.value = rommCollectionTogglePicker(newItems, index)
+    if (nowVisible) {
+        ioScope.launch { rommBrowseViewModel.refresh(); rommBrowseViewModel.loadCollections() }
+    }
+}
+
+private fun DialogInputHandler.onRommSettingsSelected(row: dev.cannoli.scorza.ui.components.RommSettingsRow?) {
+    when (row) {
         dev.cannoli.scorza.ui.components.RommSettingsRow.SERVER_INFO -> {
             nav.dialogState.value = DialogState.RommConnected(
                 host = rommStore.host,
@@ -110,7 +214,7 @@ internal fun DialogInputHandler.onRommSettingsConfirm(ds: DialogState.RommSettin
             }
         }
         dev.cannoli.scorza.ui.components.RommSettingsRow.ADVANCED -> {
-            nav.dialogState.value = DialogState.RommAdvancedMenu()
+            nav.dialogState.value = rommAdvancedPicker()
         }
         dev.cannoli.scorza.ui.components.RommSettingsRow.PLATFORMS -> {
             val hidden = settings.hiddenRommPlatforms
@@ -121,7 +225,7 @@ internal fun DialogInputHandler.onRommSettingsConfirm(ds: DialogState.RommSettin
                     visible = p.cannoliTag !in hidden,
                 )
             }
-            nav.dialogState.value = DialogState.RommPlatformToggle(items)
+            nav.dialogState.value = rommPlatformTogglePicker(items)
         }
         dev.cannoli.scorza.ui.components.RommSettingsRow.COLLECTIONS -> {
             val items = listOf(
@@ -129,7 +233,7 @@ internal fun DialogInputHandler.onRommSettingsConfirm(ds: DialogState.RommSettin
                 dev.cannoli.scorza.ui.screens.RommCollectionToggleItem(dev.cannoli.scorza.romm.RommCollectionGroup.VIRTUAL, context.getString(dev.cannoli.scorza.R.string.romm_collection_group_virtual), rommStore.showVirtualCollections),
                 dev.cannoli.scorza.ui.screens.RommCollectionToggleItem(dev.cannoli.scorza.romm.RommCollectionGroup.SMART, context.getString(dev.cannoli.scorza.R.string.romm_collection_group_smart), rommStore.showSmartCollections),
             )
-            nav.dialogState.value = DialogState.RommCollectionToggle(items)
+            nav.dialogState.value = rommCollectionTogglePicker(items)
         }
         else -> {}
     }
@@ -142,34 +246,74 @@ internal fun DialogInputHandler.onRommSettingsConfirm(ds: DialogState.RommSettin
 internal fun DialogInputHandler.buildSaveSyncMenu(
     pendingConflicts: Int,
     selectedRow: dev.cannoli.scorza.ui.components.RommSaveSyncRow? = null,
-): DialogState.RommSaveSyncMenu {
-    val menu = DialogState.RommSaveSyncMenu(
-        selectedIndex = 0,
-        supported = dev.cannoli.scorza.romm.RommCapabilities.isSupported(rommStore.serverVersion),
-        enabled = settings.rommSaveSyncEnabled,
-        backupCount = settings.rommSaveBackupCount,
-        pendingConflicts = pendingConflicts,
-        syncErrors = saveSyncStatusHolder.errors.value.size,
-        hasBackups = saveSyncService.hasBackups(),
-    )
-    val row = selectedRow ?: return menu
-    val index = dev.cannoli.scorza.ui.components.RommSaveSyncRow
-        .visibleRows(menu.supported, menu.enabled, menu.pendingConflicts, menu.syncErrors, menu.hasBackups)
-        .indexOf(row)
-        .coerceAtLeast(0)
-    return menu.copy(selectedIndex = index)
+): DialogState.Picker {
+    val supported = dev.cannoli.scorza.romm.RommCapabilities.isSupported(rommStore.serverVersion)
+    val enabled = settings.rommSaveSyncEnabled
+    val backupCount = settings.rommSaveBackupCount
+    val syncErrors = saveSyncStatusHolder.errors.value.size
+    val rows = RommSaveSyncRow.visibleRows(supported, enabled, pendingConflicts, syncErrors, saveSyncService.hasBackups())
+    val selected = selectedRow?.let { rows.indexOf(it).coerceAtLeast(0) } ?: 0
+    return DialogState.Picker(
+        title = context.getString(dev.cannoli.scorza.R.string.setting_romm_save_sync),
+        confirmLabel = context.getString(dev.cannoli.scorza.R.string.label_select),
+        selectedIndex = selected,
+        items = rows.map { row ->
+            when (row) {
+                RommSaveSyncRow.TOGGLE -> dev.cannoli.scorza.ui.screens.PickerItem(
+                    label = context.getString(dev.cannoli.scorza.R.string.setting_romm_save_sync),
+                    value = context.getString(
+                        if (!supported) dev.cannoli.scorza.R.string.romm_save_sync_needs_500
+                        else if (enabled) dev.cannoli.scorza.R.string.value_on
+                        else dev.cannoli.scorza.R.string.value_off
+                    ),
+                    cycles = true,
+                )
+                RommSaveSyncRow.BACKUPS -> dev.cannoli.scorza.ui.screens.PickerItem(
+                    label = context.getString(dev.cannoli.scorza.R.string.setting_romm_save_backups),
+                    value = if (backupCount <= 0) context.getString(dev.cannoli.scorza.R.string.value_off)
+                    else backupCount.toString(),
+                    cycles = true,
+                )
+                RommSaveSyncRow.HISTORY -> dev.cannoli.scorza.ui.screens.PickerItem(
+                    context.getString(dev.cannoli.scorza.R.string.sync_history_title)
+                )
+                RommSaveSyncRow.CONFLICTS -> dev.cannoli.scorza.ui.screens.PickerItem(
+                    context.resources.getQuantityString(dev.cannoli.ui.R.plurals.quick_menu_conflicts, pendingConflicts, pendingConflicts)
+                )
+                RommSaveSyncRow.ERRORS -> dev.cannoli.scorza.ui.screens.PickerItem(
+                    context.resources.getQuantityString(dev.cannoli.ui.R.plurals.quick_menu_sync_errors, syncErrors, syncErrors)
+                )
+                RommSaveSyncRow.RESTORE -> dev.cannoli.scorza.ui.screens.PickerItem(
+                    context.getString(dev.cannoli.ui.R.string.save_backup_restore)
+                )
+            }
+        },
+        onBack = { backToRommSettings(dev.cannoli.scorza.ui.components.RommSettingsRow.SAVE_SYNC) },
+        onCycle = { index, delta ->
+            when (rows.getOrNull(index)) {
+                RommSaveSyncRow.TOGGLE -> toggleSaveSync(pendingConflicts)
+                RommSaveSyncRow.BACKUPS -> {
+                    val options = intArrayOf(0, 3, 5, 10)
+                    val idx = options.indexOf(settings.rommSaveBackupCount).let { if (it < 0) 0 else it }
+                    settings.rommSaveBackupCount = options[(idx + delta).mod(options.size)]
+                    nav.dialogState.value = buildSaveSyncMenu(pendingConflicts, RommSaveSyncRow.BACKUPS)
+                }
+                else -> {}
+            }
+        },
+    ) { index -> onSaveSyncRowSelected(rows.getOrNull(index), pendingConflicts) }
 }
 
-private fun DialogInputHandler.toggleSaveSync(ds: DialogState.RommSaveSyncMenu) {
-    if (!ds.supported) return
+private fun DialogInputHandler.toggleSaveSync(pendingConflicts: Int) {
+    if (!dev.cannoli.scorza.romm.RommCapabilities.isSupported(rommStore.serverVersion)) return
     if (settings.rommSaveSyncEnabled) {
         settings.rommSaveSyncEnabled = false
         saveSyncStatusHolder.settle(enabled = false, online = true, pendingConflicts = 0, hadError = false)
-        nav.dialogState.value = ds.copy(enabled = false, selectedIndex = 0)
+        nav.dialogState.value = buildSaveSyncMenu(pendingConflicts, RommSaveSyncRow.TOGGLE)
     } else if (deviceRegistrar.isRegistered()) {
         settings.rommSaveSyncEnabled = true
         saveSyncStatusHolder.settle(enabled = true, online = true, pendingConflicts = 0, hadError = false)
-        nav.dialogState.value = ds.copy(enabled = true)
+        nav.dialogState.value = buildSaveSyncMenu(pendingConflicts, RommSaveSyncRow.TOGGLE)
     } else {
         val default = deviceRegistrar.defaultDeviceName()
         nav.dialogState.value = DialogState.RenameInput(
@@ -179,23 +323,12 @@ private fun DialogInputHandler.toggleSaveSync(ds: DialogState.RommSaveSyncMenu) 
     }
 }
 
-internal fun DialogInputHandler.cycleRommSaveSync(ds: DialogState.RommSaveSyncMenu, delta: Int) {
-    when (dev.cannoli.scorza.ui.components.RommSaveSyncRow.visibleRows(ds.supported, ds.enabled, ds.pendingConflicts, ds.syncErrors, ds.hasBackups).getOrNull(ds.selectedIndex)) {
-        dev.cannoli.scorza.ui.components.RommSaveSyncRow.TOGGLE -> toggleSaveSync(ds)
-        dev.cannoli.scorza.ui.components.RommSaveSyncRow.BACKUPS -> {
-            val options = intArrayOf(0, 3, 5, 10)
-            val idx = options.indexOf(settings.rommSaveBackupCount).let { if (it < 0) 0 else it }
-            val next = options[(idx + delta).mod(options.size)]
-            settings.rommSaveBackupCount = next
-            nav.dialogState.value = ds.copy(backupCount = next)
-        }
-        else -> {}
-    }
-}
-
-internal fun DialogInputHandler.onRommSaveSyncConfirm(ds: DialogState.RommSaveSyncMenu) {
-    when (dev.cannoli.scorza.ui.components.RommSaveSyncRow.visibleRows(ds.supported, ds.enabled, ds.pendingConflicts, ds.syncErrors, ds.hasBackups).getOrNull(ds.selectedIndex)) {
-        dev.cannoli.scorza.ui.components.RommSaveSyncRow.TOGGLE -> toggleSaveSync(ds)
+private fun DialogInputHandler.onSaveSyncRowSelected(
+    row: dev.cannoli.scorza.ui.components.RommSaveSyncRow?,
+    pendingConflicts: Int,
+) {
+    when (row) {
+        dev.cannoli.scorza.ui.components.RommSaveSyncRow.TOGGLE -> toggleSaveSync(pendingConflicts)
         dev.cannoli.scorza.ui.components.RommSaveSyncRow.HISTORY -> openSyncHistory(fromSaveSyncMenu = true)
         dev.cannoli.scorza.ui.components.RommSaveSyncRow.CONFLICTS -> openConflictsMenu(fromSaveSyncMenu = true)
         dev.cannoli.scorza.ui.components.RommSaveSyncRow.ERRORS -> openSyncErrors(fromSaveSyncMenu = true)
@@ -207,7 +340,17 @@ internal fun DialogInputHandler.onRommSaveSyncConfirm(ds: DialogState.RommSaveSy
 internal fun DialogInputHandler.openBackupGames() {
     ioScope.launch {
         val games = saveSyncService.listBackupGames()
-        withContext(Dispatchers.Main) { nav.dialogState.value = DialogState.SaveBackupGames(games) }
+        withContext(Dispatchers.Main) {
+            nav.dialogState.value = DialogState.Picker(
+                title = context.getString(dev.cannoli.ui.R.string.save_backup_games_title),
+                confirmLabel = context.getString(dev.cannoli.scorza.R.string.label_select),
+                emptyMessage = context.getString(dev.cannoli.ui.R.string.save_backup_none),
+                items = games.map {
+                    dev.cannoli.scorza.ui.screens.PickerItem(it.displayName, it.tag.uppercase())
+                },
+                onBack = { returnToSaveSyncMenu(dev.cannoli.scorza.ui.components.RommSaveSyncRow.RESTORE) },
+            ) { index -> games.getOrNull(index)?.let { openBackupList(it) } }
+        }
     }
 }
 
@@ -221,11 +364,44 @@ internal fun DialogInputHandler.returnToSaveSyncMenu(row: dev.cannoli.scorza.ui.
     }
 }
 
+/**
+ * One game's backups. Built in three places, so where back goes is stated once here rather than
+ * once per caller: the context menu route returns to that menu, everything else to the game list.
+ */
+internal fun DialogInputHandler.saveBackupListPicker(
+    tag: String,
+    base: String,
+    displayName: String,
+    backups: List<dev.cannoli.scorza.romm.sync.SaveBackup>,
+    fromContextMenu: Boolean,
+): DialogState.Picker = DialogState.Picker(
+    title = displayName,
+    confirmLabel = context.getString(dev.cannoli.scorza.R.string.label_select),
+    emptyMessage = context.getString(dev.cannoli.ui.R.string.save_backup_none),
+    items = backups.map {
+        dev.cannoli.scorza.ui.screens.PickerItem(
+            label = backupDateLabel(it.stamp),
+            value = dev.cannoli.scorza.ui.screens.RommGameDetailLayout.formatBytes(it.sizeBytes),
+        )
+    },
+    onBack = { if (fromContextMenu) openRommSavesMenu(MENU_RESTORE_BACKUP) else openBackupGames() },
+) { index ->
+    val backup = backups.getOrNull(index) ?: return@Picker
+    nav.dialogState.value = DialogState.SaveBackupRestoreConfirm(
+        tag = tag,
+        base = base,
+        displayName = displayName,
+        stamp = backup.stamp,
+        dateLabel = backupDateLabel(backup.stamp),
+        fromContextMenu = fromContextMenu,
+    )
+}
+
 internal fun DialogInputHandler.openBackupList(game: dev.cannoli.scorza.romm.sync.SaveBackupGame) {
     ioScope.launch {
         val backups = saveSyncService.listBackups(game.tag, game.base)
         withContext(Dispatchers.Main) {
-            nav.dialogState.value = DialogState.SaveBackupList(game.tag, game.base, game.displayName, backups)
+            nav.dialogState.value = saveBackupListPicker(game.tag, game.base, game.displayName, backups, fromContextMenu = false)
         }
     }
 }
@@ -235,21 +411,9 @@ private fun DialogInputHandler.openGameBackups(tag: String, base: String, displa
     ioScope.launch {
         val backups = saveSyncService.listBackups(tag, base)
         withContext(Dispatchers.Main) {
-            nav.dialogState.value = DialogState.SaveBackupList(tag, base, displayName, backups, fromContextMenu = true)
+            nav.dialogState.value = saveBackupListPicker(tag, base, displayName, backups, fromContextMenu = true)
         }
     }
-}
-
-internal fun DialogInputHandler.confirmRestore(ds: DialogState.SaveBackupList) {
-    val backup = ds.backups.getOrNull(ds.selectedIndex) ?: return
-    nav.dialogState.value = DialogState.SaveBackupRestoreConfirm(
-        tag = ds.tag,
-        base = ds.base,
-        displayName = ds.displayName,
-        stamp = backup.stamp,
-        dateLabel = backupDateLabel(backup.stamp),
-        fromContextMenu = ds.fromContextMenu,
-    )
 }
 
 internal fun DialogInputHandler.doRestore(ds: DialogState.SaveBackupRestoreConfirm) {
@@ -435,10 +599,30 @@ internal fun DialogInputHandler.onRommConfirm(ds: DialogState.RommConfirm) {
     }
 }
 
-internal fun DialogInputHandler.onRommVersionConfirm(ds: DialogState.RommVersionPicker) {
-    val entry = ds.members.getOrNull(ds.selectedIndex) ?: return
+/**
+ * The versions of one RomM game, and downloading the chosen one.
+ *
+ * Formatting lives here rather than in the picker: the glyph marking the primary variant and the
+ * size beside each row are this menu's business, and a row type that knew about either would have
+ * to learn every other menu's decoration too.
+ */
+internal fun DialogInputHandler.rommVersionPicker(
+    tag: String,
+    entries: List<dev.cannoli.scorza.ui.screens.RommVariantEntry>,
+): DialogState.Picker = DialogState.Picker(
+    title = context.getString(dev.cannoli.scorza.R.string.romm_version_picker_title),
+    confirmLabel = context.getString(dev.cannoli.scorza.R.string.label_download),
+    items = entries.map { entry ->
+        dev.cannoli.scorza.ui.screens.PickerItem(
+            label = if (entry.isPrimary) "${dev.cannoli.ui.theme.CannoliIcons.Primary.glyph} ${entry.label}" else entry.label,
+            value = dev.cannoli.scorza.ui.screens.RommGameDetailLayout.formatBytes(entry.game.sizeBytes),
+            dot = if (entry.present) true else null,
+        )
+    },
+) { index ->
+    val entry = entries.getOrNull(index) ?: return@Picker
     nav.dialogState.value = DialogState.None
-    rommDownloader.enqueue(listOf(dev.cannoli.scorza.romm.download.rommItem(entry.game, ds.tag, dev.cannoli.scorza.download.DownloadKind.ROM)))
+    rommDownloader.enqueue(listOf(dev.cannoli.scorza.romm.download.rommItem(entry.game, tag, dev.cannoli.scorza.download.DownloadKind.ROM)))
     dev.cannoli.scorza.download.DownloadManager.ensureStarted(context)
     osdController.show(context.getString(dev.cannoli.ui.R.string.romm_osd_download_queued))
 }
@@ -464,19 +648,23 @@ fun DialogInputHandler.openRommSavesMenu(selectRow: String? = null) {
     val options = rommSavesOptions(rom)
     if (options.isEmpty()) { nav.dialogState.value = DialogState.None; return }
     val idx = selectRow?.let { options.indexOf(it) }?.takeIf { it >= 0 } ?: 0
-    nav.dialogState.value = DialogState.RommSavesMenu(MENU_ROMM_SAVES, options, idx)
-}
-
-fun DialogInputHandler.onRommSavesConfirm(ds: DialogState.RommSavesMenu) {
-    val rom = (gameListViewModel.getSelectedItem() as? ListItem.RomItem)?.rom ?: return
-    when (ds.options.getOrNull(ds.selectedIndex)) {
-        MENU_SAVE_SLOTS -> openSaveSlotsForRom(rom)
-        MENU_RESTORE_BACKUP -> {
-            val base = java.text.Normalizer.normalize(rom.path.nameWithoutExtension, java.text.Normalizer.Form.NFC)
-            openGameBackups(rom.platformTag, base, rom.displayName)
+    nav.dialogState.value = DialogState.Picker(
+        title = MENU_ROMM_SAVES,
+        confirmLabel = context.getString(dev.cannoli.scorza.R.string.label_select),
+        items = options.map { dev.cannoli.scorza.ui.screens.PickerItem(it) },
+        selectedIndex = idx,
+        onBack = { restoreContextMenu() },
+    ) { index ->
+        when (options.getOrNull(index)) {
+            MENU_SAVE_SLOTS -> openSaveSlotsForRom(rom)
+            MENU_RESTORE_BACKUP -> {
+                val base = java.text.Normalizer.normalize(rom.path.nameWithoutExtension, java.text.Normalizer.Form.NFC)
+                openGameBackups(rom.platformTag, base, rom.displayName)
+            }
         }
     }
 }
+
 
 private fun DialogInputHandler.openSaveSlotsForRom(rom: dev.cannoli.scorza.model.Rom) {
     val gameKey = RomKeys.relativeKey(rom.path, romDir())

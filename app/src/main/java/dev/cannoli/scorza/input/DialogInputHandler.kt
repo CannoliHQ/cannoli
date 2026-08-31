@@ -107,7 +107,6 @@ class DialogInputHandler @Inject constructor(
             pendingConflicts = conflicts,
             syncErrors = errors,
             downloadCount = rommDownloader.state.value.size,
-            activeDownloads = rommDownloader.activeCount(),
             debugBuild = dev.cannoli.scorza.BuildConfig.DEBUG,
         )
         return DialogState.QuickMenu(
@@ -160,7 +159,7 @@ class DialogInputHandler @Inject constructor(
         if (ds != DialogState.None) return false
         if (isRommScreen()) {
             if (rommDownloader.state.value.isEmpty()) return true
-            nav.dialogState.value = DialogState.RommActionsMenu(hasDownloads = true)
+            nav.dialogState.value = rommActionsPicker(hasDownloads = true)
             return true
         }
         if (isQuickMenuBlockedScreen()) return false
@@ -221,29 +220,15 @@ class DialogInputHandler @Inject constructor(
 
     /** The one place that knows how many rows a [ListDialog] has; some counts are not its to own. */
     private fun listSize(ds: ListDialog): Int = when (ds) {
-        is DialogState.RommVersionPicker -> ds.members.size
-        is DialogState.RommPlatformToggle -> ds.items.size
-        is DialogState.RommCollectionToggle -> ds.items.size
+        is DialogState.Picker -> ds.items.size
         is DialogState.SyncHistory -> ds.entries.size
         is DialogState.SyncErrors -> ds.errors.size
-        is DialogState.RommSavesMenu -> ds.options.size
-        is DialogState.SaveBackupGames -> ds.games.size
-        is DialogState.SaveBackupList -> ds.backups.size
         is DialogState.ConflictsMenu -> ds.rows.size
-        is DialogState.RommAdvancedMenu -> dev.cannoli.scorza.ui.components.ROMM_ADVANCED_ROWS.size
         is DialogState.RommDownloads -> rommDownloader.state.value.size
         is DialogState.QuickMenu -> ds.rows.size
         is DialogState.QuickInfo -> ds.endpoints.size
         is DialogState.Kitchen -> ds.urls.size
         is DialogState.RommArtResults -> artResultRowCount(ds)
-        is DialogState.RommActionsMenu ->
-            dev.cannoli.scorza.ui.components.RommActionRow.visibleRows(ds.hasDownloads).size
-        is DialogState.RommSettingsMenu ->
-            dev.cannoli.scorza.ui.components.RommSettingsRow.entries.size
-        is DialogState.RommSaveSyncMenu ->
-            dev.cannoli.scorza.ui.components.RommSaveSyncRow.visibleRows(
-                ds.supported, ds.enabled, ds.pendingConflicts, ds.syncErrors, ds.hasBackups,
-            ).size
     }
 
     private fun moveSelection(ds: ListDialog, delta: Int) {
@@ -288,8 +273,7 @@ class DialogInputHandler @Inject constructor(
         val ds = nav.dialogState.value
         if (ds == DialogState.None) return false
         when (ds) {
-            is DialogState.RommSettingsMenu -> cycleRommSettings(ds, -1)
-            is DialogState.RommSaveSyncMenu -> cycleRommSaveSync(ds, -1)
+            is DialogState.Picker -> ds.onCycle?.invoke(ds.selectedIndex, -1)
             is DialogState.ConflictsMenu -> cycleConflictChoice(ds, -1)
             is DialogState.QuickInfo, is DialogState.Kitchen -> moveSelection(ds, -1)
             is KeyboardHost -> nav.dialogState.value = ds.withKeyboard(KeyboardController.moveSelection(ds.keyboard, Direction.LEFT))
@@ -313,8 +297,7 @@ class DialogInputHandler @Inject constructor(
         val ds = nav.dialogState.value
         if (ds == DialogState.None) return false
         when (ds) {
-            is DialogState.RommSettingsMenu -> cycleRommSettings(ds, 1)
-            is DialogState.RommSaveSyncMenu -> cycleRommSaveSync(ds, 1)
+            is DialogState.Picker -> ds.onCycle?.invoke(ds.selectedIndex, 1)
             is DialogState.ConflictsMenu -> cycleConflictChoice(ds, 1)
             is DialogState.QuickInfo, is DialogState.Kitchen -> moveSelection(ds, 1)
             is KeyboardHost -> nav.dialogState.value = ds.withKeyboard(KeyboardController.moveSelection(ds.keyboard, Direction.RIGHT))
@@ -361,10 +344,7 @@ class DialogInputHandler @Inject constructor(
         val ds = nav.dialogState.value
         if (ds == DialogState.None) {
             if (nav.currentScreen is LauncherScreen.RommPlatformList) {
-                nav.dialogState.value = DialogState.RommSettingsMenu(
-                    concurrent = settings.concurrentDownloads,
-                    artType = rommStore.artType,
-                )
+                nav.dialogState.value = rommSettingsPicker()
                 return true
             }
             return false

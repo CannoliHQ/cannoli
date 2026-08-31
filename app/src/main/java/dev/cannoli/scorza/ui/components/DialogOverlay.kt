@@ -21,10 +21,13 @@ import dev.cannoli.scorza.R
 import dev.cannoli.scorza.download.DownloadItem
 import dev.cannoli.scorza.ui.screens.DialogState
 import dev.cannoli.ui.ButtonStyle
+import dev.cannoli.ui.DPAD_HORIZONTAL
 import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.LocalCannoliFont
 import dev.cannoli.ui.components.BottomBar
 import dev.cannoli.ui.components.List
+import dev.cannoli.ui.components.PillRowKeyValue
+import dev.cannoli.ui.components.PillRowText
 import dev.cannoli.ui.components.ScreenBackground
 import dev.cannoli.ui.components.ScreenTitle
 import dev.cannoli.ui.components.footerReservation
@@ -97,6 +100,80 @@ fun DialogOverlay(
         buttonStyle = buttonStyle,
         itemHeight = itemHeight,
     )
+    if (dialogState is DialogState.Picker) {
+        PickerDialog(
+            dialogState = dialogState,
+            backgroundImagePath = backgroundImagePath,
+            backgroundTint = backgroundTint,
+            listFontSize = listFontSize,
+            listLineHeight = listLineHeight,
+            listVerticalPadding = listVerticalPadding,
+            buttonStyle = buttonStyle,
+            itemHeight = itemHeight,
+        )
+    }
+}
+
+/** Draws any [DialogState.Picker]. Sits outside the four families because it belongs to none. */
+@Composable
+private fun PickerDialog(
+    dialogState: DialogState.Picker,
+    backgroundImagePath: String?,
+    backgroundTint: Int,
+    listFontSize: TextUnit,
+    listLineHeight: TextUnit,
+    listVerticalPadding: Dp,
+    buttonStyle: ButtonStyle,
+    itemHeight: Dp,
+) {
+    // The legend follows the selected row, which is the rule four screens had each written out.
+    val cycles = dialogState.items.getOrNull(dialogState.selectedIndex)?.cycles == true
+    ListDialogScreen(
+        backgroundImagePath = backgroundImagePath,
+        backgroundTint = backgroundTint,
+        title = dialogState.title,
+        listFontSize = listFontSize,
+        listLineHeight = listLineHeight,
+        leftBottomItems = if (cycles) listOf(DPAD_HORIZONTAL to stringResource(R.string.label_change)) else emptyList(),
+        rightBottomItems = listOf(buttonStyle.confirm to dialogState.confirmLabel),
+        buttonStyle = buttonStyle,
+    ) {
+        val empty = dialogState.emptyMessage
+        if (dialogState.items.isEmpty() && empty != null) {
+            Text(
+                text = empty,
+                color = LocalCannoliColors.current.text.copy(alpha = 0.5f),
+                fontFamily = LocalCannoliFont.current,
+                fontSize = listFontSize,
+            )
+            return@ListDialogScreen
+        }
+        List(items = dialogState.items, selectedIndex = dialogState.selectedIndex, itemHeight = itemHeight) { _, item, isSelected ->
+            // A row with no value is a text row, not a key-value row with a blank value: the
+            // highlight hugs the label on one and runs full width on the other, so passing an
+            // empty string here would quietly restyle every picker that carries labels alone.
+            if (item.value == null && item.dot == null) {
+                PillRowText(
+                    label = item.label,
+                    isSelected = isSelected,
+                    checkState = item.checked,
+                    fontSize = listFontSize,
+                    lineHeight = listLineHeight,
+                    verticalPadding = listVerticalPadding,
+                )
+            } else {
+                PillRowKeyValue(
+                    label = item.label,
+                    value = item.value.orEmpty(),
+                    isSelected = isSelected,
+                    fontSize = listFontSize,
+                    lineHeight = listLineHeight,
+                    verticalPadding = listVerticalPadding,
+                    dotIndicator = item.dot,
+                )
+            }
+        }
+    }
 }
 
 @Composable

@@ -162,8 +162,7 @@ class InputRouter @Inject constructor(
                                 .then(compareBy(NaturalSort) { it.label })
                         )
                         withContext(Dispatchers.Main) {
-                            nav.dialogState.value = dev.cannoli.scorza.ui.screens.DialogState.RommVersionPicker(
-                                gameName = s.game.name, tag = s.tag, members = sorted)
+                            nav.dialogState.value = dialogHandler.rommVersionPicker(s.tag, sorted)
                         }
                     }
                     return

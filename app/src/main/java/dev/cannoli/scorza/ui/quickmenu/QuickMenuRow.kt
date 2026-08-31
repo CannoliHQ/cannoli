@@ -5,19 +5,19 @@ enum class QuickMenuRow {
 
     companion object {
         /**
-         * [activeDownloads] counts only what is still queued or transferring, while [downloadCount]
-         * includes rows that have finished. Work in flight goes to the top, because that is what the
-         * menu was opened to check on; once everything has landed the row stays put in its usual
-         * place, still reachable to clear the list.
+         * [downloadCount] includes rows that have finished, and the queue leads the menu for as long
+         * as it holds any of them. It used to lead only while something was still transferring and
+         * then drop to sit after ROMM, which moved a row under the thumb of anyone who opened the
+         * menu to check on a download that had just landed. It now stays put until the list is
+         * cleared, which is the one action that makes it go away.
          */
-        fun visibleRows(rommPaired: Boolean, kitchenRunning: Boolean, saveSyncEnabled: Boolean = false, pendingConflicts: Int = 0, syncErrors: Int = 0, downloadCount: Int = 0, activeDownloads: Int = 0, debugBuild: Boolean = false): List<QuickMenuRow> =
+        fun visibleRows(rommPaired: Boolean, kitchenRunning: Boolean, saveSyncEnabled: Boolean = false, pendingConflicts: Int = 0, syncErrors: Int = 0, downloadCount: Int = 0, debugBuild: Boolean = false): List<QuickMenuRow> =
             buildList {
-                if (activeDownloads > 0) add(DOWNLOADS)
+                if (downloadCount > 0) add(DOWNLOADS)
                 if (rommPaired && pendingConflicts > 0) add(CONFLICTS)
                 if (rommPaired && saveSyncEnabled && syncErrors > 0) add(ERRORS)
                 add(SETTINGS)
                 if (rommPaired) add(ROMM)
-                if (downloadCount > 0 && activeDownloads == 0) add(DOWNLOADS)
                 if (rommPaired && saveSyncEnabled) add(SYNC_HISTORY)
                 add(KITCHEN)
                 add(RESCAN)
