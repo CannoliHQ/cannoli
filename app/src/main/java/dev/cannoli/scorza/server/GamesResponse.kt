@@ -17,6 +17,40 @@ object GamesResponse {
     // One entry per art directory, replaced whenever that directory's timestamp moves.
     private val artIndexCache = java.util.concurrent.ConcurrentHashMap<String, Pair<String, Map<String, File>>>()
 
+    // The measured shape of a platform's art, cached against the same stamp as the index above.
+    private val artAspectCache = java.util.concurrent.ConcurrentHashMap<String, Pair<String, Float?>>()
+
+    /** How many covers are opened to decide a platform's shape. */
+    private const val ASPECT_SAMPLE = 25
+
+    /**
+     * Width over height of an image, without decoding the pixels.
+     *
+     * Injected so the games list can be tested without an Android runtime, the same way [listDir]
+     * lets it be tested without a filesystem.
+     */
+    private val decodeAspect: (File) -> Float? = { file ->
+        try {
+            val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            android.graphics.BitmapFactory.decodeFile(file.absolutePath, bounds)
+            if (bounds.outWidth > 0 && bounds.outHeight > 0) {
+                bounds.outWidth.toFloat() / bounds.outHeight.toFloat()
+            } else null
+        } catch (_: Throwable) { null }
+    }
+
+    /**
+     * The shape to draw a whole platform at, from a sample of its covers.
+     *
+     * The lower median rather than the mean, because one screenshot scraped in among the box art
+     * would drag an average off the shape every other cover shares, and the lower of two middles
+     * errs toward the taller shape, which crops nothing when it is wrong.
+     */
+    internal fun medianAspect(ratios: List<Float>): Float? {
+        if (ratios.isEmpty()) return null
+        return ratios.sorted()[(ratios.size - 1) / 2]
+    }
+
     @Serializable
     data class GameJson(
         val id: Long,
@@ -42,6 +76,8 @@ object GamesResponse {
         val displayName: String,
         val games: List<GameJson>,
         val folders: List<String>,
+        /** Width over height the platform's covers share, for the grid's uniform mode. */
+        val artAspect: Float? = null,
     )
 
     @Serializable
@@ -77,8 +113,9 @@ object GamesResponse {
         isArcade: Boolean = false,
         listDir: (File) -> Array<File>? = { it.listFiles() },
         isCancelled: () -> Boolean = { false },
+        measureArt: (File) -> Float? = decodeAspect,
     ): String {
-        val index = PlatformIndex(cannoliRoot, platformTag, listDir)
+        val index = PlatformIndex(cannoliRoot, platformTag, listDir, measureArt)
         val startedQuery = System.currentTimeMillis()
         val all = roms.allRomsForPlatform(platformTag)
         val startedBuild = System.currentTimeMillis()
@@ -92,7 +129,7 @@ object GamesResponse {
         val startedEncode = System.currentTimeMillis()
         val json = serverJson.encodeToString(
             GamesListResponse.serializer(),
-            GamesListResponse(platformTag, platformDisplayName, games, folders),
+            GamesListResponse(platformTag, platformDisplayName, games, folders, index.artAspect),
         )
         dev.cannoli.scorza.util.KitchenLog.log(
             "buildList $platformTag n=${all.size} query=${startedBuild - startedQuery}ms " +
@@ -209,6 +246,7 @@ object GamesResponse {
         cannoliRoot: File,
         platformTag: String,
         listDir: (File) -> Array<File>?,
+        private val measure: (File) -> Float? = decodeAspect,
     ) {
         private val artDir = File(cannoliRoot, "Art/$platformTag")
 
@@ -233,6 +271,27 @@ object GamesResponse {
             }
             artIndexCache[artDir.absolutePath] = stamp to built
             built
+        }
+
+        /**
+         * One shape for the platform, or null when nothing could be measured.
+         *
+         * Sampled rather than measured in full: a bounds decode is cheap but not free, and a
+         * platform's covers are the same shape as each other or they are not, which twenty-five
+         * of them answer as well as a thousand. Sorted before sampling so the answer does not
+         * depend on directory order, and cached against the art stamp so only the first request
+         * after an art change pays for it.
+         */
+        val artAspect: Float? by lazy {
+            val stamp = artVersion
+            artAspectCache[artDir.absolutePath]?.let { if (it.first == stamp) return@lazy it.second }
+            val measured = art.values
+                .sortedBy { it.name.lowercase() }
+                .take(ASPECT_SAMPLE)
+                .mapNotNull(measure)
+            val result = medianAspect(measured)
+            artAspectCache[artDir.absolutePath] = stamp to result
+            result
         }
 
         private val saves: Map<String, Int> by lazy {
