@@ -70,6 +70,17 @@ interface RaSettingsHost {
     fun appliedShaderPreset(): String? = null
 
     /**
+     * Switches the shader off and back on, the same call the shortcut makes.
+     *
+     * Same method as [RetroArchBridge.toggleShader]: the one class implements both interfaces, so
+     * the menu row and the shortcut cannot end up meaning different things.
+     */
+    fun toggleShader() {}
+
+    /** What [toggleShader] would turn on, or null when this game has no shader to turn on at all. */
+    fun shaderToRestore(): String? = null
+
+    /**
      * Hands over the chain the menu is building, so a save has something to write.
      *
      * Cannoli holds the chain while it is being edited rather than mutating RetroArch's own shader

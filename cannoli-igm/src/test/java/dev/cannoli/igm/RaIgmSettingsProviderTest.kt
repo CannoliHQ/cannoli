@@ -45,6 +45,19 @@ private class FakeRaHost : RaSettingsHost {
     val chainApplies = mutableListOf<String?>()
 
     override fun appliedShaderPreset(): String? = appliedPreset
+
+    /** What a shortcut turned off, mirroring the bridge: switching on restores exactly this. */
+    var shaderStashed: String? = null
+    override fun shaderToRestore(): String? = shaderStashed ?: appliedPreset
+    override fun toggleShader() {
+        val live = appliedPreset
+        if (live != null) {
+            shaderStashed = live
+            appliedPreset = null
+        } else {
+            appliedPreset = shaderStashed
+        }
+    }
     override fun shaderEntries(path: List<String>): List<dev.cannoli.core.shader.ShaderEntry> =
         listOf(dev.cannoli.core.shader.ShaderEntry("crt-geom", isFolder = false,
             path = "/Shaders/crt/crt-geom.slangp"))
@@ -676,6 +689,61 @@ class RaIgmSettingsProviderTest {
         val pickerRow = RaIgmSettingsProvider(host = h, curated = true)
             .screen(listOf(SHADERS, "crt")).items.first { it.key == "shader_preset:crt-geom" }
         assertTrue(pickerRow is GenericIgmSettingsItem.Choice)
+    }
+
+    // A shader turned off by the shortcut leaves an empty chain, and this screen used to offer
+    // nothing but Load Preset: the preset the user already had was unreachable from the menu.
+    @Test
+    fun `the shader can be switched back on from the menu after a shortcut turned it off`() {
+        val h = pipelineHost()
+        val p = pipelineProvider(h)
+        val was = h.appliedPreset
+        h.toggleShader()
+
+        p.screen(listOf(SHADERS))
+        val off = p.screen(listOf(SHADERS)).items.first { it.key == "enabled" }
+        assertEquals(RaOptionStrings().off, (off as GenericIgmSettingsItem.Choice).value)
+
+        p.cycle("enabled", 1)
+        assertEquals("the preset it turned off is the one it brings back", was, h.appliedPreset)
+        val on = p.screen(listOf(SHADERS)).items.first { it.key == "enabled" }
+        assertEquals(RaOptionStrings().on, (on as GenericIgmSettingsItem.Choice).value)
+    }
+
+    @Test
+    fun `turning the shader back on brings its passes back to the screen`() {
+        val h = pipelineHost()
+        val p = pipelineProvider(h)
+        h.toggleShader()
+        p.screen(listOf(SHADERS))
+        assertTrue(
+            "an off shader has no passes to show",
+            p.screen(listOf(SHADERS)).items.none { it.key.startsWith("pass_") },
+        )
+
+        p.cycle("enabled", 1)
+        assertTrue(
+            "the chain is reseeded from the restored preset",
+            p.screen(listOf(SHADERS)).items.any { it.key.startsWith("pass_") },
+        )
+    }
+
+    // Everything else on this screen edits the chain, and while the shader is off the game is not
+    // running that chain, so those rows would be changing nothing the user can see.
+    @Test
+    fun `switched off, the toggle is the only row on the screen`() {
+        val h = pipelineHost()
+        val p = pipelineProvider(h)
+        h.toggleShader()
+        assertEquals(listOf("enabled"), p.screen(listOf(SHADERS)).items.map { it.key })
+    }
+
+    // Otherwise the row is a switch that cannot be thrown.
+    @Test
+    fun `no toggle row is offered when there is no shader at all`() {
+        val h = host()
+        val p = pipelineProvider(h)
+        assertTrue(p.screen(listOf(SHADERS)).items.none { it.key == "enabled" })
     }
 
     // The picker has no compile-on-leave, so there it must still apply outright.

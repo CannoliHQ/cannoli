@@ -13,6 +13,7 @@ private const val INFO_ROW_PREFIX = "info_"
 // The pipeline tree's own path segments and row keys. Prefixed so nothing here can collide with a
 // RetroArch setting key, which shares the same namespace once a row reaches cycle().
 private const val SHADER_LOAD = "load"
+private const val SHADER_ENABLED = "enabled"
 private const val SHADER_SAVE = "save"
 private const val SHADER_APPEND = "append"
 private const val SHADER_PREPEND = "prepend"
@@ -306,8 +307,26 @@ class RaIgmSettingsProvider(
         parameterCache ?: ShaderPragma.parameters(chain().passes).also { parameterCache = it }
 
     private fun shaderPipelineRoot(): GenericIgmSettingsScreen {
+        val title = curatedTitle(CuratedCatalog.CATEGORY_SHADER)
         val chain = chain()
+        // Only once there is something to switch, which is also the case that needs it: a shader
+        // turned off by the shortcut leaves an empty chain, and without this row the screen offers
+        // nothing but Load Preset and no way back to what was already set up.
+        val applied = host.appliedShaderPreset() != null
+        val toggle = if (applied || host.shaderToRestore() != null) {
+            GenericIgmSettingsItem.Choice(
+                SHADER_ENABLED,
+                strings.shaderEnabled,
+                if (applied) strings.on else strings.off,
+            )
+        } else null
+
+        // Switched off, the switch is the whole screen. Everything below it describes a chain the
+        // game is not running, so loading into it or tuning its passes would edit nothing visible.
+        if (toggle != null && !applied) return GenericIgmSettingsScreen(title, listOf(toggle))
+
         val items = buildList {
+            toggle?.let { add(it) }
             add(GenericIgmSettingsItem.Category(SHADER_LOAD, strings.shaderLoad))
             // With no chain these are Load Preset by another name.
             if (chain.passes.isNotEmpty()) {
@@ -327,7 +346,7 @@ class RaIgmSettingsProvider(
                 add(GenericIgmSettingsItem.Category(SHADER_PARAMS, strings.shaderParameters))
             }
         }
-        return GenericIgmSettingsScreen(curatedTitle(CuratedCatalog.CATEGORY_SHADER), items)
+        return GenericIgmSettingsScreen(title, items)
     }
 
     private fun passName(pass: PresetPass): String =
@@ -395,6 +414,15 @@ class RaIgmSettingsProvider(
     /** True when [itemKey] is the chain's rather than a RetroArch setting's. */
     private fun cyclePipeline(itemKey: String, direction: Int): Boolean {
         when {
+            itemKey == SHADER_ENABLED -> {
+                host.toggleShader()
+                // The chain is seeded from whatever is applied, so it no longer describes what is
+                // running. Dropped rather than edited: turning the shader back on restores a whole
+                // preset, which is a chain this never built.
+                chain = null
+                parameterCache = null
+                chain()
+            }
             itemKey.startsWith(SHADER_PARAM_PREFIX) -> {
                 val id = itemKey.removePrefix(SHADER_PARAM_PREFIX)
                 val p = parameters().firstOrNull { it.id == id } ?: return true
