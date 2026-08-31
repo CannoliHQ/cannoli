@@ -452,7 +452,9 @@
     <string name="romm_download_notification_count">%1$d downloading</string>
     <string name="romm_art_notification_active">Downloading box art</string>
     <string name="label_retry">RETRY</string>
-    <string name="label_clear_finished">CLEAR FINISHED</string>
+    <!-- Download queue footer. Clears only the entries that have finished, never one still
+         transferring, which the label no longer says so keep it short in translation too. -->
+    <string name="label_clear_finished">CLEAR</string>
     <string name="label_cancel_all">CANCEL ALL</string>
 
     <string name="romm_settings_concurrent">Concurrent Downloads</string>
