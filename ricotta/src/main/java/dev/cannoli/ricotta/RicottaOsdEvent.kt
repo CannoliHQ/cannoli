@@ -15,4 +15,5 @@ object RicottaOsdEvent {
     const val LOAD_REFUSED = 10
     const val HARDCORE_PAUSED = 11
     const val CHEEVOS_LOGIN_FAILED = 12
+    const val FASTFORWARD = 13
 }

@@ -20,8 +20,43 @@ interface RetroArchBridge {
     fun undoSaveState()
     fun undoLoadState()
 
+    /** Flips RetroArch's on-screen frame counter. */
+    fun toggleShowFps() {}
+
+    /**
+     * Fast forward, as its two hotkeys mean it: [toggleFastForward] latches, [setFastForwardHeld]
+     * runs only while held.
+     *
+     * RetroArch has no command for either. They are hotkeys it polls per frame, so these reach it
+     * through a flag the poll reads rather than a queued command, which is what keeps its own
+     * rules about pausing, netplay and audio muting in force.
+     */
+    fun toggleFastForward() {}
+
+    fun setFastForwardHeld(held: Boolean) {}
+
+    /**
+     * Switches between the shader this platform is set to and none.
+     *
+     * Reads the stored tier rather than keeping its own idea of what is applied, so the shortcut
+     * and the settings tree cannot disagree about what the platform's shader is.
+     */
+    fun toggleShader() {}
+
+    /** What [toggleShader] would turn on, or null when this game has no shader configured. */
+    fun shaderToRestore(): String? = null
+
     /** RetroArch writes the auto slot itself while shutting down when this is on. */
     val savesOnQuit: Boolean
+
+    /**
+     * Makes RetroArch write the auto slot on the way out even when the user's setting says not to.
+     *
+     * Used by Save and Quit, which promises a save in its name. Done by turning RetroArch's own
+     * shutdown save on rather than queueing a write: a queued save races the quit that follows it,
+     * while the shutdown path is the one that already waits for the state and its thumbnail.
+     */
+    fun forceSaveOnQuit() {}
 
     /**
      * False when this session launched into hardcore, where RetroArch refuses to load a state.

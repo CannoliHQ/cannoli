@@ -50,6 +50,7 @@ class LaunchManager(
     private val portRouter: dev.cannoli.scorza.input.runtime.PortRouter,
     private val installedCoreService: InstalledCoreService? = null,
     private val gameOverrides: dev.cannoli.scorza.db.GameOverrideStore? = null,
+    private val globalOverrides: dev.cannoli.scorza.settings.GlobalOverridesManager? = null,
 ) {
     // Per-game overrides are keyed by rom_id, which the scanner keeps stable across renames,
     // moves and auto-organize, so an override follows its game instead of being orphaned.
@@ -747,6 +748,9 @@ class LaunchManager(
         }
         return RicottaIgm(
             builtinPorts = builtinPorts(),
+            // Dropped here rather than in the emulator process: an action bound to nothing is one
+            // the matcher can never match, and carrying it only widens the key set native watches.
+            shortcuts = globalOverrides?.readShortcuts()?.filterValues { it.isNotEmpty() }.orEmpty(),
             gameTitle = rom.displayName,
             stateBasePath = stateBase.absolutePath,
             cannoliRoot = paths.root.absolutePath,

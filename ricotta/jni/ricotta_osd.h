@@ -25,10 +25,12 @@ enum ricotta_osd_type
    RICOTTA_OSD_CONTROLLER_PORT       = 9,
    RICOTTA_OSD_LOAD_REFUSED          = 10,
    RICOTTA_OSD_HARDCORE_PAUSED       = 11,
-   RICOTTA_OSD_CHEEVOS_LOGIN_FAILED  = 12
+   RICOTTA_OSD_CHEEVOS_LOGIN_FAILED  = 12,
+   RICOTTA_OSD_FASTFORWARD           = 13
 };
 
 /* slot carries RetroArch's state_slot for the state events (< 0 is the auto slot),
+ * 1 or 0 for RICOTTA_OSD_FASTFORWARD, meaning on or off,
  * the disk index for RICOTTA_OSD_DISK_CHANGED, the port for
  * RICOTTA_OSD_CONTROLLER_PORT, and 1 when the stored login must be re-entered
  * (0 otherwise) on RICOTTA_OSD_CHEEVOS_LOGIN_FAILED. It is unused elsewhere. */
@@ -57,6 +59,22 @@ int  ricotta_port_is_builtin(int port);
  * patch itself would be a third hunk to rebase, anchored on whatever happened to sit above it. */
 int  ricotta_bridge_intercept_key(int keycode, int action);
 void ricotta_bridge_poll_commands(void);
+
+/* Keycodes a chord has claimed after they were already recorded, for the key handler to clear out
+ * of its own state. The first key of a chord cannot be withheld, since nothing yet says a chord is
+ * coming, so it is taken back instead: the core reads that state once a frame, and a key retracted
+ * before the next read was never pressed as far as the game is concerned. */
+#define RICOTTA_MAX_RETRACT 32
+int  ricotta_bridge_take_retract(int *out, int max);
+
+/* Cannoli's fast forward shortcuts, read by the runloop's own hotkey check so RetroArch's rules
+ * about pausing, netplay and audio still decide what happens.
+ *
+ * take_toggle is consumed by the read: RetroArch toggles on the edge from unpressed to pressed, so
+ * the request has to look like a press that ends, not one that is held. held is a level, matching
+ * the hold hotkey it stands in for. */
+int  ricotta_ff_take_toggle(void);
+int  ricotta_ff_held(void);
 
 #ifdef __cplusplus
 }

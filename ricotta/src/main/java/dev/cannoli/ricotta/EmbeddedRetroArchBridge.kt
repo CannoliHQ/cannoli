@@ -89,6 +89,22 @@ class EmbeddedRetroArchBridge(
         }
     }
 
+    /**
+     * A chord was recognised, by ordinal of the action it was bound to.
+     *
+     * The decision is native and already made by the time this arrives: matching has to happen in
+     * the key event that completes the chord, so the keys can be taken back before the core's next
+     * poll. This only carries the result out to whatever performs the action.
+     */
+    var onShortcutAction: ((action: Int, released: Boolean) -> Unit)? = null
+
+    @Suppress("unused")
+    fun onShortcutAction(action: Int, released: Boolean) {
+        mainHandler.post {
+            onShortcutAction?.invoke(action, released)
+        }
+    }
+
     // Structured OSD event from a RetroArch source site Cannoli owns.
     // type: 0 save, 1 load, 4 undo-save. slot: RetroArch state_slot (< 0 = auto).
     var onOsdEvent: ((Int, Int) -> Unit)? = null
@@ -111,8 +127,8 @@ class EmbeddedRetroArchBridge(
 
     fun setIgmTriggerKeycodes(keycodes: IntArray) = nativeSetIgmTriggerKeycodes(keycodes)
 
-    /** The union of every key any chord uses. Nothing else is forwarded from the input path. */
-    fun setShortcutKeycodes(keycodes: IntArray) = nativeSetShortcutKeycodes(keycodes)
+    /** Flat [action ordinal, key count, keys...] triples, one array so the table is never half set. */
+    fun setShortcutChords(table: IntArray) = nativeSetShortcutChords(table)
 
     fun setBuiltinPorts(ports: IntArray) = nativeSetBuiltinPorts(ports)
 
@@ -147,6 +163,72 @@ class EmbeddedRetroArchBridge(
 
     override fun undoSaveState() = nativeUndoSaveState()
     override fun undoLoadState() = nativeUndoLoadState()
+
+    override fun forceSaveOnQuit() {
+        raSetSetting("savestate_auto_save", MachineValue("true"))
+    }
+
+    /**
+     * Cannoli's own counter, not RetroArch's.
+     *
+     * RetroArch's would draw a second figure in its own styling, so its command is never sent and
+     * this is only a flag the OSD reads. The rate itself is measured natively, per frame.
+     */
+    var showFps: Boolean = false
+        private set
+
+    override fun toggleShowFps() {
+        showFps = !showFps
+        onShowFpsChanged?.invoke(showFps)
+    }
+
+    var onShowFpsChanged: ((Boolean) -> Unit)? = null
+
+    /** Frames per second over the last half second, or 0 before the first window closes. */
+    fun fps(): Float = nativeGetFps()
+
+    override fun toggleFastForward() = nativeToggleFastForward()
+
+    override fun setFastForwardHeld(held: Boolean) = nativeSetFastForwardHeld(held)
+
+    /** What the last press turned off, so the next one has something to turn back on. */
+    private var shaderBeforeToggle: String? = null
+
+    /**
+     * Switches the shader off and back on again.
+     *
+     * What comes back is what this turned off, remembered here rather than read back from the
+     * tiers. Asking storage was the bug: turning the shader off leaves [appliedShader] null, so any
+     * later save writes the shader key as an explicit off, and from then on the tier answers
+     * nothing and the shortcut could only ever turn the shader off. A shader picked in the menu but
+     * never saved to a tier is unrestorable for the same reason.
+     *
+     * The tier is still the fallback, for the first press of a session that launched with a shader
+     * this has not yet touched.
+     */
+    override fun toggleShader() {
+        val live = appliedShader
+        if (live != null) {
+            shaderBeforeToggle = live
+            nativeSetShaderPreset("")
+            appliedShader = null
+            return
+        }
+        val restore = shaderToRestore() ?: return
+        nativeSetShaderPreset(restore)
+        appliedShader = restore
+    }
+
+    /**
+     * What [toggleShader] would turn on, or null when this game has no shader to turn on at all.
+     *
+     * Asked by the OSD as well as by the toggle, so a press with nothing configured says so rather
+     * than reporting the shader off, which is what it looked like when the toggle simply did
+     * nothing. A preset deleted since, or a card that moved, counts as nothing: applying it would
+     * clear the chain, which reads as the shader having been forgotten rather than missing.
+     */
+    override fun shaderToRestore(): String? =
+        (shaderBeforeToggle ?: storedTierValue(KEY_SHADER).chosen)?.takeIf { File(it).isFile }
 
     override fun getAchievements(): List<AchievementInfo> =
         decodeAchievements(nativeGetAchievementData())
@@ -703,7 +785,10 @@ class EmbeddedRetroArchBridge(
     private external fun nativeSetDiskIndex(index: Int)
     private external fun nativeSetIGMVisible(visible: Boolean)
     private external fun nativeSetIgmTriggerKeycodes(keycodes: IntArray)
-    private external fun nativeSetShortcutKeycodes(keycodes: IntArray)
+    private external fun nativeSetShortcutChords(table: IntArray)
+    private external fun nativeGetFps(): Float
+    private external fun nativeToggleFastForward()
+    private external fun nativeSetFastForwardHeld(held: Boolean)
 
     private external fun nativeSetBuiltinPorts(ports: IntArray)
     private external fun nativeGetAchievementData(): String

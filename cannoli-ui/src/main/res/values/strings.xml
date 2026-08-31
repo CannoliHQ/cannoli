@@ -95,10 +95,8 @@
     <string name="shortcut_action_save_and_quit">Save and Quit</string>
     <!-- In-game shortcut action. "(Hold)" means it triggers on a long-press of the shortcut. -->
     <string name="shortcut_action_save_and_quit_hold">Save and Quit (Hold)</string>
-    <!-- In-game shortcut action: cycle through the video scaling modes. -->
-    <string name="shortcut_action_cycle_scaling">Cycle Scaling</string>
-    <!-- In-game shortcut action: cycle through the shader presets. -->
-    <string name="shortcut_action_cycle_shader">Cycle Shader</string>
+    <!-- In-game shortcut action: switch between this platform's shader and no shader. -->
+    <string name="shortcut_action_cycle_shader">Toggle Shader</string>
     <string name="shortcut_action_toggle_ff">Toggle Fast Forward</string>
     <string name="shortcut_action_hold_ff">Hold Fast Forward</string>
     <string name="shortcut_action_open_guide">Open Guide</string>
@@ -782,7 +780,7 @@
     <string name="achievos_token_invalid">Session expired, log in again</string>
     <string name="achievos_token_offline">Offline, not verified</string>
     <!-- RA = RetroAchievements. -->
-    <string name="achievos_login_failed">RA: Login failed</string>
+    <string name="achievos_login_failed">RA: Login Failed</string>
     <string name="achievos_login_invalid">Invalid username or password</string>
     <string name="achievos_login_progress">Logging in...</string>
     <string name="achievos_login_network">Could not reach RetroAchievements. Check your connection.</string>
@@ -793,15 +791,21 @@
     <!-- OSD pill shown when RetroArch itself loads a save state. %1$s = save slot name ("Auto" or "Slot 3"). -->
     <string name="osd_event_loaded">Loaded · %1$s</string>
     <!-- OSD pill: the last save state write was rolled back. -->
-    <string name="osd_event_save_undone">Save undone</string>
+    <string name="osd_event_save_undone">Save Undone</string>
     <!-- OSD pill confirming a screenshot was written to disk. -->
-    <string name="osd_event_screenshot">Screenshot saved</string>
+    <string name="osd_event_screenshot">Screenshot Saved</string>
     <!-- OSD pill naming which player port a controller took. %1$d = player number, counting from 1. -->
     <string name="osd_event_controller_port">Controller P%1$d</string>
     <!-- OSD pill: hardcore achievements refused a save state load. Hardcore is the RetroAchievements mode that bans save states. -->
-    <string name="osd_event_hardcore_load_blocked">Hardcore: load blocked</string>
+    <string name="osd_event_hardcore_load_blocked">Hardcore: Load Blocked</string>
     <!-- OSD pill: hardcore achievements switched off for the rest of this session. -->
-    <string name="osd_event_hardcore_paused">Hardcore paused</string>
+    <string name="osd_event_hardcore_paused">Hardcore Paused</string>
+    <!-- OSD pill: a shortcut turned this platform's shader on. -->
+    <string name="osd_event_shader_on">Shader On</string>
+    <!-- OSD pill: a shortcut turned the shader off. -->
+    <string name="osd_event_shader_off">Shader Off</string>
+    <!-- OSD pill: the shader shortcut was pressed but this game has no shader set to turn on. -->
+    <string name="osd_event_shader_none">No Shader Set</string>
     <string name="igm_quit">Quit</string>
     <string name="igm_cheats">Cheats</string>
     <string name="title_cheats">Cheats</string>
@@ -820,7 +824,7 @@
     <!-- OSD toast. %1$s = controller name. -->
     <string name="osd_controller_disconnected">%1$s disconnected</string>
     <!-- RA = RetroAchievements. The stored login is no longer good; the player must sign in again. -->
-    <string name="achievos_session_expired">RA: Session expired</string>
+    <string name="achievos_session_expired">RA: Session Expired</string>
 
     <!-- Credits -->
     <string name="credits_title">Credits and Licenses</string>
@@ -904,6 +908,8 @@
     <string name="igm_shader_none">None</string>
     <!-- Value on the preset row that is currently loaded, in the curated picker. -->
     <string name="igm_shader_applied">Applied</string>
+    <!-- Label of the row that switches the loaded shader off and back on. Its value is On or Off. -->
+    <string name="igm_shader_enabled">Shader</string>
     <!-- Title over the keyboard when naming a preset. -->
     <string name="igm_shader_save_title">Save Preset As</string>
     <!-- Info row label. The value is the emulator core's name, for example "Nestopia". -->
@@ -1035,8 +1041,8 @@
     </plurals>
     <!-- OSD toast. %d = number of cheats restored. -->
     <plurals name="osd_cheats_restored">
-        <item quantity="one">%d cheat restored</item>
-        <item quantity="other">%d cheats restored</item>
+        <item quantity="one">%d Cheat Restored</item>
+        <item quantity="other">%d Cheats Restored</item>
     </plurals>
     <string name="regenerate_system_folders_none">All system folders already present</string>
     <!-- %d = number of system folders created. -->

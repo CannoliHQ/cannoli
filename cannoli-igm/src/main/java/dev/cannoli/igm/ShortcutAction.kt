@@ -3,13 +3,20 @@ package dev.cannoli.igm
 import androidx.annotation.StringRes
 import dev.cannoli.ui.R
 
+/**
+ * The in-game actions a chord can be bound to.
+ *
+ * CYCLE_SCALING was retired on 2026-08-31: v2 answers it better through Screen Geometry and the
+ * aspect rows in All Settings, where the value is visible while it changes, and a blind cycle
+ * through RetroArch's aspect table mostly lands somewhere nobody wants. A stale entry in
+ * shortcuts.ini for it is skipped rather than failing the file.
+ */
 enum class ShortcutAction(@StringRes val labelRes: Int) {
     SAVE_STATE(R.string.shortcut_action_save_state),
     LOAD_STATE(R.string.shortcut_action_load_state),
     RESET_GAME(R.string.shortcut_action_reset_game),
     SAVE_AND_QUIT(R.string.shortcut_action_save_and_quit),
     SAVE_AND_QUIT_HOLD(R.string.shortcut_action_save_and_quit_hold),
-    CYCLE_SCALING(R.string.shortcut_action_cycle_scaling),
     CYCLE_EFFECT(R.string.shortcut_action_cycle_shader),
     TOGGLE_SHOW_FPS(R.string.shortcut_action_toggle_show_fps),
     TOGGLE_FF(R.string.shortcut_action_toggle_ff),

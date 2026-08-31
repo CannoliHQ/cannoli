@@ -6,12 +6,16 @@ import android.graphics.PixelFormat
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import kotlinx.coroutines.delay
+import java.util.Locale
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.ComposeView
@@ -24,6 +28,7 @@ import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import dev.cannoli.ui.computeScreenGeometryPadding
 import dev.cannoli.ui.components.OsdController
 import dev.cannoli.ui.components.OsdHost
+import dev.cannoli.ui.components.OsdPill
 import dev.cannoli.ui.components.OsdPosition
 import dev.cannoli.ui.theme.CannoliTheme
 import dev.cannoli.ui.theme.LocalCannoliColors
@@ -53,6 +58,9 @@ class OsdOverlay(
     private val lifecycleOwner = IGMLifecycleOwner()
     private var view: ComposeView? = null
     private var added = false
+    private val fastForward = mutableStateOf(false)
+    private val showFps = mutableStateOf(false)
+    private val igmOpen = mutableStateOf(false)
 
     fun attach(savedInstanceState: Bundle?) {
         lifecycleOwner.performCreate(savedInstanceState)
@@ -118,8 +126,64 @@ class OsdOverlay(
         controller.show(message, position)
     }
 
+    /**
+     * The two indicators that stay up rather than passing, sharing one pill as v1 drew them.
+     *
+     * A toast would announce that something changed and then leave nothing on screen to say it is
+     * still changed, which for a mode you can sit in for minutes is the part that matters.
+     */
+    fun setFastForward(on: Boolean) {
+        fastForward.value = on
+    }
+
+    fun setShowFps(on: Boolean) {
+        showFps.value = on
+    }
+
+    /**
+     * Hides the standing pill while the menu, or a guide, is up.
+     *
+     * This window is deliberately raised above the menu so toasts still land on top of it, which
+     * would otherwise leave the pill sitting over a screen that is not the game it describes.
+     * Transient messages are unaffected: those the menu raises itself.
+     */
+    fun setIgmOpen(open: Boolean) {
+        igmOpen.value = open
+    }
+
+    /** Polled while the counter is up, since nothing pushes a frame rate. */
+    var fpsProvider: (() -> Float)? = null
+
     fun showAchievement(title: String) {
         controller.show("󰔸 $title", OsdPosition.BottomCenterLow)
+    }
+
+    /**
+     * Fast forward and the frame rate, in one pill at the top right, as v1 drew them.
+     *
+     * U+25B6 twice for fast forward: wide content is what makes Radius.Pill read as a pill, where
+     * one square icon glyph turns the same 50% radius into a circle. The bundled font covers that
+     * codepoint, so no system or emoji font is consulted.
+     */
+    @Composable
+    private fun BoxScope.StatusPill() {
+        val ff = fastForward.value
+        val fps = showFps.value
+        // Both describe the game, so neither belongs over the menu or a guide.
+        if (igmOpen.value || (!ff && !fps)) return
+        val rate = remember { mutableStateOf(0f) }
+        LaunchedEffect(fps) {
+            while (fps) {
+                rate.value = fpsProvider?.invoke() ?: 0f
+                delay(FPS_SAMPLE_MS)
+            }
+        }
+        val text = buildString {
+            if (ff) append("▶▶")
+            if (ff && fps) append("  ")
+            if (fps) append(String.format(Locale.US, "%.2f", rate.value))
+        }
+        OsdPill(text, OsdPosition.TopEnd)
     }
 
     @Composable
@@ -154,8 +218,17 @@ class OsdOverlay(
                         .fillMaxSize()
                         .onSizeChanged { surfaceSize.value = it }
                         .padding(regionPadding)
-                ) { OsdHost(controller) }
+                ) {
+                    OsdHost(controller)
+                    StatusPill()
+                }
             }
         }
+    }
+
+    private companion object {
+        // As v1 sampled it. The native side already averages over the same window, so reading more
+        // often would redraw the same figure.
+        const val FPS_SAMPLE_MS = 500L
     }
 }

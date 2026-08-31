@@ -1,8 +1,39 @@
 diff --git a/runloop.c b/runloop.c
-index a94e72a199..126c06a451 100644
+index a94e72a199..0954ec8317 100644
 --- a/runloop.c
 +++ b/runloop.c
-@@ -7946,6 +7946,12 @@ int runloop_iterate(void)
+@@ -7430,6 +7430,16 @@ static enum runloop_state_enum runloop_check_state(
+             current_bits, RARCH_FAST_FORWARD_KEY);
+       bool new_hold_button_state              = BIT256_GET(
+             current_bits, RARCH_FAST_FORWARD_HOLD_KEY);
++#ifdef HAVE_RICOTTA_IGM
++      /* Cannoli's fast forward shortcuts. Fed in as the hotkeys rather than acted on directly so
++       * everything below still applies to them: the refusal to fast forward while paused, the
++       * netplay timeskip guard, audio muting and the frame limit. Read second, so a real hotkey
++       * press wins and the pending request is not consumed by it. */
++      if (!new_button_state)
++         new_button_state = ricotta_ff_take_toggle() ? true : false;
++      if (!new_hold_button_state)
++         new_hold_button_state = ricotta_ff_held() ? true : false;
++#endif
+       bool check2                             = new_button_state && !old_button_state;
+ 
+       if (!check2)
+@@ -7465,6 +7475,13 @@ static enum runloop_state_enum runloop_check_state(
+             command_event(CMD_EVENT_SET_FRAME_LIMIT, NULL);
+          }
+ 
++#ifdef HAVE_RICOTTA_OSD
++         /* Cannoli draws this rather than RetroArch, and it reports from here because this is the
++          * only place that knows the answer: a request can be refused by the guards above, so a
++          * pill raised where the shortcut fired would sometimes be a lie. */
++         ricotta_osd_event(RICOTTA_OSD_FASTFORWARD,
++               (runloop_st->flags & RUNLOOP_FLAG_FASTMOTION) ? 1 : 0);
++#endif
+          if (audio_fastforward_mute && (runloop_st->flags & RUNLOOP_FLAG_FASTMOTION))
+             audio_st->flags |=  AUDIO_FLAG_MUTED;
+          else
+@@ -7946,6 +7963,12 @@ int runloop_iterate(void)
      * which a core enters from within retro_run(), so the save it asks for
      * is performed here instead of where the command arrives. */
     android_input_flush_pending_state();

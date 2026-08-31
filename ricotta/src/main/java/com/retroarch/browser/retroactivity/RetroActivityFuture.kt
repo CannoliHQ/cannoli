@@ -153,6 +153,7 @@ class RetroActivityFuture : RetroActivityCamera() {
             }
             params?.let { bridge.setIgmTriggerKeycodes(it.igmTriggerKeycodes.toIntArray()) }
             params?.let { bridge.setBuiltinPorts(it.builtinPorts.toIntArray()) }
+            params?.let { wireShortcuts(bridge, it.shortcuts, it.igmTriggerKeycodes.toSet()) }
             bridge.curatedSettings = params?.curatedSettings ?: true
             igmOverlay?.controller?.setInputMapping(params?.inputMapping)
 
@@ -174,8 +175,13 @@ class RetroActivityFuture : RetroActivityCamera() {
             osdOverlay = osd
             igmOverlay?.onOsdMessage = { message -> osd.showMessage(message) }
             igmOverlay?.onWindowAttached = { osd.raise() }
+            igmOverlay?.onVisibilityChanged = { open -> osd.setIgmOpen(open) }
             bridge.onOsdEvent = { type, slot ->
-                osd.showMessage(osdEventText(type, slot))
+                // Fast forward is the one event that reports a state rather than something that
+                // happened, so it holds a pill for as long as it lasts instead of flashing a toast
+                // the game then outlives.
+                if (type == RicottaOsdEvent.FASTFORWARD) osd.setFastForward(slot != 0)
+                else osd.showMessage(osdEventText(type, slot))
                 refreshViewport()
                 // A save is queued, not written, when the IGM asks for it. The slot on disk only
                 // changes once RetroArch reports back, so the polaroid is stale until then.
@@ -186,8 +192,62 @@ class RetroActivityFuture : RetroActivityCamera() {
                 }
             }
             bridge.onOsdAchievement = { title -> osd.showAchievement(title) }
+            osd.fpsProvider = { bridge.fps() }
+            bridge.onShowFpsChanged = { on -> osd.setShowFps(on) }
         } catch (e: Exception) {
             Log.e("RicottaArch", "Failed to initialize IGM overlay", e)
+        }
+    }
+
+    private var shortcuts: dev.cannoli.igm.ShortcutController? = null
+    /**
+     * Chords bound in the launcher, pushed to native because that is where they are matched.
+     *
+     * Matching cannot happen up here. A chord is only known to be one when its last key lands, and
+     * the keys it claims have to come back out of the input state before the core's next poll;
+     * anything reaching this process is already frames late, by which time the game has acted on
+     * the press. This wires up what happens once native has decided.
+     */
+    private fun wireShortcuts(
+        bridge: EmbeddedRetroArchBridge,
+        table: Map<dev.cannoli.igm.ShortcutAction, Set<Int>>,
+        triggerKeycodes: Set<Int>,
+    ) {
+        val overlay = igmOverlay ?: return
+        if (table.isEmpty()) {
+            bridge.setShortcutChords(IntArray(0))
+            return
+        }
+        val union = table.values.flatten().toSet()
+        val controller = dev.cannoli.igm.ShortcutController(
+            controller = overlay.controller,
+            showMenu = { overlay.show() },
+            // Only the trigger keys a chord actually uses. Native keeps opening the menu itself for
+            // the rest, so claiming them here would leave a press with nothing left to open it.
+            menuKeys = triggerKeycodes.intersect(union),
+        )
+        shortcuts = controller
+        bridge.setShortcutChords(dev.cannoli.igm.ShortcutTable.encode(table))
+        controller.onToast = { action ->
+            val text = when (action) {
+                dev.cannoli.igm.ShortcutAction.CYCLE_EFFECT -> getString(
+                    when {
+                        bridge.appliedShaderPreset() != null -> R.string.osd_event_shader_on
+                        // Nothing to turn on is not the same as having turned it off, and saying
+                        // off would describe a state the game was already in.
+                        bridge.shaderToRestore() == null -> R.string.osd_event_shader_none
+                        else -> R.string.osd_event_shader_off
+                    }
+                )
+                // Fast forward and the frame counter hold a pill of their own for as long as they
+                // are on, and everything else is either visible on its own or leaves the game.
+                else -> null
+            }
+            text?.let { osdOverlay?.showMessage(it) }
+        }
+        bridge.onShortcutKey = { keycode: Int, down: Boolean -> controller.onKey(keycode, down) }
+        bridge.onShortcutAction = { action: Int, released: Boolean ->
+            controller.onAction(action, released)
         }
     }
 

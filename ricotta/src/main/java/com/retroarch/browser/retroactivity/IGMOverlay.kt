@@ -187,6 +187,7 @@ class IGMOverlay(
             dontSave = uiContext.getString(R.string.igm_dont_save),
             emulator = uiContext.getString(R.string.igm_emulator),
             shaderApplied = uiContext.getString(R.string.igm_shader_applied),
+            shaderEnabled = uiContext.getString(R.string.igm_shader_enabled),
             shaderLoad = uiContext.getString(R.string.igm_shader_load),
             shaderAddStart = uiContext.getString(R.string.igm_shader_add_start),
             shaderAddEnd = uiContext.getString(R.string.igm_shader_add_end),
@@ -369,11 +370,15 @@ class IGMOverlay(
         showWindow()
     }
 
+    /** Raised whenever the menu comes up or goes away, so what sits over the game can step aside. */
+    var onVisibilityChanged: ((Boolean) -> Unit)? = null
+
     private fun showWindow() {
         showing = true
         showTimeMs = System.currentTimeMillis()
         bridge.pause()
         bridge.setIGMVisible(true)
+        onVisibilityChanged?.invoke(true)
         composeView?.let { v ->
             // A bezel keeps this window up and correct between menus, so there is no stale frame to
             // hide and the reveal below would only flash it away and back.
@@ -432,6 +437,7 @@ class IGMOverlay(
     private fun hideWindow() {
         showing = false
         bridge.setIGMVisible(false)
+        onVisibilityChanged?.invoke(false)
         composeView?.let { v ->
             if (!attached) return@let
             runCatching { activity.windowManager.updateViewLayout(v, panelParams(focusable = false)) }

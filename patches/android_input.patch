@@ -1,16 +1,31 @@
 diff --git a/input/drivers/android_input.c b/input/drivers/android_input.c
-index e555e11b8e..8e9a442566 100644
+index e555e11b8e..de297670c0 100644
 --- a/input/drivers/android_input.c
 +++ b/input/drivers/android_input.c
-@@ -1588,6 +1588,13 @@ static INLINE void android_input_poll_event_type_key(
+@@ -1588,6 +1588,28 @@ static INLINE void android_input_poll_event_type_key(
        AInputEvent *event, int port, int keycode, int source,
        int type_event, int *handled)
  {
 +#ifdef HAVE_RICOTTA_IGM
-+   if (ricotta_bridge_intercept_key(keycode, AKeyEvent_getAction(event)))
 +   {
-+      *handled = 1;
-+      return;
++      int consumed = ricotta_bridge_intercept_key(keycode, AKeyEvent_getAction(event));
++      /* A chord is only known to be one when its last key lands, by which time the earlier keys
++       * have already been recorded here. Those come back out before the core's next poll, so a
++       * chord never reaches the game as a button press. */
++      if (port >= 0 && port <= ANDROID_KEYBOARD_PORT)
++      {
++         int retract[RICOTTA_MAX_RETRACT];
++         int n = ricotta_bridge_take_retract(retract, RICOTTA_MAX_RETRACT);
++         int i;
++         for (i = 0; i < n; i++)
++            if (retract[i] >= 0 && retract[i] < LAST_KEYCODE)
++               BIT_CLEAR(android_key_state[port], retract[i]);
++      }
++      if (consumed)
++      {
++         *handled = 1;
++         return;
++      }
 +   }
 +#endif
     uint8_t *buf;

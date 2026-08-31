@@ -82,6 +82,36 @@ class IGMControllerGuideTest {
         assertEquals(0, c.guideScrollXDir.intValue)
     }
 
+    // A shortcut asked for the guide, not for the menu, so backing out of it belongs in the game.
+    // Opening it through the menu still backs out to the menu, which the next test pins.
+    @Test fun `backing out of a guide opened by shortcut returns to the game`() {
+        val c = controllerWithGuides("only.txt")
+        c.openMenu()
+        c.openGuideFromShortcut()
+        assertTrue(c.currentScreen is IGMScreen.Guide)
+
+        c.handleKeyDown(97)
+        assertFalse("the menu should not be left standing behind it", c.isOpen)
+    }
+
+    @Test fun `backing out of a guide opened from the menu returns to the menu`() {
+        val c = openGuide()
+        c.handleKeyDown(97)
+        assertTrue(c.currentScreen is IGMScreen.Menu)
+    }
+
+    // With more than one there is a choice to make first, and that choice is the thing to back out
+    // of. Backing out of it then leaves, rather than falling through to a menu nobody opened.
+    @Test fun `the shortcut picker backs out to the game, not the menu`() {
+        val c = controllerWithGuides("a.txt", "b.txt")
+        c.openMenu()
+        c.openGuideFromShortcut()
+        assertTrue(c.currentScreen is IGMScreen.GuidePicker)
+
+        c.handleKeyDown(97)
+        assertFalse(c.isOpen)
+    }
+
     @Test fun multipleGuidesActionOpensPicker() {
         val c = controllerWithGuides("a.txt", "b.txt")
         c.openMenu()

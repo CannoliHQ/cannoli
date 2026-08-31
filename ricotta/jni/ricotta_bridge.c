@@ -76,6 +76,57 @@ static volatile int g_shortcut_queue[RICOTTA_SHORTCUT_QUEUE];
 static volatile int g_shortcut_head = 0;
 static volatile int g_shortcut_tail = 0;
 
+/* The chords themselves, so a press can be recognised here rather than in Kotlin.
+ *
+ * Matching has to be synchronous with the key that completes the chord. Kotlin learns about a press
+ * two to four frames later (queue drain on the runloop thread, a JNI upcall, then a post to the
+ * main thread), and by then the core has already polled the earlier keys several times and the
+ * game has acted on them. v1 matched inside its own key handler for exactly this reason. */
+#define RICOTTA_MAX_CHORDS     16
+#define RICOTTA_MAX_CHORD_KEYS 8
+typedef struct
+{
+   int action;
+   int count;
+   int keys[RICOTTA_MAX_CHORD_KEYS];
+} ricotta_chord;
+static ricotta_chord g_chords[RICOTTA_MAX_CHORDS];
+static volatile int g_chord_count = 0;
+
+/* Chord keys currently down, in arrival order. */
+static volatile int g_held[RICOTTA_MAX_SHORTCUT_KEYS];
+static volatile int g_held_count = 0;
+
+/* Index into g_chords of the chord being satisfied, so it fires once per press and its release is
+ * reported for the actions that only run while held. */
+static volatile int g_firing_chord = -1;
+
+/* action in the low bits, release in bit 31. */
+static volatile int g_action_queue[RICOTTA_SHORTCUT_QUEUE];
+static volatile int g_action_head = 0;
+static volatile int g_action_tail = 0;
+
+/* Keys android_input must take back out of its own state because a chord claimed them after they
+ * had already been delivered. Drained by the patched key handler, which is where that state lives.
+ *
+ * This is the half that stops a chord leaking into the game. The first key of a chord cannot be
+ * withheld, since nothing yet says a chord is coming, so it reaches the core and is retracted the
+ * moment the chord completes. The core reads a level state once a frame, so a key retracted before
+ * the next poll was never seen at all. */
+static volatile int g_retract[RICOTTA_MAX_SHORTCUT_KEYS];
+static volatile int g_retract_count = 0;
+
+/* Set while the IGM trigger is held and that trigger is itself part of a chord. The trigger key is
+ * already swallowed whole, so a chord built on it can swallow its other keys too and reach the
+ * action without the game ever seeing the press. No other chord can do that: its first key is
+ * delivered before there is any way to know a chord was starting. */
+static volatile int g_menu_modifier_held = 0;
+
+/* Keys whose down was swallowed above, so their up is swallowed too even if the modifier has
+ * already been released by then. Otherwise the core is told a button it never saw pressed came up. */
+static volatile int g_swallowed[RICOTTA_MAX_SHORTCUT_KEYS];
+static volatile int g_swallowed_count = 0;
+
 /* Ports whose pad the launcher's input DB marks built in, from the launch intent. RetroArch has
  * no notion of built in, so it announces the handheld's own controls on every launch. */
 #define RICOTTA_MAX_PORTS 16
@@ -83,6 +134,7 @@ static volatile int g_builtin_ports[RICOTTA_MAX_PORTS];
 static volatile int g_builtin_port_count = 0;
 static jmethodID g_on_igm_trigger_mid = NULL;
 static jmethodID g_on_shortcut_key_mid = NULL;
+static jmethodID g_on_shortcut_action_mid = NULL;
 static jmethodID g_on_osd_event_mid = NULL;
 static jmethodID g_on_osd_achievement_mid = NULL;
 static jmethodID g_on_ra_applied_mid = NULL;
@@ -415,8 +467,56 @@ static float g_vp_bias_portrait_y = 0.0f;
 /* Called from runloop_iterate on the runloop thread, once per iteration, and deliberately not from
  * the input driver's poll: a core enters that from within retro_run, and one running its own
  * coroutine stack makes every JNI call from there throw a spurious StackOverflowError. */
+/* Frames per second, measured here rather than read from RetroArch.
+ *
+ * RetroArch keeps its rate in a file-local static inside video_driver_frame, and its own counter
+ * draws itself, which is the thing Cannoli is replacing. This pump already runs once per frame from
+ * runloop_iterate, so counting calls over a window is both the rate and free.
+ *
+ * Averaged over half a second, as v1 sampled it: a per-frame figure flickers too fast to read. */
+#define RICOTTA_FPS_WINDOW_US 500000
+static volatile float g_fps = 0.0f;
+static int g_fps_frames = 0;
+static long long g_fps_window_start_us = 0;
+
+static long long ricotta_now_us(void)
+{
+   struct timespec ts;
+   clock_gettime(CLOCK_MONOTONIC, &ts);
+   return (long long)ts.tv_sec * 1000000LL + ts.tv_nsec / 1000LL;
+}
+
+static void ricotta_fps_tick(void)
+{
+   long long now = ricotta_now_us();
+   long long elapsed;
+
+   if (g_fps_window_start_us == 0)
+   {
+      g_fps_window_start_us = now;
+      g_fps_frames = 0;
+      return;
+   }
+
+   g_fps_frames++;
+   elapsed = now - g_fps_window_start_us;
+   if (elapsed < RICOTTA_FPS_WINDOW_US)
+      return;
+
+   g_fps = (float)((double)g_fps_frames * 1000000.0 / (double)elapsed);
+   g_fps_frames = 0;
+   g_fps_window_start_us = now;
+}
+
+float ricotta_fps(void)
+{
+   return g_fps;
+}
+
 void ricotta_bridge_poll_commands(void)
 {
+   ricotta_fps_tick();
+
    if (g_igm_trigger_pending)
    {
       JNIEnv *env = ricotta_runloop_env();
@@ -438,6 +538,19 @@ void ricotta_bridge_poll_commands(void)
          (*env)->CallVoidMethod(env, g_bridge_obj, g_on_shortcut_key_mid,
                (jint)(packed & 0x7fffffff), (jboolean)((packed < 0) ? JNI_TRUE : JNI_FALSE));
          ricotta_jni_check(env, "onShortcutKey");
+      }
+   }
+
+   while (g_action_head != g_action_tail)
+   {
+      JNIEnv *env = ricotta_runloop_env();
+      int packed  = g_action_queue[g_action_head];
+      g_action_head = (g_action_head + 1) % RICOTTA_SHORTCUT_QUEUE;
+      if (env && g_bridge_obj && g_on_shortcut_action_mid)
+      {
+         (*env)->CallVoidMethod(env, g_bridge_obj, g_on_shortcut_action_mid,
+               (jint)(packed & 0x7fffffff), (jboolean)((packed < 0) ? JNI_FALSE : JNI_TRUE));
+         ricotta_jni_check(env, "onShortcutAction");
       }
    }
 
@@ -1349,6 +1462,169 @@ static JNIEnv *ricotta_runloop_env(void)
  * Called from android_input.c when a key event arrives.
  * Returns 1 if the event should be consumed (IGM wants it).
  */
+/* Set from Kotlin, read once per frame by the patched hotkey check in runloop.c. */
+static volatile int g_ff_toggle_pending = 0;
+static volatile int g_ff_held = 0;
+
+int ricotta_ff_take_toggle(void)
+{
+   if (!g_ff_toggle_pending)
+      return 0;
+   g_ff_toggle_pending = 0;
+   return 1;
+}
+
+int ricotta_ff_held(void)
+{
+   return g_ff_held;
+}
+
+/* Cannoli draws the counter itself, in the same pill as fast forward, so RetroArch's own is left
+ * off: CMD_EVENT_FPS_TOGGLE here would put a second figure on screen in RetroArch's own styling. */
+JNIEXPORT jfloat JNICALL
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeGetFps(
+      JNIEnv *env, jobject obj)
+{
+   (void)env; (void)obj;
+   return (jfloat)ricotta_fps();
+}
+
+JNIEXPORT void JNICALL
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeToggleFastForward(
+      JNIEnv *env, jobject obj)
+{
+   (void)env; (void)obj;
+   g_ff_toggle_pending = 1;
+}
+
+JNIEXPORT void JNICALL
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSetFastForwardHeld(
+      JNIEnv *env, jobject obj, jboolean held)
+{
+   (void)env; (void)obj;
+   g_ff_held = held ? 1 : 0;
+}
+
+static int ricotta_is_shortcut_key(int keycode)
+{
+   int i;
+   for (i = 0; i < g_shortcut_keycount; i++)
+      if (keycode == g_shortcut_keycodes[i])
+         return 1;
+   return 0;
+}
+
+static void ricotta_queue_shortcut(int keycode, int action)
+{
+   int next = (g_shortcut_tail + 1) % RICOTTA_SHORTCUT_QUEUE;
+   if (next == g_shortcut_head) /* drop rather than overwrite an unread event */
+      return;
+   g_shortcut_queue[g_shortcut_tail] =
+         (action == 0) ? (int)(keycode | (int)0x80000000) : keycode;
+   g_shortcut_tail = next;
+}
+
+static int ricotta_held_has(int keycode)
+{
+   int i;
+   for (i = 0; i < g_held_count; i++)
+      if (g_held[i] == keycode)
+         return 1;
+   return 0;
+}
+
+static void ricotta_held_add(int keycode)
+{
+   if (ricotta_held_has(keycode))
+      return;
+   if (g_held_count < RICOTTA_MAX_SHORTCUT_KEYS)
+      g_held[g_held_count++] = keycode;
+}
+
+static void ricotta_held_remove(int keycode)
+{
+   int i;
+   for (i = 0; i < g_held_count; i++)
+   {
+      if (g_held[i] != keycode)
+         continue;
+      g_held[i] = g_held[g_held_count - 1];
+      g_held_count--;
+      return;
+   }
+}
+
+static int ricotta_chord_satisfied(const ricotta_chord *c)
+{
+   int i;
+   if (c->count <= 0)
+      return 0;
+   for (i = 0; i < c->count; i++)
+      if (!ricotta_held_has(c->keys[i]))
+         return 0;
+   return 1;
+}
+
+/* The most specific chord currently satisfied, so binding L+R and L+R+X leaves the longer one
+ * reachable: pressing all three satisfies both, and the one the user went further to press wins. */
+static int ricotta_best_chord(void)
+{
+   int i;
+   int best = -1;
+   for (i = 0; i < g_chord_count; i++)
+   {
+      if (!ricotta_chord_satisfied(&g_chords[i]))
+         continue;
+      if (best < 0 || g_chords[i].count > g_chords[best].count)
+         best = i;
+   }
+   return best;
+}
+
+static void ricotta_queue_action(int action, int release)
+{
+   int next = (g_action_tail + 1) % RICOTTA_SHORTCUT_QUEUE;
+   if (next == g_action_head)
+      return;
+   g_action_queue[g_action_tail] = release ? action : (int)(action | (int)0x80000000);
+   g_action_tail = next;
+}
+
+static void ricotta_request_retract(int keycode)
+{
+   int i;
+   for (i = 0; i < g_retract_count; i++)
+      if (g_retract[i] == keycode)
+         return;
+   if (g_retract_count < RICOTTA_MAX_SHORTCUT_KEYS)
+      g_retract[g_retract_count++] = keycode;
+}
+
+static void ricotta_mark_swallowed(int keycode)
+{
+   int i;
+   for (i = 0; i < g_swallowed_count; i++)
+      if (g_swallowed[i] == keycode)
+         return;
+   if (g_swallowed_count < RICOTTA_MAX_SHORTCUT_KEYS)
+      g_swallowed[g_swallowed_count++] = keycode;
+}
+
+/* Removes and reports, so an up is swallowed exactly once. */
+static int ricotta_take_swallowed(int keycode)
+{
+   int i;
+   for (i = 0; i < g_swallowed_count; i++)
+   {
+      if (g_swallowed[i] != keycode)
+         continue;
+      g_swallowed[i] = g_swallowed[g_swallowed_count - 1];
+      g_swallowed_count--;
+      return 1;
+   }
+   return 0;
+}
+
 int ricotta_bridge_intercept_key(int keycode, int action)
 {
    /* While the IGM is visible, consume all gamepad input (handled by the Dialog). */
@@ -1369,37 +1645,81 @@ int ricotta_bridge_intercept_key(int keycode, int action)
       }
       if (is_trigger)
       {
+         /* A trigger that no chord uses opens the menu on its own press, as it always has.
+          * One that a chord uses has to wait for the release to know whether it was a chord's
+          * modifier or a menu press, which Kotlin decides and asks for. */
+         if (ricotta_is_shortcut_key(keycode))
+         {
+            g_menu_modifier_held = (action == 0);
+            ricotta_queue_shortcut(keycode, action);
+         }
          /* Record only. A core that runs on its own coroutine stack enters this poll from inside
           * retro_run, where a JNI call throws a spurious StackOverflowError; the pump raises it
           * from runloop_iterate instead, which is always on this thread's own stack. */
-         if (action == 0) /* AKEY_EVENT_ACTION_DOWN */
+         else if (action == 0) /* AKEY_EVENT_ACTION_DOWN */
             g_igm_trigger_pending = 1;
          return 1; /* consume down and up so the game never sees the trigger key */
       }
    }
 
-   /* Shortcut chords: forwarded for matching, never consumed. A chord is not known to be one
-    * until its last key arrives, by which time the earlier keys have already reached the core,
-    * so swallowing the rest would mean reporting a release for a button still held. */
+   /* Shortcut chords, matched here rather than in Kotlin so the decision lands in the same key
+    * event that completes the chord. */
+   if (ricotta_is_shortcut_key(keycode))
    {
-      int i;
-      for (i = 0; i < g_shortcut_keycount; i++)
+      /* Kotlin still sees the raw key: the menu key opens the menu on its release when no chord
+       * claimed the press, and only Kotlin knows which keys those are. */
+      ricotta_queue_shortcut(keycode, action);
+
+      if (action == 0) /* AKEY_EVENT_ACTION_DOWN */
       {
-         if (keycode == g_shortcut_keycodes[i])
+         int best;
+         ricotta_held_add(keycode);
+         best = ricotta_best_chord();
+         if (best >= 0 && best != g_firing_chord)
          {
-            int next = (g_shortcut_tail + 1) % RICOTTA_SHORTCUT_QUEUE;
-            if (next != g_shortcut_head) /* drop rather than overwrite an unread event */
+            int i;
+            g_firing_chord = best;
+            /* Take back every key of the chord, including the ones already delivered, and eat
+             * their releases so the core is never told a button it never saw came up. */
+            for (i = 0; i < g_chords[best].count; i++)
             {
-               g_shortcut_queue[g_shortcut_tail] =
-                     (action == 0) ? (int)(keycode | (int)0x80000000) : keycode;
-               g_shortcut_tail = next;
+               ricotta_request_retract(g_chords[best].keys[i]);
+               ricotta_mark_swallowed(g_chords[best].keys[i]);
             }
-            break;
+            ricotta_queue_action(g_chords[best].action, 0);
+            return 1;
          }
+         /* Nothing is known yet: this may be the first key of a chord or just play. It reaches the
+          * game, and is retracted above if a chord completes. */
+         if (g_menu_modifier_held)
+         {
+            ricotta_mark_swallowed(keycode);
+            return 1;
+         }
+         return 0;
       }
+
+      ricotta_held_remove(keycode);
+      if (g_firing_chord >= 0 && !ricotta_chord_satisfied(&g_chords[g_firing_chord]))
+      {
+         ricotta_queue_action(g_chords[g_firing_chord].action, 1);
+         g_firing_chord = -1;
+      }
+      if (ricotta_take_swallowed(keycode))
+         return 1;
    }
 
    return 0;
+}
+
+/* Drained by the patched android_input key handler, which owns the state these have to come out
+ * of. Reports at most [max] and keeps the rest for the next call. */
+int ricotta_bridge_take_retract(int *out, int max)
+{
+   int n = 0;
+   while (n < max && g_retract_count > 0)
+      out[n++] = g_retract[--g_retract_count];
+   return n;
 }
 
 JNIEXPORT void JNICALL
@@ -1409,6 +1729,14 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSetIGMVisible(
    (void)env;
    (void)obj;
    g_igm_visible = visible ? 1 : 0;
+   /* The menu swallows every key while it is up, so the releases that would have cleared these
+    * never arrive. Left set, the modifier would go on eating chord keys and a half-held chord
+    * would never fire again for the rest of the session. */
+   g_menu_modifier_held = 0;
+   g_swallowed_count = 0;
+   g_held_count = 0;
+   g_firing_chord = -1;
+   g_retract_count = 0;
 }
 
 JNIEXPORT void JNICALL
@@ -1441,34 +1769,65 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSetIgmTriggerKeycodes(
 }
 
 JNIEXPORT void JNICALL
-Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSetShortcutKeycodes(
-      JNIEnv *env, jobject obj, jintArray keycodes)
+/* Flat [action, count, key...] triples, repeated. One array rather than a call per chord, so the
+ * table can never be read half written. The union every other check uses is derived here. */
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSetShortcutChords(
+      JNIEnv *env, jobject obj, jintArray table)
 {
    jsize n;
    jint *elems;
-   jsize i;
+   jsize at = 0;
+   int chords = 0;
+   int keys   = 0;
 
    (void)obj;
 
-   if (!keycodes)
-   {
-      g_shortcut_keycount = 0;
+   /* Anything held under the old table has no release coming that this would recognise. */
+   g_shortcut_keycount   = 0;
+   g_chord_count         = 0;
+   g_held_count          = 0;
+   g_firing_chord        = -1;
+   g_menu_modifier_held  = 0;
+   g_swallowed_count     = 0;
+   g_retract_count       = 0;
+
+   if (!table)
       return;
-   }
 
-   n = (*env)->GetArrayLength(env, keycodes);
-   if (n > RICOTTA_MAX_SHORTCUT_KEYS)
-      n = RICOTTA_MAX_SHORTCUT_KEYS;
-
-   elems = (*env)->GetIntArrayElements(env, keycodes, NULL);
+   n = (*env)->GetArrayLength(env, table);
+   elems = (*env)->GetIntArrayElements(env, table, NULL);
    if (!elems)
       return;
 
-   for (i = 0; i < n; i++)
-      g_shortcut_keycodes[i] = (int)elems[i];
+   while (at + 1 < n && chords < RICOTTA_MAX_CHORDS)
+   {
+      int action = (int)elems[at++];
+      int count  = (int)elems[at++];
+      int i;
 
-   (*env)->ReleaseIntArrayElements(env, keycodes, elems, JNI_ABORT);
-   g_shortcut_keycount = (int)n; /* set count last so the reader never sees partial state */
+      if (count <= 0 || count > RICOTTA_MAX_CHORD_KEYS || at + count > n)
+         break;
+
+      g_chords[chords].action = action;
+      g_chords[chords].count  = count;
+      for (i = 0; i < count; i++)
+      {
+         int key = (int)elems[at++];
+         int j;
+         g_chords[chords].keys[i] = key;
+         for (j = 0; j < keys; j++)
+            if (g_shortcut_keycodes[j] == key)
+               break;
+         if (j == keys && keys < RICOTTA_MAX_SHORTCUT_KEYS)
+            g_shortcut_keycodes[keys++] = key;
+      }
+      chords++;
+   }
+
+   (*env)->ReleaseIntArrayElements(env, table, elems, JNI_ABORT);
+   /* Counts last, so a reader never sees a partly built table. */
+   g_shortcut_keycount = keys;
+   g_chord_count       = chords;
 }
 
 JNIEXPORT void JNICALL
@@ -1598,6 +1957,7 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeInit(
    g_on_debug_key_mid = (*env)->GetMethodID(env, cls, "onDebugKey", "(I)V");
    g_on_igm_trigger_mid = (*env)->GetMethodID(env, cls, "onIgmTrigger", "()V");
    g_on_shortcut_key_mid = (*env)->GetMethodID(env, cls, "onShortcutKey", "(IZ)V");
+   g_on_shortcut_action_mid = (*env)->GetMethodID(env, cls, "onShortcutAction", "(IZ)V");
    g_on_ra_applied_mid = (*env)->GetMethodID(env, cls, "onRaSettingApplied",
          "(Ljava/lang/String;Ljava/lang/String;)V");
    g_on_osd_event_mid = (*env)->GetMethodID(env, cls, "onOsdEvent", "(II)V");

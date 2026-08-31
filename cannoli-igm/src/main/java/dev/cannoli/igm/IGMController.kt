@@ -472,6 +472,52 @@ class IGMController(
         undoAction.value = UndoAction.LOAD
     }
 
+    /**
+     * The Quit row: leaves, and lets RetroArch save only if the user asked it to.
+     *
+     * The archive is conditional for the same reason: with no save coming there is nothing about
+     * to overwrite the auto slot, so rotating would push a state into history for no reason.
+     */
+    fun quitGame() {
+        if (bridge.savesOnQuit) slots.rotateAutoIntoHistory()
+        onClose?.invoke()
+        bridge.quit()
+    }
+
+    /**
+     * Save and Quit: saves whatever the setting says, because that is what its name promises.
+     *
+     * Not the same as [quitGame]. Quit respects "always save on quit"; this overrides it, which is
+     * the whole difference between the row and the shortcut.
+     */
+    fun saveAndQuit() {
+        // RetroArch is about to write the auto slot, so the state it replaces is archived first.
+        slots.rotateAutoIntoHistory()
+        if (!bridge.savesOnQuit) bridge.forceSaveOnQuit()
+        onClose?.invoke()
+        bridge.quit()
+    }
+
+    /** Whether this game has anything for the Guide row, or a shortcut bound to it, to open. */
+    fun hasGuides(): Boolean = guideFiles.value.isNotEmpty()
+
+    /**
+     * What the Guide row does, for a caller that has already raised the menu window.
+     *
+     * One guide opens it, several open the picker, which is the rule the row uses. The window has
+     * to be up first, since [openMenu] clears the stack and would throw away anything pushed before
+     * it, but the menu screen itself does not survive: this replaces it.
+     */
+    fun openGuideFromShortcut() {
+        val files = guideFiles.value
+        if (files.isEmpty()) return
+        // The guide stands alone on the stack, with no menu underneath it. A shortcut asked for the
+        // guide, not for the menu, so backing out of it belongs in the game rather than in a menu
+        // the user never opened. [pop] closes once the stack is down to one.
+        screenStack.clear()
+        if (files.size == 1) openGuide(files[0]) else openGuidePicker()
+    }
+
     fun suspendForNativeMenu() {
         bridge.setOnNativeMenuClosed { onNativeMenuClosed?.invoke() }
         bridge.openNativeMenu()
@@ -984,13 +1030,7 @@ class IGMController(
             IgmMenuAction.LOAD_STATE -> { loadState(); onClose?.invoke() }
             IgmMenuAction.SETTINGS -> openProviderSettings()
             IgmMenuAction.RESET -> { bridge.reset(); onClose?.invoke() }
-            IgmMenuAction.QUIT -> {
-                // RetroArch writes the auto slot itself while shutting down, so the state it is
-                // about to replace has to be archived before the quit is queued.
-                if (bridge.savesOnQuit) slots.rotateAutoIntoHistory()
-                onClose?.invoke()
-                bridge.quit()
-            }
+            IgmMenuAction.QUIT -> quitGame()
             IgmMenuAction.GUIDE -> {
                 if (guideFiles.value.size == 1) openGuide(guideFiles.value[0]) else openGuidePicker()
             }

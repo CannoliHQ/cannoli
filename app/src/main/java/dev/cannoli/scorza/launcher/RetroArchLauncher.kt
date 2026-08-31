@@ -30,6 +30,7 @@ data class RicottaIgm(
     val hardcoreInEffect: Boolean = false,
     val curatedSettings: Boolean = true,
     val builtinPorts: List<Int> = emptyList(),
+    val shortcuts: Map<dev.cannoli.igm.ShortcutAction, Set<Int>> = emptyMap(),
 )
 
 class RetroArchLauncher(private val context: Context) {
@@ -61,6 +62,7 @@ class RetroArchLauncher(private val context: Context) {
             hardcoreInEffect = igm.hardcoreInEffect,
             curatedSettings = igm.curatedSettings,
             builtinPorts = igm.builtinPorts,
+            shortcuts = igm.shortcuts,
         )
 
         val intent = Intent().apply {

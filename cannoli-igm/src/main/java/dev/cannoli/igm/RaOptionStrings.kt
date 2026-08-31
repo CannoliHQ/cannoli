@@ -12,6 +12,7 @@ data class RaOptionStrings(
     val emulator: String = "Emulator",
     val custom: String = "Custom",
     val shaderApplied: String = "Applied",
+    val shaderEnabled: String = "Shader",
     val shaderLoad: String = "Load Preset",
     val shaderAddStart: String = "Add to Start",
     val shaderAddEnd: String = "Add to End",
