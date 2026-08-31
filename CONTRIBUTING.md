@@ -13,6 +13,6 @@ If you have an idea that you feel fits the vision of the project make an issue o
 
 ## Translations / i18n Efforts
 
-A number of community members have expressed interest in translating Cannoli. This is facilitated through [Crowdin](https://crowdin.com/project/cannoli), so no coding is required.
+A number of community members have expressed interest in translating Cannoli. This is facilitated through [Crowdin](https://crowdin.com/project/cannoli). No coding experience is required.
 
 See [TRANSLATING.md](TRANSLATING.md) for how to help.
