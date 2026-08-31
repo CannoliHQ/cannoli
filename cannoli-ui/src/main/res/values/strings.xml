@@ -987,6 +987,9 @@
     <string name="mapping_platform_name_with_tag">%1$s (%2$s)</string>
     <!-- Debug builds only: a gallery of every Nerd Font glyph the launcher draws. Never shipped to users, so not sent to translators. -->
     <string name="setting_icon_gallery" translatable="false">Icon Gallery</string>
+    <!-- Debug row, throwaway with the Wi-Fi Direct netplay spike. -->
+    <string name="setting_wifi_direct_probe" translatable="false">Wi-Fi Direct Test</string>
+    <string name="setting_wifi_direct_host" translatable="false">Wi-Fi Direct Test (host)</string>
     <string name="title_icon_gallery" translatable="false">Icon Gallery</string>
     <!-- Screen title. %s = platform name. -->
     <string name="title_platform_mapping">%s Mapping</string>

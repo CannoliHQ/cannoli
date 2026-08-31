@@ -103,7 +103,11 @@ enum class SettingsKey(val id: String) {
     RELEASE_CHANNEL("release_channel"),
 
     AUDIT_EMULATOR_INTENTS("audit_emulator_intents"),
-    ICON_GALLERY("icon_gallery");
+    ICON_GALLERY("icon_gallery"),
+
+    // Throwaway, with the Wi-Fi Direct netplay spike. Remove with it.
+    WIFI_DIRECT_PROBE("wifi_direct_probe"),
+    WIFI_DIRECT_HOST("wifi_direct_host");
 
     companion object {
         /** One row per pickable collection, so the id rides in the key. */

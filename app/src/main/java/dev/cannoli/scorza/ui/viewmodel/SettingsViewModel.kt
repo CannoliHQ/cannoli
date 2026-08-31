@@ -1041,6 +1041,8 @@ class SettingsViewModel @Inject constructor(
         SettingsCategory.DEBUG -> listOf(
             SettingsItem(SettingsKey.AUDIT_EMULATOR_INTENTS.id, R.string.setting_audit_emulator_intents, isEditable = true),
             SettingsItem(SettingsKey.ICON_GALLERY.id, R.string.setting_icon_gallery, isEditable = true),
+            SettingsItem(SettingsKey.WIFI_DIRECT_PROBE.id, dev.cannoli.ui.R.string.setting_wifi_direct_probe, isEditable = true),
+            SettingsItem(SettingsKey.WIFI_DIRECT_HOST.id, dev.cannoli.ui.R.string.setting_wifi_direct_host, isEditable = true),
         )
     }
 }

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+      Debug only, and deliberately not in the main manifest: these belong to the throwaway Wi-Fi
+      Direct probe behind Settings > Debug, and a location permission is not something to ship on
+      the chance a netplay design lands. If that design does land, these move to the main manifest
+      as a considered decision with a runtime request behind them, rather than arriving by default.
+
+      NEARBY_WIFI_DEVICES covers API 33 and up; ACCESS_FINE_LOCATION is what the same discovery
+      needs below it, and minSdk 28 means the probe has to be able to ask for either.
+    -->
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <uses-permission
+        android:name="android.permission.NEARBY_WIFI_DEVICES"
+        android:usesPermissionFlags="neverForLocation" />
+    <uses-permission
+        android:name="android.permission.ACCESS_FINE_LOCATION"
+        android:maxSdkVersion="32" />
+
+</manifest>

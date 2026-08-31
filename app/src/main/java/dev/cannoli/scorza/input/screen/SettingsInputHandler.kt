@@ -144,6 +144,8 @@ class SettingsInputHandler @Inject constructor(
             SettingsKey.LOGGING -> nav.push(LauncherScreen.LoggingSettings())
             SettingsKey.PERMISSIONS -> permissionsInputHandler.open()
             SettingsKey.AUDIT_EMULATOR_INTENTS -> runIntentAudit()
+            SettingsKey.WIFI_DIRECT_PROBE -> runWifiDirectProbe(host = false)
+            SettingsKey.WIFI_DIRECT_HOST -> runWifiDirectProbe(host = true)
             SettingsKey.ICON_GALLERY -> nav.push(LauncherScreen.IconGallery())
             SettingsKey.SHORTCUTS -> nav.push(LauncherScreen.ShortcutBinding(shortcuts = globalOverrides.readShortcuts()))
             SettingsKey.INPUT_TESTER -> {
@@ -318,6 +320,79 @@ class SettingsInputHandler @Inject constructor(
                 nav.dialogState.value = DialogState.IntentAuditResult(message)
             }
         }
+    }
+
+    // Throwaway, with the Wi-Fi Direct netplay spike. Remove with it.
+    private var wifiDirectProbe: dev.cannoli.scorza.netplay.WifiDirectProbe? = null
+
+    /**
+     * Shows what the other handhelds nearby are advertising, live.
+     *
+     * A Picker rather than a screen of its own: the join list this is standing in for is a list of
+     * rows and what to do with the chosen one, which is what a Picker is. Rebuilt on every change
+     * the way the toggles are, so a handheld appearing mid-discovery shows up without a refresh.
+     */
+    private fun runWifiDirectProbe(host: Boolean) {
+        wifiDirectProbe?.stop()
+        val probe = dev.cannoli.scorza.netplay.WifiDirectProbe(context)
+        wifiDirectProbe = probe
+        probe.onPeers = { peers -> showWifiDirectPeers(peers) }
+        probe.onLink = { state, numbers -> showWifiDirectLink(state, numbers) }
+        try {
+            probe.run(settings.sdCardRoot, asHost = host)
+        } catch (e: Exception) {
+            nav.dialogState.value = DialogState.IntentAuditResult(
+                "Probe failed: ${e.message ?: e.javaClass.simpleName}"
+            )
+            return
+        }
+        showWifiDirectPeers(emptyList())
+    }
+
+    private fun showWifiDirectPeers(peers: List<dev.cannoli.scorza.netplay.WifiDirectGroup.Peer>) {
+        val current = nav.dialogState.value
+        // Only while this screen is the one on top: discovery keeps answering after you leave, and
+        // pushing a peer list over whatever replaced it would be worse than missing one.
+        if (peers.isNotEmpty() && current !is DialogState.Picker) return
+        nav.dialogState.value = DialogState.Picker(
+            title = "Wi-Fi Direct Test",
+            confirmLabel = context.getString(dev.cannoli.scorza.R.string.label_select),
+            emptyMessage = "Searching for nearby handhelds...",
+            items = peers.map {
+                dev.cannoli.scorza.ui.screens.PickerItem(
+                    label = it.deviceName,
+                    value = it.record["game"].orEmpty().ifEmpty { it.record["crc"].orEmpty() },
+                )
+            },
+            onBack = {
+                wifiDirectProbe?.stop()
+                wifiDirectProbe = null
+                nav.dialogState.value = DialogState.None
+            },
+        ) { index ->
+            peers.getOrNull(index)?.let { wifiDirectProbe?.connectTo(it) }
+        }
+    }
+
+    /**
+     * The numbers crossing the group, newest first.
+     *
+     * Both handhelds show the same list, one because it made them and one because it received
+     * them, which is the end of the question: discovery, a group, and a TCP path that stays up.
+     */
+    private fun showWifiDirectLink(state: String, numbers: List<Int>) {
+        if (wifiDirectProbe == null) return
+        nav.dialogState.value = DialogState.Picker(
+            title = "Wi-Fi Direct Test - $state",
+            confirmLabel = context.getString(dev.cannoli.scorza.R.string.label_select),
+            emptyMessage = "Waiting for the link...",
+            items = numbers.map { dev.cannoli.scorza.ui.screens.PickerItem(it.toString()) },
+            onBack = {
+                wifiDirectProbe?.stop()
+                wifiDirectProbe = null
+                nav.dialogState.value = DialogState.None
+            },
+        ) { }
     }
 
     private fun openAppPicker(type: String) {
