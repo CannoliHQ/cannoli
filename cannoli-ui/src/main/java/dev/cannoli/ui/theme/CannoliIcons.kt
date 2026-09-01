@@ -39,6 +39,11 @@ object CannoliIcons {
     val Battery10 = CannoliIcon("\uDB80\uDC7A", "Battery10", "md-battery_10", "Battery at 10 percent", "Status bar")
     val BatteryAlert = CannoliIcon("\uDB80\uDC83", "BatteryAlert", "md-battery_alert", "Battery critically low", "Status bar")
 
+    // Over the game. Sized by OsdPillStyle.Icon, which a Material glyph needs to carry weight.
+    val FastForward = CannoliIcon("\uDB80\uDE11", "FastForward", "md-fast_forward", "Fast forward is on", "Over the game")
+    val Rewind = CannoliIcon("\uDB81\uDC5F", "Rewind", "md-rewind", "Rewind is running", "Over the game")
+    val RewindEnd = CannoliIcon("\uDB81\uDCAB", "RewindEnd", "md-skip_backward", "Rewind has reached the start of its buffer", "Over the game")
+
     // Status bar sync
     val CloudSync = CannoliIcon("\uDB81\uDE3F", "CloudSync", "md-cloud_sync", "Save sync in progress", "Status bar sync")
     val CloudCheck = CannoliIcon("\uDB80\uDD60", "CloudCheck", "md-cloud_check", "Saves are in sync", "Status bar sync")
@@ -68,7 +73,9 @@ object CannoliIcons {
         Kitchen, Download, Charging, BatteryFull,
         Battery90, Battery80, Battery70, Battery60,
         Battery50, Battery40, Battery30, Battery20,
-        Battery10, BatteryAlert, CloudSync, CloudCheck,
+        Battery10, BatteryAlert,
+        FastForward, Rewind, RewindEnd,
+        CloudSync, CloudCheck,
         CloudAlert, CloudOff, AlertCircle, DatabaseSync,
         DatabaseAlert, Primary, CheckCircle, SyncDownload,
         SyncUpload, SyncAlert, NotInstalled, Unknown,
