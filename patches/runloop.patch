@@ -1,8 +1,39 @@
 diff --git a/runloop.c b/runloop.c
-index a94e72a199..0954ec8317 100644
+index a94e72a199..0c7ae19f31 100644
 --- a/runloop.c
 +++ b/runloop.c
-@@ -7430,6 +7430,16 @@ static enum runloop_state_enum runloop_check_state(
+@@ -7132,6 +7132,14 @@ static enum runloop_state_enum runloop_check_state(
+ 
+          s[0]                = '\0';
+ 
++#ifdef HAVE_RICOTTA_IGM
++         /* Cannoli's rewind shortcut, fed in as the hotkey rather than acted on directly so
++          * everything below still applies to it: the refusal to rewind while the menu is up, the
++          * single frame step while paused, and audio_rewind_mute. */
++         if (!rewind_pressed)
++            rewind_pressed   = ricotta_rewind_held() ? true : false;
++#endif
++
+ #ifdef HAVE_MENU
+          /* Don't allow rewinding while menu is active */
+          if (menu_st->flags & MENU_ST_FLAG_ALIVE)
+@@ -7187,6 +7195,15 @@ static enum runloop_state_enum runloop_check_state(
+                      MESSAGE_QUEUE_ICON_DEFAULT, MESSAGE_QUEUE_CATEGORY_INFO);
+          }
+ 
++#ifdef HAVE_RICOTTA_IGM
++         /* Cannoli draws this itself: the queue above needs the on-screen font, which the launch
++          * config turns off so nothing but Cannoli draws over the game. Matched against RetroArch's
++          * own string rather than a copy of it, so a reworded message cannot go unnoticed. */
++         if (rewind_pressed && s[0] != '\0'
++               && string_is_equal(s, msg_hash_to_str(MSG_REWIND_REACHED_END)))
++            ricotta_osd_event(RICOTTA_OSD_REWIND_END, 0);
++#endif
++
+          if (     rewinding
+                && runloop_paused
+ #ifdef HAVE_MENU
+@@ -7430,6 +7447,16 @@ static enum runloop_state_enum runloop_check_state(
              current_bits, RARCH_FAST_FORWARD_KEY);
        bool new_hold_button_state              = BIT256_GET(
              current_bits, RARCH_FAST_FORWARD_HOLD_KEY);
@@ -19,7 +50,7 @@ index a94e72a199..0954ec8317 100644
        bool check2                             = new_button_state && !old_button_state;
  
        if (!check2)
-@@ -7465,6 +7475,13 @@ static enum runloop_state_enum runloop_check_state(
+@@ -7465,6 +7492,13 @@ static enum runloop_state_enum runloop_check_state(
              command_event(CMD_EVENT_SET_FRAME_LIMIT, NULL);
           }
  
@@ -33,7 +64,7 @@ index a94e72a199..0954ec8317 100644
           if (audio_fastforward_mute && (runloop_st->flags & RUNLOOP_FLAG_FASTMOTION))
              audio_st->flags |=  AUDIO_FLAG_MUTED;
           else
-@@ -7946,6 +7963,12 @@ int runloop_iterate(void)
+@@ -7946,6 +7980,12 @@ int runloop_iterate(void)
      * which a core enters from within retro_run(), so the save it asks for
      * is performed here instead of where the command arrives. */
     android_input_flush_pending_state();

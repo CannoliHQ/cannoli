@@ -150,6 +150,10 @@ class RetroActivityFuture : RetroActivityCamera() {
             bridge.setOnRaSettingAppliedLocal { key, _ ->
                 if (key == dev.cannoli.igm.RaKeys.ASPECT_RATIO_INDEX ||
                     key == dev.cannoli.igm.RaKeys.VIDEO_SCALE_INTEGER) refreshViewport()
+                // The curated Show FPS row writes RetroArch's key; the pill that actually draws it
+                // is Cannoli's, so it follows the echo rather than the row.
+                if (key == KEY_FPS_SHOW) bridge.syncShowFps()
+                if (key == KEY_STATISTICS_SHOW) bridge.syncShowDebug()
             }
             params?.let { bridge.setIgmTriggerKeycodes(it.igmTriggerKeycodes.toIntArray()) }
             params?.let { bridge.setBuiltinPorts(it.builtinPorts.toIntArray()) }
@@ -181,8 +185,15 @@ class RetroActivityFuture : RetroActivityCamera() {
                 // happened, so it holds a pill for as long as it lasts instead of flashing a toast
                 // the game then outlives.
                 if (type == RicottaOsdEvent.FASTFORWARD) osd.setFastForward(slot != 0)
+                // Raised on every frame the buffer stays exhausted, so it sets a state rather than
+                // queueing a toast per frame. Cleared when the rewind chord is let go.
+                else if (type == RicottaOsdEvent.REWIND_END) osd.setRewindAtEnd()
                 else osd.showMessage(osdEventText(type, slot))
                 refreshViewport()
+                // The game has jumped to a point the recorded frames do not lead back to, so
+                // what is behind it now is a different timeline. Resume is the case that showed
+                // it: rewinding walked past the resumed state and into the game's boot.
+                if (type == RicottaOsdEvent.LOAD_STATE) bridge.resetRewindBuffer()
                 // A save is queued, not written, when the IGM asks for it. The slot on disk only
                 // changes once RetroArch reports back, so the polaroid is stale until then.
                 if (type == RicottaOsdEvent.SAVE_STATE ||
@@ -194,6 +205,17 @@ class RetroActivityFuture : RetroActivityCamera() {
             bridge.onOsdAchievement = { title -> osd.showAchievement(title) }
             osd.fpsProvider = { bridge.fps() }
             bridge.onShowFpsChanged = { on -> osd.setShowFps(on) }
+            bridge.onShowDebugChanged = { on -> osd.setShowDebug(on) }
+            // Native reports stable keys; the words are this side's, so they translate.
+            osd.debugStatsProvider = {
+                bridge.debugStats().map { (key, value) -> debugLabel(key) to value }
+            }
+            // Not here: onCreate runs before RetroArch exists, and reading a setting from it
+            // crashed inside menu_setting_new. The first pump of RetroArch's own loop says when.
+            bridge.onRunloopReady = {
+                bridge.syncShowFps()
+                bridge.syncShowDebug()
+            }
         } catch (e: Exception) {
             Log.e("RicottaArch", "Failed to initialize IGM overlay", e)
         }
@@ -208,6 +230,16 @@ class RetroActivityFuture : RetroActivityCamera() {
      * anything reaching this process is already frames late, by which time the game has acted on
      * the press. This wires up what happens once native has decided.
      */
+    private fun debugLabel(key: String): String = when (key) {
+        "fps" -> getString(R.string.igm_debug_fps)
+        "frames" -> getString(R.string.igm_debug_frames)
+        "memory" -> getString(R.string.igm_debug_memory)
+        "geometry" -> getString(R.string.igm_debug_geometry)
+        "core" -> getString(R.string.igm_debug_core)
+        "driver" -> getString(R.string.igm_debug_driver)
+        else -> key
+    }
+
     private fun wireShortcuts(
         bridge: EmbeddedRetroArchBridge,
         table: Map<dev.cannoli.igm.ShortcutAction, Set<Int>>,
@@ -259,8 +291,18 @@ class RetroActivityFuture : RetroActivityCamera() {
             }
         }
         controller.onHoldCancelled = { osdOverlay?.clearHoldPrompt() }
+        controller.onRewindUnavailable = {
+            osdOverlay?.showMessage(getString(R.string.osd_rewind_off))
+        }
         bridge.onShortcutKey = { keycode: Int, down: Boolean -> controller.onKey(keycode, down) }
-        bridge.onShortcutAction = { action: Int, kind: Int -> controller.onAction(action, kind) }
+        bridge.onShortcutAction = { action: Int, kind: Int ->
+            controller.onAction(action, kind)
+            if (action == dev.cannoli.igm.ShortcutAction.REWIND.ordinal) {
+                osdOverlay?.setRewinding(
+                    kind == dev.cannoli.igm.ShortcutTable.Kind.FIRED && bridge.rewindEnabled
+                )
+            }
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -478,6 +520,8 @@ class RetroActivityFuture : RetroActivityCamera() {
         private const val HANDLER_ARG_TRUE = 1
         private const val HANDLER_ARG_FALSE = 0
         private const val HANDLER_MESSAGE_DELAY_DEFAULT_MS = 300
+        private const val KEY_FPS_SHOW = "fps_show"
+        private const val KEY_STATISTICS_SHOW = "statistics_show"
         private const val GEOMETRY_RETRY_DELAY_MS = 100L
         private const val GEOMETRY_RETRY_MAX_ATTEMPTS = 10
     }

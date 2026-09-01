@@ -9,7 +9,9 @@ import android.view.WindowManager
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -24,13 +26,18 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import dev.cannoli.ui.computeScreenGeometryPadding
 import dev.cannoli.ui.components.OsdController
 import dev.cannoli.ui.components.OsdHost
 import dev.cannoli.ui.components.OsdPill
+import dev.cannoli.ui.components.OsdPillStyle
+import dev.cannoli.ui.components.OsdPillText
+import dev.cannoli.ui.components.OsdPanel
 import dev.cannoli.ui.components.OsdPosition
+import dev.cannoli.ui.theme.CannoliIcons
 import dev.cannoli.ui.theme.CannoliTheme
 import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.cannoliColorsFromHex
@@ -61,6 +68,9 @@ class OsdOverlay(
     private var added = false
     private val fastForward = mutableStateOf(false)
     private val showFps = mutableStateOf(false)
+    private val rewinding = mutableStateOf(false)
+    private val rewindAtEnd = mutableStateOf(false)
+    private val showDebug = mutableStateOf(false)
     private val igmOpen = mutableStateOf(false)
 
     fun attach(savedInstanceState: Bundle?) {
@@ -160,6 +170,24 @@ class OsdOverlay(
         showFps.value = on
     }
 
+    fun setRewinding(on: Boolean) {
+        rewinding.value = on
+        // A fresh press has history again until RetroArch says otherwise.
+        if (!on) rewindAtEnd.value = false
+    }
+
+    /**
+     * RetroArch has run out of buffer, so the arrows say the rewind is going nowhere.
+     *
+     * Ignored unless a rewind is actually running. This is raised every frame the buffer stays
+     * empty and travels the command queue, while the release that ends the rewind travels the
+     * action queue and is drained first: without this, the last of those events landed after the
+     * release had cleared the flag and left it stuck on for the rest of the session.
+     */
+    fun setRewindAtEnd() {
+        if (rewinding.value) rewindAtEnd.value = true
+    }
+
     /**
      * Hides the standing pill while the menu, or a guide, is up.
      *
@@ -177,6 +205,13 @@ class OsdOverlay(
     /** Polled while the counter is up, since nothing pushes a frame rate. */
     var fpsProvider: (() -> Float)? = null
 
+    fun setShowDebug(on: Boolean) {
+        showDebug.value = on
+    }
+
+    /** Polled while the panel is up, for the same reason the rate is. */
+    var debugStatsProvider: (() -> List<Pair<String, String>>)? = null
+
     fun showAchievement(title: String) {
         controller.show("󰔸 $title", OsdPosition.BottomCenterLow)
     }
@@ -191,9 +226,10 @@ class OsdOverlay(
     @Composable
     private fun BoxScope.StatusPill() {
         val ff = fastForward.value
+        val rw = rewinding.value
         val fps = showFps.value
-        // Both describe the game, so neither belongs over the menu or a guide.
-        if (igmOpen.value || (!ff && !fps)) return
+        // All of these describe the game, so none belongs over the menu or a guide.
+        if (igmOpen.value || (!ff && !rw && !fps)) return
         val rate = remember { mutableStateOf(0f) }
         LaunchedEffect(fps) {
             while (fps) {
@@ -201,12 +237,22 @@ class OsdOverlay(
                 delay(FPS_SAMPLE_MS)
             }
         }
-        val text = buildString {
-            if (ff) append("▶▶")
-            if (ff && fps) append("  ")
-            if (fps) append(String.format(Locale.US, "%.2f", rate.value))
+        val icon = when {
+            // Only one of these runs at a time, since each is held.
+            rw && rewindAtEnd.value -> CannoliIcons.RewindEnd.glyph
+            rw -> CannoliIcons.Rewind.glyph
+            ff -> CannoliIcons.FastForward.glyph
+            else -> null
         }
-        OsdPill(text, OsdPosition.TopEnd)
+        OsdPill(OsdPosition.TopEnd, OsdPillStyle.Icon) {
+            icon?.let { OsdPillText(it, OsdPillStyle.Icon.fontSize) }
+            if (fps) {
+                if (icon != null) Spacer(Modifier.width(8.dp))
+                // Its own item at reading size, centred beside the glyph rather than sharing a
+                // baseline with it, which left the number sitting low against the icon.
+                OsdPillText(String.format(Locale.US, "%.2f", rate.value), OsdPillStyle.Text.fontSize)
+            }
+        }
     }
 
     /**
@@ -255,6 +301,26 @@ class OsdOverlay(
         )
     }
 
+    /**
+     * The figures RetroArch would have drawn, drawn here instead.
+     *
+     * Opposite corner to the status pill so the two never sit on top of each other, and sampled on
+     * the same half second: these move every frame, and a panel that redrew with them would be
+     * unreadable as well as wasteful.
+     */
+    @Composable
+    private fun BoxScope.DebugPanel() {
+        if (igmOpen.value || !showDebug.value) return
+        val rows = remember { mutableStateOf(emptyList<Pair<String, String>>()) }
+        LaunchedEffect(showDebug.value) {
+            while (showDebug.value) {
+                rows.value = debugStatsProvider?.invoke().orEmpty()
+                delay(FPS_SAMPLE_MS)
+            }
+        }
+        OsdPanel(rows.value, OsdPosition.TopStart)
+    }
+
     @Composable
     private fun OsdContent() {
         val colors = cannoliColorsFromHex(
@@ -291,6 +357,7 @@ class OsdOverlay(
                     OsdHost(controller)
                     StatusPill()
                     HoldPill()
+                    DebugPanel()
                 }
             }
         }

@@ -77,6 +77,19 @@ class EmbeddedRetroArchBridge(
         }
     }
 
+    /**
+     * RetroArch's own loop has started, so its settings can be read.
+     *
+     * Nothing may read a setting before this: the activity's onCreate runs while RetroArch is still
+     * uninitialised, and the lookup takes the process down rather than returning nothing.
+     */
+    var onRunloopReady: (() -> Unit)? = null
+
+    @Suppress("unused")
+    fun onRunloopReady() {
+        mainHandler.post { onRunloopReady?.invoke() }
+    }
+
     /** A key belonging to some shortcut chord went down or up during play. */
     var onShortcutKey: ((keycode: Int, down: Boolean) -> Unit)? = null
 
@@ -203,14 +216,65 @@ class EmbeddedRetroArchBridge(
         onShowFpsChanged?.invoke(showFps)
     }
 
+    /**
+     * Adopts what fps_show says, which is where the setting lives even though RetroArch cannot draw
+     * it: the launch config turns its font off so Cannoli can own everything over the game.
+     *
+     * Keeping the value in RetroArch's own key rather than a Cannoli one means the curated row
+     * persists per platform and per game through the tiers that already exist. The shortcut moves
+     * only the live state, so a press stays a press and does not rewrite the setting.
+     */
+    fun syncShowFps() {
+        val on = raGetSetting("fps_show")?.machineValue?.raw == "true"
+        if (on == showFps) return
+        showFps = on
+        onShowFpsChanged?.invoke(on)
+    }
+
     var onShowFpsChanged: ((Boolean) -> Unit)? = null
 
     /** Frames per second over the last half second, or 0 before the first window closes. */
     fun fps(): Float = nativeGetFps()
 
+    /**
+     * Cannoli's own debug panel, not RetroArch's.
+     *
+     * Same arrangement as [showFps]: statistics_show is where the setting lives so the curated row
+     * still persists per platform and game through the existing tiers, and Cannoli draws it because
+     * the launch config turns RetroArch's font off.
+     */
+    var showDebug: Boolean = false
+        private set
+
+    var onShowDebugChanged: ((Boolean) -> Unit)? = null
+
+    fun syncShowDebug() {
+        val on = raGetSetting("statistics_show")?.machineValue?.raw == "true"
+        if (on == showDebug) return
+        showDebug = on
+        onShowDebugChanged?.invoke(on)
+    }
+
+    /** Name and value pairs for the debug panel, read fresh each time. */
+    fun debugStats(): List<Pair<String, String>> {
+        val flat = nativeGetDebugStats() ?: return emptyList()
+        return (flat.indices step 2).mapNotNull { i ->
+            val name = flat.getOrNull(i) ?: return@mapNotNull null
+            val value = flat.getOrNull(i + 1) ?: return@mapNotNull null
+            name to value
+        }
+    }
+
     override fun toggleFastForward() = nativeToggleFastForward()
 
     override fun setFastForwardHeld(held: Boolean) = nativeSetFastForwardHeld(held)
+
+    override fun setRewindHeld(held: Boolean) = nativeSetRewindHeld(held)
+
+    override fun resetRewindBuffer() = nativeResetRewindBuffer()
+
+    override val rewindEnabled: Boolean
+        get() = raGetSetting("rewind_enable")?.machineValue?.raw == "true"
 
     /** What the last press turned off, so the next one has something to turn back on. */
     private var shaderBeforeToggle: String? = null
@@ -808,8 +872,11 @@ class EmbeddedRetroArchBridge(
     private external fun nativeSetIgmTriggerKeycodes(keycodes: IntArray)
     private external fun nativeSetShortcutChords(table: IntArray)
     private external fun nativeGetFps(): Float
+    private external fun nativeGetDebugStats(): Array<String>?
     private external fun nativeToggleFastForward()
     private external fun nativeSetFastForwardHeld(held: Boolean)
+    private external fun nativeSetRewindHeld(held: Boolean)
+    private external fun nativeResetRewindBuffer()
 
     private external fun nativeSetBuiltinPorts(ports: IntArray)
     private external fun nativeGetAchievementData(): String

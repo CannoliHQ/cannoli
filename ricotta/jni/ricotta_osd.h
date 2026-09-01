@@ -26,7 +26,8 @@ enum ricotta_osd_type
    RICOTTA_OSD_LOAD_REFUSED          = 10,
    RICOTTA_OSD_HARDCORE_PAUSED       = 11,
    RICOTTA_OSD_CHEEVOS_LOGIN_FAILED  = 12,
-   RICOTTA_OSD_FASTFORWARD           = 13
+   RICOTTA_OSD_FASTFORWARD           = 13,
+   RICOTTA_OSD_REWIND_END            = 14
 };
 
 /* slot carries RetroArch's state_slot for the state events (< 0 is the auto slot),
@@ -75,6 +76,9 @@ int  ricotta_bridge_take_retract(int *out, int max);
  * the hold hotkey it stands in for. */
 int  ricotta_ff_take_toggle(void);
 int  ricotta_ff_held(void);
+
+/* Rewind while held, fed to RetroArch's own rewind hotkey by the runloop patch. */
+int  ricotta_rewind_held(void);
 
 #ifdef __cplusplus
 }

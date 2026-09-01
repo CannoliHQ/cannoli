@@ -1,0 +1,21 @@
+diff --git a/gfx/video_driver.c b/gfx/video_driver.c
+index d26995cfee..e14ffaa8a4 100644
+--- a/gfx/video_driver.c
++++ b/gfx/video_driver.c
+@@ -3792,6 +3792,16 @@ void video_driver_build_info(video_frame_info_t *video_info)
+    video_info->memory_show                 = settings->bools.video_memory_show;
+    video_info->statistics_show             = settings->bools.video_statistics_show;
+    video_info->framecount_show             = settings->bools.video_framecount_show;
++#ifdef HAVE_RICOTTA_IGM
++   /* Cannoli draws these itself, in its own type and colours, so RetroArch's renderer is left off
++    * the way video_font_enable already leaves the message queue off. The settings themselves are
++    * untouched: they are still where the choice is stored, and Cannoli reads them to know whether
++    * to draw. Suppressed here rather than in each video driver because this one assignment is what
++    * every one of them reads. */
++   video_info->memory_show                 = false;
++   video_info->statistics_show             = false;
++   video_info->framecount_show             = false;
++#endif
+    video_info->time_show                   = settings->uints.video_time_show;
+    video_info->core_status_msg_show        = runloop_st->core_status_msg.set;
+    video_info->aspect_ratio_idx            = settings->uints.video_aspect_ratio_idx;

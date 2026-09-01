@@ -14,6 +14,7 @@
 #include <string.h>
 #include <android/log.h>
 #include <streams/file_stream.h>
+#include <memory/mem_stats.h>
 
 static long long get_time_ms(void)
 {
@@ -153,6 +154,7 @@ static volatile int g_builtin_port_count = 0;
 static jmethodID g_on_igm_trigger_mid = NULL;
 static jmethodID g_on_shortcut_key_mid = NULL;
 static jmethodID g_on_shortcut_action_mid = NULL;
+static jmethodID g_on_runloop_ready_mid = NULL;
 static jmethodID g_on_osd_event_mid = NULL;
 static jmethodID g_on_osd_achievement_mid = NULL;
 static jmethodID g_on_ra_applied_mid = NULL;
@@ -170,6 +172,14 @@ static char g_core_id[PATH_MAX_LENGTH];
 
 /* Timestamp of when the IGM was opened, to debounce the menu button */
 static volatile long long g_igm_open_time = 0;
+
+/* Set on the first pump, which only runs once RetroArch's own loop is going.
+ *
+ * The activity's onCreate happens before NativeActivity has started any of that, so a setting read
+ * from there walks an uninitialised settings system and takes the process down inside
+ * menu_setting_new. Reading early now answers nothing instead of crashing. */
+static volatile int g_runloop_ready = 0;
+static volatile int g_runloop_ready_pending = 0;
 
 /* Set by the input poll, raised by the pump. See ricotta_bridge_intercept_key. */
 static volatile int g_igm_trigger_pending = 0;
@@ -226,6 +236,7 @@ static jobjectArray ricotta_fields_to_array(JNIEnv *env, const ricotta_field *f,
 #define RICOTTA_QCMD_OSD_ACHIEVEMENT  -8
 #define RICOTTA_QCMD_VIEWPORT_SET     -9
 #define RICOTTA_QCMD_SHADER_SET       -10
+#define RICOTTA_QCMD_REWIND_RESET     -11
 typedef struct
 {
    int   cmd;
@@ -534,6 +545,23 @@ float ricotta_fps(void)
 
 void ricotta_bridge_poll_commands(void)
 {
+   if (!g_runloop_ready)
+   {
+      g_runloop_ready = 1;
+      g_runloop_ready_pending = 1;
+   }
+
+   if (g_runloop_ready_pending)
+   {
+      JNIEnv *env = ricotta_runloop_env();
+      g_runloop_ready_pending = 0;
+      if (env && g_bridge_obj && g_on_runloop_ready_mid)
+      {
+         (*env)->CallVoidMethod(env, g_bridge_obj, g_on_runloop_ready_mid);
+         ricotta_jni_check(env, "onRunloopReady");
+      }
+   }
+
    ricotta_fps_tick();
 
    /* A held chord produces no further key events, so the deadline can only be noticed here. */
@@ -750,6 +778,23 @@ void ricotta_bridge_poll_commands(void)
          free(entry.ra_key);
          continue;
       }
+      if (entry.cmd == RICOTTA_QCMD_REWIND_RESET)
+      {
+         /* Loading a state moves the game to a different point in its own history, so the frames
+          * recorded before the load are no longer behind it. Left in place they are still
+          * rewindable, which walks a resumed game back past the resume and into its boot.
+          *
+          * Recreated rather than emptied, which is how RetroArch reinitialises it too: there is no
+          * call to clear the buffer, only to build one. Nothing to do when rewind is off, since
+          * then there is no buffer to hold anything. */
+         runloop_state_t *rl = runloop_state_get_ptr();
+         if (rl && rl->rewind_st.state)
+         {
+            command_event(CMD_EVENT_REWIND_DEINIT, NULL);
+            command_event(CMD_EVENT_REWIND_INIT, NULL);
+         }
+         continue;
+      }
       if (entry.cmd == RICOTTA_QCMD_CHEAT_APPLY)
       {
          settings_t *settings = config_get_ptr();
@@ -797,6 +842,8 @@ static void ricotta_ra_settings_lock_init(void)
 static rarch_setting_t *ricotta_ra_find(const char *key)
 {
    rarch_setting_t *s;
+   if (!g_runloop_ready)
+      return NULL;
    pthread_mutex_lock(&g_ra_settings_lock);
    s = menu_setting_find(key);
    if (!s && !g_ra_index_token)
@@ -1505,6 +1552,68 @@ int ricotta_ff_held(void)
    return g_ff_held;
 }
 
+/* Rewind, held rather than latched, and fed to RetroArch as its own hotkey for the same reason
+ * fast forward is: everything RetroArch decides about rewinding stays in force, including refusing
+ * to rewind while its menu is up, stepping a single frame while paused, and audio_rewind_mute. */
+static volatile int g_rewind_held = 0;
+
+int ricotta_rewind_held(void)
+{
+   return g_rewind_held;
+}
+
+/* The figures behind the debug panel, as name and value pairs.
+ *
+ * Read here rather than lifted out of RetroArch's own status line: that string is assembled inside
+ * video_driver_frame for its own renderer, in a local, and the renderer it feeds is turned off. The
+ * sources underneath it are public, so the panel reads those and Cannoli formats them. */
+JNIEXPORT jobjectArray JNICALL
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeGetDebugStats(
+      JNIEnv *env, jobject obj)
+{
+   ricotta_field fields[6];
+   char fps_buf[32], frames_buf[32], mem_buf[64], geom_buf[48];
+   size_t n = 0;
+   video_driver_state_t *video_st = video_state_get_ptr();
+   runloop_state_t *runloop_st    = runloop_state_get_ptr();
+   uint64_t total = mem_stats_total();
+   uint64_t freem = mem_stats_free();
+   uint64_t used  = (total > freem) ? (total - freem) : 0;
+
+   (void)obj;
+
+   snprintf(fps_buf, sizeof(fps_buf), "%.2f", ricotta_fps());
+   fields[n].name = "fps"; fields[n].value = fps_buf; n++;
+
+   snprintf(frames_buf, sizeof(frames_buf), "%llu",
+         (unsigned long long)(video_st ? video_st->frame_count : 0));
+   fields[n].name = "frames"; fields[n].value = frames_buf; n++;
+
+   snprintf(mem_buf, sizeof(mem_buf), "%.0f/%.0f MB",
+         used / (1024.0 * 1024.0), total / (1024.0 * 1024.0));
+   fields[n].name = "memory"; fields[n].value = mem_buf; n++;
+
+   if (video_st && video_st->av_info.geometry.base_width)
+      snprintf(geom_buf, sizeof(geom_buf), "%ux%u",
+            video_st->av_info.geometry.base_width,
+            video_st->av_info.geometry.base_height);
+   else
+      snprintf(geom_buf, sizeof(geom_buf), "-");
+   fields[n].name = "geometry"; fields[n].value = geom_buf; n++;
+
+   fields[n].name = "core";
+   fields[n].value = (runloop_st && runloop_st->system.info.library_name)
+         ? runloop_st->system.info.library_name : "-";
+   n++;
+
+   fields[n].name = "driver";
+   fields[n].value = (video_st && video_st->current_video && video_st->current_video->ident)
+         ? video_st->current_video->ident : "-";
+   n++;
+
+   return ricotta_fields_to_array(env, fields, n);
+}
+
 /* Cannoli draws the counter itself, in the same pill as fast forward, so RetroArch's own is left
  * off: CMD_EVENT_FPS_TOGGLE here would put a second figure on screen in RetroArch's own styling. */
 JNIEXPORT jfloat JNICALL
@@ -1529,6 +1638,22 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSetFastForwardHeld(
 {
    (void)env; (void)obj;
    g_ff_held = held ? 1 : 0;
+}
+
+JNIEXPORT void JNICALL
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeResetRewindBuffer(
+      JNIEnv *env, jobject obj)
+{
+   (void)env; (void)obj;
+   ricotta_enqueue_command(RICOTTA_QCMD_REWIND_RESET, 0, 0);
+}
+
+JNIEXPORT void JNICALL
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSetRewindHeld(
+      JNIEnv *env, jobject obj, jboolean held)
+{
+   (void)env; (void)obj;
+   g_rewind_held = held ? 1 : 0;
 }
 
 static int ricotta_is_shortcut_key(int keycode)
@@ -2024,6 +2149,7 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeInit(
    g_on_igm_trigger_mid = (*env)->GetMethodID(env, cls, "onIgmTrigger", "()V");
    g_on_shortcut_key_mid = (*env)->GetMethodID(env, cls, "onShortcutKey", "(IZ)V");
    g_on_shortcut_action_mid = (*env)->GetMethodID(env, cls, "onShortcutAction", "(II)V");
+   g_on_runloop_ready_mid = (*env)->GetMethodID(env, cls, "onRunloopReady", "()V");
    g_on_ra_applied_mid = (*env)->GetMethodID(env, cls, "onRaSettingApplied",
          "(Ljava/lang/String;Ljava/lang/String;)V");
    g_on_osd_event_mid = (*env)->GetMethodID(env, cls, "onOsdEvent", "(II)V");
