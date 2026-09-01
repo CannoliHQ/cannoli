@@ -214,11 +214,14 @@ class RetroActivityFuture : RetroActivityCamera() {
         triggerKeycodes: Set<Int>,
     ) {
         val overlay = igmOverlay ?: return
-        if (table.isEmpty()) {
+        // What the launcher passed is the global table. This game's and this platform's tiers can
+        // add to it or switch a chord off, so the effective table is what native and the menu see.
+        val effective = bridge.resolveShortcuts(table)
+        if (effective.isEmpty()) {
             bridge.setShortcutChords(IntArray(0))
             return
         }
-        val union = table.values.flatten().toSet()
+        val union = effective.values.flatten().toSet()
         val controller = dev.cannoli.igm.ShortcutController(
             controller = overlay.controller,
             showMenu = { overlay.show() },
@@ -227,7 +230,7 @@ class RetroActivityFuture : RetroActivityCamera() {
             menuKeys = triggerKeycodes.intersect(union),
         )
         shortcuts = controller
-        bridge.setShortcutChords(dev.cannoli.igm.ShortcutTable.encode(table))
+        bridge.setShortcutChords(dev.cannoli.igm.ShortcutTable.encode(effective))
         controller.onToast = { action ->
             val text = when (action) {
                 dev.cannoli.igm.ShortcutAction.CYCLE_EFFECT -> getString(
@@ -245,10 +248,19 @@ class RetroActivityFuture : RetroActivityCamera() {
             }
             text?.let { osdOverlay?.showMessage(it) }
         }
-        bridge.onShortcutKey = { keycode: Int, down: Boolean -> controller.onKey(keycode, down) }
-        bridge.onShortcutAction = { action: Int, released: Boolean ->
-            controller.onAction(action, released)
+        // Not the action's own label, which already ends in "(Hold)" and would read twice over.
+        controller.onHoldArmed = { action ->
+            when (action) {
+                dev.cannoli.igm.ShortcutAction.SAVE_AND_QUIT_HOLD ->
+                    getString(R.string.osd_hold_to_save_and_quit)
+                else -> null
+            }?.let {
+                osdOverlay?.showHoldPrompt(it, getString(R.string.osd_saving_and_quitting), action.holdMs)
+            }
         }
+        controller.onHoldCancelled = { osdOverlay?.clearHoldPrompt() }
+        bridge.onShortcutKey = { keycode: Int, down: Boolean -> controller.onKey(keycode, down) }
+        bridge.onShortcutAction = { action: Int, kind: Int -> controller.onAction(action, kind) }
     }
 
     override fun onNewIntent(intent: Intent) {

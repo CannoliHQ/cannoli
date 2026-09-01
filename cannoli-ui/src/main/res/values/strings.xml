@@ -800,6 +800,10 @@
     <string name="osd_event_hardcore_load_blocked">Hardcore: Load Blocked</string>
     <!-- OSD pill: hardcore achievements switched off for the rest of this session. -->
     <string name="osd_event_hardcore_paused">Hardcore Paused</string>
+    <!-- OSD pill shown while the Save and Quit (Hold) chord is held, telling the user to keep holding. -->
+    <string name="osd_hold_to_save_and_quit">Hold To Save and Quit</string>
+    <!-- OSD pill replacing the countdown once the hold completes, while the state is written. -->
+    <string name="osd_saving_and_quitting">Saving and Quitting</string>
     <!-- OSD pill: a shortcut turned this platform's shader on. -->
     <string name="osd_event_shader_on">Shader On</string>
     <!-- OSD pill: a shortcut turned the shader off. -->

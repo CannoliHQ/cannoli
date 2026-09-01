@@ -87,11 +87,29 @@ static volatile int g_shortcut_tail = 0;
 typedef struct
 {
    int action;
+   /* Milliseconds the chord must stay down before the action runs, 0 to run on the match. */
+   int hold_ms;
    int count;
    int keys[RICOTTA_MAX_CHORD_KEYS];
 } ricotta_chord;
 static ricotta_chord g_chords[RICOTTA_MAX_CHORDS];
 static volatile int g_chord_count = 0;
+
+/* A hold-style chord that is down and counting. Its keys are already taken from the game, so the
+ * wait costs the game nothing; letting go before the deadline simply means the action never ran. */
+static volatile int g_hold_chord = -1;
+static volatile long long g_hold_deadline_us = 0;
+
+/* What a queued action says happened, mirroring ShortcutTable.Kind. */
+#define RICOTTA_ACT_FIRED          0
+#define RICOTTA_ACT_RELEASED       1
+#define RICOTTA_ACT_HOLD_ARMED     2
+#define RICOTTA_ACT_HOLD_CANCELLED 3
+
+/* Defined with the other chord helpers, below the pump that has to reach it for the hold deadline. */
+static void ricotta_queue_action(int action, int kind);
+static long long ricotta_now_us(void);
+
 
 /* Chord keys currently down, in arrival order. */
 static volatile int g_held[RICOTTA_MAX_SHORTCUT_KEYS];
@@ -479,6 +497,7 @@ static volatile float g_fps = 0.0f;
 static int g_fps_frames = 0;
 static long long g_fps_window_start_us = 0;
 
+
 static long long ricotta_now_us(void)
 {
    struct timespec ts;
@@ -517,6 +536,13 @@ void ricotta_bridge_poll_commands(void)
 {
    ricotta_fps_tick();
 
+   /* A held chord produces no further key events, so the deadline can only be noticed here. */
+   if (g_hold_chord >= 0 && ricotta_now_us() >= g_hold_deadline_us)
+   {
+      ricotta_queue_action(g_chords[g_hold_chord].action, RICOTTA_ACT_FIRED);
+      g_hold_chord = -1;
+   }
+
    if (g_igm_trigger_pending)
    {
       JNIEnv *env = ricotta_runloop_env();
@@ -549,7 +575,7 @@ void ricotta_bridge_poll_commands(void)
       if (env && g_bridge_obj && g_on_shortcut_action_mid)
       {
          (*env)->CallVoidMethod(env, g_bridge_obj, g_on_shortcut_action_mid,
-               (jint)(packed & 0x7fffffff), (jboolean)((packed < 0) ? JNI_FALSE : JNI_TRUE));
+               (jint)(packed & 0xffff), (jint)((packed >> 16) & 0xff));
          ricotta_jni_check(env, "onShortcutAction");
       }
    }
@@ -1581,12 +1607,13 @@ static int ricotta_best_chord(void)
    return best;
 }
 
-static void ricotta_queue_action(int action, int release)
+/* Action in the low 16 bits, kind above it. */
+static void ricotta_queue_action(int action, int kind)
 {
    int next = (g_action_tail + 1) % RICOTTA_SHORTCUT_QUEUE;
    if (next == g_action_head)
       return;
-   g_action_queue[g_action_tail] = release ? action : (int)(action | (int)0x80000000);
+   g_action_queue[g_action_tail] = (action & 0xffff) | (kind << 16);
    g_action_tail = next;
 }
 
@@ -1608,6 +1635,16 @@ static void ricotta_mark_swallowed(int keycode)
          return;
    if (g_swallowed_count < RICOTTA_MAX_SHORTCUT_KEYS)
       g_swallowed[g_swallowed_count++] = keycode;
+}
+
+/* Reports without removing, for the repeat downs that arrive while a key is still held. */
+static int ricotta_is_swallowed(int keycode)
+{
+   int i;
+   for (i = 0; i < g_swallowed_count; i++)
+      if (g_swallowed[i] == keycode)
+         return 1;
+   return 0;
 }
 
 /* Removes and reports, so an up is swallowed exactly once. */
@@ -1680,15 +1717,32 @@ int ricotta_bridge_intercept_key(int keycode, int action)
             int i;
             g_firing_chord = best;
             /* Take back every key of the chord, including the ones already delivered, and eat
-             * their releases so the core is never told a button it never saw came up. */
+             * their releases so the core is never told a button it never saw came up. Done for a
+             * hold chord too, as v1 did: the wait is about giving the user a chance to let go, not
+             * about leaving the game playable meanwhile. */
             for (i = 0; i < g_chords[best].count; i++)
             {
                ricotta_request_retract(g_chords[best].keys[i]);
                ricotta_mark_swallowed(g_chords[best].keys[i]);
             }
-            ricotta_queue_action(g_chords[best].action, 0);
+            if (g_chords[best].hold_ms > 0)
+            {
+               g_hold_chord = best;
+               g_hold_deadline_us = ricotta_now_us()
+                     + (long long)g_chords[best].hold_ms * 1000LL;
+               ricotta_queue_action(g_chords[best].action, RICOTTA_ACT_HOLD_ARMED);
+            }
+            else
+               ricotta_queue_action(g_chords[best].action, RICOTTA_ACT_FIRED);
             return 1;
          }
+         /* A key a chord already took, arriving again because the pad repeats while it is held.
+          * Letting this through would put the key straight back into the state it was retracted
+          * from, which both leaks the chord into the game and leaves RetroArch believing a button
+          * is down: it defers the whole quit check until nothing is pressed, so a Save and Quit
+          * issued mid-hold sat unactioned until the user let go. */
+         if (ricotta_is_swallowed(keycode))
+            return 1;
          /* Nothing is known yet: this may be the first key of a chord or just play. It reaches the
           * game, and is retracted above if a chord completes. */
          if (g_menu_modifier_held)
@@ -1702,7 +1756,15 @@ int ricotta_bridge_intercept_key(int keycode, int action)
       ricotta_held_remove(keycode);
       if (g_firing_chord >= 0 && !ricotta_chord_satisfied(&g_chords[g_firing_chord]))
       {
-         ricotta_queue_action(g_chords[g_firing_chord].action, 1);
+         /* Let go before the deadline: the action never ran, so this reports the hold ending
+          * rather than the action ending. */
+         if (g_hold_chord == g_firing_chord)
+         {
+            ricotta_queue_action(g_chords[g_firing_chord].action, RICOTTA_ACT_HOLD_CANCELLED);
+            g_hold_chord = -1;
+         }
+         else
+            ricotta_queue_action(g_chords[g_firing_chord].action, RICOTTA_ACT_RELEASED);
          g_firing_chord = -1;
       }
       if (ricotta_take_swallowed(keycode))
@@ -1737,6 +1799,7 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSetIGMVisible(
    g_held_count = 0;
    g_firing_chord = -1;
    g_retract_count = 0;
+   g_hold_chord = -1;
 }
 
 JNIEXPORT void JNICALL
@@ -1790,6 +1853,7 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSetShortcutChords(
    g_menu_modifier_held  = 0;
    g_swallowed_count     = 0;
    g_retract_count       = 0;
+   g_hold_chord          = -1;
 
    if (!table)
       return;
@@ -1799,17 +1863,19 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSetShortcutChords(
    if (!elems)
       return;
 
-   while (at + 1 < n && chords < RICOTTA_MAX_CHORDS)
+   while (at + 2 < n && chords < RICOTTA_MAX_CHORDS)
    {
-      int action = (int)elems[at++];
-      int count  = (int)elems[at++];
+      int action  = (int)elems[at++];
+      int hold_ms = (int)elems[at++];
+      int count   = (int)elems[at++];
       int i;
 
       if (count <= 0 || count > RICOTTA_MAX_CHORD_KEYS || at + count > n)
          break;
 
-      g_chords[chords].action = action;
-      g_chords[chords].count  = count;
+      g_chords[chords].action  = action;
+      g_chords[chords].hold_ms = hold_ms;
+      g_chords[chords].count   = count;
       for (i = 0; i < count; i++)
       {
          int key = (int)elems[at++];
@@ -1957,7 +2023,7 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeInit(
    g_on_debug_key_mid = (*env)->GetMethodID(env, cls, "onDebugKey", "(I)V");
    g_on_igm_trigger_mid = (*env)->GetMethodID(env, cls, "onIgmTrigger", "()V");
    g_on_shortcut_key_mid = (*env)->GetMethodID(env, cls, "onShortcutKey", "(IZ)V");
-   g_on_shortcut_action_mid = (*env)->GetMethodID(env, cls, "onShortcutAction", "(IZ)V");
+   g_on_shortcut_action_mid = (*env)->GetMethodID(env, cls, "onShortcutAction", "(II)V");
    g_on_ra_applied_mid = (*env)->GetMethodID(env, cls, "onRaSettingApplied",
          "(Ljava/lang/String;Ljava/lang/String;)V");
    g_on_osd_event_mid = (*env)->GetMethodID(env, cls, "onOsdEvent", "(II)V");

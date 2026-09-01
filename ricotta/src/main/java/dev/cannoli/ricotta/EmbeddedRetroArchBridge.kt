@@ -96,12 +96,12 @@ class EmbeddedRetroArchBridge(
      * the key event that completes the chord, so the keys can be taken back before the core's next
      * poll. This only carries the result out to whatever performs the action.
      */
-    var onShortcutAction: ((action: Int, released: Boolean) -> Unit)? = null
+    var onShortcutAction: ((action: Int, kind: Int) -> Unit)? = null
 
     @Suppress("unused")
-    fun onShortcutAction(action: Int, released: Boolean) {
+    fun onShortcutAction(action: Int, kind: Int) {
         mainHandler.post {
-            onShortcutAction?.invoke(action, released)
+            onShortcutAction?.invoke(action, kind)
         }
     }
 
@@ -127,8 +127,29 @@ class EmbeddedRetroArchBridge(
 
     fun setIgmTriggerKeycodes(keycodes: IntArray) = nativeSetIgmTriggerKeycodes(keycodes)
 
-    /** Flat [action ordinal, key count, keys...] triples, one array so the table is never half set. */
+    /** Flat [action ordinal, hold ms, key count, keys...], one array so the table is never half set. */
     fun setShortcutChords(table: IntArray) = nativeSetShortcutChords(table)
+
+    /**
+     * The chords actually in force, layering this game's and this platform's overrides over the
+     * launcher's global table.
+     *
+     * The launcher owns the global table and hands it over in the launch parcel; the tiers here are
+     * the in-game menu's to write. Per action rather than per table, so rebinding the one chord a
+     * game clashes on leaves the other ten inherited.
+     */
+    fun resolveShortcuts(
+        global: Map<dev.cannoli.igm.ShortcutAction, Set<Int>>,
+    ): Map<dev.cannoli.igm.ShortcutAction, Set<Int>> =
+        dev.cannoli.igm.ShortcutAction.entries.associateWith { action ->
+            when (val tier = storedTierValue(dev.cannoli.igm.ShortcutTable.keyFor(action))) {
+                is TierValue.Set -> dev.cannoli.igm.ShortcutTable.parseChord(tier.value)
+                // An explicit empty is this scope saying the action is off here, which is not the
+                // same as saying nothing and letting the scope above answer.
+                is TierValue.Off -> emptySet()
+                is TierValue.Inherit -> global[action].orEmpty()
+            }
+        }.filterValues { it.isNotEmpty() }
 
     fun setBuiltinPorts(ports: IntArray) = nativeSetBuiltinPorts(ports)
 

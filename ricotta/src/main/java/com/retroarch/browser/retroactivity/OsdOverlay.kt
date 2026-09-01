@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.res.Configuration
 import android.graphics.PixelFormat
 import android.os.Bundle
+import android.os.SystemClock
 import android.view.WindowManager
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -127,6 +128,25 @@ class OsdOverlay(
     }
 
     /**
+     * The prompt shown while a hold-style chord counts down, with the time left beside it.
+     *
+     * Not a toast: a toast says something happened and then ages out on its own clock, where this
+     * has to track a deadline it does not own and vanish the moment the chord is let go. It carries
+     * its own deadline for the same reason the fast forward pill does.
+     */
+    private class HoldPrompt(val label: String, val done: String, val deadlineMs: Long)
+
+    private val holdPrompt = mutableStateOf<HoldPrompt?>(null)
+
+    fun showHoldPrompt(message: String, done: String, holdMs: Int) {
+        holdPrompt.value = HoldPrompt(message, done, SystemClock.elapsedRealtime() + holdMs)
+    }
+
+    fun clearHoldPrompt() {
+        holdPrompt.value = null
+    }
+
+    /**
      * The two indicators that stay up rather than passing, sharing one pill as v1 drew them.
      *
      * A toast would announce that something changed and then leave nothing on screen to say it is
@@ -149,6 +169,9 @@ class OsdOverlay(
      */
     fun setIgmOpen(open: Boolean) {
         igmOpen.value = open
+        // A prompt counting down behind the menu has nothing left to complete it, since the action
+        // it belongs to refuses to fire while the menu is up.
+        if (open) holdPrompt.value = null
     }
 
     /** Polled while the counter is up, since nothing pushes a frame rate. */
@@ -186,6 +209,52 @@ class OsdOverlay(
         OsdPill(text, OsdPosition.TopEnd)
     }
 
+    /**
+     * Tenths still to go, rounded up so every value gets one tick.
+     *
+     * Rounding to nearest gave 0.1 two ticks, since 0.15 and 0.05 both render as one tenth, and the
+     * number visibly stalled there at the very moment the user is watching it hardest.
+     */
+    private fun tenthsLeft(deadlineMs: Long): Long {
+        val left = deadlineMs - SystemClock.elapsedRealtime()
+        return if (left <= 0) 0 else (left + HOLD_TICK_MS - 1) / HOLD_TICK_MS
+    }
+
+    /**
+     * Counts down in tenths, which the bundled font renders without the pill twitching: every digit
+     * in it is 640 units wide, so the text cannot change width as the number falls.
+     *
+     * Clears itself at zero. The action firing is what ends the hold, and that already leaves the
+     * game, so nothing else has to come along and take this down.
+     */
+    @Composable
+    private fun BoxScope.HoldPill() {
+        val prompt = holdPrompt.value ?: return
+        val tenths = remember(prompt) { mutableStateOf(tenthsLeft(prompt.deadlineMs)) }
+        LaunchedEffect(prompt) {
+            while (true) {
+                val left = prompt.deadlineMs - SystemClock.elapsedRealtime()
+                tenths.value = tenthsLeft(prompt.deadlineMs)
+                if (left <= 0) break
+                // To the next tenth of the deadline rather than a flat 100ms from wherever this
+                // woke. A fixed delay drifts off the deadline, so the last step ran late and the
+                // pill outlived the press it was counting.
+                delay((left - 1) % HOLD_TICK_MS + 1)
+            }
+        }
+        // Held past zero rather than taken down. The action cannot land the instant the countdown
+        // ends: it crosses two queues and a thread, and RetroArch writes the auto save state before
+        // it will shut down. Hiding here would leave that stretch blank, which read as a hang.
+        if (tenths.value <= 0) {
+            OsdPill(prompt.done, OsdPosition.BottomCenter)
+            return
+        }
+        OsdPill(
+            "${prompt.label}  ${tenths.value / 10}.${tenths.value % 10}",
+            OsdPosition.BottomCenter,
+        )
+    }
+
     @Composable
     private fun OsdContent() {
         val colors = cannoliColorsFromHex(
@@ -221,6 +290,7 @@ class OsdOverlay(
                 ) {
                     OsdHost(controller)
                     StatusPill()
+                    HoldPill()
                 }
             }
         }
@@ -230,5 +300,6 @@ class OsdOverlay(
         // As v1 sampled it. The native side already averages over the same window, so reading more
         // often would redraw the same figure.
         const val FPS_SAMPLE_MS = 500L
+        const val HOLD_TICK_MS = 100L
     }
 }

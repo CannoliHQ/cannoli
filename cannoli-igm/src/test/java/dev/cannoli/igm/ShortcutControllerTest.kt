@@ -50,10 +50,10 @@ class ShortcutControllerTest {
     }
 
     private fun ShortcutController.fire(action: ShortcutAction) =
-        onAction(action.ordinal, released = false)
+        onAction(action.ordinal, ShortcutTable.Kind.FIRED)
 
     private fun ShortcutController.release(action: ShortcutAction) =
-        onAction(action.ordinal, released = true)
+        onAction(action.ordinal, ShortcutTable.Kind.RELEASED)
 
     @Test fun `an action reaches the bridge call it names`() {
         val bridge = RecordingBridge()
@@ -126,10 +126,50 @@ class ShortcutControllerTest {
     @Test fun `an action native does not know is ignored`() {
         val bridge = RecordingBridge()
         val (shortcuts, _) = build(bridge)
-        shortcuts.onAction(ShortcutAction.entries.size, released = false)
-        shortcuts.onAction(-1, released = false)
+        shortcuts.onAction(ShortcutAction.entries.size, ShortcutTable.Kind.FIRED)
+        shortcuts.onAction(-1, ShortcutTable.Kind.FIRED)
         assertEquals(0, bridge.resets)
         assertEquals(0, bridge.quits)
+    }
+
+    // The bug this fixes: with the hold gone, the (Hold) variant fired instantly and was a
+    // duplicate of the plain action, despite its label promising a long press.
+    @Test fun `an armed hold does not quit until it fires`() {
+        val bridge = RecordingBridge()
+        val (shortcuts, _) = build(bridge)
+        val armed = mutableListOf<ShortcutAction>()
+        shortcuts.onHoldArmed = { armed.add(it) }
+
+        shortcuts.onAction(ShortcutAction.SAVE_AND_QUIT_HOLD.ordinal, ShortcutTable.Kind.HOLD_ARMED)
+        assertEquals("arming only prompts", 0, bridge.quits)
+        assertEquals(listOf(ShortcutAction.SAVE_AND_QUIT_HOLD), armed)
+
+        shortcuts.fire(ShortcutAction.SAVE_AND_QUIT_HOLD)
+        assertEquals(1, bridge.quits)
+    }
+
+    @Test fun `letting go before the hold is up quits nothing`() {
+        val bridge = RecordingBridge()
+        val (shortcuts, _) = build(bridge)
+        var cancels = 0
+        shortcuts.onHoldCancelled = { cancels++ }
+
+        shortcuts.onAction(ShortcutAction.SAVE_AND_QUIT_HOLD.ordinal, ShortcutTable.Kind.HOLD_ARMED)
+        shortcuts.onAction(ShortcutAction.SAVE_AND_QUIT_HOLD.ordinal, ShortcutTable.Kind.HOLD_CANCELLED)
+        assertEquals(0, bridge.quits)
+        assertEquals("the prompt has to come down again", 1, cancels)
+    }
+
+    // The prompt tells the user to keep holding, which means nothing behind an open menu.
+    @Test fun `no hold prompt while the menu is open`() {
+        val bridge = RecordingBridge()
+        val (shortcuts, igm) = build(bridge)
+        var prompts = 0
+        shortcuts.onHoldArmed = { prompts++ }
+        igm.openMenu()
+
+        shortcuts.onAction(ShortcutAction.SAVE_AND_QUIT_HOLD.ordinal, ShortcutTable.Kind.HOLD_ARMED)
+        assertEquals(0, prompts)
     }
 
     // Native only hands the menu key over when a chord uses it, so opening it is this side's job

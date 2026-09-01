@@ -49,11 +49,22 @@ class ShortcutController(
         if (!claimed) showMenu()
     }
 
-    /** Native matched a chord. [released] is the end of a hold-style action, not a new press. */
-    fun onAction(ordinal: Int, released: Boolean) {
+    /** Native matched a chord. [kind] is a [ShortcutTable.Kind]. */
+    fun onAction(ordinal: Int, kind: Int) {
         val action = ShortcutAction.entries.getOrNull(ordinal) ?: return
-        if (released) release(action) else fire(action)
+        when (kind) {
+            ShortcutTable.Kind.FIRED -> fire(action)
+            ShortcutTable.Kind.RELEASED -> release(action)
+            // Nothing has happened to the game yet. The prompt is the whole point: it is what tells
+            // the user to keep holding, and what makes letting go a deliberate cancel.
+            ShortcutTable.Kind.HOLD_ARMED -> if (!controller.isOpen) onHoldArmed?.invoke(action)
+            ShortcutTable.Kind.HOLD_CANCELLED -> onHoldCancelled?.invoke(action)
+        }
     }
+
+    /** Shown while a hold-style chord counts down, and cleared if it is let go first. */
+    var onHoldArmed: ((ShortcutAction) -> Unit)? = null
+    var onHoldCancelled: ((ShortcutAction) -> Unit)? = null
 
     fun reset() {
         menuHeld = false
