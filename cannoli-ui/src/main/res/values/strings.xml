@@ -99,6 +99,8 @@
     <string name="shortcut_action_cycle_shader">Toggle Shader</string>
     <string name="shortcut_action_toggle_ff">Toggle Fast Forward</string>
     <string name="shortcut_action_hold_ff">Hold Fast Forward</string>
+    <!-- In-game shortcut action: rewind the game for as long as the chord is held. -->
+    <string name="shortcut_action_rewind">Rewind</string>
     <string name="shortcut_action_open_guide">Open Guide</string>
     <string name="shortcut_action_open_menu">Open In-Game Menu</string>
     <string name="shortcut_action_toggle_show_fps">Toggle FPS Display</string>
@@ -804,6 +806,15 @@
     <string name="osd_hold_to_save_and_quit">Hold To Save and Quit</string>
     <!-- OSD pill replacing the countdown once the hold completes, while the state is written. -->
     <string name="osd_saving_and_quitting">Saving and Quitting</string>
+    <!-- Labels in the over-game debug panel. Each names a figure shown beside it. -->
+    <string name="igm_debug_fps">FPS</string>
+    <string name="igm_debug_frames">Frames</string>
+    <string name="igm_debug_memory">Memory</string>
+    <string name="igm_debug_geometry">Geometry</string>
+    <string name="igm_debug_core">Core</string>
+    <string name="igm_debug_driver">Driver</string>
+    <!-- OSD pill: the rewind shortcut was pressed but RetroArch's rewind buffer is switched off. -->
+    <string name="osd_rewind_off">Rewind Is Off</string>
     <!-- OSD pill: a shortcut turned this platform's shader on. -->
     <string name="osd_event_shader_on">Shader On</string>
     <!-- OSD pill: a shortcut turned the shader off. -->
@@ -938,6 +949,8 @@
     <string name="igm_sharpness_soft">Soft</string>
     <!-- In-game setting: how much faster than normal the fast-forward button runs. -->
     <string name="igm_curated_max_ff_speed">Max Fast-Forward Speed</string>
+    <!-- Curated IGM row turning RetroArch's rewind buffer on or off for this platform or game. -->
+    <string name="igm_curated_rewind">Rewind</string>
     <!-- Fast-forward speed value: a multiple of normal speed. %1$d is the multiplier, for example 2 giving "2x". -->
     <string name="igm_ff_multiplier">%1$dx</string>
     <!-- Fast-forward speed value: as fast as the device can manage, with no limit. -->

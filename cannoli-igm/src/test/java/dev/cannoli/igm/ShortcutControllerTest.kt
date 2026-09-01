@@ -26,6 +26,11 @@ private class RecordingBridge : FakeRetroArchBridge() {
     override fun toggleFastForward() { ffToggles++ }
     override fun toggleShader() { shaderToggles++ }
     override fun setFastForwardHeld(held: Boolean) { ffHeld.add(held) }
+
+    var rewindOn = true
+    val rewindHeld = mutableListOf<Boolean>()
+    override val rewindEnabled: Boolean get() = rewindOn
+    override fun setRewindHeld(held: Boolean) { rewindHeld.add(held) }
 }
 
 /**
@@ -170,6 +175,37 @@ class ShortcutControllerTest {
 
         shortcuts.onAction(ShortcutAction.SAVE_AND_QUIT_HOLD.ordinal, ShortcutTable.Kind.HOLD_ARMED)
         assertEquals(0, prompts)
+    }
+
+    @Test fun `rewind runs while the chord is held`() {
+        val bridge = RecordingBridge()
+        val (shortcuts, _) = build(bridge)
+        shortcuts.fire(ShortcutAction.REWIND)
+        assertEquals(listOf(true), bridge.rewindHeld)
+        shortcuts.release(ShortcutAction.REWIND)
+        assertEquals(listOf(true, false), bridge.rewindHeld)
+    }
+
+    // Rewinding does nothing at all without RetroArch's buffer, so the press has to say so rather
+    // than leave the user pressing a shortcut that looks broken.
+    @Test fun `rewind reports itself unavailable when the buffer is off`() {
+        val bridge = RecordingBridge().apply { rewindOn = false }
+        val (shortcuts, _) = build(bridge)
+        var refusals = 0
+        shortcuts.onRewindUnavailable = { refusals++ }
+
+        shortcuts.fire(ShortcutAction.REWIND)
+        assertEquals(1, refusals)
+        assertTrue("nothing should be asked of the bridge", bridge.rewindHeld.isEmpty())
+    }
+
+    // A refusal still has to clear on release, or turning the buffer on later would rewind at once.
+    @Test fun `a refused rewind still releases`() {
+        val bridge = RecordingBridge().apply { rewindOn = false }
+        val (shortcuts, _) = build(bridge)
+        shortcuts.fire(ShortcutAction.REWIND)
+        shortcuts.release(ShortcutAction.REWIND)
+        assertEquals(listOf(false), bridge.rewindHeld)
     }
 
     // Native only hands the menu key over when a chord uses it, so opening it is this side's job

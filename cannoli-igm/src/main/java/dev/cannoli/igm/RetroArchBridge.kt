@@ -36,6 +36,23 @@ interface RetroArchBridge {
     fun setFastForwardHeld(held: Boolean) {}
 
     /**
+     * Rewind, which only ever runs while held.
+     *
+     * Does nothing unless RetroArch's rewind buffer is on, which is what [rewindEnabled] answers:
+     * the buffer costs real memory and is off by default, so a shortcut pressed without it should
+     * say so rather than appear broken.
+     */
+    fun setRewindHeld(held: Boolean) {}
+
+    val rewindEnabled: Boolean get() = false
+
+    /**
+     * Throws away the rewind history, for when the game has moved somewhere that history does not
+     * lead back to. Does nothing when rewind is off, since then there is none.
+     */
+    fun resetRewindBuffer() {}
+
+    /**
      * Switches between the shader this platform is set to and none.
      *
      * Reads the stored tier rather than keeping its own idea of what is applied, so the shortcut

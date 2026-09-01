@@ -66,6 +66,9 @@ class ShortcutController(
     var onHoldArmed: ((ShortcutAction) -> Unit)? = null
     var onHoldCancelled: ((ShortcutAction) -> Unit)? = null
 
+    /** Rewind was asked for while RetroArch's rewind buffer is off. */
+    var onRewindUnavailable: (() -> Unit)? = null
+
     fun reset() {
         menuHeld = false
         menuClaimed = false
@@ -94,11 +97,24 @@ class ShortcutController(
             ShortcutAction.CYCLE_EFFECT -> controller.bridge.toggleShader()
             ShortcutAction.TOGGLE_FF -> controller.bridge.toggleFastForward()
             ShortcutAction.HOLD_FF -> controller.bridge.setFastForwardHeld(true)
+            // Nothing happens without RetroArch's rewind buffer, so a press without it says so
+            // rather than looking broken. The host draws the message; this only reports it.
+            ShortcutAction.REWIND -> if (controller.bridge.rewindEnabled) {
+                controller.bridge.setRewindHeld(true)
+            } else {
+                onRewindUnavailable?.invoke()
+            }
         }
         onToast?.invoke(action)
     }
 
     private fun release(action: ShortcutAction) {
-        if (action == ShortcutAction.HOLD_FF) controller.bridge.setFastForwardHeld(false)
+        when (action) {
+            ShortcutAction.HOLD_FF -> controller.bridge.setFastForwardHeld(false)
+            // Released unconditionally, even when the press was refused: a flag left set by a
+            // refusal would rewind the moment the buffer was turned on.
+            ShortcutAction.REWIND -> controller.bridge.setRewindHeld(false)
+            else -> {}
+        }
     }
 }

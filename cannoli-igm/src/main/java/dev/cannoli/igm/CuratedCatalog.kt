@@ -75,6 +75,13 @@ object CuratedCatalog {
                 Preset("ff_8x", mapOf("fastforward_ratio" to "8")),
                 Preset("ff_unlimited", mapOf("fastforward_ratio" to "0")),
             )),
+            // Off by default in RetroArch, and worth leaving that way per platform: the buffer is
+            // real memory and the cost of filling it is paid on every frame, which a heavier system
+            // feels and a handheld one does not.
+            Row("curated_rewind", listOf(
+                Preset("off", mapOf("rewind_enable" to "false")),
+                Preset("on", mapOf("rewind_enable" to "true")),
+            )),
             Row("curated_show_fps", listOf(
                 Preset("off", mapOf("fps_show" to "false")),
                 Preset("on", mapOf("fps_show" to "true")),
