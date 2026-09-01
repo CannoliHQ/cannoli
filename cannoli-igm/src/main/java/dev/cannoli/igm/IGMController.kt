@@ -479,9 +479,12 @@ class IGMController(
      * to overwrite the auto slot, so rotating would push a state into history for no reason.
      */
     fun quitGame() {
-        if (bridge.savesOnQuit) slots.rotateAutoIntoHistory()
-        onClose?.invoke()
-        bridge.quit()
+        // Same archive, same reason to keep it off the main thread as [saveAndQuit].
+        scope.launch {
+            if (bridge.savesOnQuit) withContext(io) { slots.rotateAutoIntoHistory() }
+            onClose?.invoke()
+            bridge.quit()
+        }
     }
 
     /**
@@ -491,11 +494,17 @@ class IGMController(
      * the whole difference between the row and the shortcut.
      */
     fun saveAndQuit() {
-        // RetroArch is about to write the auto slot, so the state it replaces is archived first.
-        slots.rotateAutoIntoHistory()
-        if (!bridge.savesOnQuit) bridge.forceSaveOnQuit()
-        onClose?.invoke()
-        bridge.quit()
+        // Off the main thread because the archive moves whole save states and their thumbnails, and
+        // falls back to copying them outright when a rename cannot cross the filesystem. Done here,
+        // that froze everything drawn over the game for as long as the copy took: the hold countdown
+        // stopped dead on its last value and only the exit ever cleared it.
+        scope.launch {
+            // RetroArch is about to write the auto slot, so the state it replaces is archived first.
+            withContext(io) { slots.rotateAutoIntoHistory() }
+            if (!bridge.savesOnQuit) bridge.forceSaveOnQuit()
+            onClose?.invoke()
+            bridge.quit()
+        }
     }
 
     /** Whether this game has anything for the Guide row, or a shortcut bound to it, to open. */
