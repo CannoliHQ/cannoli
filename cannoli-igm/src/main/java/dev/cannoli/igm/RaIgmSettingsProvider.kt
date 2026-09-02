@@ -536,7 +536,7 @@ class RaIgmSettingsProvider(
     private fun infoScreen(): GenericIgmSettingsScreen = GenericIgmSettingsScreen(
         curatedTitle(CuratedCatalog.CATEGORY_INFO),
         host.systemInfo().mapIndexed { i, (label, value) ->
-            GenericIgmSettingsItem.Choice(key = "$INFO_ROW_PREFIX$i", label = label, value = value)
+            GenericIgmSettingsItem.Choice(key = "$INFO_ROW_PREFIX$i", label = label, value = value, readOnly = true)
         },
     )
 

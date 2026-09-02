@@ -11,6 +11,8 @@ sealed interface GenericIgmSettingsItem {
         val value: String,
         val hint: String? = null,
         val description: String? = null,
+        /** A row that shows a value it does not own, so the legend must not offer to change it. */
+        val readOnly: Boolean = false,
     ) : GenericIgmSettingsItem
     data class Action(override val key: String, override val label: String) : GenericIgmSettingsItem
 }

@@ -257,7 +257,8 @@ fun CannoliIGM(
                         screen.path.firstOrNull() == CuratedCatalog.CATEGORY_SHADER
                     val selectLabel = stringResource(dev.cannoli.ui.R.string.label_select)
                     val rowCycles = screen is IGMScreen.ProviderSettings &&
-                        settingsItems.getOrNull(screen.selectedIndex)?.value != null
+                        settingsItems.getOrNull(screen.selectedIndex)
+                            ?.let { it.value != null && it.cyclable } == true
                     val hasDescription =
                         settingsItems.getOrNull(screen.selectedIndex)?.description != null
                     val bottomBarRight = when {
