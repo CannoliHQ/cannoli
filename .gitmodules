@@ -1,7 +1,3 @@
-[submodule "app/src/main/cpp/third_party/rcheevos"]
-	path = app/src/main/cpp/third_party/rcheevos
-	url = https://github.com/CannoliHQ/rcheevos.git
-	ignore = dirty
 [submodule "retroarch"]
 	path = retroarch
 	url = https://github.com/libretro/RetroArch.git
