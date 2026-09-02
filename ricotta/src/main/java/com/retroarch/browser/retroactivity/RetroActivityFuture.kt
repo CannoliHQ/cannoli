@@ -87,6 +87,9 @@ class RetroActivityFuture : RetroActivityCamera() {
 
             val ds = params?.displaySettings
             val fontSizeSp = ds?.fontSizeSp ?: 24
+            // Before the config is built, because the labels in it are translated: reading them off
+            // the activity would answer in the device's language rather than the launcher's.
+            osdContext = localeContext(this, localeTag)
             val hostConfig = dev.cannoli.igm.IGMHostConfig(
                 fontSizeSp = fontSizeSp,
                 lineHeightSp = dev.cannoli.ui.components.pillLineHeightSp(fontSizeSp),
@@ -116,8 +119,6 @@ class RetroActivityFuture : RetroActivityCamera() {
                 saveGameLabel = osdContext.getString(R.string.igm_save_game),
                 discardLabel = osdContext.getString(R.string.igm_dont_save),
             )
-
-            osdContext = localeContext(this, localeTag)
 
             val bridge = EmbeddedRetroArchBridge(
                 params?.hardcoreInEffect ?: false, cannoliRoot, platformTag, romBaseName,
