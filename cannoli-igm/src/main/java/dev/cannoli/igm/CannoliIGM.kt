@@ -1,5 +1,6 @@
 package dev.cannoli.igm
 
+import dev.cannoli.ui.components.ShortcutCaptureOverlay
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import androidx.compose.foundation.background
@@ -70,12 +71,14 @@ fun CannoliIGM(
     slotOccupied: List<Boolean>,
     undoAction: UndoAction?,
     settingsItems: List<IGMSettingsItem>,
+    shortcutRows: List<RetroArchBridge.ShortcutBinding> = emptyList(),
     previewTitle: String = "",
     previewItems: List<String> = emptyList(),
     previewCanRestore: Boolean = false,
     settingsCanRestore: Boolean = false,
     settingsCanReorder: Boolean = false,
     settingsCanRemovePass: Boolean = false,
+    settingsCanReset: Boolean = false,
     settingsReordering: Boolean = false,
     overlayImage: String? = null,
     cheatItems: List<IGMController.CheatItem>,
@@ -283,6 +286,10 @@ fun CannoliIGM(
                     }
                     val title = when (screen) {
                         is IGMScreen.ProviderSettings -> screen.title
+                        // A prompt that asked its own question keeps it. Only the one on the way out
+                        // of Settings has none of its own, and that one is about saving.
+                        is IGMScreen.SettingsExitPrompt -> screen.title
+                            ?: stringResource(dev.cannoli.ui.R.string.igm_save_changes)
                         else -> stringResource(dev.cannoli.ui.R.string.igm_save_changes)
                     }
                     val bottomBarLeft = buildList {
@@ -291,6 +298,11 @@ fun CannoliIGM(
                             return@buildList
                         }
                         add(labels.back to stringResource(dev.cannoli.ui.R.string.label_back))
+                        // Only where something is stored, so the button appearing is also the answer
+                        // to whether this game or its platform has settings of its own.
+                        if (settingsCanReset) {
+                            add(labels.north to stringResource(dev.cannoli.ui.R.string.label_reset))
+                        }
                         // Only where a row can actually be picked up, so the offer is also the
                         // answer to which rows have a position that matters.
                         if (settingsCanReorder) {
@@ -319,6 +331,50 @@ fun CannoliIGM(
                         reorderingIndex = screen.selectedIndex.takeIf { settingsReordering },
                         fontSize = igmFontSize,
                         lineHeight = igmLineHeight,
+                    )
+                }
+                is IGMScreen.Shortcuts -> {
+                    // The launcher's capture screen, not a copy of it: one answer to how a chord is
+                    // held, so the two menus cannot drift on the prompt or the wait.
+                    if (screen.listening) {
+                        ShortcutCaptureOverlay(
+                            actionName = shortcutRows.getOrNull(screen.selectedIndex)
+                                ?.let { stringResource(it.action.labelRes) } ?: "",
+                            heldText = screen.heldKeys
+                                .takeIf { it.isNotEmpty() }
+                                ?.joinToString(" + ") { config.keyCodeName(it) },
+                            progress = screen.countdownMs / BindingController.HOLD_MS.toFloat(),
+                            fontSize = igmFontSize,
+                        )
+                        return@Box
+                    }
+                    val none = stringResource(dev.cannoli.ui.R.string.igm_shortcut_none)
+                    val listening = stringResource(dev.cannoli.ui.R.string.igm_shortcut_listening)
+                    val items = shortcutRows.mapIndexed { i, row ->
+                        val binding = screen.listening && i == screen.selectedIndex
+                        IGMSettingsItem(
+                            label = stringResource(row.action.labelRes),
+                            value = when {
+                                binding && screen.heldKeys.isEmpty() -> listening
+                                binding -> screen.heldKeys.joinToString(" + ") { config.keyCodeName(it) }
+                                row.chord.isEmpty() -> none
+                                else -> row.chord.joinToString(" + ") { config.keyCodeName(it) }
+                            },
+                        )
+                    }
+                    IGMSettingsScreen(
+                        title = stringResource(dev.cannoli.ui.R.string.igm_shortcuts_title),
+                        items = items,
+                        selectedIndex = screen.selectedIndex,
+                        bottomBarLeft = listOf(
+                            labels.back to stringResource(dev.cannoli.ui.R.string.label_back),
+                        ),
+                        bottomBarRight = listOf(
+                            labels.north to stringResource(dev.cannoli.ui.R.string.label_clear),
+                            labels.confirm to stringResource(dev.cannoli.ui.R.string.label_set),
+                        ),
+                        fontSize = igmFontSize,
+                        lineHeight = igmLineHeight
                     )
                 }
                 is IGMScreen.GuidePicker -> {

@@ -185,7 +185,11 @@ class IGMOverlay(
             savePlatform = uiContext.getString(R.string.igm_save_platform, platformName),
             saveGame = uiContext.getString(R.string.igm_save_game),
             dontSave = uiContext.getString(R.string.igm_dont_save),
+            resetTitle = uiContext.getString(R.string.igm_reset_title),
+            resetPlatform = uiContext.getString(R.string.igm_reset_platform, platformName),
+            resetGame = uiContext.getString(R.string.igm_reset_game),
             emulator = uiContext.getString(R.string.igm_emulator),
+            shortcuts = uiContext.getString(R.string.igm_shortcuts_title),
             shaderApplied = uiContext.getString(R.string.igm_shader_applied),
             shaderEnabled = uiContext.getString(R.string.igm_shader_enabled),
             shaderLoad = uiContext.getString(R.string.igm_shader_load),
@@ -212,6 +216,7 @@ class IGMOverlay(
                 CuratedCatalog.CATEGORY_ADVANCED to uiContext.getString(R.string.igm_advanced),
                 CuratedCatalog.CATEGORY_INFO to uiContext.getString(R.string.igm_info),
                 CuratedCatalog.CATEGORY_OVERLAY to uiContext.getString(R.string.igm_overlay),
+                CuratedCatalog.CATEGORY_INPUT to uiContext.getString(R.string.igm_input),
                 CuratedCatalog.CATEGORY_SHADER to uiContext.getString(R.string.igm_shader),
             ),
             curatedRowLabels = mapOf(
@@ -500,6 +505,14 @@ class IGMOverlay(
             picker.canRestore.value = bridge.overridesAtGame(EmbeddedRetroArchBridge.KEY_OVERLAY)
             showOverlayLayer()
         }
+        // The bridge has already re-read the bezel from what survived the reset, so this only has to
+        // put on screen what it now says.
+        bridge.onCannoliReset = {
+            overlayBeforeEdit = bridge.cannoliOverlayName
+            picker.activeImage.value = bridge.cannoliOverlayName?.let { overlayImageFor(it) }
+            picker.canRestore.value = bridge.overridesAtGame(EmbeddedRetroArchBridge.KEY_OVERLAY)
+            showOverlayLayer()
+        }
 
         picker.onRestoreDefault = {
             // The platform's answer, which is what this game will show once it stops giving its own.
@@ -555,12 +568,15 @@ class IGMOverlay(
                     slotOccupied = controller.slotOccupied.value,
                     undoAction = controller.undoAction.value,
                     settingsItems = controller.settingsItems.value,
+                    shortcutRows = (controller.currentScreen as? dev.cannoli.igm.IGMScreen.Shortcuts)
+                        ?.let { controller.shortcutRows.value }.orEmpty(),
                     previewTitle = controller.overlayPicker.title.value,
                     previewItems = controller.overlayPicker.items.value,
                     previewCanRestore = controller.overlayPicker.canRestore.value,
                     settingsCanRestore = controller.settingsCanRestore.value,
                     settingsCanReorder = controller.settingsCanReorder.value,
                     settingsCanRemovePass = controller.settingsCanRemovePass.value,
+                    settingsCanReset = controller.settingsCanReset.value,
                     settingsReordering = controller.settingsReordering.value,
                     overlayImage = controller.overlayPicker.activeImage.value,
                     cheatItems = controller.cheatItems.value,

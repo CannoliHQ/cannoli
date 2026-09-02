@@ -144,4 +144,9 @@ object CuratedCatalog {
     // Also Cannoli's own, and a tree rather than a screen: the database is thousands of presets
     // in folders, so the rows below it are browsed with the same path stack every category uses.
     const val CATEGORY_SHADER = "shader"
+
+    // Cannoli's own, like the overlay and shader categories: a settings row whose entry hands off
+    // to a screen of Cannoli's rather than to a list of RetroArch settings.
+    const val CATEGORY_INPUT = "input"
+    const val INPUT_SHORTCUTS = "shortcuts"
 }

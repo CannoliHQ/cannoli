@@ -147,6 +147,18 @@ class RaIgmSettingsProvider(
         // live preview picker on seeing this path and never renders what is returned here.
         path.first() == CuratedCatalog.CATEGORY_OVERLAY ->
             GenericIgmSettingsScreen(curatedTitle(CuratedCatalog.CATEGORY_OVERLAY), emptyList())
+        // One row, which hands off to Cannoli's own screen. The category exists so shortcuts sit
+        // where the rest of a platform's settings sit rather than in the menu above them.
+        path.first() == CuratedCatalog.CATEGORY_INPUT && path.size == 1 ->
+            GenericIgmSettingsScreen(
+                curatedTitle(CuratedCatalog.CATEGORY_INPUT),
+                listOf(GenericIgmSettingsItem.Category(
+                    CuratedCatalog.INPUT_SHORTCUTS,
+                    strings.shortcuts,
+                )),
+            )
+        path.first() == CuratedCatalog.CATEGORY_INPUT ->
+            GenericIgmSettingsScreen(strings.shortcuts, emptyList())
         path.first() == CuratedCatalog.CATEGORY_SHADER ->
             if (curated) shaderScreen(path.drop(1)) else shaderPipelineScreen(path.drop(1))
         curated -> curatedCategoryScreen(path.first())
@@ -213,6 +225,7 @@ class RaIgmSettingsProvider(
                 if (cat.key == CuratedCatalog.CATEGORY_VIDEO) {
                     addOverlayCategory()
                     addShaderCategory()
+                    addInputCategory()
                 }
             }
             if (host.coreOptions().isNotEmpty()) {
@@ -229,6 +242,40 @@ class RaIgmSettingsProvider(
             }
         }
         return GenericIgmSettingsScreen(strings.rootTitle, items)
+    }
+
+    /** The scopes holding something to drop, nearest first, so the narrower answer is the default. */
+    private fun resetScopes(): List<RaOverrideScope> =
+        listOf(RaOverrideScope.GAME, RaOverrideScope.SYSTEM).filter { host.hasOverrides(it) }
+
+    // The root only. Deeper levels are one category of a scope, and a scope is stored whole, so
+    // offering it from inside Video would throw away Input as well without saying so. Both roots
+    // qualify: they write the same two tiers, so undoing them is one question from either.
+    override fun canReset(path: List<String>): Boolean =
+        path.isEmpty() && resetScopes().isNotEmpty()
+
+    /**
+     * Undoes exactly what the save prompt does, one scope at a time.
+     *
+     * A scope with nothing stored is left off rather than shown doing nothing, which is the failure
+     * this exists to fix rather than repeat.
+     */
+    override fun resetPrompt(path: List<String>): IgmSettingsExit.Prompt? {
+        if (!canReset(path)) return null
+        return IgmSettingsExit.Prompt(
+            title = strings.resetTitle,
+            options = resetScopes().map { scope ->
+                val label = if (scope == RaOverrideScope.GAME) strings.resetGame else strings.resetPlatform
+                IgmPromptOption(label) { reset(scope) }
+            },
+        )
+    }
+
+    // Dropped rather than kept: this visit's edits were to the tier that just went, so saving them
+    // afterwards would write it straight back.
+    private fun reset(scope: RaOverrideScope) {
+        host.resetOverrides(scope)
+        clearDirty()
     }
 
     /**
@@ -469,6 +516,14 @@ class RaIgmSettingsProvider(
 
     // Absent rather than empty when the platform has no overlay folders, the same rule the core
     // options and info rows follow. Called from both roots so the two menus cannot drift.
+    // Always present: shortcuts are bindable whatever this platform has installed.
+    private fun MutableList<GenericIgmSettingsItem>.addInputCategory() {
+        add(GenericIgmSettingsItem.Category(
+            CuratedCatalog.CATEGORY_INPUT,
+            curatedTitle(CuratedCatalog.CATEGORY_INPUT),
+        ))
+    }
+
     private fun MutableList<GenericIgmSettingsItem>.addOverlayCategory() {
         if (host.overlays().isEmpty()) return
         add(GenericIgmSettingsItem.Category(
@@ -571,6 +626,7 @@ class RaIgmSettingsProvider(
             // screens, and the list below them is long enough to hide anything at its foot.
             addOverlayCategory()
             addShaderCategory()
+            addInputCategory()
             addAll(raRows(""))
             if (host.systemInfo().isNotEmpty()) {
                 add(GenericIgmSettingsItem.Category(

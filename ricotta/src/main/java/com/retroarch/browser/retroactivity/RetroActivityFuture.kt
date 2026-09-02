@@ -105,7 +105,16 @@ class RetroActivityFuture : RetroActivityCamera() {
                 timeFormat = ds?.timeFormat ?: dev.cannoli.igm.TimeFormatMode.TWELVE_HOUR,
                 buttonLabelSet = ds?.buttonLabelSet ?: dev.cannoli.ui.ButtonLabelSet.PLUMBER,
                 confirmButton = ds?.confirmButton ?: dev.cannoli.ui.ConfirmButton.SOUTH,
-                keyCodeName = { android.view.KeyEvent.keyCodeToString(it) },
+                // Readable rather than raw: KEYCODE_BUTTON_L1 is not what a chord should read as.
+                keyCodeName = { code ->
+                    android.view.KeyEvent.keyCodeToString(code)
+                        .removePrefix("KEYCODE_")
+                        .removePrefix("BUTTON_")
+                        .replace('_', ' ')
+                },
+                savePlatformLabel = osdContext.getString(R.string.igm_save_platform, platformName),
+                saveGameLabel = osdContext.getString(R.string.igm_save_game),
+                discardLabel = osdContext.getString(R.string.igm_dont_save),
             )
 
             osdContext = localeContext(this, localeTag)
@@ -246,13 +255,18 @@ class RetroActivityFuture : RetroActivityCamera() {
         triggerKeycodes: Set<Int>,
     ) {
         val overlay = igmOverlay ?: return
+        // Wired before anything can return early. A game with nothing bound is exactly the case the
+        // in-game menu exists for, and without these a chord bound there reached neither the input
+        // path nor the screen's idea of what it is layering over: it only appeared after a relaunch.
+        bridge.globalShortcuts = table
+        bridge.onShortcutsStaged = {
+            bridge.setShortcutChords(
+                dev.cannoli.igm.ShortcutTable.encode(bridge.resolveShortcutsStaged(table)),
+            )
+        }
         // What the launcher passed is the global table. This game's and this platform's tiers can
         // add to it or switch a chord off, so the effective table is what native and the menu see.
         val effective = bridge.resolveShortcuts(table)
-        if (effective.isEmpty()) {
-            bridge.setShortcutChords(IntArray(0))
-            return
-        }
         val union = effective.values.flatten().toSet()
         val controller = dev.cannoli.igm.ShortcutController(
             controller = overlay.controller,

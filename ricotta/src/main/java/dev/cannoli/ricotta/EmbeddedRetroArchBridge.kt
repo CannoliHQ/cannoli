@@ -164,6 +164,19 @@ class EmbeddedRetroArchBridge(
             }
         }.filterValues { it.isNotEmpty() }
 
+    /**
+     * The table including anything the shortcut screen has staged but not yet saved.
+     *
+     * A binding takes effect as soon as it is made, so it can be tried without leaving the menu.
+     * Discarding puts the saved table back, because staging is cleared and this is asked again.
+     */
+    fun resolveShortcutsStaged(
+        global: Map<dev.cannoli.igm.ShortcutAction, Set<Int>>,
+    ): Map<dev.cannoli.igm.ShortcutAction, Set<Int>> =
+        shortcutBindings()
+            .associate { it.action to it.chord }
+            .filterValues { it.isNotEmpty() }
+
     fun setBuiltinPorts(ports: IntArray) = nativeSetBuiltinPorts(ports)
 
     fun setIGMVisible(visible: Boolean) {
@@ -554,6 +567,8 @@ class EmbeddedRetroArchBridge(
     var onCannoliRevert: (() -> Unit)? = null
 
     override fun revertCannoliOverride() {
+        // Discarding the visit discards anything the shortcut screen staged during it.
+        discardShortcuts()
         // The shader in force when the tree was entered, reloaded rather than merely rewritten.
         // Without this a discarded audition stays on screen: nothing was saved, but what you are
         // looking at is the last preset you tried.
@@ -574,10 +589,62 @@ class EmbeddedRetroArchBridge(
         shaderBeforeEdit = appliedShaderPreset()
     }
 
+    /**
+     * Shortcut edits waiting to be saved, as a tier will hold them.
+     *
+     * A chord the screen bound, or an off for a row it cleared. Never inherit: an edit is this
+     * scope taking an opinion, and the rows it never touched are the ones that stay inherited.
+     * Staged rather than written, so leaving Settings decides which tier they land in.
+     */
+    private val pendingShortcuts = LinkedHashMap<dev.cannoli.igm.ShortcutAction, TierValue>()
+
+    /** The global table from the launch parcel, which the tiers layer over. */
+    var globalShortcuts: Map<dev.cannoli.igm.ShortcutAction, Set<Int>> = emptyMap()
+
+    /** Fired when a staged edit lands, so the host can push the new table to the input path. */
+    var onShortcutsStaged: (() -> Unit)? = null
+
+    /**
+     * The chord in force for each action.
+     *
+     * Reads through the tiers as everything else does: this visit's staged edit first, then the
+     * nearest tier that mentions the key, and the global table when none does.
+     */
+    override fun shortcutBindings(): List<dev.cannoli.igm.RetroArchBridge.ShortcutBinding> =
+        dev.cannoli.igm.ShortcutAction.entries.map { action ->
+            val staged = pendingShortcuts[action]
+            val value = if (pendingShortcuts.containsKey(action)) staged
+                else storedTierValue(dev.cannoli.igm.ShortcutTable.keyFor(action))
+            val chord = when (value) {
+                is TierValue.Set -> dev.cannoli.igm.ShortcutTable.parseChord(value.value)
+                is TierValue.Off -> emptySet()
+                else -> globalShortcuts[action].orEmpty()
+            }
+            dev.cannoli.igm.RetroArchBridge.ShortcutBinding(action, chord)
+        }
+
+    override fun setShortcutBinding(action: dev.cannoli.igm.ShortcutAction, chord: Set<Int>) {
+        pendingShortcuts[action] = if (chord.isEmpty()) TierValue.Off
+            else TierValue.Set(dev.cannoli.igm.ShortcutTable.formatChord(chord))
+        onShortcutsStaged?.invoke()
+    }
+
+    override fun discardShortcuts() {
+        pendingShortcuts.clear()
+        onShortcutsStaged?.invoke()
+    }
+
+    /** What the staged rows should become in a tier, by key. */
+    private fun stagedShortcutValues(): Map<String, TierValue> =
+        pendingShortcuts.entries.associate { (action, value) ->
+            dev.cannoli.igm.ShortcutTable.keyFor(action) to value
+        }
+
     override fun saveCannoliOverride(scope: RaOverrideScope, changed: Set<String>) {
         // Only the keys this visit actually moved. Otherwise saving any setting at platform scope
         // would copy a game's bezel, or its shader, onto the whole platform.
-        val mine = CANNOLI_KEYS.filter { it in changed }
+        val staged = stagedShortcutValues()
+        val mine = (CANNOLI_KEYS + staged.keys).filter { it in changed }
         if (mine.isEmpty() && cleared.isEmpty()) return
         if (cannoliRoot.isEmpty()) return
         val target = tierFile(scope) ?: return
@@ -585,10 +652,11 @@ class EmbeddedRetroArchBridge(
         val values = LinkedHashMap<String, TierValue>()
         for (key in mine) {
             if (key in cleared) continue
-            when (key) {
-                KEY_OVERLAY -> values[key] =
+            when {
+                key == KEY_OVERLAY -> values[key] =
                     cannoliOverlayName?.let { TierValue.Set(it) } ?: TierValue.Off
-                KEY_SHADER -> shaderTierValue(scope)?.let { values[key] = it }
+                key == KEY_SHADER -> shaderTierValue(scope)?.let { values[key] = it }
+                else -> staged[key]?.let { values[key] = it }
             }
         }
         writeTier(target, values)
@@ -600,6 +668,7 @@ class EmbeddedRetroArchBridge(
             gameTier()?.let { writeTier(it, cleared.associateWith { TierValue.Inherit }) }
         }
         cleared.clear()
+        pendingShortcuts.clear()
         onCannoliSaved?.invoke()
     }
 
@@ -770,6 +839,56 @@ class EmbeddedRetroArchBridge(
      * so a saved choice sits in the tier doing nothing until someone opens the menu and picks it
      * again. Queued rather than called: it lands on the runloop once video is up.
      */
+    /**
+     * The directory holding everything [scope] overrides: both tiers and every core's, since a
+     * scope's whole point is that it is one answer for anything running under it.
+     */
+    private fun tierDir(scope: RaOverrideScope): File? {
+        if (cannoliRoot.isEmpty()) return null
+        val root = File(cannoliRoot)
+        return when (scope) {
+            RaOverrideScope.SYSTEM -> File(File(root, OverrideTiers.SYSTEMS_DIR), platformTag)
+            RaOverrideScope.GAME -> {
+                if (romBaseName.isEmpty()) return null
+                File(File(File(root, OverrideTiers.GAMES_DIR), platformTag), romBaseName)
+            }
+        }
+    }
+
+    override fun hasOverrides(scope: RaOverrideScope): Boolean =
+        tierDir(scope)?.listFiles()?.any { it.isFile } == true
+
+    /**
+     * Deletes the scope outright, then puts back what Cannoli itself is showing.
+     *
+     * Staged edits go with it: a visit that resets and then saves would write the tier straight back
+     * out, which is the reset undoing itself on the way to the door.
+     *
+     * The bezel, the shader and the shortcut table are applied by Cannoli and can be walked back
+     * here. RetroArch's own settings are live in its config and only the launcher composes that, so
+     * they come back on the next launch, which is what the rows saying Applies On Relaunch already
+     * promise for the same reason.
+     */
+    override fun resetOverrides(scope: RaOverrideScope) {
+        val dir = tierDir(scope) ?: return
+        dir.listFiles()?.forEach { if (it.isFile) it.delete() }
+
+        pendingShortcuts.clear()
+        cleared.clear()
+        pendingChain = null
+
+        val shader = storedTierValue(KEY_SHADER).chosen?.takeIf { File(it).isFile }
+        nativeSetShaderPreset(shader.orEmpty())
+        appliedShader = shader
+        cannoliOverlayName = storedOverlayName()
+
+        onShortcutsStaged?.invoke()
+        onCannoliReset?.invoke()
+    }
+
+    /** Fired after a reset so the host redraws whatever it draws itself, the bezel above all. */
+    var onCannoliReset: (() -> Unit)? = null
+
     private fun applyStoredShader() {
         val stored = storedTierValue(KEY_SHADER).chosen ?: return
         // A preset that has been deleted since, or a card that moved: applying it would clear the

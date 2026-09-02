@@ -865,6 +865,14 @@
 
     <!-- IGM screen titles -->
     <string name="igm_settings">Settings</string>
+    <!-- IGM menu row opening the shortcut list. -->
+    <string name="igm_input">Input</string>
+    <!-- Title of the IGM shortcut list. -->
+    <string name="igm_shortcuts_title">Shortcuts</string>
+    <!-- Value on a shortcut row with no chord bound. -->
+    <string name="igm_shortcut_none">None</string>
+    <!-- Shown on a shortcut row while it waits for a chord to be held. -->
+    <string name="igm_shortcut_listening">Hold a chord</string>
     <string name="igm_video">Video</string>
     <!-- In-game settings category holding the less common options. -->
     <string name="igm_advanced">Advanced</string>
@@ -887,6 +895,12 @@
     <string name="igm_save_game">Save for this game</string>
     <!-- Prompt on leaving in-game settings: throw the changes away. -->
     <string name="igm_dont_save">Discard</string>
+    <!-- Title of that prompt. Sits opposite igm_save_changes, which titles the one on the way out. -->
+    <string name="igm_reset_title">Reset Settings</string>
+    <!-- Resets every game on this system. %1$s is the platform name, for example "Game Boy". -->
+    <string name="igm_reset_platform">Reset %1$s</string>
+    <!-- Resets this one game only. -->
+    <string name="igm_reset_game">Reset this game</string>
     <!-- Opens RetroArch's own menu. Debug builds only. Keep "RetroArch" as the product name. -->
     <!-- Bottom bar hint: the D-pad scrolls the text on screen. Uppercase to match the other bottom bar labels. -->
     <string name="label_scroll">SCROLL</string>

@@ -12,7 +12,12 @@ sealed class IGMScreen {
         val description: String? = null,
         val descriptionScroll: Int = 0,
     ) : IGMScreen()
-    data class SettingsExitPrompt(override val selectedIndex: Int = 0) : IGMScreen()
+    // Null is the prompt on the way out of Settings, which is the one the screen is named for and
+    // the only one whose question is implied by having asked to leave.
+    data class SettingsExitPrompt(
+        override val selectedIndex: Int = 0,
+        val title: String? = null,
+    ) : IGMScreen()
     /**
      * Cannoli's live preview picker. [selectedIndex] indexes the asset list.
      *
@@ -38,6 +43,19 @@ sealed class IGMScreen {
     ) : IGMScreen()
     data class Achievements(override val selectedIndex: Int = 0, val achievements: List<AchievementInfo> = emptyList(), val filter: Int = 0, val status: String = "") : IGMScreen()
     data class AchievementDetail(override val selectedIndex: Int = 0, val achievement: AchievementInfo, val parentIndex: Int = 0) : IGMScreen()
+    /**
+     * The shortcut list, one row per action.
+     *
+     * [listening] is a row waiting for a chord: the keys arriving then are the binding rather than
+     * navigation, which is why the screen has to say so rather than the handler guessing.
+     */
+    data class Shortcuts(
+        override val selectedIndex: Int = 0,
+        val listening: Boolean = false,
+        val heldKeys: Set<Int> = emptySet(),
+        val countdownMs: Int = 0,
+    ) : IGMScreen()
+
     data class GuidePicker(override val selectedIndex: Int = 0) : IGMScreen()
     data class Guide(override val selectedIndex: Int = 0, val filePath: String, val page: Int = 0, val textZoom: Int = 1, val help: Boolean = false) : IGMScreen()
     /** [selectedIndex] is -1 when the open file has nothing that can be toggled. */

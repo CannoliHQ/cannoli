@@ -39,6 +39,17 @@ interface RaSettingsHost {
     fun shadowedSettings(): Map<String, String> = emptyMap()
 
     /**
+     * Throws away every override [scope] holds, so whatever is left decides again.
+     *
+     * The whole tier rather than a key at a time. Nothing else can undo a scope: a value is only
+     * ever written, and setting it to something else is still that scope having an opinion.
+     */
+    fun resetOverrides(scope: RaOverrideScope) {}
+
+    /** Whether [scope] holds any override worth offering to throw away. */
+    fun hasOverrides(scope: RaOverrideScope): Boolean = false
+
+    /**
      * Overlay folder names for this platform, in display order, empty when it has none. Cannoli
      * owns these rather than RetroArch, so they are a host question rather than a setting.
      */

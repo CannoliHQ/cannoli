@@ -117,7 +117,8 @@ class RaIgmSettingsProviderTest {
         val labels = items.items.map { it.label }
         // midi_settings is refused here because RetroArch has no settings_show_ flag for it;
         // the screens that do are turned off in the launch config and never reach this list.
-        assertEquals(listOf("Latency"), labels)
+        // Input is Cannoli's own and sits ahead of RetroArch's list, like Overlay and Shaders.
+        assertEquals(listOf("Input", "Latency"), labels)
         assertTrue(items.items.all { it is GenericIgmSettingsItem.Category })
     }
 

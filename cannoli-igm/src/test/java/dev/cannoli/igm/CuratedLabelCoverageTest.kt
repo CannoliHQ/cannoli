@@ -35,6 +35,7 @@ class CuratedLabelCoverageTest {
             CuratedCatalog.CATEGORY_EMULATOR,
             CuratedCatalog.CATEGORY_INFO,
             CuratedCatalog.CATEGORY_OVERLAY,
+            CuratedCatalog.CATEGORY_INPUT,
             CuratedCatalog.CATEGORY_SHADER,
         )
         assertEquals(shown, strings.curatedCategoryTitles.keys)

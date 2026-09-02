@@ -63,6 +63,25 @@ interface RetroArchBridge {
     /** What [toggleShader] would turn on, or null when this game has no shader configured. */
     fun shaderToRestore(): String? = null
 
+    /** One shortcut row: the action and the chord in force for it. */
+    data class ShortcutBinding(
+        val action: ShortcutAction,
+        val chord: Set<Int>,
+    )
+
+    fun shortcutBindings(): List<ShortcutBinding> = emptyList()
+
+    /**
+     * Stages a binding. An empty [chord] is this scope saying the action has no chord, which masks
+     * whatever the level above it holds rather than deferring to it.
+     *
+     * Staged rather than written, and with no scope of its own: the screen sits inside Settings,
+     * and leaving Settings already asks where a visit's changes should be saved.
+     */
+    fun setShortcutBinding(action: ShortcutAction, chord: Set<Int>) {}
+
+    fun discardShortcuts() {}
+
     /** RetroArch writes the auto slot itself while shutting down when this is on. */
     val savesOnQuit: Boolean
 

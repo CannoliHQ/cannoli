@@ -46,6 +46,9 @@ class IGMController(
     /** Whether the settings level on screen has a game override to drop. Drives the legend. */
     val settingsCanRestore = mutableStateOf(false)
 
+    /** Whether anything is saved for this game or its platform to throw away. Drives the legend. */
+    val settingsCanReset = mutableStateOf(false)
+
     /** Whether the highlighted settings row can be picked up and moved. */
     val settingsCanReorder = mutableStateOf(false)
 
@@ -114,6 +117,103 @@ class IGMController(
         // load asked for on the way into the screen is never answered. Asking here is what puts the
         // data in hand during gameplay, before the first open.
         loadCheatFile()
+    }
+
+    /** The chord detector, shared with the launcher's binding screen. */
+    val binding: BindingController = BindingController()
+
+    /**
+     * Keycodes still down when a chord committed, which the menu must not read as presses.
+     *
+     * A pad repeats key downs while a button is held, so the moment capture ended the rest of that
+     * hold arrived as navigation: binding SELECT and X cleared the row the X landed on. They are
+     * swallowed until each one is released.
+     */
+    private val heldPastCapture = mutableSetOf<Int>()
+
+    fun openShortcuts() {
+        binding.onProgress = { keys, elapsed ->
+            (currentScreen as? IGMScreen.Shortcuts)?.let {
+                replaceTop(it.copy(heldKeys = keys, countdownMs = elapsed))
+            }
+        }
+        binding.onCommit = { chord ->
+            (currentScreen as? IGMScreen.Shortcuts)?.let { screen ->
+                ShortcutAction.entries.getOrNull(screen.selectedIndex)?.let { action ->
+                    stagedShortcut(action) { bridge.setShortcutBinding(action, chord) }
+                }
+                heldPastCapture.addAll(chord)
+                replaceTop(screen.copy(listening = false, heldKeys = emptySet(), countdownMs = 0))
+            }
+        }
+        binding.onCancel = {
+            (currentScreen as? IGMScreen.Shortcuts)?.let {
+                replaceTop(it.copy(listening = false, heldKeys = emptySet(), countdownMs = 0))
+            }
+        }
+        heldPastCapture.clear()
+        refreshShortcutRows()
+        push(IGMScreen.Shortcuts())
+    }
+
+    /**
+     * The rows the shortcut screen shows, each with the chord in force for it.
+     *
+     * Held as state rather than read straight from the bridge on every draw. The bridge keeps its
+     * staged edits in a plain map, which nothing observes, so clearing a row changed the answer
+     * without changing anything Compose was watching: the row only caught up when some other press
+     * happened to redraw the screen.
+     */
+    val shortcutRows = androidx.compose.runtime.mutableStateOf<List<RetroArchBridge.ShortcutBinding>>(emptyList())
+
+    private fun refreshShortcutRows() {
+        shortcutRows.value = bridge.shortcutBindings()
+    }
+
+    /**
+     * Tells the settings tree a shortcut moved, so leaving Settings asks about it.
+     *
+     * The screen has no save of its own: it sits inside Settings, and leaving Settings is where the
+     * question of what to keep already gets asked.
+     */
+    private fun stagedShortcut(action: ShortcutAction, change: () -> Unit) {
+        providerNav?.markChangedExternally(setOf(ShortcutTable.keyFor(action)))
+        change()
+        refreshShortcutRows()
+    }
+
+
+
+    private fun handleShortcutsKey(screen: IGMScreen.Shortcuts, keycode: Int) {
+        val count = ShortcutAction.entries.size
+        when (keycode) {
+            19 -> replaceTop(screen.copy(selectedIndex = (screen.selectedIndex - 1 + count) % count))
+            20 -> replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count))
+            96 -> {
+                replaceTop(screen.copy(listening = true, heldKeys = emptySet(), countdownMs = 0))
+                binding.startListening()
+            }
+            // CLEAR means the action has no chord here, which masks the global table rather than
+            // deferring to it. A row already showing nothing has nothing to take away, so the press
+            // stages no change and leaving Settings does not ask about a save that changes nothing.
+            100 -> shortcutRows.value.getOrNull(screen.selectedIndex)
+                ?.takeIf { it.chord.isNotEmpty() }
+                ?.let { row -> stagedShortcut(row.action) { bridge.setShortcutBinding(row.action, emptySet()) } }
+            97, 4 -> leaveShortcuts()
+        }
+    }
+
+    private fun leaveShortcuts() = closeShortcuts()
+
+    /**
+     * Leaves the screen and steps the settings navigator back out of the category that opened it.
+     *
+     * Entering pushed a level on the provider, so popping only this screen would leave the tree one
+     * level deeper than the screen behind it, the same reason the overlay picker unwinds.
+     */
+    private fun closeShortcuts() {
+        pop()
+        providerNav?.let { renderProviderState(it.onNav(ProviderSettingsController.Nav.BACK)) }
     }
 
     fun openCheats() {
@@ -659,6 +759,13 @@ class IGMController(
      * cleared and a guide keeps moving on its own until it reaches the end of the document.
      */
     fun handleKeyUp(keycode: Int) {
+        // Releasing any held key cancels the capture, which is what makes a wrong press cost
+        // nothing. Nothing else in the menu acts on a release except the guide's scrolling.
+        (currentScreen as? IGMScreen.Shortcuts)?.let {
+            if (it.listening) { binding.keyUp(keycode); return }
+        }
+        // Released at last, so this key is a press again.
+        if (heldPastCapture.remove(keycode)) return
         val screen = currentScreen as? IGMScreen.Guide ?: return
         if (screen.help) return
         when (inputTranslator.normalize(keycode)) {
@@ -669,6 +776,15 @@ class IGMController(
 
     fun handleKeyDown(keycode: Int) {
         val screen = currentScreen ?: return
+        // While a chord is being captured the keys are the binding, so they go to the detector raw:
+        // what gets stored has to be the keycode the device actually sends, not what this menu
+        // translates it to for navigation.
+        if (screen is IGMScreen.Shortcuts && screen.listening) {
+            binding.keyDown(keycode)
+            return
+        }
+        // The tail of a chord that has already committed, still repeating. Not a press.
+        if (keycode in heldPastCapture) return
         val normalized = inputTranslator.normalize(keycode)
 
         when (screen) {
@@ -683,6 +799,7 @@ class IGMController(
             is IGMScreen.ShaderSaveName -> handleShaderSaveNameKey(screen, normalized)
             is IGMScreen.ProviderSettings -> handleProviderKey(normalized)
             is IGMScreen.SettingsExitPrompt -> handleProviderKey(normalized)
+            is IGMScreen.Shortcuts -> handleShortcutsKey(screen, normalized)
         }
     }
 
@@ -831,6 +948,7 @@ class IGMController(
         settingsCanRestore.value = providerNav?.canRestoreDefault() ?: false
         settingsCanReorder.value = providerNav?.canReorderSelection() ?: false
         settingsCanRemovePass.value = providerNav?.canRemoveSelection() ?: false
+        settingsCanReset.value = providerNav?.canReset() ?: false
         when (state) {
             is ProviderSettingsController.State.Menu -> {
                 // Applying a preset echoes back and re-renders the tree it was chosen from. The
@@ -846,6 +964,11 @@ class IGMController(
                 // Cannoli's own screen too: naming a preset is a keyboard, not a settings list.
                 if (state.path == listOf(CuratedCatalog.CATEGORY_SHADER, SHADER_SAVE_SEGMENT)) {
                     if (currentScreen !is IGMScreen.ShaderSaveName) push(IGMScreen.ShaderSaveName())
+                    return
+                }
+                // Cannoli's own screen too: binding a chord is a press-and-hold, not a list.
+                if (state.path == listOf(CuratedCatalog.CATEGORY_INPUT, CuratedCatalog.INPUT_SHORTCUTS)) {
+                    if (currentScreen !is IGMScreen.Shortcuts) openShortcuts()
                     return
                 }
                 if (state.path.lastOrNull() == CuratedCatalog.CATEGORY_OVERLAY) {
@@ -868,7 +991,7 @@ class IGMController(
                 settingsItems.value = state.items.map(::toProviderRenderItem)
             }
             is ProviderSettingsController.State.Prompt -> {
-                replaceTop(IGMScreen.SettingsExitPrompt(state.selectedIndex))
+                replaceTop(IGMScreen.SettingsExitPrompt(state.selectedIndex, state.title))
                 settingsItems.value = state.options.map { IGMSettingsItem(it) }
             }
             is ProviderSettingsController.State.Closed -> {
@@ -1008,6 +1131,12 @@ class IGMController(
         // Taking the key everywhere is what left the description with no button to open it.
         if (keycode == 100 && settingsCanRemovePass.value) {
             renderProviderState(nav.removeSelection())
+            return
+        }
+        // Same button, and they never both apply: a pass row is inside the shader tree and reset is
+        // offered at the root only. Checked after, so the deeper claim keeps the key where it is.
+        if (keycode == 100 && settingsCanReset.value) {
+            renderProviderState(nav.openResetPrompt())
             return
         }
         // Nothing else claims this button in the tree, and the legend only offers it where there is

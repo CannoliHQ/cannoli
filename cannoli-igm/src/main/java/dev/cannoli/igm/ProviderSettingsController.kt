@@ -79,6 +79,18 @@ class ProviderSettingsController(val provider: IgmSettingsProvider) {
     fun canRemoveSelection(): Boolean =
         levels.lastOrNull()?.let { provider.canRemoveRow(it.path, it.cursor) } ?: false
 
+    fun canReset(): Boolean =
+        levels.lastOrNull()?.let { provider.canReset(it.path) } ?: false
+
+    /** Asks which scope to throw away, or does nothing where there is nothing stored. */
+    fun openResetPrompt(): State {
+        val level = levels.lastOrNull() ?: return state()
+        val requested = provider.resetPrompt(level.path) ?: return state()
+        prompt = requested
+        promptCursor = 0
+        return State.Prompt(requested.title, requested.labels(), 0)
+    }
+
     /**
      * Takes the highlighted row out, keeping the cursor in range.
      *

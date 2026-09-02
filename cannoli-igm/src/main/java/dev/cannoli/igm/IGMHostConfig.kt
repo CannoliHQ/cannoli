@@ -42,4 +42,14 @@ data class IGMHostConfig(
     val buttonLabelSet: ButtonLabelSet,
     val confirmButton: ConfirmButton,
     val keyCodeName: (Int) -> String,
+    /**
+     * The three answers to where a change should be saved, worded by the host.
+     *
+     * The settings tree asks the same question through its provider; the shortcut screen is not a
+     * provider and asks it directly, so the words have to reach here too rather than being spelled
+     * a second time and drifting.
+     */
+    val savePlatformLabel: String = "",
+    val saveGameLabel: String = "",
+    val discardLabel: String = "",
 )

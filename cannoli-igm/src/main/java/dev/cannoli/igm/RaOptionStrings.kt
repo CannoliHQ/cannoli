@@ -8,9 +8,14 @@ data class RaOptionStrings(
     val savePlatform: String = "Save for Platform",
     val saveGame: String = "Save for this game",
     val dontSave: String = "Discard",
+    val resetTitle: String = "Reset Settings",
+    val resetPlatform: String = "Reset Platform",
+    val resetGame: String = "Reset this game",
     // The core options row. Every other All Settings title comes from RetroArch itself.
     val emulator: String = "Emulator",
     val custom: String = "Custom",
+    /** Cannoli's own screen inside the Input category, so not a curated row label. */
+    val shortcuts: String = "Shortcuts",
     val shaderApplied: String = "Applied",
     val shaderEnabled: String = "Shader",
     val shaderLoad: String = "Load Preset",
@@ -39,6 +44,7 @@ data class RaOptionStrings(
         CuratedCatalog.CATEGORY_ADVANCED to "Advanced",
         CuratedCatalog.CATEGORY_INFO to "Info",
         CuratedCatalog.CATEGORY_OVERLAY to "Overlay",
+        CuratedCatalog.CATEGORY_INPUT to "Input",
         CuratedCatalog.CATEGORY_SHADER to "Shaders",
     ),
     val curatedRowLabels: Map<String, String> = mapOf(

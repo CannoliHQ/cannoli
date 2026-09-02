@@ -25,6 +25,17 @@ interface IgmSettingsProvider {
     fun restoreDefault(path: List<String>): Set<String> = emptySet()
 
     /**
+     * Whether this level offers to throw away everything a scope has saved.
+     *
+     * Drives the legend, so the offer is also the answer to whether anything is saved at all: a
+     * tree with nothing stored anywhere shows no button rather than one that does nothing.
+     */
+    fun canReset(path: List<String>): Boolean = false
+
+    /** The scopes worth offering, or null where there is nothing stored to throw away. */
+    fun resetPrompt(path: List<String>): IgmSettingsExit.Prompt? = null
+
+    /**
      * Compiles anything built but not yet compiled, called when the screen that built it is left.
      *
      * Not a button, because there is no moment before this one where pressing it would show you
