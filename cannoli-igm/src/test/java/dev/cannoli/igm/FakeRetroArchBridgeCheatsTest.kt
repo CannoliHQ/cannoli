@@ -12,6 +12,8 @@ class FakeRetroArchBridgeCheatsTest {
             override fun quit() {}
             override fun saveState(slot: Int) {}
             override fun loadState(slot: Int) {}
+            override fun undoSaveState() {}
+            override fun undoLoadState() {}
             override val savesOnQuit = false
             override val supportsAchievements = false
             override fun getDiskCount() = 0
