@@ -43,7 +43,7 @@ import dev.cannoli.scorza.db.RomScanner
 import dev.cannoli.scorza.db.RomsRepository
 import dev.cannoli.scorza.di.AppFonts
 import dev.cannoli.scorza.input.ActivityActions
-import dev.cannoli.scorza.input.BindingController
+import dev.cannoli.igm.BindingController
 import dev.cannoli.scorza.input.AndroidGamepadKeyNames
 import dev.cannoli.scorza.input.runtime.InputDispatcher
 import dev.cannoli.scorza.input.InputRouter

@@ -3,6 +3,7 @@ package dev.cannoli.scorza.input
 import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.scopes.ActivityScoped
+import dev.cannoli.igm.BindingController
 import dev.cannoli.igm.ShortcutAction
 import dev.cannoli.scorza.config.PlatformConfig
 import dev.cannoli.scorza.input.screen.ControllerDetailInputHandler

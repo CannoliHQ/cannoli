@@ -37,6 +37,8 @@ import dev.cannoli.ui.components.List
 import dev.cannoli.ui.components.PillRowKeyValue
 import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.Radius
+import dev.cannoli.igm.BindingController
+import dev.cannoli.ui.components.ShortcutCaptureOverlay
 import dev.cannoli.ui.theme.Spacing
 import kotlinx.coroutines.delay
 
@@ -96,56 +98,15 @@ internal fun InputScreens(
                 }
             }
             if (currentScreen.listening) {
-                val colors = LocalCannoliColors.current
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.92f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.widthIn(max = 480.dp).fillMaxWidth()
-                    ) {
-                        val actionName = ShortcutAction.entries.getOrNull(currentScreen.selectedIndex)
-                            ?.let { stringResource(it.labelRes) } ?: ""
-                        Text(
-                            text = actionName,
-                            style = MaterialTheme.typography.bodyLarge.copy(
-                                fontSize = listFontSize * 1.1f,
-                                color = colors.text
-                            )
-                        )
-                        Spacer(modifier = Modifier.height(Spacing.Sm))
-                        Text(
-                            text = if (currentScreen.heldKeys.isEmpty()) stringResource(R.string.shortcut_hold_prompt)
-                            else currentScreen.heldKeys.joinToString(" + ") { shortcutKeyLabel(it) },
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                fontSize = listFontSize * 0.73f,
-                                color = colors.text.copy(alpha = 0.6f)
-                            )
-                        )
-                        Spacer(modifier = Modifier.height(Spacing.Lg))
-                        if (currentScreen.heldKeys.isNotEmpty()) {
-                            val progress = (currentScreen.countdownMs / 1500f).coerceIn(0f, 1f)
-                            Box(
-                                modifier = Modifier
-                                    .widthIn(max = 280.dp).fillMaxWidth()
-                                    .height(8.dp)
-                                    .clip(RoundedCornerShape(Radius.Sm))
-                                    .background(colors.text.copy(alpha = 0.2f))
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth(progress)
-                                        .height(8.dp)
-                                        .clip(RoundedCornerShape(Radius.Sm))
-                                        .background(colors.highlight)
-                                )
-                            }
-                        }
-                    }
-                }
+                ShortcutCaptureOverlay(
+                    actionName = ShortcutAction.entries.getOrNull(currentScreen.selectedIndex)
+                        ?.let { stringResource(it.labelRes) } ?: "",
+                    heldText = currentScreen.heldKeys
+                        .takeIf { it.isNotEmpty() }
+                        ?.joinToString(" + ") { shortcutKeyLabel(it) },
+                    progress = currentScreen.countdownMs / BindingController.HOLD_MS.toFloat(),
+                    fontSize = listFontSize,
+                )
             }
         }
         is LauncherScreen.Controllers -> {

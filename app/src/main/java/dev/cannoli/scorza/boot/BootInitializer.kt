@@ -15,7 +15,7 @@ import dev.cannoli.scorza.db.importer.ImportResult
 import dev.cannoli.scorza.db.importer.Importer
 import dev.cannoli.scorza.di.CannoliPathsProvider
 import dev.cannoli.scorza.di.IoScope
-import dev.cannoli.scorza.input.BindingController
+import dev.cannoli.igm.BindingController
 import dev.cannoli.scorza.input.LauncherActions
 import dev.cannoli.scorza.input.autoconfig.AutoconfigRepository
 import dev.cannoli.scorza.input.autoconfig.AutoconfigSeeder
