@@ -51,6 +51,7 @@ data class RaOptionStrings(
         "curated_screen_scaling" to "Screen Scaling",
         "curated_screen_sharpness" to "Screen Sharpness",
         "curated_max_ff_speed" to "Max Fast-Forward Speed",
+        "curated_ff_mute" to "Mute on Fast-Forward",
         "curated_rewind" to "Rewind",
         "curated_show_fps" to "Show FPS",
         "curated_debug_hud" to "Debug HUD",

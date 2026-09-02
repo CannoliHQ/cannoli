@@ -963,6 +963,8 @@
     <string name="igm_sharpness_soft">Soft</string>
     <!-- In-game setting: how much faster than normal the fast-forward button runs. -->
     <string name="igm_curated_max_ff_speed">Max Fast-Forward Speed</string>
+    <!-- Curated IGM row silencing the game while fast-forward is engaged. -->
+    <string name="igm_curated_ff_mute">Mute on Fast-Forward</string>
     <!-- Curated IGM row turning RetroArch's rewind buffer on or off for this platform or game. -->
     <string name="igm_curated_rewind">Rewind</string>
     <!-- Fast-forward speed value: a multiple of normal speed. %1$d is the multiplier, for example 2 giving "2x". -->

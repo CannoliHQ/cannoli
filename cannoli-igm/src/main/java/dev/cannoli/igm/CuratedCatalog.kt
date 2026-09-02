@@ -75,6 +75,12 @@ object CuratedCatalog {
                 Preset("ff_8x", mapOf("fastforward_ratio" to "8")),
                 Preset("ff_unlimited", mapOf("fastforward_ratio" to "0")),
             )),
+            // RetroArch silences the audio rather than resampling it, so this is a choice between
+            // the pitched-up sound fast forward makes and no sound at all.
+            Row("curated_ff_mute", listOf(
+                Preset("off", mapOf("audio_fastforward_mute" to "false")),
+                Preset("on", mapOf("audio_fastforward_mute" to "true")),
+            )),
             // Off by default in RetroArch, and worth leaving that way per platform: the buffer is
             // real memory and the cost of filling it is paid on every frame, which a heavier system
             // feels and a handheld one does not.

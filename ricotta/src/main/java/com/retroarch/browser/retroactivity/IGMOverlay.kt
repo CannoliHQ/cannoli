@@ -223,6 +223,7 @@ class IGMOverlay(
                 "curated_screen_scaling" to uiContext.getString(R.string.igm_curated_screen_scaling),
                 "curated_screen_sharpness" to uiContext.getString(R.string.igm_curated_screen_sharpness),
                 "curated_max_ff_speed" to uiContext.getString(R.string.igm_curated_max_ff_speed),
+                "curated_ff_mute" to uiContext.getString(R.string.igm_curated_ff_mute),
                 "curated_rewind" to uiContext.getString(R.string.igm_curated_rewind),
                 "curated_show_fps" to uiContext.getString(R.string.igm_curated_show_fps),
                 "curated_debug_hud" to uiContext.getString(R.string.igm_curated_debug_hud),
