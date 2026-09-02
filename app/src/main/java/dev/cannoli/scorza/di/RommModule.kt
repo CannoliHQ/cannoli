@@ -158,7 +158,8 @@ object RommModule {
         statusHolder: SaveSyncStatusHolder,
         matcher: dev.cannoli.scorza.romm.sync.RommCacheMatcher,
         roms: dev.cannoli.scorza.db.RomsRepository,
-    ): SaveSyncService = SaveSyncService(client, connStore, settings, registrar, store, resolver, links, paths, backupManager, history, pendingConflicts, promotions, statusHolder, matcher, roms)
+        @dev.cannoli.scorza.di.IoScope ioScope: kotlinx.coroutines.CoroutineScope,
+    ): SaveSyncService = SaveSyncService(client, connStore, settings, registrar, store, resolver, links, paths, backupManager, history, pendingConflicts, promotions, statusHolder, matcher, roms, ioScope)
 
     @Provides @Singleton
     fun provideRommCacheMatcher(

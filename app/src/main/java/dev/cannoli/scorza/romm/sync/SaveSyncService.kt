@@ -9,6 +9,7 @@ import dev.cannoli.scorza.romm.RommConnectionStore
 import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.ui.components.SaveSyncStatus
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.time.Instant
@@ -56,6 +57,7 @@ class SaveSyncService(
     private val statusHolder: SaveSyncStatusHolder,
     private val matcher: RommCacheMatcher,
     private val roms: dev.cannoli.scorza.db.RomsRepository,
+    private val ioScope: kotlinx.coroutines.CoroutineScope,
 ) {
     private val paths: CannoliPaths get() = CannoliPaths(pathsProvider.root)
 
@@ -183,7 +185,19 @@ class SaveSyncService(
             val completed = if (outcome == PreLaunchOutcome.Proceed &&
                 (op?.verdict == SyncAction.Download || op?.verdict == SyncAction.Upload)) 1 else 0
             val failed = if (outcome is PreLaunchOutcome.KnownStaleBlock) 1 else 0
-            runCatching { client.completeSyncSession(response.sessionId, SyncCompletePayload(operationsCompleted = completed, operationsFailed = failed)) }
+            // Not awaited: the verdict above is what the launch needs, and this only tells the
+            // server how the session went. Blocking on it put a whole round trip between deciding
+            // to launch and launching, for an answer nothing here reads: even a failure is
+            // swallowed. A session left open by a process that died costs nothing either, since
+            // every negotiate opens its own and none of them refer to a previous one.
+            ioScope.launch {
+                runCatching {
+                    client.completeSyncSession(
+                        response.sessionId,
+                        SyncCompletePayload(operationsCompleted = completed, operationsFailed = failed),
+                    )
+                }
+            }
             outcome
         }
 

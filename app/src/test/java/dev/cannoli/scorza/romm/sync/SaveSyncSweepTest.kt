@@ -65,6 +65,7 @@ class SaveSyncSweepTest {
             client, connStore, settings, registrar, store, resolver, links, paths,
             backupManager, historyStore, pendingStore, promotionStore, statusHolder,
             mockk(relaxed = true), roms,
+            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Unconfined),
         )
     }
 
