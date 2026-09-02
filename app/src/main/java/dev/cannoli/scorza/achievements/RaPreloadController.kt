@@ -140,6 +140,8 @@ class RaPreloadController @Inject constructor(
         )
         is RaOfflinePreloader.Result.NoAchievements ->
             context.getString(dev.cannoli.scorza.R.string.achievos_preload_none)
+        is RaOfflinePreloader.Result.Unidentified ->
+            context.getString(dev.cannoli.scorza.R.string.achievos_preload_unidentified)
         is RaOfflinePreloader.Result.Failure ->
             context.getString(dev.cannoli.scorza.R.string.achievos_preload_failed)
     }

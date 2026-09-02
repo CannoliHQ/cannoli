@@ -319,9 +319,12 @@
     <string name="menu_child_collections">Child Collections</string>
     <!-- Game context-menu row opening the achievements group. Shown only when signed in. -->
     <string name="menu_achievements">Achievements</string>
-    <string name="menu_ra_game_id">RA Game ID</string>
-    <string name="menu_achievements_mode">Achievements Mode</string>
-    <string name="menu_preload_achievements">Preload Achievements</string>
+    <!-- Row inside the Achievements group; the RA is implied by where it sits. -->
+    <string name="menu_ra_game_id">Game ID</string>
+    <!-- Row inside the Achievements group, so it does not repeat the group's own name. -->
+    <string name="menu_achievements_mode">Mode</string>
+    <!-- Row inside the Achievements group: caches the set so it works with no network. -->
+    <string name="menu_preload_achievements">Offline Preload</string>
     <string name="menu_add_favorite">Add To Favorites</string>
     <string name="menu_remove_favorite">Remove From Favorites</string>
     <string name="menu_remove_shortcut">Remove Shortcut</string>
@@ -1135,6 +1138,8 @@
     <string name="achievos_preload_progress">Preloading %1$s</string>
     <string name="achievos_preload_none">No achievements found for this game</string>
     <string name="achievos_preload_failed">Preload failed. Check your connection.</string>
+    <!-- Preload result: nothing resolved this rom to a game on RetroAchievements. -->
+    <string name="achievos_preload_unidentified">Game hash is not recognized.</string>
     <!-- %1$d = achievements cached, %2$d = points. -->
     <plurals name="achievos_preload_success">
         <item quantity="one">Cached %1$d achievement (%2$d pts) for offline play</item>

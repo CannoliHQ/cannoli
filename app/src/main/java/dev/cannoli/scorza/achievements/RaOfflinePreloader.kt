@@ -10,6 +10,9 @@ class RaOfflinePreloader(
     sealed interface Result {
         data class Success(val gameName: String, val achievementCount: Int, val totalPoints: Int) : Result
         data object NoAchievements : Result
+
+        /** Nothing resolved this rom to a game, so there is no set to ask for. */
+        data object Unidentified : Result
         data class Failure(val reason: String) : Result
     }
 

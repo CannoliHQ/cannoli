@@ -22,7 +22,9 @@ class RaPreloadEngine(
         if (gameId <= 0) {
             val consoleId = RaConsoles.MAP[rom.platformTag.uppercase()]
             if (consoleId != null) {
-                hash = hasher(rom.path.absolutePath, consoleId)
+                // Guarded as well as RaHasher guarding itself: an id we cannot compute is an
+                // unidentified game, and must never surface as a failure that blames the network.
+                hash = runCatching { hasher(rom.path.absolutePath, consoleId) }.getOrNull()
                 if (hash != null) {
                     val resolved = client.resolveGameId(username, token, hash)
                     if (resolved < 0) return RaOfflinePreloader.Result.Failure("offline")
@@ -44,7 +46,9 @@ class RaPreloadEngine(
         gameId: Int,
         hash: String?,
     ): RaOfflinePreloader.Result {
-        if (gameId <= 0) return RaOfflinePreloader.Result.NoAchievements
+        // No id from the user and none from a hash. Reporting no achievements blamed the game,
+        // and the generic failure blamed the network; neither was ever asked.
+        if (gameId <= 0) return RaOfflinePreloader.Result.Unidentified
         return RaOfflinePreloader(client, store).preload(romPath, platformTag, gameId, username, token, hash)
     }
 
