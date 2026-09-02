@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.res.stringResource
 import dev.cannoli.ui.ButtonStyle
 import dev.cannoli.ui.R
@@ -63,10 +64,14 @@ fun MessageOverlay(
     OverlayScrim(
         bottomBar = { LegendPill(button = buttonStyle.back, label = buttonLabel) }
     ) {
+        // The scrim centres the block, so an unaligned Text left a centred column of ragged
+        // left-aligned lines the moment anything wrapped. Every caller here is one centred
+        // message, so centring is what they all meant.
         Text(
             text = message,
             style = MaterialTheme.typography.bodyLarge,
-            color = Color.White
+            color = Color.White,
+            textAlign = TextAlign.Center
         )
     }
 }
