@@ -137,6 +137,8 @@ sealed interface DialogState {
         val onBack: (() -> Unit)? = null,
         /** Called with the row and the direction when a [PickerItem.cycles] row is nudged. */
         val onCycle: ((index: Int, delta: Int) -> Unit)? = null,
+        /** Called with the row when north is pressed on a [PickerItem.clears] row. */
+        val onNorth: ((index: Int) -> Unit)? = null,
         val onSelect: (Int) -> Unit,
     ) : ListDialog {
         override fun withSelectedIndex(index: Int) = copy(selectedIndex = index)

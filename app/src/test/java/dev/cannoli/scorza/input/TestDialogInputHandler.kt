@@ -29,6 +29,7 @@ internal fun testDialogInputHandler(
     // out of RetroAchievements. Rows that only exist for a connected account are absent unless a
     // test says otherwise.
     raToken: String = "",
+    raPreloadController: dev.cannoli.scorza.achievements.RaPreloadController = mockk(relaxed = true),
     raHardcore: Boolean = false,
 ) = DialogInputHandler(
     nav = nav,
@@ -61,7 +62,7 @@ internal fun testDialogInputHandler(
     rommDownloader = rommDownloader,
     rommBrowseViewModel = mockk(relaxed = true),
     rommArtFetcher = mockk(relaxed = true),
-    raPreloadController = mockk(relaxed = true),
+    raPreloadController = raPreloadController,
     deviceRegistrar = mockk(relaxed = true),
     saveSyncService = mockk(relaxed = true),
     slotManager = mockk(relaxed = true),

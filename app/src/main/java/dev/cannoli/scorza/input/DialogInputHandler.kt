@@ -350,9 +350,12 @@ class DialogInputHandler @Inject constructor(
             return false
         }
         when (ds) {
-            // The Achievements group's only clearable row. Same button and verb as the launcher's
-            // binding screen, so CLEAR means one thing everywhere.
-            is DialogState.Picker -> clearRaGameId(ds)
+            // Only where the selected row declared it clears, so the button does what the legend
+            // beside it offered and the picker keeps hold of what it is acting on.
+            is DialogState.Picker ->
+                if (ds.items.getOrNull(ds.selectedIndex)?.clears == true) {
+                    ds.onNorth?.invoke(ds.selectedIndex)
+                }
             is KeyboardHost -> if (ds.keyboard.layout.supportsSpace) {
                 nav.dialogState.value = ds.withKeyboard(KeyboardController.insertChar(ds.keyboard, " "))
             }
@@ -538,5 +541,9 @@ internal sealed interface ContextReturn {
      * back on the row that left, and [parent] is the menu underneath, restored as this one is
      * consumed so that backing out of the group leaves it rather than reopening it.
      */
-    data class Achievements(val selectRow: String? = null, val parent: Single? = null) : ContextReturn
+    data class Achievements(
+        val romId: Long,
+        val selectRow: String? = null,
+        val parent: Single? = null,
+    ) : ContextReturn
 }

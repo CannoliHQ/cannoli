@@ -126,7 +126,7 @@ internal fun DialogInputHandler.onContextMenuConfirm(state: DialogState.ContextM
         }
         selected == MENU_ACHIEVEMENTS -> {
             if (rom == null) return
-            openAchievementsMenu()
+            openAchievementsMenu(rom.id)
         }
         selected == MENU_REMOVE -> {
             if (app != null) {
@@ -173,21 +173,25 @@ internal fun DialogInputHandler.onContextMenuConfirm(state: DialogState.ContextM
  * does exactly what the legend beside it offered and nothing else. A picker that quietly cleared
  * whatever happened to be selected would be worse than one that ignored the button.
  */
-internal fun DialogInputHandler.clearRaGameId(ds: DialogState.Picker) {
-    if (ds.items.getOrNull(ds.selectedIndex)?.clears != true) return
-    val rom = (gameListViewModel.getSelectedItem() as? ListItem.RomItem)?.rom ?: return
-    if (rom.raGameId == null) return
+internal fun DialogInputHandler.clearRaGameId(romId: Long) {
+    val rom = romForAchievements(romId) ?: return
+    if (effectiveRaGameId(rom) == null) return
     ioScope.launch {
         romsRepository.setRaGameId(rom.id, null)
+        // The recorded cache id came from the override, so it goes with it. Left behind, the row
+        // would keep reading Cached off a set filed under an identity this game no longer claims.
+        // The files stay on the card; only this rom's claim on them is dropped.
+        romsRepository.setRaCachedGameId(rom.id, null)
         gameListViewModel.reload {
             launcherActions.scanResumableGames()
-            openAchievementsMenu(selectRow = MENU_RA_GAME_ID)
+            openAchievementsMenu(romId, selectRow = MENU_RA_GAME_ID)
         }
     }
 }
 
 /** A return to this group, keeping whatever menu was underneath so it survives one round trip. */
-private fun DialogInputHandler.returnToGroup(row: String) = ContextReturn.Achievements(
+private fun DialogInputHandler.returnToGroup(romId: Long, row: String) = ContextReturn.Achievements(
+    romId = romId,
     selectRow = row,
     parent = pendingContextReturn as? ContextReturn.Single,
 )
@@ -201,8 +205,34 @@ internal fun DialogInputHandler.openRaGameIdInput(rom: dev.cannoli.scorza.model.
 }
 
 internal fun DialogInputHandler.preloadAchievementsFor(rom: dev.cannoli.scorza.model.Rom) {
-    raPreloadController.preloadRom(rom)
+    // A successful preload writes raCachedGameId, which is what the row reads to say Cached. The
+    // list has to be rebuilt from that or the group reopens holding the rom as it was before, and
+    // a game that cached perfectly well still reads uncached.
+    raPreloadController.preloadRom(rom) { gameListViewModel.reload() }
 }
+
+/**
+ * The rom this group is bound to, looked up fresh by id.
+ *
+ * Never the current selection: a reload can move it, because the list restores a position by index
+ * when the id it preserved no longer matches. The group would then rebind to a different game while
+ * looking identical, and act on it.
+ */
+internal fun DialogInputHandler.romForAchievements(romId: Long): dev.cannoli.scorza.model.Rom? =
+    gameListViewModel.state.value.items
+        .filterIsInstance<ListItem.RomItem>()
+        .firstOrNull { it.rom.id == romId }
+        ?.rom
+
+/**
+ * The game this ROM's achievements live under: the id you gave it, else the one a preload recorded.
+ *
+ * Both name the same directory in the offline store, so either is enough to find a cached set. Only
+ * the recorded one used to be consulted, which made a game cached under a manual override read as
+ * uncached even with that override sitting in the row above.
+ */
+internal fun effectiveRaGameId(rom: dev.cannoli.scorza.model.Rom): Int? =
+    rom.raGameId ?: rom.raCachedGameId
 
 /** The rows inside Achievements, formatted with their values, in a fixed order. */
 internal fun DialogInputHandler.achievementsOptions(rom: dev.cannoli.scorza.model.Rom): List<String> =
@@ -213,7 +243,7 @@ internal fun DialogInputHandler.achievementsOptions(rom: dev.cannoli.scorza.mode
                 raLoggedIn = settings.raToken.isNotEmpty(),
             )
         ) {
-            val cached = rom.raCachedGameId?.let { gid ->
+            val cached = effectiveRaGameId(rom)?.let { gid ->
                 dev.cannoli.scorza.achievements.RaOfflineStore(
                     dev.cannoli.scorza.config.CannoliPaths(settings.sdCardRoot).configRaOffline
                 ).isCached(gid)
@@ -245,8 +275,8 @@ internal fun DialogInputHandler.achievementsModeValue(rom: dev.cannoli.scorza.mo
  * already returns to the menu that opened it. [selectRow] keeps the cursor where it was when a
  * row rebuilds itself after changing.
  */
-internal fun DialogInputHandler.openAchievementsMenu(selectRow: String? = null) {
-    val rom = (gameListViewModel.getSelectedItem() as? ListItem.RomItem)?.rom ?: run {
+internal fun DialogInputHandler.openAchievementsMenu(romId: Long, selectRow: String? = null) {
+    val rom = romForAchievements(romId) ?: run {
         nav.dialogState.value = DialogState.None; return
     }
     val options = achievementsOptions(rom)
@@ -264,30 +294,33 @@ internal fun DialogInputHandler.openAchievementsMenu(selectRow: String? = null) 
                 label = MENU_LABELS[key]?.let { context.getString(it) } ?: key,
                 value = opt.substringAfter('\t', "").takeIf { it.isNotEmpty() },
                 cycles = key == MENU_ACHIEVEMENTS_MODE && modeCycles,
-                // Only a manually set id can be cleared; hash detection is the absence of one.
-                clears = key == MENU_RA_GAME_ID && rom.raGameId != null,
+                // Any id the row is standing on, whether you set it or a preload recorded it.
+                // Keying this on the override alone stranded a recorded id: with no override to
+                // clear, the row kept reporting a cache nothing could give up.
+                clears = key == MENU_RA_GAME_ID && effectiveRaGameId(rom) != null,
             )
         },
         selectedIndex = idx,
         onBack = { restoreContextMenu() },
         // Only the mode row declares cycles, so this is only ever called for it.
-        onCycle = { _, direction -> cycleAchievementsMode(direction) },
+        onCycle = { _, direction -> cycleAchievementsMode(romId, direction) },
+        onNorth = { clearRaGameId(romId) },
     ) { index ->
         when (options.getOrNull(index)?.substringBefore('\t')) {
             MENU_RA_GAME_ID -> {
-                pendingContextReturn = returnToGroup(MENU_RA_GAME_ID)
+                pendingContextReturn = returnToGroup(romId, MENU_RA_GAME_ID)
                 openRaGameIdInput(rom)
             }
             MENU_PRELOAD_ACHIEVEMENTS -> {
-                pendingContextReturn = returnToGroup(MENU_PRELOAD_ACHIEVEMENTS)
+                pendingContextReturn = returnToGroup(romId, MENU_PRELOAD_ACHIEVEMENTS)
                 preloadAchievementsFor(rom)
             }
         }
     }
 }
 
-internal fun DialogInputHandler.cycleAchievementsMode(direction: Int) {
-    val rom = (gameListViewModel.getSelectedItem() as? ListItem.RomItem)?.rom ?: return
+internal fun DialogInputHandler.cycleAchievementsMode(romId: Long, direction: Int) {
+    val rom = romForAchievements(romId) ?: return
     if (rom.raGameId != null) return
 
     val order = listOf(null, true, false)
@@ -299,7 +332,7 @@ internal fun DialogInputHandler.cycleAchievementsMode(direction: Int) {
             // Reopened rather than restored, keeping the cursor on the row that changed.
             // restoreContextMenu answers a return only the confirm path records on its way out to
             // another screen; cycling never leaves, so it would close the menu instead.
-            openAchievementsMenu(selectRow = MENU_ACHIEVEMENTS_MODE)
+            openAchievementsMenu(romId, selectRow = MENU_ACHIEVEMENTS_MODE)
         }
     }
 }
@@ -552,7 +585,7 @@ fun DialogInputHandler.restoreContextMenu() {
         is ContextReturn.Achievements -> {
             // Consumed: put the menu underneath back, so the group's own back leaves it.
             pendingContextReturn = ret.parent
-            openAchievementsMenu(ret.selectRow)
+            openAchievementsMenu(ret.romId, ret.selectRow)
         }
         is ContextReturn.Bulk -> {
             nav.dialogState.value = DialogState.BulkContextMenu(
