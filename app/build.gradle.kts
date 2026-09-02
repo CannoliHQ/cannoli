@@ -139,6 +139,15 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+    // Only rc_hash. RetroAchievements identifies a game by hashing the ROM, and preload needs that
+    // in the launcher, before any game is running.
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
+    }
+
     buildFeatures {
         compose = true
     }
