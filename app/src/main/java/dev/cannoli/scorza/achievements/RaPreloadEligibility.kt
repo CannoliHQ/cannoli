@@ -2,21 +2,14 @@ package dev.cannoli.scorza.achievements
 
 object RaPreloadEligibility {
     /**
-     * Achievements need a runner that can report emulated console memory. The internal libretro
-     * runner provided that and has been removed; the port onto RetroArch's own rcheevos will
-     * restore it. Until then nothing is eligible, so the preload rows stay hidden rather than
-     * caching set data that nothing can read. Flip this when the port lands.
+     * Whether a game can have its achievement set cached ahead of playing it.
      *
-     * The preserved runner-side implementation is in `reference/retroachievements/`.
+     * Two conditions, both real: the set is fetched from the user's account, and RetroAchievements
+     * only publishes for the consoles [RaConsoles.MAP] names. A platform absent from that map has
+     * no sets to cache whatever else is true.
      */
-    const val RUNNER_SUPPORTS_ACHIEVEMENTS = false
-
-    fun isEligible(
-        platformTag: String?,
-        raLoggedIn: Boolean,
-        runnerSupportsAchievements: Boolean = RUNNER_SUPPORTS_ACHIEVEMENTS,
-    ): Boolean {
-        if (!runnerSupportsAchievements || !raLoggedIn) return false
+    fun isEligible(platformTag: String?, raLoggedIn: Boolean): Boolean {
+        if (!raLoggedIn) return false
         val tag = platformTag?.uppercase() ?: return false
         return RaConsoles.MAP.containsKey(tag)
     }
