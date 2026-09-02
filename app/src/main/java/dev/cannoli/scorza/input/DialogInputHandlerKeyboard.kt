@@ -203,9 +203,10 @@ private fun DialogInputHandler.onRenameConfirm(state: DialogState.RenameInput) {
             val gameId = state.currentName.trim().toIntOrNull()
             ioScope.launch {
                 romsRepository.gameByPath(target.romPath)?.let { romsRepository.setRaGameId(it.id, gameId) }
-                gameListViewModel.reload()
+                // Inside the reload, not beside it: restoring immediately rebuilt the row from the
+                // rom this write had not reached yet, so a freshly set id still read Autodetect.
+                gameListViewModel.reload { restoreContextMenu() }
             }
-            restoreContextMenu()
         }
         is RenameTarget.SystemListItem -> launcherActions.handleSystemListRename(target.currentName, state.currentName.trim())
         is RenameTarget.GameListItem -> renameSelectedGameListItem(state.currentName.trim())
