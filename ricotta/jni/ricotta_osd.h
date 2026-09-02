@@ -37,6 +37,10 @@ enum ricotta_osd_type
  * (0 otherwise) on RICOTTA_OSD_CHEEVOS_LOGIN_FAILED. It is unused elsewhere. */
 void ricotta_osd_event(int type, int slot);
 
+/* How a game's achievements settled, reported as facts for Cannoli to word.
+ * outcome: 0 loaded, 1 unrecognised, 2 no achievements published, 3 could not be fetched. */
+void ricotta_osd_cheevos_load(int outcome, int unlocked, int total);
+
 /* The save notification is deferred until the thumbnail it names exists on disk. task_save latches
  * it before queueing the screenshot; the screenshot task raises it once the PNG is written. That
  * ordering used to be bought by encoding the PNG on the runloop thread, which stalled the frame. */

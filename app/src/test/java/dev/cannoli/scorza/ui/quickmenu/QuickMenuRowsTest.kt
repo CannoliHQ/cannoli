@@ -33,13 +33,13 @@ class QuickMenuRowsTest {
     }
 
     @Test fun `about follows info`() {
-        val rows = QuickMenuRow.visibleRows(rommPaired = true, kitchenRunning = false, debugBuild = true)
+        val rows = QuickMenuRow.visibleRows(rommPaired = true, kitchenRunning = false, devBuild = true)
         assertEquals(rows.indexOf(QuickMenuRow.INFO) + 1, rows.indexOf(QuickMenuRow.ABOUT))
     }
 
     @Test fun `debug row only on debug builds and always last`() {
-        val debug = QuickMenuRow.visibleRows(rommPaired = true, kitchenRunning = false, debugBuild = true)
-        val release = QuickMenuRow.visibleRows(rommPaired = true, kitchenRunning = false, debugBuild = false)
+        val debug = QuickMenuRow.visibleRows(rommPaired = true, kitchenRunning = false, devBuild = true)
+        val release = QuickMenuRow.visibleRows(rommPaired = true, kitchenRunning = false, devBuild = false)
         assertEquals(true, debug.contains(QuickMenuRow.DEBUG))
         assertEquals(false, release.contains(QuickMenuRow.DEBUG))
         assertEquals(QuickMenuRow.DEBUG, debug.last())

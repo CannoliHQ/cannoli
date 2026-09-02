@@ -147,6 +147,7 @@ class SettingsInputHandler @Inject constructor(
             SettingsKey.WIFI_DIRECT_PROBE -> runWifiDirectProbe(host = false)
             SettingsKey.WIFI_DIRECT_HOST -> runWifiDirectProbe(host = true)
             SettingsKey.ICON_GALLERY -> nav.push(LauncherScreen.IconGallery())
+            SettingsKey.DEVELOPER_OPTIONS -> openDeveloperOptions()
             SettingsKey.SHORTCUTS -> nav.push(LauncherScreen.ShortcutBinding(shortcuts = globalOverrides.readShortcuts()))
             SettingsKey.INPUT_TESTER -> {
                 inputTesterController.enter()
@@ -306,6 +307,23 @@ class SettingsInputHandler @Inject constructor(
         // Built once: the rows come from a directory read, so there is no scan to wait for.
         val initial = emulatorMappingBuilder.detailedMappings()
         nav.push(LauncherScreen.EmulatorMapping(mappings = initial, allMappings = initial))
+    }
+
+    /**
+     * Opens Developer options, which is as deep as anything can go.
+     *
+     * Wireless debugging is a preference row rather than a screen on both handhelds checked: there
+     * is no activity for it, only a Quick Settings tile, and the fragment that owns the row lives
+     * behind SubSettings, which is not exported to anyone, adb included. The scroll-to-a-row extra
+     * that AOSP honours is ignored here too.
+     */
+    private fun openDeveloperOptions() {
+        runCatching {
+            context.startActivity(
+                Intent(android.provider.Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+        }
     }
 
     private fun runIntentAudit() {

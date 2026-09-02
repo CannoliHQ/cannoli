@@ -104,6 +104,7 @@ enum class SettingsKey(val id: String) {
 
     AUDIT_EMULATOR_INTENTS("audit_emulator_intents"),
     ICON_GALLERY("icon_gallery"),
+    DEVELOPER_OPTIONS("developer_options"),
 
     // Throwaway, with the Wi-Fi Direct netplay spike. Remove with it.
     WIFI_DIRECT_PROBE("wifi_direct_probe"),

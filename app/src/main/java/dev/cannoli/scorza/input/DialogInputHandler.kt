@@ -107,7 +107,7 @@ class DialogInputHandler @Inject constructor(
             pendingConflicts = conflicts,
             syncErrors = errors,
             downloadCount = rommDownloader.state.value.size,
-            debugBuild = dev.cannoli.scorza.BuildConfig.DEBUG,
+            devBuild = dev.cannoli.scorza.BuildConfig.DEV_BUILD,
         )
         return DialogState.QuickMenu(
             rows = rows,

@@ -783,6 +783,18 @@
     <string name="achievos_token_offline">Offline, not verified</string>
     <!-- RA = RetroAchievements. -->
     <string name="achievos_login_failed">RA: Login Failed</string>
+    <!-- Achievement OSD on game load. v1's wording. %1$s = display name, %2$s = hardcore or
+         softcore, %3$d of %4$d = unlocked of total. -->
+    <string name="achievos_load_success">RA: %1$s (%2$s) \u00b7 %3$d/%4$d unlocked</string>
+    <!-- Achievement OSD: the ROM's checksum matched nothing on the server. -->
+    <string name="achievos_load_not_recognized">RA: Game not recognized</string>
+    <!-- Achievement OSD: the game is known, but nobody has published a set for it. -->
+    <string name="achievos_load_no_achievements">RA: No achievements for this game</string>
+    <!-- Achievement OSD: the set exists but could not be fetched, usually no network. -->
+    <string name="achievos_load_unavailable">RA: Offline (game data unavailable)</string>
+    <!-- Fills the status slot in achievos_load_success. -->
+    <string name="achievos_hardcore">Hardcore</string>
+    <string name="achievos_softcore">Softcore</string>
     <string name="achievos_login_invalid">Invalid username or password</string>
     <string name="achievos_login_progress">Logging in...</string>
     <string name="achievos_login_network">Could not reach RetroAchievements. Check your connection.</string>
@@ -945,6 +957,26 @@
     <string name="igm_info_core">Core</string>
     <!-- Info row label. The value is the emulator core's version number. -->
     <string name="igm_info_core_version">Core Version</string>
+    <!-- Info row: the video driver actually in use, which a hardware rendered core can override. -->
+    <string name="igm_info_renderer">Renderer</string>
+    <!-- Info row: the file RetroArch loaded, which for an archive is the extracted copy. -->
+    <string name="igm_info_content">ROM</string>
+    <!-- Info row: the save file this game reads and writes. -->
+    <string name="igm_info_save">Save</string>
+    <!-- Info row: the RetroAchievements id for this game, absent when it was not recognised. -->
+    <!-- Info row label: what became of achievements this launch. -->
+    <string name="igm_info_achievements">RetroAchievements</string>
+    <!-- Its values: a state, then the reason in brackets. Offline is a reason for being inactive
+         only while achievements need the server; if they can ever run from a local set it becomes a
+         qualifier on an active session instead. -->
+    <string name="igm_achievements_hardcore">Active (Hardcore)</string>
+    <string name="igm_achievements_softcore">Active (Softcore)</string>
+    <string name="igm_achievements_unrecognised">Inactive (Game not recognized)</string>
+    <string name="igm_achievements_none">Inactive (No achievements)</string>
+    <string name="igm_achievements_offline">Inactive (Offline)</string>
+    <string name="igm_info_game_id">RA Game ID</string>
+    <!-- Info row: the checksum achievements were looked up by. Keep short; it is a hex string. -->
+    <string name="igm_info_hash">RA Hash</string>
     <!-- Shown when the emulator's current settings match none of the offered presets. -->
     <string name="igm_curated_custom">Custom</string>
     <!-- In-game setting: how the picture is sized to fit the screen. -->
@@ -1027,6 +1059,7 @@
     <!-- Debug builds only: a gallery of every Nerd Font glyph the launcher draws. Never shipped to users, so not sent to translators. -->
     <string name="setting_icon_gallery" translatable="false">Icon Gallery</string>
     <!-- Debug row, throwaway with the Wi-Fi Direct netplay spike. -->
+    <string name="setting_developer_options" translatable="false">Developer Options</string>
     <string name="setting_wifi_direct_probe" translatable="false">Wi-Fi Direct Test</string>
     <string name="setting_wifi_direct_host" translatable="false">Wi-Fi Direct Test (host)</string>
     <string name="title_icon_gallery" translatable="false">Icon Gallery</string>

@@ -37,6 +37,7 @@ static long long get_time_ms(void)
 #include "../../../../menu/menu_shader.h"
 #include "../../../../menu/menu_defines.h"
 #include "../../../../runloop.h"
+#include "../../../../paths.h"
 #include "../../../../setting_list.h"
 #include "../../../../menu/menu_setting.h"
 #include "../../../../menu/menu_displaylist.h"
@@ -157,6 +158,12 @@ static jmethodID g_on_shortcut_action_mid = NULL;
 static jmethodID g_on_runloop_ready_mid = NULL;
 static jmethodID g_on_osd_event_mid = NULL;
 static jmethodID g_on_osd_achievement_mid = NULL;
+static jmethodID g_on_cheevos_load_mid = NULL;
+
+/* Latched so the Info screen can state it whenever the menu is opened, rather than only in the
+ * instant the pill is up. It also separates an outcome that never happened from one that happened
+ * and was never drawn, which a toast alone cannot tell you. */
+static volatile int g_cheevos_outcome = -1;
 static jmethodID g_on_ra_applied_mid = NULL;
 static jmethodID g_on_cheats_loaded_mid = NULL;
 
@@ -237,6 +244,7 @@ static jobjectArray ricotta_fields_to_array(JNIEnv *env, const ricotta_field *f,
 #define RICOTTA_QCMD_VIEWPORT_SET     -9
 #define RICOTTA_QCMD_SHADER_SET       -10
 #define RICOTTA_QCMD_REWIND_RESET     -11
+#define RICOTTA_QCMD_CHEEVOS_LOAD     -12
 typedef struct
 {
    int   cmd;
@@ -774,6 +782,19 @@ void ricotta_bridge_poll_commands(void)
             (*env)->CallVoidMethod(env, g_bridge_obj, g_on_osd_achievement_mid, jtitle);
             ricotta_jni_check(env, "onOsdAchievement");
             (*env)->DeleteLocalRef(env, jtitle);
+         }
+         free(entry.ra_key);
+         continue;
+      }
+      if (entry.cmd == RICOTTA_QCMD_CHEEVOS_LOAD)
+      {
+         JNIEnv *env = ricotta_runloop_env();
+         if (env && g_bridge_obj && g_on_cheevos_load_mid && entry.ra_key)
+         {
+            jstring jtext = (*env)->NewStringUTF(env, entry.ra_key);
+            (*env)->CallVoidMethod(env, g_bridge_obj, g_on_cheevos_load_mid, jtext);
+            ricotta_jni_check(env, "onCheevosLoad");
+            (*env)->DeleteLocalRef(env, jtext);
          }
          free(entry.ra_key);
          continue;
@@ -2154,6 +2175,7 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeInit(
          "(Ljava/lang/String;Ljava/lang/String;)V");
    g_on_osd_event_mid = (*env)->GetMethodID(env, cls, "onOsdEvent", "(II)V");
    g_on_osd_achievement_mid = (*env)->GetMethodID(env, cls, "onOsdAchievement", "(Ljava/lang/String;)V");
+   g_on_cheevos_load_mid = (*env)->GetMethodID(env, cls, "onCheevosLoad", "(Ljava/lang/String;)V");
    g_on_cheats_loaded_mid = (*env)->GetMethodID(env, cls, "onCheatsLoaded", "(Ljava/lang/String;)V");
 }
 
@@ -2493,30 +2515,64 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeRaGetSetting(
    return out;
 }
 
-/* Values only, in a fixed order: core name then core version. The labels are localized on the
- * Kotlin side, so nothing user-visible is spelled out here. */
+/* Values only, in a fixed order: core name, core version, content path, save file, achievement
+ * game id, achievement hash. The labels are localized on the Kotlin side, so nothing
+ * user-visible is spelled out here, and an empty value is a row the screen leaves out.
+ *
+ * The content path is what RetroArch actually loaded, which for an archive is the extracted
+ * copy rather than what the user picked. The save file is the resolved path rather than the
+ * directory, since knowing which directory a save went to does not answer which file it is. */
 JNIEXPORT jobjectArray JNICALL
 Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSystemInfo(
       JNIEnv *env, jobject obj)
 {
    runloop_state_t *runloop_st = runloop_state_get_ptr();
+   rcheevos_locals_t *locals;
+   rc_client_t *client;
+   const rc_client_game_t *game = NULL;
+   char game_id[16];
    jobjectArray out;
    jclass str_cls;
+   size_t i;
+   const char *values[7];
+   char outcome_s[8];
 
    (void)obj;
 
    if (!runloop_st)
       return NULL;
 
+   locals = get_rcheevos_locals();
+   client = locals ? locals->client : NULL;
+   if (client)
+      game = rc_client_get_game_info(client);
+
+   /* Zero is rcheevos for nothing recognised, which is a different answer from achievements
+    * being off, and the hash below is what you would look up to find out which. */
+   game_id[0] = '\0';
+   if (game && game->id)
+      snprintf(game_id, sizeof(game_id), "%u", game->id);
+
+   values[0] = runloop_st->current_library_name;
+   values[1] = runloop_st->current_library_version;
+   values[2] = path_get(RARCH_PATH_CONTENT);
+   values[3] = runloop_st->name.savefile;
+   values[4] = game_id;
+   values[5] = (game && game->hash) ? game->hash : "";
+   snprintf(outcome_s, sizeof(outcome_s), "%d", g_cheevos_outcome);
+   values[6] = outcome_s;
+
    str_cls = (*env)->FindClass(env, "java/lang/String");
-   out     = (*env)->NewObjectArray(env, 2, str_cls, NULL);
+   out     = (*env)->NewObjectArray(env, 7, str_cls, NULL);
    if (!out)
       return NULL;
 
-   (*env)->SetObjectArrayElement(env, out, 0,
-         (*env)->NewStringUTF(env, runloop_st->current_library_name));
-   (*env)->SetObjectArrayElement(env, out, 1,
-         (*env)->NewStringUTF(env, runloop_st->current_library_version));
+   for (i = 0; i < 7; i++)
+   {
+      jstring v = (*env)->NewStringUTF(env, values[i] ? values[i] : "");
+      (*env)->SetObjectArrayElement(env, out, (jsize)i, v);
+      (*env)->DeleteLocalRef(env, v);
+   }
    return out;
 }
 
@@ -2896,6 +2952,43 @@ void ricotta_osd_event(int type, int slot)
 }
 
 /* Called from cheevos.c (HAVE_RICOTTA_OSD) on an achievement unlock. */
+/* How a game's achievements settled, for Cannoli to word in the user's language.
+ *
+ * Facts rather than a sentence: RetroArch says this four different ways across two functions, and
+ * only the counts and the outcome differ between them. Delimited because the payload is small and
+ * one queued string beats five accessors called back across JNI a frame later.
+ *
+ * outcome: 0 loaded, 1 unrecognised, 2 no achievements published, 3 could not be fetched. */
+void ricotta_osd_cheevos_load(int outcome, int unlocked, int total)
+{
+   ricotta_cmd_entry entry = {0};
+
+   g_cheevos_outcome = outcome;
+
+   rcheevos_locals_t *locals = get_rcheevos_locals();
+   rc_client_t *client       = locals ? locals->client : NULL;
+   const rc_client_user_t *user = client ? rc_client_get_user_info(client) : NULL;
+   const char *who = NULL;
+   char payload[192];
+
+   if (!g_bridge_obj || !g_on_cheevos_load_mid)
+      return;
+
+   if (user)
+      who = (user->display_name && user->display_name[0]) ? user->display_name : user->username;
+
+   snprintf(payload, sizeof(payload), "%d|%d|%d|%d|%s",
+         outcome, unlocked, total,
+         rcheevos_hardcore_active() ? 1 : 0,
+         who ? who : "");
+
+   entry.cmd    = RICOTTA_QCMD_CHEEVOS_LOAD;
+   entry.ra_key = strdup(payload);
+   if (!entry.ra_key)
+      return;
+   ricotta_enqueue_entry(entry);
+}
+
 void ricotta_osd_achievement(const char *title)
 {
    ricotta_cmd_entry entry = {0};

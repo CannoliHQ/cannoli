@@ -138,6 +138,17 @@ class EmbeddedRetroArchBridge(
         }
     }
 
+    /** How this game's achievements settled: outcome, unlocked, total, hardcore, who. */
+    var onCheevosLoad: ((CheevosLoad) -> Unit)? = null
+
+    @Suppress("unused")
+    fun onCheevosLoad(payload: String) {
+        val p = CheevosLoad.parse(payload) ?: return
+        mainHandler.post {
+            onCheevosLoad?.invoke(p)
+        }
+    }
+
     fun setIgmTriggerKeycodes(keycodes: IntArray) = nativeSetIgmTriggerKeycodes(keycodes)
 
     /** Flat [action ordinal, hold ms, key count, keys...], one array so the table is never half set. */
@@ -366,13 +377,55 @@ class EmbeddedRetroArchBridge(
             )
         } ?: emptyList()
 
+    /**
+     * What is running and where its files went, in the order you would ask.
+     *
+     * Every value is optional, and a row absent is a row with nothing to say: a core that reports
+     * no version, an unidentified game, achievements switched off. The renderer comes from the
+     * driver actually in use rather than the one configured, which is the whole point of showing
+     * it, since a hardware rendered core overrides the setting when it loads.
+     */
     override fun systemInfo(): List<Pair<String, String>> {
         val arr = nativeSystemInfo() ?: return emptyList()
+        fun at(i: Int) = arr.getOrNull(i)?.takeIf { it.isNotEmpty() }
         return buildList {
-            arr.getOrNull(0)?.takeIf { it.isNotEmpty() }?.let { add(raStrings.infoCore to it) }
-            arr.getOrNull(1)?.takeIf { it.isNotEmpty() }?.let { add(raStrings.infoCoreVersion to it) }
+            at(0)?.let { add(raStrings.infoCore to it) }
+            at(1)?.let { add(raStrings.infoCoreVersion to it) }
+            videoDriver().takeIf { it.isNotEmpty() }?.let { add(raStrings.infoRenderer to it) }
+            at(2)?.let { add(raStrings.infoContent to stripRoot(it)) }
+            at(3)?.let { add(raStrings.infoSave to stripRoot(it)) }
+            cheevosStatus(at(6))?.let { add(raStrings.infoAchievements to it) }
+            at(4)?.let { add(raStrings.infoGameId to it) }
+            at(5)?.let { add(raStrings.infoHash to it) }
         }
     }
+
+    /**
+     * What became of achievements this launch, latched natively when it was decided.
+     *
+     * Read here rather than recomputed: the outcome is settled once, early, and asking rcheevos
+     * again later would answer about the client's state now rather than what happened at load.
+     * Absent means nothing was ever reported, which is achievements being off for this launch.
+     *
+     * Worded as a state and its reason, so the two stay separable. Offline is a reason for being
+     * inactive only while achievements need the server: once they can run from a local set, it
+     * becomes a qualifier on an active session instead, and only this table changes.
+     */
+    private fun cheevosStatus(raw: String?): String? = when (raw?.toIntOrNull()) {
+        // Read live rather than from the latch: hardcore can be paused mid-session, and the
+        // question this row answers is what is true now, not what was true at load.
+        0 -> if (hardcoreActive) raStrings.achievementsHardcore else raStrings.achievementsSoftcore
+        1 -> raStrings.achievementsUnrecognised
+        2 -> raStrings.achievementsNone
+        3 -> raStrings.achievementsOffline
+        else -> null
+    }
+
+    // The card's mount point is the same on every row and eats the width the rest of the path needs.
+    private fun stripRoot(path: String): String =
+        if (cannoliRoot.isNotEmpty() && path.startsWith(cannoliRoot))
+            path.removePrefix(cannoliRoot).removePrefix("/")
+        else path
 
     // Listing is what folders a loose image left by v1, so it happens here rather than at launch.
     private var shaderPresence: Boolean? = null

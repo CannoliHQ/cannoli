@@ -213,6 +213,34 @@ class RetroActivityFuture : RetroActivityCamera() {
                 }
             }
             bridge.onOsdAchievement = { title -> osd.showAchievement(title) }
+            bridge.onCheevosLoad = { it ->
+                when (it.outcome) {
+                    dev.cannoli.ricotta.CheevosLoad.Outcome.LOADED -> osd.showMessage(
+                        osdContext.getString(
+                            R.string.achievos_load_success,
+                            it.who,
+                            osdContext.getString(
+                                if (it.hardcore) R.string.achievos_hardcore else R.string.achievos_softcore
+                            ),
+                            it.unlocked,
+                            it.total,
+                        ),
+                        dev.cannoli.ui.components.OsdPosition.TopStart,
+                    )
+                    dev.cannoli.ricotta.CheevosLoad.Outcome.UNRECOGNISED -> osd.showMessage(
+                        osdContext.getString(R.string.achievos_load_not_recognized),
+                        dev.cannoli.ui.components.OsdPosition.TopCenter,
+                    )
+                    dev.cannoli.ricotta.CheevosLoad.Outcome.NO_ACHIEVEMENTS -> osd.showMessage(
+                        osdContext.getString(R.string.achievos_load_no_achievements),
+                        dev.cannoli.ui.components.OsdPosition.TopCenter,
+                    )
+                    dev.cannoli.ricotta.CheevosLoad.Outcome.UNAVAILABLE -> osd.showMessage(
+                        osdContext.getString(R.string.achievos_load_unavailable),
+                        dev.cannoli.ui.components.OsdPosition.TopCenter,
+                    )
+                }
+            }
             osd.fpsProvider = { bridge.fps() }
             bridge.onShowFpsChanged = { on -> osd.setShowFps(on) }
             bridge.onShowDebugChanged = { on -> osd.setShowDebug(on) }

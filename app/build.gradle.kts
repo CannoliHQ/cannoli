@@ -104,6 +104,7 @@ android {
             // Its own package so a dev build sits beside an installed release instead of
             // replacing it. Both still read the same Cannoli directory on the SD card.
             applicationIdSuffix = ".debug"
+            buildConfigField("boolean", "DEV_BUILD", "true")
             if (keystorePropertiesFile.exists()) {
                 signingConfig = signingConfigs.getByName("release")
             }
@@ -112,6 +113,7 @@ android {
             if (keystorePropertiesFile.exists()) {
                 signingConfig = signingConfigs.getByName("release")
             }
+            buildConfigField("boolean", "DEV_BUILD", "false")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -119,9 +121,12 @@ android {
             )
         }
         // Debug, but not debuggable, so ART compiles it ahead of time and launch timings are real.
+        // Turning that flag off also turns off BuildConfig.DEBUG, which is why the developer
+        // surface asks DEV_BUILD instead: this is still a build only we run.
         create("profiling") {
             initWith(getByName("debug"))
             isDebuggable = false
+            buildConfigField("boolean", "DEV_BUILD", "true")
             matchingFallbacks += listOf("debug")
         }
     }

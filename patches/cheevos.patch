@@ -1,5 +1,5 @@
 diff --git a/cheevos/cheevos.c b/cheevos/cheevos.c
-index a32bc65d00..dbae9a9f8b 100644
+index a32bc65d00..0902e40f8c 100644
 --- a/cheevos/cheevos.c
 +++ b/cheevos/cheevos.c
 @@ -390,6 +390,12 @@ static void rcheevos_award_achievement(const rc_client_achievement_t* cheevo)
@@ -118,7 +118,41 @@ index a32bc65d00..dbae9a9f8b 100644
        return;
     }
  }
-@@ -1503,6 +1552,12 @@ static void rcheevos_client_login_callback(int result,
+@@ -1423,6 +1472,9 @@ static void rcheevos_show_game_placard(void)
+       || (cheevos_visibility_summary == RCHEEVOS_SUMMARY_HASCHEEVOS
+       && (summary.num_core_achievements || summary.num_unofficial_achievements)))
+    {
++#ifdef HAVE_RICOTTA_OSD
++      (void)_len;
++#else
+ #if defined (HAVE_GFX_WIDGETS)
+       if (gfx_widgets_ready())
+       {
+@@ -1435,8 +1487,23 @@ static void rcheevos_show_game_placard(void)
+ #endif
+          runloop_msg_queue_push(msg, _len, 0, 3 * 60, false, NULL,
+                MESSAGE_QUEUE_ICON_DEFAULT, MESSAGE_QUEUE_CATEGORY_INFO);
++#endif /* HAVE_RICOTTA_OSD */
+    }
+ 
++#ifdef HAVE_RICOTTA_OSD
++   /* Outside the visibility gate above, which is about whether to repeat the unlock count and
++    * defaults to staying silent on a game with none. Cannoli always says which of the two it is,
++    * because saying nothing is indistinguishable from achievements being broken. */
++   {
++      extern void ricotta_osd_cheevos_load(int outcome, int unlocked, int total);
++      const int none = (summary.num_core_achievements == 0
++            && summary.num_unofficial_achievements == 0);
++      ricotta_osd_cheevos_load(none ? 2 : 0,
++            (int)summary.num_unlocked_achievements,
++            (int)summary.num_core_achievements);
++   }
++#endif
++
+    if (summary.num_unsupported_achievements)
+    {
+       const char* warning = msg_hash_to_str(MSG_CHEEVOS_UNSUPPORTED_WARNING);
+@@ -1503,6 +1570,12 @@ static void rcheevos_client_login_callback(int result,
     if (result != RC_OK)
     {
        settings_t* settings = config_get_ptr();
@@ -131,13 +165,22 @@ index a32bc65d00..dbae9a9f8b 100644
        char msg[256];
        size_t _len = strlcpy(msg, "RetroAchievements login failed: ",
              sizeof(msg));
-@@ -1522,8 +1577,13 @@ static void rcheevos_client_login_callback(int result,
+@@ -1522,8 +1595,22 @@ static void rcheevos_client_login_callback(int result,
                 sizeof(msg));
        }
  
 +#ifdef HAVE_RICOTTA_OSD
-+      /* Cannoli owns the login-failure notification (type 12; slot 1 = must sign in again). */
-+      ricotta_osd_event(RICOTTA_OSD_CHEEVOS_LOGIN_FAILED, ricotta_reauth ? 1 : 0);
++      /* Cannoli owns the login-failure notification (type 12; slot 1 = must sign in again).
++       * RC_NO_RESPONSE is the only code that means the server was never reached, which is the
++       * player's network rather than their account: reporting a login failure there sends them
++       * to re-enter a password that was never wrong. */
++      if (result == RC_NO_RESPONSE)
++      {
++         extern void ricotta_osd_cheevos_load(int outcome, int unlocked, int total);
++         ricotta_osd_cheevos_load(3, 0, 0);
++      }
++      else
++         ricotta_osd_event(RICOTTA_OSD_CHEEVOS_LOGIN_FAILED, ricotta_reauth ? 1 : 0);
 +#else
        runloop_msg_queue_push(msg, _len, 0, 2 * 60, false, NULL,
              MESSAGE_QUEUE_ICON_DEFAULT, MESSAGE_QUEUE_CATEGORY_ERROR);
@@ -145,3 +188,33 @@ index a32bc65d00..dbae9a9f8b 100644
        return;
     }
  
+@@ -1724,6 +1811,13 @@ static void rcheevos_client_load_game_callback(int result,
+          rcheevos_pause_hardcore();
+          rcheevos_locals.hash_error = "Unrecognized";
+ 
++#ifdef HAVE_RICOTTA_OSD
++         {
++            extern void ricotta_osd_cheevos_load(int outcome, int unlocked, int total);
++            ricotta_osd_cheevos_load(1, 0, 0);
++         }
++#endif
++
+          if (!settings->bools.cheevos_verbose_enable)
+             return;
+ 
+@@ -1739,6 +1833,15 @@ static void rcheevos_client_load_game_callback(int result,
+ 
+          CHEEVOS_LOG(RCHEEVOS_TAG "Game load failed: %s\n", error_message);
+ 
++#ifdef HAVE_RICOTTA_OSD
++         /* The set exists but did not arrive: no network, a server refusal, a timeout. Distinct
++          * from unrecognised, where the game itself is the thing that is unknown. */
++         {
++            extern void ricotta_osd_cheevos_load(int outcome, int unlocked, int total);
++            ricotta_osd_cheevos_load(3, 0, 0);
++         }
++#endif
++
+          if (rcheevos_locals.hash_error)
+             error_message = rcheevos_locals.hash_error;
+          else

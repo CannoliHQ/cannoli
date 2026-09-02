@@ -64,7 +64,7 @@ class QuickMenuAboutDebugActionTest {
     }
 
     private fun confirmRow(row: QuickMenuRow) {
-        val rows = QuickMenuRow.visibleRows(rommPaired = false, kitchenRunning = false, debugBuild = true)
+        val rows = QuickMenuRow.visibleRows(rommPaired = false, kitchenRunning = false, devBuild = true)
         nav.dialogState.value = DialogState.QuickMenu(
             rows = rows,
             kitchenRunning = false,
