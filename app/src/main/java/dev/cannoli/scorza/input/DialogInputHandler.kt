@@ -184,7 +184,7 @@ class DialogInputHandler @Inject constructor(
     // dialog delegates back to it rather than duplicating that navigation here.
     var onRetroAchievementsLogout: (() -> Unit)? = null
 
-    internal val gameContextOptions = listOf(MENU_MANAGE_COLLECTIONS, MENU_EMULATOR_OVERRIDE, MENU_RA_GAME_ID, MENU_ACHIEVEMENTS_MODE, MENU_RENAME, MENU_DELETE_GAME)
+    internal val gameContextOptions = listOf(MENU_MANAGE_COLLECTIONS, MENU_EMULATOR_OVERRIDE, MENU_ACHIEVEMENTS, MENU_RENAME, MENU_DELETE_GAME)
 
     override fun onUp(): Boolean {
         val ds = nav.dialogState.value
@@ -274,7 +274,6 @@ class DialogInputHandler @Inject constructor(
         if (ds == DialogState.None) return false
         when (ds) {
             is DialogState.Picker -> ds.onCycle?.invoke(ds.selectedIndex, -1)
-            is DialogState.ContextMenu -> cycleAchievementsMode(ds, -1)
             is DialogState.ConflictsMenu -> cycleConflictChoice(ds, -1)
             is DialogState.QuickInfo, is DialogState.Kitchen -> moveSelection(ds, -1)
             is KeyboardHost -> nav.dialogState.value = ds.withKeyboard(KeyboardController.moveSelection(ds.keyboard, Direction.LEFT))
@@ -299,7 +298,6 @@ class DialogInputHandler @Inject constructor(
         if (ds == DialogState.None) return false
         when (ds) {
             is DialogState.Picker -> ds.onCycle?.invoke(ds.selectedIndex, 1)
-            is DialogState.ContextMenu -> cycleAchievementsMode(ds, 1)
             is DialogState.ConflictsMenu -> cycleConflictChoice(ds, 1)
             is DialogState.QuickInfo, is DialogState.Kitchen -> moveSelection(ds, 1)
             is KeyboardHost -> nav.dialogState.value = ds.withKeyboard(KeyboardController.moveSelection(ds.keyboard, Direction.RIGHT))
@@ -352,6 +350,9 @@ class DialogInputHandler @Inject constructor(
             return false
         }
         when (ds) {
+            // The Achievements group's only clearable row. Same button and verb as the launcher's
+            // binding screen, so CLEAR means one thing everywhere.
+            is DialogState.Picker -> clearRaGameId(ds)
             is KeyboardHost -> if (ds.keyboard.layout.supportsSpace) {
                 nav.dialogState.value = ds.withKeyboard(KeyboardController.insertChar(ds.keyboard, " "))
             }
@@ -528,4 +529,14 @@ class DialogInputHandler @Inject constructor(
 internal sealed interface ContextReturn {
     data class Single(val gameName: String, val options: List<String>, val selectedOption: Int = 0) : ContextReturn
     data class Bulk(val gamePaths: List<String>, val options: List<String>) : ContextReturn
+
+    /**
+     * A submenu of the context menu rather than the menu itself.
+     *
+     * Its rows open a keyboard and run a job, and both used to land back on the parent menu or the
+     * game list, because the only returns that existed described those. [selectRow] puts the cursor
+     * back on the row that left, and [parent] is the menu underneath, restored as this one is
+     * consumed so that backing out of the group leaves it rather than reopening it.
+     */
+    data class Achievements(val selectRow: String? = null, val parent: Single? = null) : ContextReturn
 }

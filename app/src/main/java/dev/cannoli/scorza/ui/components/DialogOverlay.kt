@@ -127,14 +127,23 @@ private fun PickerDialog(
     itemHeight: Dp,
 ) {
     // The legend follows the selected row, which is the rule four screens had each written out.
-    val cycles = dialogState.items.getOrNull(dialogState.selectedIndex)?.cycles == true
+    val selectedRow = dialogState.items.getOrNull(dialogState.selectedIndex)
+    val cycles = selectedRow?.cycles == true
+    val clears = selectedRow?.clears == true
     ListDialogScreen(
         backgroundImagePath = backgroundImagePath,
         backgroundTint = backgroundTint,
-        title = dialogState.title,
+        // A picker opened from a context menu is titled after the row that opened it, and those
+        // rows carry a stable key rather than words. Anything with no entry passes through, which
+        // is what pickers built from already-translated titles rely on.
+        title = dev.cannoli.scorza.input.MENU_LABELS[dialogState.title]
+            ?.let { stringResource(it) } ?: dialogState.title,
         listFontSize = listFontSize,
         listLineHeight = listLineHeight,
-        leftBottomItems = if (cycles) listOf(DPAD_HORIZONTAL to stringResource(R.string.label_change)) else emptyList(),
+        leftBottomItems = buildList {
+            if (cycles) add(DPAD_HORIZONTAL to stringResource(R.string.label_change))
+            if (clears) add(buttonStyle.north to stringResource(R.string.label_clear))
+        },
         rightBottomItems = listOf(buttonStyle.confirm to dialogState.confirmLabel),
         buttonStyle = buttonStyle,
     ) {

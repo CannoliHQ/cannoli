@@ -107,6 +107,8 @@ data class PickerItem(
     val checked: Boolean? = null,
     /** Left and right change this row's value, and the legend says so while it is selected. */
     val cycles: Boolean = false,
+    /** North clears this row's value, and the legend says so while it is selected. */
+    val clears: Boolean = false,
 )
 
 sealed interface DialogState {

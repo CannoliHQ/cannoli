@@ -317,6 +317,8 @@
     <string name="menu_emulator_override">Emulator Override</string>
     <string name="menu_remove_from_collection">Remove From Collection</string>
     <string name="menu_child_collections">Child Collections</string>
+    <!-- Game context-menu row opening the achievements group. Shown only when signed in. -->
+    <string name="menu_achievements">Achievements</string>
     <string name="menu_ra_game_id">RA Game ID</string>
     <string name="menu_achievements_mode">Achievements Mode</string>
     <string name="menu_preload_achievements">Preload Achievements</string>

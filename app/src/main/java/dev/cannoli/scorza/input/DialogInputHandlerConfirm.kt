@@ -231,7 +231,10 @@ internal fun DialogInputHandler.confirmDialog(): Boolean {
         is DialogState.RommConfirm -> onRommConfirm(ds)
         is DialogState.Picker -> ds.onSelect(ds.selectedIndex)
         is DialogState.RAPreloadResult -> {
-            nav.dialogState.value = DialogState.None
+            // Preload is reachable from a list as well as from the Achievements group, so this
+            // asks rather than assuming: a pending return means somewhere to go back to.
+            if (pendingContextReturn != null) restoreContextMenu()
+            else nav.dialogState.value = DialogState.None
         }
         is DialogState.RAPreloadProgress -> {
             nav.dialogState.value = DialogState.None
