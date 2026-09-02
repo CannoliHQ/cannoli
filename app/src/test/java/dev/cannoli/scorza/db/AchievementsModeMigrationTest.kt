@@ -4,16 +4,17 @@ import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import androidx.sqlite.execSQL
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
 
 /**
- * force_softcore rides on the roms row, so it must survive the migration with a default that
- * matches today's behavior: nothing forces softcore until the user says so.
+ * ra_hardcore rides on the roms row and is nullable, because a game saying nothing is a third
+ * answer rather than a default: it follows the global mode, and has to be able to go back to that.
  */
-class ForceSoftcoreMigrationTest {
+class AchievementsModeMigrationTest {
 
     @get:Rule val tmp = TemporaryFolder()
 
@@ -36,25 +37,30 @@ class ForceSoftcoreMigrationTest {
         return conn
     }
 
-    private fun forceSoftcoreOf(conn: SQLiteConnection, romId: Long): Int =
-        conn.prepare("SELECT force_softcore FROM roms WHERE id = ?").use { stmt ->
+    /** Null and 0 are different answers here, so the reader has to be able to tell them apart. */
+    private fun modeOf(conn: SQLiteConnection, romId: Long): Int? =
+        conn.prepare("SELECT ra_hardcore FROM roms WHERE id = ?").use { stmt ->
             stmt.bindLong(1, romId)
             stmt.step()
-            stmt.getInt(0)
+            if (stmt.isNull(0)) null else stmt.getInt(0)
         }
 
-    @Test fun `existing rows default to off`() {
+    @Test fun `existing rows state no mode of their own`() {
         val conn = v12Connection("defaults")
         Migrations.applyFrom(conn, 12)
-        assertEquals(0, forceSoftcoreOf(conn, 1))
+        assertNull(modeOf(conn, 1))
         conn.close()
     }
 
-    @Test fun `the flag persists once set`() {
+    @Test fun `all three answers persist`() {
         val conn = v12Connection("persist")
         Migrations.applyFrom(conn, 12)
-        conn.execSQL("UPDATE roms SET force_softcore = 1 WHERE id = 1")
-        assertEquals(1, forceSoftcoreOf(conn, 1))
+        conn.execSQL("UPDATE roms SET ra_hardcore = 1 WHERE id = 1")
+        assertEquals(1, modeOf(conn, 1))
+        conn.execSQL("UPDATE roms SET ra_hardcore = 0 WHERE id = 1")
+        assertEquals(0, modeOf(conn, 1))
+        conn.execSQL("UPDATE roms SET ra_hardcore = NULL WHERE id = 1")
+        assertNull(modeOf(conn, 1))
         conn.close()
     }
 

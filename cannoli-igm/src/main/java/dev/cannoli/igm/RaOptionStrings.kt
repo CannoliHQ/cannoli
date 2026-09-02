@@ -46,7 +46,7 @@ data class RaOptionStrings(
     val achievementsSoftcore: String = "Active (Softcore)",
     val achievementsUnrecognised: String = "Inactive (Game not recognized)",
     val achievementsNone: String = "Inactive (No achievements)",
-    val achievementsOffline: String = "Inactive (Offline)",
+    val achievementsOffline: String = "Inactive (Could not reach server)",
     val infoGameId: String = "RA Game ID",
     val infoHash: String = "RA Hash",
     val curatedCategoryTitles: Map<String, String> = mapOf(

@@ -6,6 +6,7 @@ import dev.cannoli.scorza.di.CannoliPathsProvider
 import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.util.ArtworkLookup
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -19,7 +20,7 @@ import java.io.File
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
-class RomsRepositoryForceSoftcoreTest {
+class RomsRepositoryAchievementsModeTest {
 
     @get:Rule val tmp = TemporaryFolder()
 
@@ -47,22 +48,25 @@ class RomsRepositoryForceSoftcoreTest {
         return repo.romIdForRelativePath("NES/a.nes")!!
     }
 
-    @Test fun `a freshly scanned rom does not force softcore`() {
-        assertFalse(repo.gameById(seedRom())!!.forceSoftcore)
+    @Test fun `a freshly scanned rom states no mode of its own`() {
+        assertNull(repo.gameById(seedRom())!!.raHardcore)
     }
 
-    @Test fun `the flag survives a round trip`() {
+    /** All three, including the way back: a game must be able to stop overriding. */
+    @Test fun `every mode survives a round trip`() {
         val id = seedRom()
-        repo.setForceSoftcore(id, true)
-        assertTrue(repo.gameById(id)!!.forceSoftcore)
-        repo.setForceSoftcore(id, false)
-        assertFalse(repo.gameById(id)!!.forceSoftcore)
+        repo.setRaHardcore(id, true)
+        assertEquals(true, repo.gameById(id)!!.raHardcore)
+        repo.setRaHardcore(id, false)
+        assertEquals(false, repo.gameById(id)!!.raHardcore)
+        repo.setRaHardcore(id, null)
+        assertNull(repo.gameById(id)!!.raHardcore)
     }
 
     /** The new column widens BASE_SELECT, so every other mapped column has to keep its index. */
     @Test fun `the surrounding columns still map to the right fields`() {
         val id = seedRom()
-        repo.setForceSoftcore(id, true)
+        repo.setRaHardcore(id, true)
         val rom = repo.gameById(id)!!
         assertEquals("A", rom.displayName)
         assertEquals("USA", rom.tags)

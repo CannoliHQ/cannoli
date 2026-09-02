@@ -18,7 +18,7 @@ internal const val MENU_EMULATOR_OVERRIDE = "menu_emulator_override"
 internal const val MENU_REMOVE_FROM_COLLECTION = "menu_remove_from_collection"
 internal const val MENU_CHILD_COLLECTIONS = "menu_child_collections"
 internal const val MENU_RA_GAME_ID = "menu_ra_game_id"
-internal const val MENU_FORCE_SOFTCORE = "menu_force_softcore"
+internal const val MENU_ACHIEVEMENTS_MODE = "menu_achievements_mode"
 internal const val MENU_PRELOAD_ACHIEVEMENTS = "menu_preload_achievements"
 internal const val MENU_ADD_FAVORITE = "menu_add_favorite"
 internal const val MENU_REMOVE_FAVORITE = "menu_remove_favorite"
@@ -41,7 +41,7 @@ internal val MENU_LABELS: Map<String, Int> = mapOf(
     MENU_REMOVE_FROM_COLLECTION to dev.cannoli.ui.R.string.menu_remove_from_collection,
     MENU_CHILD_COLLECTIONS to dev.cannoli.ui.R.string.menu_child_collections,
     MENU_RA_GAME_ID to dev.cannoli.ui.R.string.menu_ra_game_id,
-    MENU_FORCE_SOFTCORE to dev.cannoli.ui.R.string.menu_force_softcore,
+    MENU_ACHIEVEMENTS_MODE to dev.cannoli.ui.R.string.menu_achievements_mode,
     MENU_PRELOAD_ACHIEVEMENTS to dev.cannoli.ui.R.string.menu_preload_achievements,
     MENU_ADD_FAVORITE to dev.cannoli.ui.R.string.menu_add_favorite,
     MENU_REMOVE_FAVORITE to dev.cannoli.ui.R.string.menu_remove_favorite,

@@ -57,13 +57,19 @@ class LaunchManager(
     private fun overrideFor(rom: Rom): dev.cannoli.scorza.config.EmulatorChoice? =
         gameOverrides?.get(rom.id)
 
-    // A manual RA Game ID is an unofficial association (ROM hack or hand match) where hardcore is
-    // invalid, so it forces softcore additively without touching the user's stored forceSoftcore.
+    /**
+     * This game's mode if it states one, otherwise the global. Either direction: a game can be
+     * hardcore under a softcore global as readily as the reverse.
+     *
+     * A manual RA Game ID is an unofficial association, a ROM hack or a hand match, where hardcore
+     * is invalid. It forces softcore over the top of both rather than editing either, so clearing
+     * the ID gives the game its own choice back untouched.
+     */
     private fun cheevosFor(rom: Rom): Map<String, String> = cheevosOverrides(
         username = settings.raUsername,
         token = settings.raToken,
-        hardcore = settings.raHardcore,
-        forceSoftcore = rom.forceSoftcore || rom.raGameId != null,
+        hardcore = rom.raHardcore ?: settings.raHardcore,
+        forceSoftcore = rom.raGameId != null,
     )
 
     private var raConfigPath: String? = null

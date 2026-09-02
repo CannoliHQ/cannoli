@@ -81,7 +81,7 @@ abstract class LaunchConfigHarness {
         relPath: String,
         tag: String,
         id: Long = 1L,
-        forceSoftcore: Boolean = false,
+        raHardcore: Boolean? = null,
         raGameId: Int? = null,
     ): Rom {
         val file = File(root, relPath).apply { parentFile!!.mkdirs(); writeText("x") }
@@ -91,7 +91,7 @@ abstract class LaunchConfigHarness {
             platformTag = tag,
             displayName = "Game",
             raGameId = raGameId,
-            forceSoftcore = forceSoftcore,
+            raHardcore = raHardcore,
         )
     }
 }

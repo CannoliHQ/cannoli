@@ -141,7 +141,10 @@ internal fun AppScreens(
                         )
                         dev.cannoli.scorza.ui.components.RaAccountRow.HARDCORE -> PillRowKeyValue(
                             label = stringResource(R.string.achievos_account_row_hardcore),
-                            value = stringResource(if (currentScreen.hardcore) R.string.value_on else R.string.value_off),
+                            value = stringResource(
+                                if (currentScreen.hardcore) dev.cannoli.ui.R.string.achievos_mode_hardcore
+                                else dev.cannoli.ui.R.string.achievos_mode_softcore
+                            ),
                             isSelected = isSelected,
                             fontSize = listFontSize,
                             lineHeight = listLineHeight,

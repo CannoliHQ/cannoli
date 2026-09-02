@@ -6,7 +6,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import dev.cannoli.scorza.R
-import dev.cannoli.scorza.input.MENU_FORCE_SOFTCORE
+import dev.cannoli.scorza.input.MENU_ACHIEVEMENTS_MODE
 import dev.cannoli.scorza.model.VirtualPlatformTags
 import dev.cannoli.scorza.ui.screens.DialogState
 import dev.cannoli.scorza.ui.screens.KeyboardHost
@@ -40,13 +40,13 @@ internal fun LibraryDialogs(
         is DialogState.ContextMenu -> {
             val selected = dialogState.options.getOrNull(dialogState.selectedOption)
             val selectedLabel = selected?.substringBefore('\t')
-            val forceSoftcoreLocked = stringResource(dev.cannoli.ui.R.string.force_softcore_locked)
+            val modeLocked = stringResource(dev.cannoli.ui.R.string.achievements_mode_locked)
             val rightBottomItems = when {
-                // A Game ID locks the toggle, so its row offers no primary action.
-                selectedLabel == MENU_FORCE_SOFTCORE && selected.substringAfter('\t', "") == forceSoftcoreLocked ->
+                // A Game ID settles the mode, so its row offers no primary action.
+                selectedLabel == MENU_ACHIEVEMENTS_MODE && selected.substringAfter('\t', "") == modeLocked ->
                     emptyList()
-                selectedLabel == MENU_FORCE_SOFTCORE ->
-                    listOf(buttonStyle.confirm to stringResource(dev.cannoli.ui.R.string.label_toggle))
+                selectedLabel == MENU_ACHIEVEMENTS_MODE ->
+                    listOf(dev.cannoli.ui.DPAD_HORIZONTAL to stringResource(dev.cannoli.ui.R.string.label_change))
                 else ->
                     listOf(buttonStyle.confirm to stringResource(dev.cannoli.ui.R.string.label_select))
             }

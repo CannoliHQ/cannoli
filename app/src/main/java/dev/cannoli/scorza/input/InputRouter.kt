@@ -253,6 +253,10 @@ class InputRouter @Inject constructor(
             ) {
                 settings.raHardcore = !settings.raHardcore
                 nav.replaceTop(copy(hardcore = settings.raHardcore))
+                // Hardcore hides resume, because RetroArch refuses to load a state under it, and
+                // the list decides that from a set computed once. Without this the rows keep
+                // offering a resume the launch then quietly ignores.
+                launcherActions.scanResumableGames()
             }
         }
         return scrollable<LauncherScreen.RetroAchievements>(

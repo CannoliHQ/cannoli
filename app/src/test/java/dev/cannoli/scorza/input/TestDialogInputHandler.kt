@@ -29,11 +29,15 @@ internal fun testDialogInputHandler(
     // out of RetroAchievements. Rows that only exist for a connected account are absent unless a
     // test says otherwise.
     raToken: String = "",
+    raHardcore: Boolean = false,
 ) = DialogInputHandler(
     nav = nav,
     ioScope = ioScope,
     context = context,
-    settings = mockk(relaxed = true) { every { this@mockk.raToken } returns raToken },
+    settings = mockk(relaxed = true) {
+        every { this@mockk.raToken } returns raToken
+        every { this@mockk.raHardcore } returns raHardcore
+    },
     collectionManager = mockk(relaxed = true),
     recentlyPlayedManager = mockk(relaxed = true),
     platformResolver = mockk(relaxed = true),

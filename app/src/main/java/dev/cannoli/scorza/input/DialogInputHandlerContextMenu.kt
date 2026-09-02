@@ -133,19 +133,6 @@ internal fun DialogInputHandler.onContextMenuConfirm(state: DialogState.ContextM
                 )
             }
         }
-        selected == MENU_FORCE_SOFTCORE || selected.startsWith("$MENU_FORCE_SOFTCORE\t") -> {
-            // A Game ID locks softcore on, so the toggle is inert until the ID is cleared.
-            if (rom != null && rom.raGameId == null) {
-                val next = !rom.forceSoftcore
-                ioScope.launch {
-                    romsRepository.setForceSoftcore(rom.id, next)
-                    gameListViewModel.reload {
-                        launcherActions.scanResumableGames()
-                        restoreContextMenu()
-                    }
-                }
-            }
-        }
         selected == MENU_PRELOAD_ACHIEVEMENTS || selected.startsWith("$MENU_PRELOAD_ACHIEVEMENTS\t") -> {
             if (rom != null) {
                 raPreloadController.preloadRom(rom)
@@ -180,6 +167,36 @@ internal fun DialogInputHandler.onContextMenuConfirm(state: DialogState.ContextM
         selected == MENU_GUIDES -> {
             if (rom == null) return
             openGuides?.invoke(rom)
+        }
+    }
+}
+
+/**
+ * Steps this game's achievements mode, on Left and Right like every other value Cannoli shows.
+ *
+ * Three answers rather than two: null is the game deferring to the global mode, which has to stay
+ * reachable or a game could never stop overriding it. A manual Game ID settles the mode on its own,
+ * so the row is inert until that is cleared.
+ */
+internal fun DialogInputHandler.cycleAchievementsMode(state: DialogState.ContextMenu, direction: Int) {
+    val selected = state.options.getOrNull(state.selectedOption) ?: return
+    if (selected.substringBefore('\t') != MENU_ACHIEVEMENTS_MODE) return
+    val rom = (gameListViewModel.getSelectedItem() as? ListItem.RomItem)?.rom ?: return
+    if (rom.raGameId != null) return
+
+    val order = listOf(null, true, false)
+    val next = order[(order.indexOf(rom.raHardcore) + direction).mod(order.size)]
+    ioScope.launch {
+        romsRepository.setRaHardcore(rom.id, next)
+        gameListViewModel.reload {
+            launcherActions.scanResumableGames()
+            // Rebuilt in place, not restored. restoreContextMenu answers a return that only the
+            // confirm path records on its way out to another screen; cycling never leaves, so it
+            // would find nothing pending and close the menu instead of redrawing it.
+            val item = gameListViewModel.getSelectedItem() ?: return@reload
+            nav.dialogState.value = state.copy(
+                options = buildGameContextOptions(item, gameListViewModel.state.value),
+            )
         }
     }
 }
@@ -371,7 +388,7 @@ fun DialogInputHandler.buildGameContextOptions(item: ListItem, glState: GameList
             // game to an account that is not connected, and softcore is a property of a session
             // that does not exist. They read as settings that do nothing rather than as rows
             // waiting on a login.
-            val raRows = setOf(MENU_RA_GAME_ID, MENU_FORCE_SOFTCORE)
+            val raRows = setOf(MENU_RA_GAME_ID, MENU_ACHIEVEMENTS_MODE)
             val options =
                 if (settings.raToken.isNotEmpty()) gameContextOptions
                 else gameContextOptions.filterNot { it in raRows }
@@ -387,13 +404,22 @@ fun DialogInputHandler.buildGameContextOptions(item: ListItem, glState: GameList
                         "$MENU_EMULATOR_OVERRIDE\t$desc"
                     }
                     menuItem == MENU_RA_GAME_ID -> "$MENU_RA_GAME_ID\t${rom?.raGameId?.toString() ?: "Autodetect"}"
-                    menuItem == MENU_FORCE_SOFTCORE -> {
+                    menuItem == MENU_ACHIEVEMENTS_MODE -> {
                         val value = when {
-                            rom?.raGameId != null -> context.getString(dev.cannoli.ui.R.string.force_softcore_locked)
-                            rom?.forceSoftcore == true -> context.getString(dev.cannoli.ui.R.string.value_on)
-                            else -> context.getString(dev.cannoli.ui.R.string.value_off)
+                            rom?.raGameId != null -> context.getString(dev.cannoli.ui.R.string.achievements_mode_locked)
+                            rom?.raHardcore == true -> context.getString(dev.cannoli.ui.R.string.achievos_mode_hardcore)
+                            rom?.raHardcore == false -> context.getString(dev.cannoli.ui.R.string.achievos_mode_softcore)
+                            // Names the mode it defers to, so choosing it is not a guess about
+                            // what the global currently says.
+                            else -> context.getString(
+                                dev.cannoli.ui.R.string.achievos_mode_use_global,
+                                context.getString(
+                                    if (settings.raHardcore) dev.cannoli.ui.R.string.achievos_mode_hardcore
+                                    else dev.cannoli.ui.R.string.achievos_mode_softcore
+                                ),
+                            )
                         }
-                        "$MENU_FORCE_SOFTCORE\t$value"
+                        "$MENU_ACHIEVEMENTS_MODE\t$value"
                     }
                     else -> menuItem
                 }

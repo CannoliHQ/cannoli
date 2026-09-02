@@ -318,7 +318,7 @@
     <string name="menu_remove_from_collection">Remove From Collection</string>
     <string name="menu_child_collections">Child Collections</string>
     <string name="menu_ra_game_id">RA Game ID</string>
-    <string name="menu_force_softcore">Force Softcore</string>
+    <string name="menu_achievements_mode">Achievements Mode</string>
     <string name="menu_preload_achievements">Preload Achievements</string>
     <string name="menu_add_favorite">Add To Favorites</string>
     <string name="menu_remove_favorite">Remove From Favorites</string>
@@ -542,7 +542,8 @@
     <string name="value_on">On</string>
     <string name="value_off">Off</string>
     <!-- Force Softcore row value when a manual RA Game ID pins it on. -->
-    <string name="force_softcore_locked">On (forced by Game ID)</string>
+    <!-- A manual Game ID is an unofficial match, where hardcore is not valid. -->
+    <string name="achievements_mode_locked">Softcore (forced by Game ID)</string>
     <string name="value_all">All</string>
     <string name="value_show">Show</string>
     <string name="value_hide">Hide</string>
@@ -774,7 +775,13 @@
     <!-- RetroAchievements -->
     <string name="achievos_title" translatable="false">RetroAchievements</string>
     <string name="achievos_account_row_account">Account</string>
-    <string name="achievos_account_row_hardcore">Hardcore Mode</string>
+    <string name="achievos_account_row_hardcore">Achievements Mode</string>
+    <!-- The two modes, as the global row and the per-game row both name them. -->
+    <string name="achievos_mode_hardcore">Hardcore</string>
+    <string name="achievos_mode_softcore">Softcore</string>
+    <!-- Per-game only: this game follows the global mode, named so deferring is not a guess.
+         %1$s is that mode, either Hardcore or Softcore. -->
+    <string name="achievos_mode_use_global">Use Global (%1$s)</string>
     <string name="achievos_account_row_offline_sets">Offline Sets</string>
     <string name="achievos_logout_confirm">Log out of RetroAchievements?</string>
     <string name="achievos_token_checking">Checking...</string>
@@ -790,8 +797,9 @@
     <string name="achievos_load_not_recognized">RA: Game not recognized</string>
     <!-- Achievement OSD: the game is known, but nobody has published a set for it. -->
     <string name="achievos_load_no_achievements">RA: No achievements for this game</string>
-    <!-- Achievement OSD: the set exists but could not be fetched, usually no network. -->
-    <string name="achievos_load_unavailable">RA: Offline (game data unavailable)</string>
+    <!-- Achievement OSD: the server did not answer. Says that rather than "offline", which is
+         one cause among several and is a word offline achievements will want for a working mode. -->
+    <string name="achievos_load_unavailable">RA: Could not reach server</string>
     <!-- Fills the status slot in achievos_load_success. -->
     <string name="achievos_hardcore">Hardcore</string>
     <string name="achievos_softcore">Softcore</string>
@@ -973,7 +981,7 @@
     <string name="igm_achievements_softcore">Active (Softcore)</string>
     <string name="igm_achievements_unrecognised">Inactive (Game not recognized)</string>
     <string name="igm_achievements_none">Inactive (No achievements)</string>
-    <string name="igm_achievements_offline">Inactive (Offline)</string>
+    <string name="igm_achievements_offline">Inactive (Could not reach server)</string>
     <string name="igm_info_game_id">RA Game ID</string>
     <!-- Info row: the checksum achievements were looked up by. Keep short; it is a hex string. -->
     <string name="igm_info_hash">RA Hash</string>

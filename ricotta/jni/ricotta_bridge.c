@@ -2962,9 +2962,6 @@ void ricotta_osd_event(int type, int slot)
 void ricotta_osd_cheevos_load(int outcome, int unlocked, int total)
 {
    ricotta_cmd_entry entry = {0};
-
-   g_cheevos_outcome = outcome;
-
    rcheevos_locals_t *locals = get_rcheevos_locals();
    rc_client_t *client       = locals ? locals->client : NULL;
    const rc_client_user_t *user = client ? rc_client_get_user_info(client) : NULL;
@@ -2973,6 +2970,14 @@ void ricotta_osd_cheevos_load(int outcome, int unlocked, int total)
 
    if (!g_bridge_obj || !g_on_cheevos_load_mid)
       return;
+
+   /* An unreachable server makes the game unidentifiable, so rcheevos reports both in turn and the
+    * second one reads as though the ROM were the problem. The network answer is the true one and
+    * the cause of the other, so once it has been given, a later unrecognised is not news. */
+   if (g_cheevos_outcome == 3 && outcome == 1)
+      return;
+
+   g_cheevos_outcome = outcome;
 
    if (user)
       who = (user->display_name && user->display_name[0]) ? user->display_name : user->username;

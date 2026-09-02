@@ -246,7 +246,11 @@ internal object Migrations {
             db.execSQL("ALTER TABLE game_overrides_v12 RENAME TO game_overrides")
         },
         Migration(13) { db ->
-            db.execSQL("ALTER TABLE roms ADD COLUMN force_softcore INTEGER NOT NULL DEFAULT 0")
+            // Nullable on purpose: absent is this game deferring to the global mode, the same
+            // three-state shape the override tiers use. This replaced a force_softcore column
+            // that only ever existed on v2, where 12 is the last version any shipped build has,
+            // so there is nothing in the wild to carry across.
+            db.execSQL("ALTER TABLE roms ADD COLUMN ra_hardcore INTEGER")
         },
     )
 

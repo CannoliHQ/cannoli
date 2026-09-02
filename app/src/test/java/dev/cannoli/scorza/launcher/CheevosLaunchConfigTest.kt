@@ -97,17 +97,17 @@ class CheevosLaunchConfigTest : LaunchConfigHarness() {
         assertFalse(cfg.containsKey("savestate_auto_load"))
     }
 
-    @Test fun `a force softcore game keeps both auto state keys under global hardcore`() {
+    @Test fun `a softcore game keeps both auto state keys under global hardcore`() {
         val root = tmp.newFolder()
         loggedIn(hardcore = true)
-        val cfg = resumedConfig(root, rom(root, "Roms/GBA/Game.gba", "GBA", forceSoftcore = true))
+        val cfg = resumedConfig(root, rom(root, "Roms/GBA/Game.gba", "GBA", raHardcore = false))
         assertEquals("false", cfg["cheevos_hardcore_mode_enable"])
         assertEquals("true", cfg["savestate_auto_save"])
         assertEquals("true", cfg["savestate_auto_load"])
     }
 
-    // A manual Game ID forces softcore even when the user never set the toggle: the association is
-    // unofficial, so hardcore would be invalid, and it must not depend on rom.forceSoftcore.
+    // A manual Game ID forces softcore even when the game asks for nothing: the association is
+    // unofficial, so hardcore would be invalid, and it must not depend on the game's own mode.
     @Test fun `a game id forces softcore under global hardcore`() {
         val root = tmp.newFolder()
         loggedIn(hardcore = true)
@@ -138,7 +138,7 @@ class CheevosLaunchConfigTest : LaunchConfigHarness() {
         val root = tmp.newFolder()
         loggedIn(hardcore = true)
         val mgr = manager(root)
-        val rom = rom(root, "Roms/GBA/Game.gba", "GBA", forceSoftcore = true).withSaveState(mgr)
+        val rom = rom(root, "Roms/GBA/Game.gba", "GBA", raHardcore = false).withSaveState(mgr)
         assertEquals(setOf(rom.path.absolutePath), mgr.findResumableRoms(listOf(rom)))
     }
 
@@ -149,7 +149,7 @@ class CheevosLaunchConfigTest : LaunchConfigHarness() {
         loggedIn(hardcore = true)
         val igm = slot<RicottaIgm>()
         every { retroArchLauncher.launchRicotta(any(), any(), any(), capture(igm)) } returns LaunchResult.Success
-        manager(root).launchRom(rom(root, "Roms/GBA/Game.gba", "GBA", forceSoftcore = true))
+        manager(root).launchRom(rom(root, "Roms/GBA/Game.gba", "GBA", raHardcore = false))
         assertFalse(igm.captured.hardcoreInEffect)
     }
 

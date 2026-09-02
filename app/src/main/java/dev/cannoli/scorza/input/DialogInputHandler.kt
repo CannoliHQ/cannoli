@@ -184,7 +184,7 @@ class DialogInputHandler @Inject constructor(
     // dialog delegates back to it rather than duplicating that navigation here.
     var onRetroAchievementsLogout: (() -> Unit)? = null
 
-    internal val gameContextOptions = listOf(MENU_MANAGE_COLLECTIONS, MENU_EMULATOR_OVERRIDE, MENU_RA_GAME_ID, MENU_FORCE_SOFTCORE, MENU_RENAME, MENU_DELETE_GAME)
+    internal val gameContextOptions = listOf(MENU_MANAGE_COLLECTIONS, MENU_EMULATOR_OVERRIDE, MENU_RA_GAME_ID, MENU_ACHIEVEMENTS_MODE, MENU_RENAME, MENU_DELETE_GAME)
 
     override fun onUp(): Boolean {
         val ds = nav.dialogState.value
@@ -274,6 +274,7 @@ class DialogInputHandler @Inject constructor(
         if (ds == DialogState.None) return false
         when (ds) {
             is DialogState.Picker -> ds.onCycle?.invoke(ds.selectedIndex, -1)
+            is DialogState.ContextMenu -> cycleAchievementsMode(ds, -1)
             is DialogState.ConflictsMenu -> cycleConflictChoice(ds, -1)
             is DialogState.QuickInfo, is DialogState.Kitchen -> moveSelection(ds, -1)
             is KeyboardHost -> nav.dialogState.value = ds.withKeyboard(KeyboardController.moveSelection(ds.keyboard, Direction.LEFT))
@@ -298,6 +299,7 @@ class DialogInputHandler @Inject constructor(
         if (ds == DialogState.None) return false
         when (ds) {
             is DialogState.Picker -> ds.onCycle?.invoke(ds.selectedIndex, 1)
+            is DialogState.ContextMenu -> cycleAchievementsMode(ds, 1)
             is DialogState.ConflictsMenu -> cycleConflictChoice(ds, 1)
             is DialogState.QuickInfo, is DialogState.Kitchen -> moveSelection(ds, 1)
             is KeyboardHost -> nav.dialogState.value = ds.withKeyboard(KeyboardController.moveSelection(ds.keyboard, Direction.RIGHT))

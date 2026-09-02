@@ -229,15 +229,15 @@ class RetroActivityFuture : RetroActivityCamera() {
                     )
                     dev.cannoli.ricotta.CheevosLoad.Outcome.UNRECOGNISED -> osd.showMessage(
                         osdContext.getString(R.string.achievos_load_not_recognized),
-                        dev.cannoli.ui.components.OsdPosition.TopCenter,
+                        dev.cannoli.ui.components.OsdPosition.TopStart,
                     )
                     dev.cannoli.ricotta.CheevosLoad.Outcome.NO_ACHIEVEMENTS -> osd.showMessage(
                         osdContext.getString(R.string.achievos_load_no_achievements),
-                        dev.cannoli.ui.components.OsdPosition.TopCenter,
+                        dev.cannoli.ui.components.OsdPosition.TopStart,
                     )
                     dev.cannoli.ricotta.CheevosLoad.Outcome.UNAVAILABLE -> osd.showMessage(
                         osdContext.getString(R.string.achievos_load_unavailable),
-                        dev.cannoli.ui.components.OsdPosition.TopCenter,
+                        dev.cannoli.ui.components.OsdPosition.TopStart,
                     )
                 }
             }

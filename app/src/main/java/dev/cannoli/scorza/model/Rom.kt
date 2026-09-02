@@ -12,7 +12,8 @@ data class Rom(
     val raGameId: Int? = null,
     val lastPlayedAt: Long? = null,
     val raCachedGameId: Int? = null,
-    val forceSoftcore: Boolean = false,
+    /** Null defers to the global mode; true and false are this game overriding it either way. */
+    val raHardcore: Boolean? = null,
 ) {
     val isMultiDisc: Boolean
         get() = path.extension.equals("m3u", ignoreCase = true)
