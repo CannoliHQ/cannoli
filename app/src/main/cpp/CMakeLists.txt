@@ -1,24 +1,29 @@
 cmake_minimum_required(VERSION 3.22.1)
 project(cannoli_hash C)
 
-# RetroAchievements identifies a game by hashing the ROM, and the launcher needs that before a game
-# is ever run: it is how a preload knows which set to fetch. Only rc_hash is built here. The rest of
-# rcheevos lives inside RetroArch, in the other process, and duplicating it would mean two clients
-# with two opinions about the same account.
-file(GLOB RHASH_SRC third_party/rcheevos/src/rhash/*.c)
+# Built from RetroArch's rcheevos, not a copy: the launcher resolves a game id from a rom hash that
+# the in-game rcheevos has to agree with. A second copy drifts and the two disagree about which game
+# a rom is.
+set(RCHEEVOS ${CMAKE_CURRENT_SOURCE_DIR}/../../../../retroarch/deps/rcheevos)
+set(LIBRETRO_COMMON ${CMAKE_CURRENT_SOURCE_DIR}/../../../../retroarch/libretro-common)
 
+file(GLOB RHASH_SRC ${RCHEEVOS}/src/rhash/*.c)
+
+# RetroArch's md5.h maps rcheevos' md5_init/append/finish onto libretro-common's MD5 instead of
+# shipping an implementation, so that md5.c is not optional.
 add_library(cannoli_hash SHARED
     ra_hash_jni.c
     ${RHASH_SRC}
-    third_party/rcheevos/src/rc_compat.c
-    third_party/rcheevos/src/rc_util.c)
+    ${RCHEEVOS}/src/rc_compat.c
+    ${RCHEEVOS}/src/rc_util.c
+    ${LIBRETRO_COMMON}/utils/md5.c)
 
 target_include_directories(cannoli_hash PRIVATE
-    third_party/rcheevos/include
-    third_party/rcheevos/src)
+    ${RCHEEVOS}/include
+    ${RCHEEVOS}/src
+    ${LIBRETRO_COMMON}/include)
 
-# No Lua rules and no disc readers pulled in by the client: a ROM hash needs neither, and both drag
-# in the parts of rcheevos this deliberately does not build.
+# No Lua rules: a ROM hash needs none, and it drags in parts of rcheevos this does not build.
 target_compile_definitions(cannoli_hash PRIVATE RC_DISABLE_LUA)
 
 find_library(log-lib log)
