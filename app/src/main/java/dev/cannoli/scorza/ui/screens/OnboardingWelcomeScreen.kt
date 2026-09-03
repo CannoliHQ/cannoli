@@ -36,7 +36,6 @@ import dev.cannoli.scorza.input.legend.CONFIRM_RUN_FADE_MS
 import dev.cannoli.scorza.input.legend.CONFIRM_RUN_TIMEOUT_MS
 import dev.cannoli.scorza.onboarding.OnboardingStep
 import dev.cannoli.ui.components.screenInsets
-import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.LocalCannoliTypography
 import dev.cannoli.ui.theme.Spacing
 import kotlinx.coroutines.delay
@@ -54,7 +53,6 @@ fun OnboardingWelcomeScreen(
     onRunExpired: () -> Unit = {},
 ) {
     val typo = LocalCannoliTypography.current
-    val colors = LocalCannoliColors.current
 
     Box(
         modifier = Modifier
@@ -76,7 +74,7 @@ fun OnboardingWelcomeScreen(
             Text(
                 text = stringResource(R.string.onboarding_welcome_greeting),
                 style = typo.bodyLarge.copy(textAlign = TextAlign.Center),
-                color = colors.text.copy(alpha = 0.8f),
+                color = Color.White,
             )
             Spacer(modifier = Modifier.height(Spacing.Md))
             Text(
@@ -85,8 +83,11 @@ fun OnboardingWelcomeScreen(
                 } else {
                     stringResource(R.string.onboarding_welcome_press_thrice)
                 },
-                style = typo.bodyLarge.copy(textAlign = TextAlign.Center),
-                color = colors.text,
+                style = typo.bodyLarge.copy(
+                    textAlign = TextAlign.Center,
+                    lineBreak = androidx.compose.ui.text.style.LineBreak.Heading,
+                ),
+                color = Color.White,
             )
             if (mapping != null) {
                 Spacer(modifier = Modifier.height(Spacing.Lg))

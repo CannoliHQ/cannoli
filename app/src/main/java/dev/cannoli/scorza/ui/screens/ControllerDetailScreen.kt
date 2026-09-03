@@ -221,7 +221,7 @@ private fun NotFoundHint(
             style = MaterialTheme.typography.bodyLarge.copy(
                 fontSize = fontSize,
                 lineHeight = lineHeight,
-                color = colors.text.copy(alpha = 0.6f),
+                color = colors.text,
             )
         )
     }

@@ -33,7 +33,7 @@ fun SectionHeader(
             style = MaterialTheme.typography.bodyMedium.copy(
                 fontSize = (fontSize.value * 0.72f).sp,
                 lineHeight = lineHeight,
-                color = colors.text.copy(alpha = 0.6f)
+                color = colors.text
             )
         )
     }

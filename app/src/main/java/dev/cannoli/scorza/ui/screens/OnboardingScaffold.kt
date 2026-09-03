@@ -81,7 +81,7 @@ fun OnboardingStepCounter(step: OnboardingStep) {
     Text(
         text = stringResource(R.string.onboarding_step_of, step.number, OnboardingStep.COUNT),
         style = LocalCannoliTypography.current.labelSmall,
-        color = LocalCannoliColors.current.text.copy(alpha = 0.6f),
+        color = Color.White,
         modifier = Modifier.padding(start = pillInternalPadding()),
     )
 }
@@ -90,7 +90,7 @@ fun OnboardingStepCounter(step: OnboardingStep) {
 @Composable
 fun OnboardingBodyText(
     text: String,
-    color: Color = LocalCannoliColors.current.text.copy(alpha = 0.8f),
+    color: Color = Color.White,
 ) {
     Text(
         text = text,

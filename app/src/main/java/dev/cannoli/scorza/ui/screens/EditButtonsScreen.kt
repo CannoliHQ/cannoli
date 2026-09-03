@@ -99,7 +99,7 @@ fun EditButtonsScreen(
                             style = MaterialTheme.typography.bodyLarge.copy(
                                 fontSize = listFontSize,
                                 lineHeight = listLineHeight,
-                                color = colors.text.copy(alpha = 0.6f),
+                                color = colors.text,
                             )
                         )
                     }
@@ -206,7 +206,7 @@ fun EditButtonsScreen(
                         text = stringResource(promptRes),
                         style = MaterialTheme.typography.bodyMedium.copy(
                             fontSize = listFontSize * 0.73f,
-                            color = colors.text.copy(alpha = 0.6f),
+                            color = colors.text,
                         ),
                     )
                     Spacer(modifier = Modifier.height(Spacing.Lg))
