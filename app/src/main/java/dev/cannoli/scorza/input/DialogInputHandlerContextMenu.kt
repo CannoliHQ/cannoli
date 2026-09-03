@@ -160,13 +160,6 @@ internal fun DialogInputHandler.onContextMenuConfirm(state: DialogState.ContextM
 }
 
 /**
- * Steps this game's achievements mode, on Left and Right like every other value Cannoli shows.
- *
- * Three answers rather than two: null is the game deferring to the global mode, which has to stay
- * reachable or a game could never stop overriding it. A manual Game ID settles the mode on its own,
- * so the row is inert until that is cleared.
- */
-/**
  * Clears a manual RA Game ID, putting the game back on hash detection.
  *
  * Gated on the row's own [PickerItem.clears] flag rather than on its title or label, so the button
@@ -319,6 +312,13 @@ internal fun DialogInputHandler.openAchievementsMenu(romId: Long, selectRow: Str
     }
 }
 
+/**
+ * Steps this game's achievements mode, on Left and Right like every other value Cannoli shows.
+ *
+ * Three answers rather than two: null is the game deferring to the global mode, which has to stay
+ * reachable or a game could never stop overriding it. A manual Game ID settles the mode on its own,
+ * so the row is inert until that is cleared.
+ */
 internal fun DialogInputHandler.cycleAchievementsMode(romId: Long, direction: Int) {
     val rom = romForAchievements(romId) ?: return
     if (rom.raGameId != null) return

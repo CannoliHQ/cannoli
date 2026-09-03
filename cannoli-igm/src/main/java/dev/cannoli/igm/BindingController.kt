@@ -5,17 +5,6 @@ import android.os.Looper
 import android.view.KeyEvent
 
 /**
- * The chord-hold detector behind both binding screens: the launcher's and the in-game menu's.
- *
- * While listening it accumulates the keycodes being held, ticks every [TICK_MS], and commits once
- * they have been held together for [HOLD_MS]. Releasing any of them cancels, which is what makes a
- * mistaken press cost nothing.
- *
- * Screen-agnostic and free of injection so both processes can hold one: the in-game menu runs in
- * the emulator's process, where the launcher's object graph does not reach. Callers wire
- * [onProgress] / [onCommit] / [onCancel] to their own state.
- */
-/**
  * How the detector waits. Real callers tick on the main thread; a test drives [BindingController]
  * directly and wants no thread at all, which is otherwise unreachable because the hold is a timer.
  */
@@ -32,6 +21,17 @@ private class HandlerTicker : BindingTicker {
     override fun cancel(action: Runnable) { handler.removeCallbacks(action) }
 }
 
+/**
+ * The chord-hold detector behind both binding screens: the launcher's and the in-game menu's.
+ *
+ * While listening it accumulates the keycodes being held, ticks every [TICK_MS], and commits once
+ * they have been held together for [HOLD_MS]. Releasing any of them cancels, which is what makes a
+ * mistaken press cost nothing.
+ *
+ * Screen-agnostic and free of injection so both processes can hold one: the in-game menu runs in
+ * the emulator's process, where the launcher's object graph does not reach. Callers wire
+ * [onProgress] / [onCommit] / [onCancel] to their own state.
+ */
 class BindingController(private var ticker: BindingTicker = HandlerTicker()) {
 
     companion object {

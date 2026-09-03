@@ -466,15 +466,6 @@ class IGMOverlay(
     }
 
     /**
-     * Cannoli owns which overlay is in force, so the picker drives RetroArch directly, then stages
-     * the keys it touched into the settings tree's existing dirty set. Persistence and the choice
-     * between platform and game both come from the save prompt on the way out, so an overlay is
-     * scoped exactly like every other setting rather than having a path of its own.
-     *
-     * The list carries a leading None so switching the bezel off is a move like any other rather
-     * than a separate action, which is why every index below is offset by one.
-     */
-    /**
      * The window stays attached while the game runs and only its content view is hidden, so a
      * bezel needs that view shown even with no menu up. It is already non-focusable and
      * non-touchable in that state, so nothing reaches it and input still goes to the game.
@@ -491,6 +482,15 @@ class IGMOverlay(
     // the unit of undo here, not the picker: leaving the picker is plain navigation.
     private var overlayBeforeEdit: String? = null
 
+    /**
+     * Cannoli owns which overlay is in force, so the picker drives RetroArch directly, then stages
+     * the keys it touched into the settings tree's existing dirty set. Persistence and the choice
+     * between platform and game both come from the save prompt on the way out, so an overlay is
+     * scoped exactly like every other setting rather than having a path of its own.
+     *
+     * The list carries a leading None so switching the bezel off is a move like any other rather
+     * than a separate action, which is why every index below is offset by one.
+     */
     private fun attachOverlayPicker() {
         val picker = controller.overlayPicker
         picker.title.value = uiContext.getString(R.string.igm_overlay)

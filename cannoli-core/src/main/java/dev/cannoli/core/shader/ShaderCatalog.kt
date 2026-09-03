@@ -2,9 +2,11 @@ package dev.cannoli.core.shader
 
 import java.io.File
 
-/** A row in the shader browser: either a folder to enter or a preset to apply. */
-/** [path] is absolute for a preset and empty for a folder, so a caller can tell which is applied. */
-/** [path] is absolute for a preset and empty for a folder. */
+/**
+ * A row in the shader browser: either a folder to enter or a preset to apply.
+ *
+ * [path] is absolute for a preset and empty for a folder, so a caller can tell which is applied.
+ */
 data class ShaderEntry(val name: String, val isFolder: Boolean, val path: String = "")
 
 /**

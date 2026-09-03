@@ -451,16 +451,15 @@ class EmbeddedRetroArchBridge(
     }
 
     /**
-     * The database is thousands of files, so a level is read on demand rather than cached: the
-     * browser asks for one folder at a time and each is small, where holding the whole tree would
-     * cost far more than the listing it saves.
-     */
-    /**
      * A path is real directories followed by at most one family name.
      *
      * A family is a group of presets sharing a name stem, not a folder on disk, so descending into
      * one leaves the filesystem behind. Each family row carries its full stem, so the last segment
      * that is not a directory is the family and everything before it is the path to read.
+     *
+     * The database is thousands of files, so a level is read on demand rather than cached: the
+     * browser asks for one folder at a time and each is small, where holding the whole tree would
+     * cost far more than the listing it saves.
      */
     override fun shaderEntries(path: List<String>): List<ShaderEntry> {
         if (cannoliRoot.isEmpty()) return emptyList()
@@ -486,8 +485,9 @@ class EmbeddedRetroArchBridge(
 
     private var appliedShader: String? = null
 
-    /** Absolute path of the preset in force, so the browser can mark the row that is applied. */
     /**
+     * Absolute path of the preset in force, so the browser can mark the row that is applied.
+     *
      * Null once the chain stops matching the preset it came from, so the picker marks nothing
      * rather than a preset that is no longer what is running. Not cleared by compiling: that runs
      * on the way out of the tree, before the save prompt, and clearing it there threw away the path
@@ -886,13 +886,6 @@ class EmbeddedRetroArchBridge(
     fun storedOverlayName(): String? = storedTierValue(KEY_OVERLAY).chosen
 
     /**
-     * Loads the shader this game was saved with, because nothing else will.
-     *
-     * Applying is what installs a preset into the render chain, and only the menu ever applies one,
-     * so a saved choice sits in the tier doing nothing until someone opens the menu and picks it
-     * again. Queued rather than called: it lands on the runloop once video is up.
-     */
-    /**
      * The directory holding everything [scope] overrides: both tiers and every core's, since a
      * scope's whole point is that it is one answer for anything running under it.
      */
@@ -942,6 +935,13 @@ class EmbeddedRetroArchBridge(
     /** Fired after a reset so the host redraws whatever it draws itself, the bezel above all. */
     var onCannoliReset: (() -> Unit)? = null
 
+    /**
+     * Loads the shader this game was saved with, because nothing else will.
+     *
+     * Applying is what installs a preset into the render chain, and only the menu ever applies one,
+     * so a saved choice sits in the tier doing nothing until someone opens the menu and picks it
+     * again. Queued rather than called: it lands on the runloop once video is up.
+     */
     private fun applyStoredShader() {
         val stored = storedTierValue(KEY_SHADER).chosen ?: return
         // A preset that has been deleted since, or a card that moved: applying it would clear the

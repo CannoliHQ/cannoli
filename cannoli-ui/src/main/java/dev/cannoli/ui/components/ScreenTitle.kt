@@ -38,19 +38,11 @@ val LocalStatusBarLeftEdge = staticCompositionLocalOf<MutableIntState> { mutable
 const val TitleFontScale = 1.3f
 
 /**
- * What a [ScreenTitle] occupies, measured rather than assumed.
+ * What a [ScreenTitle] occupies and where the ink sits inside the boxes a list screen is built from,
+ * measured rather than assumed.
  *
  * [height] is what it lays out at: the title draws larger than the row font it shares a line height
  * with, so this has to come from the same measurement Compose will make.
- *
- * [overhang] is the dead space it carries below its baseline over and above what a row carries -
- * descent plus leading, scaled up by the larger title font. Nothing is drawn there, so a gap
- * measured from the box bottom reads that much wider to the eye than the same gap under a row. The
- * footer has no equivalent: a legend pill's top edge is solid. Subtracting it from the spacer under
- * the title is what makes the top and bottom gaps look the same.
- */
-/**
- * Where the ink sits inside the boxes a list screen is built from.
  *
  * The gaps a reader judges run ink to ink, but layout places boxes, and a row's box is not
  * symmetric about its text: the space above the glyphs (ascent and leading) exceeds the space

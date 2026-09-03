@@ -6,18 +6,15 @@ import dev.cannoli.ui.R
 /**
  * The in-game actions a chord can be bound to.
  *
+ * [holdMs] is how long the chord must stay down before the action runs, 0 for the usual case of
+ * running the moment the chord completes. Only an action you would regret firing by accident earns
+ * one. The chord's keys are taken from the game as soon as it matches either way, so the wait costs
+ * the game nothing; what it buys is a chance to let go.
+ *
  * CYCLE_SCALING was retired on 2026-08-31: v2 answers it better through Screen Geometry and the
  * aspect rows in All Settings, where the value is visible while it changes, and a blind cycle
  * through RetroArch's aspect table mostly lands somewhere nobody wants. A stale entry in
  * shortcuts.ini for it is skipped rather than failing the file.
- */
-/**
- * [holdMs] is how long the chord must stay down before the action runs, 0 for the usual case of
- * running the moment the chord completes.
- *
- * Only an action you would regret firing by accident earns one. The chord's keys are taken from the
- * game as soon as it matches either way, so the wait costs the game nothing; what it buys is a
- * chance to let go.
  */
 enum class ShortcutAction(@StringRes val labelRes: Int, val holdMs: Int = 0) {
     SAVE_STATE(R.string.shortcut_action_save_state),

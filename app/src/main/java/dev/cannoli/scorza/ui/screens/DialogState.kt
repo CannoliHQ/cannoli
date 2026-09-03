@@ -266,20 +266,23 @@ sealed interface DialogState {
     data class PlatformResetConfirm(val tag: String, val platformName: String) : DialogState
     data object ResetCustomConfigConfirm : DialogState
 
-    /**
-     * About to replace every installed core. The cost is stated before it starts, because cores are
-     * rebuilt nightly and this normally means downloading all of them.
-     */
-    /** Working out what an update would cost, before asking. One index request and a HEAD per
-     *  differing core, so it is brief but not instant. */
     /** [bytes] is what the one core reclaims; the name is already display text. */
     data class UninstallCoreConfirm(val coreId: String, val coreName: String, val bytes: Long) : DialogState
 
     data class RemoveUnusedCoresConfirm(val cores: Int, val bytes: Long) : DialogState
 
+    /**
+     * Working out what an update would cost, before asking. One index request and a HEAD per
+     * differing core, so it is brief but not instant.
+     */
     data object CheckingCores : DialogState
 
+    /**
+     * About to replace every installed core. The cost is stated before it starts, because cores are
+     * rebuilt nightly and this normally means downloading all of them.
+     */
     data class UpdateCoresConfirm(val cores: Int, val bytes: Long) : DialogState
+
     /**
      * [bytes] is what comes down the wire and [installedBytes] what it becomes on the card. The
      * second is the one that matters on a handheld: the archives expand about twelvefold.

@@ -607,12 +607,6 @@ class LaunchManager(
     }
 
     /**
-     * Required BIOS the platform does not have, so a launch can be stopped before the emulator sits
-     * on a missing file. Requiredness is corrected by `bios_required.txt` where a core's own flags
-     * cannot express it: FBNeo marks every entry optional, which is right for arcade romsets and
-     * wrong for Neo Geo.
-     */
-    /**
      * The file's extension when the resolved core has no parser for it, null when the launch should
      * go ahead. Runs ahead of the BIOS gate: sending someone to find a BIOS for a pairing that could
      * never load is worse than saying the pairing is wrong.
@@ -646,6 +640,12 @@ class LaunchManager(
         return dir
     }
 
+    /**
+     * Required BIOS the platform does not have, so a launch can be stopped before the emulator sits
+     * on a missing file. Requiredness is corrected by `bios_required.txt` where a core's own flags
+     * cannot express it: FBNeo marks every entry optional, which is right for arcade romsets and
+     * wrong for Neo Geo.
+     */
     private fun missingRequiredBios(tag: String, core: String): List<String> {
         val biosDir = prepareBios(tag, CannoliPaths(File(settings.sdCardRoot)).biosFor(tag))
         return platformConfig.getFirmwareStatus(tag, core, biosDir)

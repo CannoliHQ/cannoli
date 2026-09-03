@@ -749,11 +749,6 @@ class IGMController(
     var onNativeMenuClosed: (() -> Unit)? = null
 
     /**
-     * Handle a key event from the gamepad.
-     * Android keycodes: DPAD_UP=19, DPAD_DOWN=20, DPAD_LEFT=21, DPAD_RIGHT=22,
-     * BUTTON_A=96, BUTTON_B=97, BACK=4
-     */
-    /**
      * The guide is the only screen that holds a direction rather than acting once on the press, so
      * it is the only one with anything to release. Without this the scroll set on key down is never
      * cleared and a guide keeps moving on its own until it reaches the end of the document.
@@ -774,6 +769,10 @@ class IGMController(
         }
     }
 
+    /**
+     * Android keycodes, which the screen handlers below match on raw: DPAD_UP=19, DPAD_DOWN=20,
+     * DPAD_LEFT=21, DPAD_RIGHT=22, BUTTON_A=96, BUTTON_B=97, BUTTON_Y=100, BACK=4.
+     */
     fun handleKeyDown(keycode: Int) {
         val screen = currentScreen ?: return
         // While a chord is being captured the keys are the binding, so they go to the detector raw:
