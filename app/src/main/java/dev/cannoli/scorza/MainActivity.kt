@@ -77,6 +77,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
     @Inject lateinit var platformConfig: Provider<PlatformConfig>
     @Inject lateinit var nav: NavigationController
     @Inject lateinit var router: InputRouter
+    @Inject lateinit var dialogHandler: dev.cannoli.scorza.input.DialogInputHandler
     @Inject lateinit var onboardingCoordinator: dev.cannoli.scorza.onboarding.OnboardingCoordinator
     @Inject lateinit var inputDispatcher: InputDispatcher
     @Inject lateinit var screenInputRegistry: dev.cannoli.scorza.input.runtime.ScreenInputRegistry
@@ -258,7 +259,10 @@ class MainActivity : ComponentActivity(), ActivityActions {
                             dev.cannoli.scorza.ui.screens.HousekeepingScreen(
                                 kind = dev.cannoli.scorza.ui.screens.HousekeepingKind.STARTING,
                                 progress = null,
-                                statusLabel = stringResource(R.string.boot_preparing),
+                                // The title already says what is happening, so a second line
+                                // repeating it is one more thing on a screen that should be almost
+                                // nothing: the logo, a line, and the bar.
+                                statusLabel = "",
                             )
                         }
                         is BootState.NeedsPermission, is BootState.NeedsSetup -> {
@@ -343,6 +347,11 @@ class MainActivity : ComponentActivity(), ActivityActions {
                     onboardingCoordinator.onWelcomePress(screen.deviceId, it)
                 }
             }
+            // Around seventeen bindings were just taken on trust, and the tester is where a wrong
+            // one shows up while the user still knows what they pressed. Offered rather than forced:
+            // it is a check, not a twenty-first question.
+            activeMappingHolder.set(saved)
+            nav.dialogState.value = DialogState.InputTesterOffer(saved.id, screen.deviceId)
         }
         val currentDialog by navDialogState.collectAsState()
         val kitchenVisible = currentDialog is DialogState.Kitchen
@@ -359,9 +368,15 @@ class MainActivity : ComponentActivity(), ActivityActions {
             gameListViewModel = glvm,
             inputTesterViewModel = itvm,
             onExitInputTester = {
+                val followUp = (nav.currentScreen as? LauncherScreen.InputTester)?.followUpMappingId
                 inputTesterController.exit()
                 if (nav.screenStack.size > 1) nav.screenStack.removeAt(nav.screenStack.lastIndex)
+                if (followUp != null) nav.dialogState.value = DialogState.InputTesterResult(followUp)
             },
+            // Every entry path resets the tester, not just the one from Settings. Without it the
+            // evaluators keep whatever the previous screen left and a stale exit request closes the
+            // tester the moment it opens.
+            onEnterInputTester = { inputTesterController.enter() },
             settingsViewModel = svm,
             controllersViewModel = cvm,
             dialogState = navDialogState,
@@ -479,11 +494,17 @@ class MainActivity : ComponentActivity(), ActivityActions {
             // isExternal plus a Build.MODEL name prefix, and stands in only for a pad the input
             // DB has no opinion about.
             val builtin = mapping?.match?.builtin ?: device.isBuiltIn
+            // The welcome step owns this pad until its run of presses finishes, and routes to the
+            // wizard itself carrying the confirm button it just established. Opening the wizard here
+            // as well would beat it to the push on the very first press and ask for the same three
+            // presses over again, which is the one thing arriving from welcome should skip.
+            val welcomeOwnsIt = nav.currentScreen is LauncherScreen.OnboardingWelcome
             when {
                 // A pad with no profile goes to setup whether or not it is the built-in one. The
                 // built-in case is the one that matters most: there is no second controller to fall
                 // back on, so leaving it unconfigured leaves the handheld unusable.
-                mapping != null && dev.cannoli.scorza.input.legend.shouldRunLegendWizard(mapping) ->
+                !welcomeOwnsIt && mapping != null &&
+                    dev.cannoli.scorza.input.legend.shouldRunLegendWizard(mapping) ->
                     startLegendWizard(device.androidDeviceId)
                 // The connected toast announces a controller arriving, which the built-in one never
                 // does: it is already there every time the launcher starts.
@@ -512,6 +533,17 @@ class MainActivity : ComponentActivity(), ActivityActions {
         // emulator always lands on the launcher's wiring.
         router.wire(inputDispatcher)
         registerControllerOsd()
+        // Reopened at the last question rather than restarted, so back carries on being back and
+        // the user walks backwards to whichever answer was wrong.
+        dialogHandler.onRestartControllerWizard = { deviceId ->
+            legendWizardController.resumeAtLastPrompt()
+            nav.push(
+                LauncherScreen.LegendWizard(
+                    deviceId = deviceId,
+                    duringFirstRun = nav.currentScreen is LauncherScreen.OnboardingScreen,
+                )
+            )
+        }
         menuNavigationPoller.start()
         bootSequencer.advance()
         // Optional grants leave boot state untouched, so the wizard step has to reread for itself.

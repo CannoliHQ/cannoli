@@ -586,4 +586,41 @@ class LegendWizardControllerTest {
             ))
         }
     }
+
+    @Test
+    fun `reopening a finished run lands on its last question with every answer intact`() {
+        val c = LegendWizardController()
+        c.completeRequiredActions()
+        c.answerDpad()
+        c.onAppearanceChosen(GlyphStyle.REDMOND)
+        var guard = 0
+        while (c.state.value.step != WizardStep.Done && guard++ < 32) c.skip()
+        assertEquals(WizardStep.Done, c.state.value.step)
+
+        c.resumeAtLastPrompt()
+
+        assertEquals(WizardStep.Capture, c.state.value.step)
+        assertEquals(CanonicalButton.BTN_R3, c.state.value.capturing)
+        // The D-pad answers survived, which is the whole point of reopening rather than restarting.
+        val built = c.buildMapping(baseMapping())
+        assertEquals(listOf(InputBinding.Button(19)), built.bindings[CanonicalButton.BTN_UP])
+    }
+
+    @Test
+    fun `back keeps stepping backwards from a reopened run`() {
+        val c = LegendWizardController()
+        c.completeRequiredActions()
+        c.answerDpad()
+        c.onAppearanceChosen(GlyphStyle.REDMOND)
+        var guard = 0
+        while (c.state.value.step != WizardStep.Done && guard++ < 32) c.skip()
+        c.resumeAtLastPrompt()
+
+        val last = c.state.value.capturing
+        c.undo()
+        assertEquals(WizardStep.Capture, c.state.value.step)
+        assertTrue(c.state.value.capturing != last)
+        c.undo()
+        assertEquals(WizardStep.Capture, c.state.value.step)
+    }
 }

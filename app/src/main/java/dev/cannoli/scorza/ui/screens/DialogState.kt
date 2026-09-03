@@ -266,6 +266,12 @@ sealed interface DialogState {
     data class PlatformResetConfirm(val tag: String, val platformName: String) : DialogState
     data object ResetCustomConfigConfirm : DialogState
 
+    /** Offered when a mapping has just been built, rather than dropping the user into the tester. */
+    data class InputTesterOffer(val mappingId: String, val deviceId: Int) : DialogState
+
+    /** Asked on the way back out of that tester, so a bad binding has somewhere to go. */
+    data class InputTesterResult(val mappingId: String) : DialogState
+
     /** [bytes] is what the one core reclaims; the name is already display text. */
     data class UninstallCoreConfirm(val coreId: String, val coreName: String, val bytes: Long) : DialogState
 

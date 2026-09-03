@@ -120,8 +120,8 @@ fun InputTesterScreen(
             Spacer(Modifier.height(Spacing.Sm))
             Text(
                 text = stringResource(R.string.input_tester_exit_hint),
-                color = colors.text.copy(alpha = 0.6f),
-                fontSize = 12.sp,
+                color = colors.text,
+                fontSize = 15.sp,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -145,7 +145,7 @@ private fun AxisDumpPanel(axisValues: Map<Int, Float>, textColor: Color) {
         axisValues.entries.sortedBy { it.key }.forEach { (axis, value) ->
             Text(
                 text = "$axis=${"%.2f".format(value)}",
-                color = textColor.copy(alpha = 0.85f),
+                color = textColor,
                 fontSize = 11.sp,
                 fontFamily = FontFamily.Monospace,
                 modifier = Modifier.padding(end = 10.dp),

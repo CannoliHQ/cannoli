@@ -127,6 +127,7 @@ fun AppNavGraph(
     gameListViewModel: GameListViewModel? = null,
     inputTesterViewModel: InputTesterViewModel,
     onExitInputTester: () -> Unit = {},
+    onEnterInputTester: () -> Unit = {},
     settingsViewModel: SettingsViewModel,
     controllersViewModel: ControllersViewModel,
     dialogState: StateFlow<DialogState>,
@@ -295,6 +296,7 @@ fun AppNavGraph(
                 )
             }
             is LauncherScreen.InputTester -> {
+                androidx.compose.runtime.LaunchedEffect(Unit) { onEnterInputTester() }
                 inputRouter?.let { dev.cannoli.scorza.input.screen.compose.ScreenInput(it.inputTesterHandler) }
                 InputTesterScreen(
                     viewModel = inputTesterViewModel,
@@ -443,6 +445,7 @@ fun AppNavGraph(
                 || currentScreen is LauncherScreen.DirectoryBrowser
                 || currentScreen is LauncherScreen.Guide
                 || currentScreen is LauncherScreen.InputTester
+                || currentScreen is LauncherScreen.LegendWizard
                 || currentScreen is LauncherScreen.OnboardingScreen
                 || (currentScreen is LauncherScreen.SystemList && systemListState?.isLoading == true)
         val showKitchenIcon = dev.cannoli.scorza.server.KitchenManager.running.collectAsState().value

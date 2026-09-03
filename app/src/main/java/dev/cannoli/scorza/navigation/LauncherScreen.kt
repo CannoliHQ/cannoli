@@ -42,7 +42,9 @@ sealed class LauncherScreen {
         val quickMenuRow: dev.cannoli.scorza.ui.quickmenu.QuickMenuRow? = null,
         val quickMenuCategory: SettingsCategory? = null,
     ) : LauncherScreen()
-    data object InputTester : LauncherScreen()
+    // [followUpMappingId] is set when the tester was opened to check a mapping that was just
+    // built, and is what gets edited if the user says it did not work.
+    data class InputTester(val followUpMappingId: String? = null) : LauncherScreen()
     data class SaveStatePicker(
         val rom: dev.cannoli.scorza.model.Rom,
         val stateBasePath: String,

@@ -247,6 +247,21 @@ internal fun SystemDialogs(
             confirmLabel = stringResource(R.string.label_reset),
         )
 
+        is DialogState.InputTesterOffer -> ConfirmOverlay(
+            message = stringResource(R.string.dialog_input_tester_offer),
+            buttonStyle = buttonStyle,
+            cancelLabel = stringResource(R.string.label_back),
+            confirmLabel = stringResource(R.string.label_open),
+            northLabel = stringResource(R.string.label_skip),
+        )
+
+        is DialogState.InputTesterResult -> ConfirmOverlay(
+            message = stringResource(R.string.dialog_input_tester_result),
+            buttonStyle = buttonStyle,
+            cancelLabel = stringResource(R.string.label_remap),
+            confirmLabel = stringResource(R.string.label_looks_good),
+        )
+
         is DialogState.ResetCustomConfigConfirm -> ConfirmOverlay(
             message = stringResource(R.string.dialog_reset_custom_config_confirm),
             buttonStyle = buttonStyle,

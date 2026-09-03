@@ -6,6 +6,8 @@
     <string name="label_play">PLAY</string>
     <string name="label_launch">LAUNCH</string>
     <string name="label_open">OPEN</string>
+    <string name="label_skip">SKIP</string>
+    <string name="label_looks_good">LOOKS GOOD</string>
     <string name="label_save">SAVE</string>
     <string name="label_load">LOAD</string>
     <string name="label_change">CHANGE</string>
@@ -617,7 +619,7 @@
     <string name="housekeeping_db_subtitle">Migrating legacy data</string>
     <string name="housekeeping_initial_title">Setting up your library</string>
     <string name="housekeeping_refresh_title">Refreshing library</string>
-    <string name="housekeeping_starting_title">Starting up</string>
+    <string name="housekeeping_starting_title">Piping the rigott\'</string>
     <string name="update_download_error_server">Download failed. Server returned an error. Try again later.</string>
     <string name="update_download_error_network">Download failed. Check your connection and try again.</string>
     <string name="update_download_error_space">Not enough storage. Updating needs about %1$s free, and %2$s is available.</string>
@@ -668,7 +670,7 @@
     <!-- First-run prompt, on the line under the greeting. Names no button: the same label sits at a
          different position on each controller family, so the user is asked for the one they use,
          not for a letter. -->
-    <string name="onboarding_welcome_press_thrice">Press the button you use for confirm three times.</string>
+    <string name="onboarding_welcome_press_thrice">Press your confirm button three times.</string>
     <string name="onboarding_welcome_no_controller">Connect a controller to continue.</string>
     <string name="onboarding_permissions_title">Permissions</string>
     <!-- Prefixes a permission explanation. %1$s = the explanation. -->
@@ -680,12 +682,11 @@
 
     <!-- Controller setup wizard. Each question asks what a button does, never where it sits. -->
     <!-- Why the wizard appeared. Shown on its first question only. -->
-    <string name="controller_wizard_no_profile">We do not have a profile for your controller yet.</string>
     <string name="controller_wizard_press_confirm">Press the button you use to confirm</string>
     <string name="controller_wizard_press_back">Press the button you use to go back</string>
     <!-- The second press of confirm and of back. It guards a mis-press: the user's chance to catch
          a wrong button before it becomes their confirm button for good. -->
-    <string name="controller_wizard_press_again">Press that same button again</string>
+    <string name="controller_wizard_press_back_again">Press the back button again to confirm</string>
     <!-- Shown when the two presses were different buttons, so the question is being asked again. -->
     <string name="controller_wizard_mismatch">Those were two different buttons</string>
     <!-- Shown when the button pressed for back is the one already taken by confirm. -->
@@ -693,6 +694,9 @@
     <string name="controller_wizard_press_menu">Press the button that should open the Cannoli menu</string>
     <string name="controller_wizard_press_start">Press the button you use as Start</string>
     <string name="controller_wizard_press_button">Press %1$s</string>
+    <string name="controller_wizard_title">Unknown Controller Mapping</string>
+    <string name="dialog_input_tester_offer">Open the input tester to check your controller?</string>
+    <string name="dialog_input_tester_result">Did everything work as expected?</string>
     <string name="controller_wizard_appearance">What button layout does your controller use?</string>
     <string name="glyph_style_redmond" translatable="false">Xbox</string>
     <string name="glyph_style_plumber" translatable="false">Nintendo</string>

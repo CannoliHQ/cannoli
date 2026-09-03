@@ -143,7 +143,7 @@ class InputTesterController(
     private fun updateExitCountdown() {
         if (selectHeld && startHeld) {
             exitHandler.removeCallbacks(exitRunnable)
-            exitHandler.postDelayed(exitRunnable, 1250L)
+            exitHandler.postDelayed(exitRunnable, HOLD_MS)
         } else {
             exitHandler.removeCallbacks(exitRunnable)
         }
@@ -220,6 +220,8 @@ class InputTesterController(
     }
 
 }
+
+private const val HOLD_MS = 1250L
 
 internal val HAT_CANONICALS = listOf(
     CanonicalButton.BTN_UP,

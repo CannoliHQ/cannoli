@@ -318,6 +318,19 @@ class LegendWizardController {
         return false
     }
 
+    /**
+     * Reopen a finished run at its last question, with every answer still in place.
+     *
+     * Not a restart: the point is that back keeps meaning back. Someone who reaches the end and
+     * realises the last few buttons are wrong steps backwards through them one at a time, rather
+     * than answering twenty questions again to reach the one they meant.
+     */
+    fun resumeAtLastPrompt() {
+        if (prompts.isEmpty()) return
+        promptIndex = prompts.lastIndex
+        publishPrompt()
+    }
+
     /** The binding the capture engine settled on for the button being asked about. */
     fun onButtonCaptured(bindings: List<InputBinding>) {
         val canonical = (prompts.getOrNull(promptIndex) as? WizardPrompt.Button)?.canonical ?: return

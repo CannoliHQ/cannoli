@@ -202,8 +202,6 @@ internal fun InputScreens(
                 listVerticalPadding = listVerticalPadding,
                 modifier = Modifier.fillMaxSize(),
                 duringFirstRun = currentScreen.duringFirstRun,
-                backgroundImagePath = appSettings.backgroundImagePath,
-                backgroundTint = appSettings.backgroundTint,
             )
         }
         else -> {}

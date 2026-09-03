@@ -191,6 +191,9 @@ internal fun ConfirmOverlay(
     buttonStyle: ButtonStyle,
     cancelLabel: String? = null,
     confirmLabel: String? = null,
+    // A third answer, for a question where declining and going back are not the same thing. Sits in
+    // the left group with back, which is where modifiers live.
+    northLabel: String? = null,
 ) {
     Box(
         modifier = Modifier
@@ -209,7 +212,10 @@ internal fun ConfirmOverlay(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(screenPadding),
-            leftItems = listOf(buttonStyle.back to (cancelLabel ?: stringResource(R.string.label_cancel))),
+            leftItems = buildList {
+                add(buttonStyle.back to (cancelLabel ?: stringResource(R.string.label_cancel)))
+                if (northLabel != null) add(buttonStyle.north to northLabel)
+            },
             rightItems = listOf(buttonStyle.confirm to (confirmLabel ?: stringResource(R.string.label_confirm)))
         )
     }

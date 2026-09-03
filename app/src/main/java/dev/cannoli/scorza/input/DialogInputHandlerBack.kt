@@ -1,5 +1,6 @@
 package dev.cannoli.scorza.input
 
+import dev.cannoli.scorza.navigation.LauncherScreen
 import dev.cannoli.scorza.ui.screens.DialogState
 import dev.cannoli.scorza.ui.screens.KeyboardHost
 import dev.cannoli.scorza.ui.viewmodel.SettingsCategory
@@ -114,6 +115,18 @@ internal fun DialogInputHandler.backDialog(): Boolean {
         }
         is DialogState.PlatformResetConfirm -> {
             nav.dialogState.value = DialogState.None
+        }
+        // Back is not a decline here: it returns to setup so the mapping can be redone, which is
+        // the only reason someone would refuse to test the one they just made.
+        is DialogState.InputTesterOffer -> {
+            nav.dialogState.value = DialogState.None
+            onRestartControllerWizard?.invoke(ds.deviceId)
+        }
+        // Said no. The button they mean is on the mapping just built, so go straight to editing it
+        // rather than making them find it.
+        is DialogState.InputTesterResult -> {
+            nav.dialogState.value = DialogState.None
+            nav.push(LauncherScreen.EditButtons(mappingId = ds.mappingId))
         }
         is DialogState.ResetCustomConfigConfirm -> {
             nav.dialogState.value = DialogState.None

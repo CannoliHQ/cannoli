@@ -151,7 +151,7 @@ class SettingsInputHandler @Inject constructor(
             SettingsKey.SHORTCUTS -> nav.push(LauncherScreen.ShortcutBinding(shortcuts = globalOverrides.readShortcuts()))
             SettingsKey.INPUT_TESTER -> {
                 inputTesterController.enter()
-                nav.push(LauncherScreen.InputTester)
+                nav.push(LauncherScreen.InputTester())
             }
             SettingsKey.CORE_MAPPING -> openEmulatorMapping()
             SettingsKey.SET_DEFAULT_LAUNCHER -> context.startActivity(

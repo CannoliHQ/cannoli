@@ -1,5 +1,6 @@
 package dev.cannoli.scorza.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -29,9 +30,9 @@ import dev.cannoli.scorza.input.legend.LegendWizardState
 import dev.cannoli.scorza.input.legend.WizardNotice
 import dev.cannoli.scorza.input.legend.WizardStep
 import dev.cannoli.scorza.onboarding.OnboardingStep
-import dev.cannoli.ui.components.ScreenBackground
+import dev.cannoli.ui.components.ScreenTitle
+import dev.cannoli.ui.components.footerReservation
 import dev.cannoli.ui.components.screenInsets
-import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.LocalCannoliTypography
 import dev.cannoli.ui.theme.Spacing
 
@@ -48,34 +49,39 @@ fun LegendWizardScreen(
     listVerticalPadding: Dp,
     modifier: Modifier = Modifier,
     duringFirstRun: Boolean = false,
-    backgroundImagePath: String? = null,
-    backgroundTint: Int = 0,
 ) {
     val typo = LocalCannoliTypography.current
-    val colors = LocalCannoliColors.current
 
-    ScreenBackground(backgroundImagePath = backgroundImagePath, backgroundTint = backgroundTint) {
-        Box(modifier = modifier.fillMaxSize().padding(screenInsets())) {
-            if (duringFirstRun) OnboardingStepCounter(OnboardingStep.WELCOME)
+    // Black, like the onboarding screens this sits among, rather than the user's wallpaper and tint.
+    // The whole screen is about reading a printed glyph off the pad and matching it, so the art and
+    // the accent are noise here, and a tint behind a question about buttons is one more thing to
+    // look past.
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(Color.Black)
+            .padding(screenInsets())
+    ) {
+            Column(modifier = Modifier.align(Alignment.TopStart)) {
+                if (duringFirstRun) OnboardingStepCounter(OnboardingStep.WELCOME)
+                ScreenTitle(
+                    text = stringResource(R.string.controller_wizard_title),
+                    fontSize = listFontSize,
+                    lineHeight = listLineHeight,
+                )
+            }
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.align(Alignment.Center).widthIn(max = 480.dp),
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(bottom = footerReservation())
+                    .widthIn(max = 480.dp),
             ) {
-                // Said once, on the question the wizard opens with, rather than repeated over
-                // every one of them.
-                if (state.step == WizardStep.PressConfirm) {
-                    PromptText(
-                        text = stringResource(R.string.controller_wizard_no_profile),
-                        style = typo.bodyLarge,
-                        color = colors.text.copy(alpha = 0.8f),
-                    )
-                    Spacer(modifier = Modifier.height(Spacing.Xl))
-                }
                 val question: String? = when (state.step) {
                     // The same question the welcome step asks, in the same words, because it is
                     // the same run of presses.
                     WizardStep.PressConfirm -> stringResource(R.string.onboarding_welcome_press_thrice)
-                    WizardStep.BackAgain -> stringResource(R.string.controller_wizard_press_again)
+                    WizardStep.BackAgain -> stringResource(R.string.controller_wizard_press_back_again)
                     WizardStep.PressBack -> stringResource(R.string.controller_wizard_press_back)
                     WizardStep.PressMenu -> stringResource(R.string.controller_wizard_press_menu)
                     WizardStep.PressStart -> stringResource(R.string.controller_wizard_press_start)
@@ -95,7 +101,7 @@ fun LegendWizardScreen(
                     WizardStep.Done -> null
                 }
                 if (question != null) {
-                    PromptText(question, typo.bodyLarge, colors.text)
+                    PromptText(question, typo.bodyLarge, Color.White)
                 }
                 val notice = when (state.notice) {
                     WizardNotice.PressesDidNotMatch ->
@@ -106,7 +112,7 @@ fun LegendWizardScreen(
                 }
                 if (notice != null) {
                     Spacer(modifier = Modifier.height(Spacing.Md))
-                    PromptText(notice, typo.bodyMedium, colors.accent)
+                    PromptText(notice, typo.bodyMedium, Color.White)
                 }
                 if (state.step == WizardStep.Appearance) {
                     Spacer(modifier = Modifier.height(Spacing.Lg))
@@ -126,23 +132,8 @@ fun LegendWizardScreen(
                     Spacer(modifier = Modifier.height(Spacing.Md))
                     PromptText(
                         text = stringResource(R.string.controller_wizard_skip),
-                        style = typo.bodyMedium,
-                        color = colors.text.copy(alpha = 0.6f),
-                    )
-                }
-                // Undo was invisible until now: nothing on screen said back would step a question
-                // returned. Drawn only once the layout is settled, because before that the glyph
-                // printed on the back button is not yet known.
-                val backFace = state.backFace
-                val style = state.glyphStyle
-                if (backFace != null && style != null) {
-                    Spacer(modifier = Modifier.height(Spacing.Md))
-                    BottomBar(
-                        leftItems = listOf(
-                            dev.cannoli.scorza.util.faceGlyph(LocalContext.current, backFace, style)
-                                .orEmpty() to stringResource(dev.cannoli.ui.R.string.label_back)
-                        ),
-                        rightItems = emptyList(),
+                        style = typo.labelSmall,
+                        color = Color.White,
                     )
                 }
                 // Only the confirm run draws progress: it is the one question answered by several
@@ -156,11 +147,34 @@ fun LegendWizardScreen(
                     )
                 }
             }
+            // Undo was invisible until now: nothing on screen said back would step a question
+            // returned. Drawn only once the layout is settled, because before that the glyph
+            // printed on the back button is not yet known.
+            val backFace = state.backFace
+            val style = state.glyphStyle
+            if (backFace != null && style != null) {
+                BottomBar(
+                    modifier = Modifier.align(Alignment.BottomCenter),
+                    leftItems = listOf(
+                        dev.cannoli.scorza.util.faceGlyph(LocalContext.current, backFace, style)
+                            .orEmpty() to stringResource(dev.cannoli.ui.R.string.label_back)
+                    ),
+                    rightItems = emptyList(),
+                )
         }
     }
 }
 
 @Composable
 private fun PromptText(text: String, style: TextStyle, color: Color) {
-    Text(text = text, style = style.copy(textAlign = TextAlign.Center), color = color)
+    // Balanced rather than greedy: these are one or two lines at a large size in a narrow column,
+    // where greedy wrapping strands a single word on the second line.
+    Text(
+        text = text,
+        style = style.copy(
+            textAlign = TextAlign.Center,
+            lineBreak = androidx.compose.ui.text.style.LineBreak.Heading,
+        ),
+        color = color,
+    )
 }

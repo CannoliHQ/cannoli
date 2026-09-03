@@ -169,6 +169,14 @@ internal fun DialogInputHandler.confirmDialog(): Boolean {
             nav.dialogState.value = DialogState.None
         }
         is DialogState.PlatformResetConfirm -> onPlatformReset(ds)
+        is DialogState.InputTesterOffer -> {
+            nav.dialogState.value = DialogState.None
+            nav.push(LauncherScreen.InputTester(followUpMappingId = ds.mappingId))
+        }
+        // Yes, it worked. Nothing to do but get out of the way.
+        is DialogState.InputTesterResult -> {
+            nav.dialogState.value = DialogState.None
+        }
         is DialogState.ResetCustomConfigConfirm -> {
             dev.cannoli.scorza.util.DirectoryLayout.resetCustomCfg(
                 dev.cannoli.scorza.config.CannoliPaths(settings.sdCardRoot).customCfg
