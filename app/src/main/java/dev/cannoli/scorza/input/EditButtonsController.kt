@@ -13,91 +13,60 @@ class EditButtonsController @Inject constructor(
     private val portRouter: PortRouter,
     private val activeMappingHolder: ActiveMappingHolder,
 ) {
-    var clock: () -> Long = { System.currentTimeMillis() }
-    companion object {
-        const val CAPTURE_WINDOW_MS = 150L
-        const val CAPTURE_TIMEOUT_MS = 5000L
-        private const val AXIS_DETECT_THRESHOLD = 0.6f
+    private val capture = BindingCapture()
 
-        // Matches RetroArchAutoconfigImporter.mapAxisKeyToCanonicalAndRole's set of canonicals
-        // that carry stick axes, so a captured stick and an imported one agree on shape.
-        private val STICK_CANONICALS: Set<CanonicalButton> = setOf(
-            CanonicalButton.BTN_LSTICK_X,
-            CanonicalButton.BTN_LSTICK_Y,
-            CanonicalButton.BTN_RSTICK_X,
-            CanonicalButton.BTN_RSTICK_Y,
-        )
+    var clock: () -> Long
+        get() = capture.clock
+        set(value) { capture.clock = value }
+
+    companion object {
+        const val CAPTURE_WINDOW_MS = BindingCapture.CAPTURE_WINDOW_MS
+        const val CAPTURE_TIMEOUT_MS = BindingCapture.CAPTURE_TIMEOUT_MS
     }
 
     private var pendingMapping: DeviceMapping? = null
-    private var pendingCanonical: CanonicalButton? = null
-    private var startedAtMillis: Long = 0
-    private var firstEventAtMillis: Long = -1
-    private val capturedKeys = linkedSetOf<Int>()
-    private val capturedAxes = linkedMapOf<Int, Float>()
 
-    val isListening: Boolean get() = pendingCanonical != null
+    val isListening: Boolean get() = capture.isListening
 
     fun startListening(mapping: DeviceMapping, canonical: CanonicalButton) {
         pendingMapping = mapping
-        pendingCanonical = canonical
-        startedAtMillis = clock()
-        firstEventAtMillis = -1
-        capturedKeys.clear()
-        capturedAxes.clear()
+        capture.start(canonical)
         dev.cannoli.scorza.util.InputLog.write("[edit] startListening mapping=${mapping.id} canonical=$canonical")
     }
 
     fun cancelListening() {
         pendingMapping = null
-        pendingCanonical = null
-        firstEventAtMillis = -1
-        capturedKeys.clear()
-        capturedAxes.clear()
+        capture.cancel()
     }
 
-    fun captureRawKeyEvent(keyCode: Int) {
-        if (pendingCanonical == null) return
-        if (keyCode == android.view.KeyEvent.KEYCODE_UNKNOWN) return
-        if (firstEventAtMillis < 0) firstEventAtMillis = clock()
-        capturedKeys.add(keyCode)
-        dev.cannoli.scorza.util.InputLog.write("[edit] captureRawKeyEvent keyCode=$keyCode firstAt=$firstEventAtMillis now=${clock()}")
-    }
+    fun captureRawKeyEvent(keyCode: Int) = capture.onKey(keyCode)
 
-    fun captureRawAxisEvent(axisValues: Map<Int, Float>) {
-        if (pendingCanonical == null) return
-        // A hat or axis on the menu would be written as input_menu_toggle_btn, which RetroArch
-        // acts on in-game because motion events bypass the keycode intercept. Keys only, and
-        // ignoring the event outright leaves the existing menu binding alone.
-        if (pendingCanonical == CanonicalButton.BTN_MENU) return
-        for ((axis, value) in axisValues) {
-            if (abs(value) < AXIS_DETECT_THRESHOLD) continue
-            val prev = capturedAxes[axis] ?: 0f
-            if (abs(value) > abs(prev)) capturedAxes[axis] = value
-            if (firstEventAtMillis < 0) firstEventAtMillis = clock()
-        }
-    }
+    fun captureRawAxisEvent(axisValues: Map<Int, Float>) = capture.onAxis(axisValues)
 
     fun tickAndMaybeFinalize(): DeviceMapping? {
-        val canonical = pendingCanonical ?: return null
+        val canonical = capture.canonical ?: return null
         val mapping = pendingMapping ?: return null
-        val now = clock()
-
-        if (firstEventAtMillis < 0 && now - startedAtMillis >= CAPTURE_TIMEOUT_MS) {
-            dev.cannoli.scorza.util.InputLog.write("[edit] tick TIMEOUT canonical=$canonical")
-            cancelListening()
-            return null
+        return when (val outcome = capture.tick()) {
+            null -> null
+            BindingCapture.Outcome.TimedOut -> {
+                dev.cannoli.scorza.util.InputLog.write("[edit] tick TIMEOUT canonical=$canonical")
+                pendingMapping = null
+                null
+            }
+            is BindingCapture.Outcome.Captured -> {
+                dev.cannoli.scorza.util.InputLog.write(
+                    "[edit] tick FINALIZE canonical=$canonical bindings=${outcome.bindings}"
+                )
+                finalize(mapping, canonical, outcome.bindings)
+            }
         }
-        if (firstEventAtMillis >= 0 && now - firstEventAtMillis >= CAPTURE_WINDOW_MS) {
-            dev.cannoli.scorza.util.InputLog.write("[edit] tick FINALIZE canonical=$canonical keys=$capturedKeys axes=$capturedAxes")
-            return finalize(mapping, canonical)
-        }
-        return null
     }
 
-    private fun finalize(mapping: DeviceMapping, canonical: CanonicalButton): DeviceMapping {
-        val bindings = capturedBindingsFor(canonical)
-
+    private fun finalize(
+        mapping: DeviceMapping,
+        canonical: CanonicalButton,
+        bindings: List<InputBinding>,
+    ): DeviceMapping {
         val oldBindings = mapping.bindings[canonical].orEmpty()
         val newBindings = mapping.bindings.toMutableMap()
         newBindings[canonical] = bindings
@@ -124,10 +93,8 @@ class EditButtonsController @Inject constructor(
             }
         }
 
-        // Promote source to USER_WIZARD on actual binding changes so the resolver can
-        // distinguish "user customized buttons" from "cosmetic edit on an ANDROID_DEFAULT
-        // fallback." Without this, an ANDROID_DEFAULT mapping with a cosmetic toggle blocks
-        // bundled RA cfg matches on the next resolve.
+        // Promote source to USER_WIZARD on actual binding changes so the resolver can distinguish
+        // "user customized buttons" from "cosmetic edit on an unidentified fallback."
         val saved = mapping.copy(
             bindings = newBindings,
             userEdited = true,
@@ -140,64 +107,6 @@ class EditButtonsController @Inject constructor(
         }
         cancelListening()
         return saved
-    }
-
-    private fun capturedBindingsFor(canonical: CanonicalButton): List<InputBinding> {
-        if (canonical in STICK_CANONICALS) return stickAxisBindings()
-
-        val bindings = mutableListOf<InputBinding>()
-        for (key in capturedKeys) bindings.add(InputBinding.Button(key))
-        for ((axis, peak) in capturedAxes) {
-            val isHatLike = (axis == 15 || axis == 16) && (peak == -1f || peak == 1f)
-            if (isHatLike) {
-                val direction = when {
-                    axis == 15 && peak < 0 -> HatDirection.LEFT
-                    axis == 15 && peak > 0 -> HatDirection.RIGHT
-                    axis == 16 && peak < 0 -> HatDirection.UP
-                    else -> HatDirection.DOWN
-                }
-                bindings.add(InputBinding.Hat(axis = axis, direction = direction))
-            } else {
-                val activeMax = if (peak >= 0) 1f else -1f
-                bindings.add(
-                    InputBinding.Axis(
-                        axis = axis,
-                        restingValue = 0f,
-                        activeMin = 0f,
-                        activeMax = activeMax,
-                        digitalThreshold = 0.5f,
-                        invert = false,
-                        analogRole = AnalogRole.DIGITAL_BUTTON,
-                    )
-                )
-            }
-        }
-        return bindings
-    }
-
-    // A stick row captures the dominant axis only (a diagonal push must not bind two axes),
-    // then reproduces RetroArchAutoconfigImporter's bipolar shape for that axis exactly: one
-    // Axis resting at -1 with active span 0..1, and its mirror resting at 1 with span 0..-1.
-    private fun stickAxisBindings(): List<InputBinding> {
-        val axis = capturedAxes.maxByOrNull { (_, peak) -> abs(peak) }?.key ?: return emptyList()
-        return listOf(
-            InputBinding.Axis(
-                axis = axis,
-                restingValue = -1f,
-                activeMin = 0f,
-                activeMax = 1f,
-                digitalThreshold = 0.5f,
-                analogRole = AnalogRole.ANALOG_STICK,
-            ),
-            InputBinding.Axis(
-                axis = axis,
-                restingValue = 1f,
-                activeMin = 0f,
-                activeMax = -1f,
-                digitalThreshold = 0.5f,
-                analogRole = AnalogRole.ANALOG_STICK,
-            ),
-        )
     }
 
     private fun sameInput(a: InputBinding, b: InputBinding): Boolean = when {
