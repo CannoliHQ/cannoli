@@ -48,6 +48,7 @@ internal fun InputScreens(
     controllersViewModel: ControllersViewModel,
     onListStateChanged: ((androidx.compose.foundation.lazy.LazyListState?) -> Unit)?,
     editButtonsController: dev.cannoli.scorza.input.EditButtonsController?,
+    legendWizardController: dev.cannoli.scorza.input.legend.LegendWizardController? = null,
     legendWizardState: dev.cannoli.scorza.input.legend.LegendWizardState,
     nav: NavigationController?,
     inputRouter: dev.cannoli.scorza.input.InputRouter?,
@@ -184,8 +185,21 @@ internal fun InputScreens(
             )
         }
         is LauncherScreen.LegendWizard -> {
+            // The capture engine settles a press after a quiet window, so something has to ask it
+            // whether that window has passed. The button editor drives its own the same way.
+            androidx.compose.runtime.LaunchedEffect(legendWizardState.step, legendWizardState.capturing) {
+                while (legendWizardState.step == dev.cannoli.scorza.input.legend.WizardStep.Capture) {
+                    // A frame, not 50ms: the poll interval lands on top of the settle wait and is
+                    // felt on every one of the wizard's questions.
+                    kotlinx.coroutines.delay(16)
+                    legendWizardController?.tickCapture()
+                }
+            }
             LegendWizardScreen(
                 state = legendWizardState,
+                listFontSize = listFontSize,
+                listLineHeight = listLineHeight,
+                listVerticalPadding = listVerticalPadding,
                 modifier = Modifier.fillMaxSize(),
                 duringFirstRun = currentScreen.duringFirstRun,
                 backgroundImagePath = appSettings.backgroundImagePath,

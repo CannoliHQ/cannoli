@@ -686,13 +686,18 @@
     <!-- The second press of confirm and of back. It guards a mis-press: the user's chance to catch
          a wrong button before it becomes their confirm button for good. -->
     <string name="controller_wizard_press_again">Press that same button again</string>
-    <string name="controller_wizard_again_detail">So we know it is the one you meant.</string>
     <!-- Shown when the two presses were different buttons, so the question is being asked again. -->
     <string name="controller_wizard_mismatch">Those were two different buttons</string>
     <!-- Shown when the button pressed for back is the one already taken by confirm. -->
     <string name="controller_wizard_back_must_differ">Back needs a different button from confirm</string>
     <string name="controller_wizard_press_menu">Press the button that should open the Cannoli menu</string>
     <string name="controller_wizard_press_start">Press the button you use as Start</string>
+    <string name="controller_wizard_press_button">Press %1$s</string>
+    <string name="controller_wizard_appearance">What button layout does your controller use?</string>
+    <string name="glyph_style_redmond" translatable="false">Xbox</string>
+    <string name="glyph_style_plumber" translatable="false">Nintendo</string>
+    <string name="glyph_style_shapes" translatable="false">PlayStation</string>
+    <string name="controller_wizard_skip">Press Start to skip a button your controller does not have</string>
 
     <!-- Boot error screen -->
     <string name="boot_error_title">Something went wrong</string>

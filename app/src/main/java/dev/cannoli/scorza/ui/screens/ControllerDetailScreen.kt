@@ -104,7 +104,10 @@ fun ControllerDetailScreen(
                 add(
                     ControllerDetailEntry.KeyValue(
                         label = stringResource(R.string.controllers_glyph_style),
-                        value = mapping.glyphStyle.name
+                        value = dev.cannoli.scorza.util.glyphStyleName(
+                            androidx.compose.ui.platform.LocalContext.current,
+                            mapping.glyphStyle,
+                        )
                     )
                 )
                 add(

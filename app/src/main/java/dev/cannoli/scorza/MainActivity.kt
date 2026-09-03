@@ -145,7 +145,6 @@ class MainActivity : ComponentActivity(), ActivityActions {
     private var coldStart = true
     // The press that left the welcome step or finished the wizard, held until its key up.
     private var heldAdvanceKey: dev.cannoli.scorza.onboarding.WelcomePress? = null
-    private var pendingWizardMapping: dev.cannoli.scorza.input.DeviceMapping? = null
 
     private val storagePermissionLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -329,14 +328,10 @@ class MainActivity : ComponentActivity(), ActivityActions {
             val screen = nav.currentScreen as? LauncherScreen.LegendWizard ?: return@LaunchedEffect
             val base = portRouter.mappingFor(screen.deviceId) ?: return@LaunchedEffect
             val saved = legendWizardController.buildMapping(base)
-            // Until the storage step resolves, sdCardRoot is still the internal-storage default, so
-            // saving now would orphan the cfg the moment the user picks a card. The mapping applies
-            // in memory either way, so the pad works for the rest of first run.
-            if (storageRootChosen()) {
-                autoconfigRepository.save(saved)
-            } else {
-                pendingWizardMapping = saved
-            }
+            // Lands in app-private staging when first run has not chosen a card yet, and is moved
+            // onto the card by promoteStaging below. Written either way, so a wizard finished during
+            // onboarding is not lost to a process death.
+            autoconfigRepository.save(saved)
             portRouter.updateMapping(saved, rebuildEvaluator = true)
             if (activeMappingHolder.active.value?.id == saved.id) activeMappingHolder.set(saved)
             nav.pop()
@@ -379,6 +374,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
             osdController = osdController,
             activeMapping = activeMapping,
             editButtonsController = editButtonsController,
+            legendWizardController = legendWizardController,
             legendWizardState = legendWizardState,
             onboardingMapping = onboardingMapping,
             onboardingConfirmPresses = confirmPresses,
@@ -405,23 +401,11 @@ class MainActivity : ComponentActivity(), ActivityActions {
     private fun startStorageDependent() {
         settings.reload()
         settings.sdCardRootOrNull?.let { dev.cannoli.scorza.util.InputLog.init(it) }
-        // The chosen path is real from here, so a mapping the wizard built during first run can
-        // finally be written, and it has to be written before the settle below re-resolves.
-        pendingWizardMapping?.let {
-            autoconfigRepository.save(it)
-            pendingWizardMapping = null
-        }
+        // The chosen path is real from here, so anything the wizard staged during first run moves
+        // onto the card, and it has to move before the settle below re-resolves.
+        autoconfigRepository.promoteStaging()
         controllerBridge.settleNow()
         refreshRommServerVersion()
-    }
-
-    /**
-     * True once first run has resolved where Cannoli lives. Before that `sdCardRoot` reports its
-     * internal-storage default, so nothing may be written through it.
-     */
-    private fun storageRootChosen(): Boolean = when (bootSequencer.state.value) {
-        is BootState.Initializing, BootState.Ready -> true
-        else -> false
     }
 
     private fun refreshRommServerVersion() {
@@ -460,7 +444,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
                 activeMappingHolder.set(mapping)
                 onboardingCoordinator.onWelcomePress(androidDeviceId, keyCode)
             } else {
-                startLegendWizard(androidDeviceId, vendorIdFor(androidDeviceId))
+                startLegendWizard(androidDeviceId, confirmedKeyCode = keyCode)
             }
             confirmPressCounter.reset()
             welcomeAdvancePending = false
@@ -473,13 +457,13 @@ class MainActivity : ComponentActivity(), ActivityActions {
         return portRouter.snapshotEntries().firstOrNull { it.androidDeviceId == primary }?.device?.vendorId
     }
 
-    private fun startLegendWizard(androidDeviceId: Int, vendorId: Int?) {
-        val sonyGlyphHint = if (vendorId == dev.cannoli.scorza.input.legend.BuiltInLegendTable.SONY_VID) {
-            dev.cannoli.scorza.input.GlyphStyle.SHAPES
-        } else {
-            null
-        }
-        legendWizardController.start(sonyGlyphHint)
+    /**
+     * [confirmedKeyCode] is the button the welcome run already settled, so the wizard picks up at
+     * back rather than asking for confirm a second time. Null for a pad that reached the wizard
+     * without a run behind it, which then answers the same three-press question first.
+     */
+    private fun startLegendWizard(androidDeviceId: Int, confirmedKeyCode: Int? = null) {
+        legendWizardController.start(confirmedKeyCode)
         nav.push(
             LauncherScreen.LegendWizard(
                 deviceId = androidDeviceId,
@@ -495,10 +479,15 @@ class MainActivity : ComponentActivity(), ActivityActions {
             // isExternal plus a Build.MODEL name prefix, and stands in only for a pad the input
             // DB has no opinion about.
             val builtin = mapping?.match?.builtin ?: device.isBuiltIn
-            if (!builtin) {
-                if (mapping != null && dev.cannoli.scorza.input.legend.shouldRunLegendWizard(mapping)) {
-                    startLegendWizard(device.androidDeviceId, device.vendorId)
-                } else {
+            when {
+                // A pad with no profile goes to setup whether or not it is the built-in one. The
+                // built-in case is the one that matters most: there is no second controller to fall
+                // back on, so leaving it unconfigured leaves the handheld unusable.
+                mapping != null && dev.cannoli.scorza.input.legend.shouldRunLegendWizard(mapping) ->
+                    startLegendWizard(device.androidDeviceId)
+                // The connected toast announces a controller arriving, which the built-in one never
+                // does: it is already there every time the launcher starts.
+                !builtin -> {
                     val port = portRouter.portFor(device.androidDeviceId)
                     if (port != null) {
                         val name = portRouter.mappingForPort(port)?.displayName?.takeIf { it.isNotEmpty() }
@@ -786,6 +775,13 @@ class MainActivity : ComponentActivity(), ActivityActions {
             val axes = listOf(0, 1, 11, 14, 15, 16, 17, 18, 22, 23)
             val axisValues = axes.associateWith { event.getAxisValue(it) }
             editButtonsController.captureRawAxisEvent(axisValues)
+            return true
+        }
+        // A D-pad that reports as a hat, and every stick and analog trigger, arrive here rather than
+        // as keycodes, so the wizard cannot capture them from the key path alone.
+        if (csForListen is LauncherScreen.LegendWizard) {
+            val axes = listOf(0, 1, 11, 14, 15, 16, 17, 18, 22, 23)
+            legendWizardController.captureRawAxisEvent(axes.associateWith { event.getAxisValue(it) })
             return true
         }
         val source = event.source

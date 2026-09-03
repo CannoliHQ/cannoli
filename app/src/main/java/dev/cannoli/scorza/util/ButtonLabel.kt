@@ -7,30 +7,45 @@ import dev.cannoli.scorza.input.DeviceMapping
 import dev.cannoli.scorza.input.GlyphStyle
 import dev.cannoli.scorza.input.InputBinding
 
-fun canonicalLabel(context: Context, button: CanonicalButton, style: GlyphStyle): String {
-    val face = when (button) {
-        CanonicalButton.BTN_SOUTH -> R.string.canonical_south to when (style) {
-            GlyphStyle.PLUMBER -> R.string.glyph_plumber_south
-            GlyphStyle.REDMOND -> R.string.glyph_redmond_south
-            GlyphStyle.SHAPES -> R.string.glyph_shapes_south
-        }
-        CanonicalButton.BTN_EAST -> R.string.canonical_east to when (style) {
-            GlyphStyle.PLUMBER -> R.string.glyph_plumber_east
-            GlyphStyle.REDMOND -> R.string.glyph_redmond_east
-            GlyphStyle.SHAPES -> R.string.glyph_shapes_east
-        }
-        CanonicalButton.BTN_WEST -> R.string.canonical_west to when (style) {
-            GlyphStyle.PLUMBER -> R.string.glyph_plumber_west
-            GlyphStyle.REDMOND -> R.string.glyph_redmond_west
-            GlyphStyle.SHAPES -> R.string.glyph_shapes_west
-        }
-        CanonicalButton.BTN_NORTH -> R.string.canonical_north to when (style) {
-            GlyphStyle.PLUMBER -> R.string.glyph_plumber_north
-            GlyphStyle.REDMOND -> R.string.glyph_redmond_north
-            GlyphStyle.SHAPES -> R.string.glyph_shapes_north
-        }
-        else -> null
+/** What Cannoli calls a face button layout, for a row that asks the user to pick one. */
+fun glyphStyleName(context: Context, style: GlyphStyle): String = context.getString(
+    when (style) {
+        GlyphStyle.REDMOND -> R.string.glyph_style_redmond
+        GlyphStyle.PLUMBER -> R.string.glyph_style_plumber
+        GlyphStyle.SHAPES -> R.string.glyph_style_shapes
     }
+)
+
+/** The label printed on a face button, or null for a button that has no printed glyph. */
+fun faceGlyph(context: Context, button: CanonicalButton, style: GlyphStyle): String? =
+    faceRes(button, style)?.let { (_, glyphRes) -> context.getString(glyphRes) }
+
+private fun faceRes(button: CanonicalButton, style: GlyphStyle): Pair<Int, Int>? = when (button) {
+    CanonicalButton.BTN_SOUTH -> R.string.canonical_south to when (style) {
+        GlyphStyle.PLUMBER -> R.string.glyph_plumber_south
+        GlyphStyle.REDMOND -> R.string.glyph_redmond_south
+        GlyphStyle.SHAPES -> R.string.glyph_shapes_south
+    }
+    CanonicalButton.BTN_EAST -> R.string.canonical_east to when (style) {
+        GlyphStyle.PLUMBER -> R.string.glyph_plumber_east
+        GlyphStyle.REDMOND -> R.string.glyph_redmond_east
+        GlyphStyle.SHAPES -> R.string.glyph_shapes_east
+    }
+    CanonicalButton.BTN_WEST -> R.string.canonical_west to when (style) {
+        GlyphStyle.PLUMBER -> R.string.glyph_plumber_west
+        GlyphStyle.REDMOND -> R.string.glyph_redmond_west
+        GlyphStyle.SHAPES -> R.string.glyph_shapes_west
+    }
+    CanonicalButton.BTN_NORTH -> R.string.canonical_north to when (style) {
+        GlyphStyle.PLUMBER -> R.string.glyph_plumber_north
+        GlyphStyle.REDMOND -> R.string.glyph_redmond_north
+        GlyphStyle.SHAPES -> R.string.glyph_shapes_north
+    }
+    else -> null
+}
+
+fun canonicalLabel(context: Context, button: CanonicalButton, style: GlyphStyle): String {
+    val face = faceRes(button, style)
     if (face != null) {
         val (cardinalRes, glyphRes) = face
         return context.getString(
