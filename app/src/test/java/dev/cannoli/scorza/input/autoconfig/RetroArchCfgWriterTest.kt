@@ -9,7 +9,6 @@ import dev.cannoli.scorza.input.GlyphStyle
 import dev.cannoli.scorza.input.HatDirection
 import dev.cannoli.scorza.input.InputBinding
 import dev.cannoli.scorza.input.MappingSource
-import dev.cannoli.scorza.input.resolver.AndroidDefaultMappingFactory
 import dev.cannoli.scorza.input.resolver.RetroArchAutoconfigImporter
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -192,21 +191,36 @@ class RetroArchCfgWriterTest {
         assertEquals(listOf(InputBinding.Button(318)), imported.bindings[CanonicalButton.BTN_MENU])
     }
 
-    // The whole point of the declared-axis fallback: a pad with no cfg of its own has to reach
-    // RetroArch with the axis it actually reports, not the one that happens to be listed first.
+    // A pad that reports its triggers as axes emits no keycode for them, so both the button and
+    // the axis have to reach RetroArch, and the axis has to be named as RA's compacted slot rather
+    // than the raw Android id. Axis 23 (AXIS_BRAKE) is slot 8 and 22 (AXIS_GAS) is slot 9.
     @Test
-    fun `a default mapping writes the trigger axis the pad declares`() {
-        val device = ConnectedDevice(
-            androidDeviceId = 1, descriptor = "abc123", name = "Brake Pad",
-            vendorId = 1, productId = 2, androidBuildModel = "",
-            sourceMask = 0, connectedAtMillis = 0L,
-            declaredTriggerAxes = setOf(23, 22),
+    fun `a trigger bound to both a button and an axis writes both, with RA slot numbers`() {
+        val (resting, activeMin, activeMax) =
+            RetroArchAutoconfigImporter.axisRange(direction = 1, role = AnalogRole.DIGITAL_BUTTON)
+        fun triggerAxis(axis: Int) = InputBinding.Axis(
+            axis = axis,
+            restingValue = resting,
+            activeMin = activeMin,
+            activeMax = activeMax,
+            digitalThreshold = 0.5f,
+            analogRole = AnalogRole.DIGITAL_BUTTON,
         )
-        val cfg = RetroArchCfgWriter.write(AndroidDefaultMappingFactory().create(device))
+        val mapping = DeviceMapping(
+            id = "brake_pad",
+            displayName = "Brake Pad",
+            match = DeviceMatchRule(name = "Brake Pad", vendorId = 1, productId = 2),
+            bindings = mapOf(
+                CanonicalButton.BTN_L2 to listOf(InputBinding.Button(104), triggerAxis(23)),
+                CanonicalButton.BTN_R2 to listOf(InputBinding.Button(105), triggerAxis(22)),
+            ),
+            source = MappingSource.USER_WIZARD,
+        )
+
+        val cfg = RetroArchCfgWriter.write(mapping)
 
         assertTrue(cfg.contains("input_l2_btn = \"104\""))
         assertTrue(cfg.contains("input_r2_btn = \"105\""))
-        // Android axis 23 (AXIS_BRAKE) is RA slot 8, and 22 (AXIS_GAS) is slot 9.
         assertTrue(cfg.contains("input_l2_axis = \"+8\""))
         assertTrue(cfg.contains("input_r2_axis = \"+9\""))
     }

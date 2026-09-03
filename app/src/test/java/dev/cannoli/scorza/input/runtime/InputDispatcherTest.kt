@@ -596,4 +596,37 @@ class InputDispatcherTest {
         assertEquals(1, up)
         assertEquals(1, upRelease)
     }
+
+    private fun unidentifiedTemplate() = DeviceMapping(
+        id = "unknown_pad",
+        displayName = "Unknown Pad",
+        match = DeviceMatchRule(),
+        bindings = emptyMap(),
+        source = MappingSource.UNIDENTIFIED,
+    )
+
+    @Test
+    fun unidentified_pad_activates_on_an_unbound_press_so_it_can_reach_the_wizard() {
+        // It has no bindings by definition, so an unbound press is the only announcement it can
+        // make. Without this it never activates, onDeviceAdded never fires, and the pad is inert.
+        val (d, router, _) = setup(unidentifiedTemplate())
+        assertFalse(router.isActivated(7))
+        d.handleKeyEventForTest(deviceId = 7, keyCode = 96, action = android.view.KeyEvent.ACTION_DOWN, repeatCount = 0)
+        assertTrue(router.isActivated(7))
+    }
+
+    @Test
+    fun identified_pad_does_not_claim_a_port_from_an_unbound_press() {
+        // A media or vendor key on a pad we do know must not take a port.
+        val (d, router, _) = setup(westernTemplate())
+        d.handleKeyEventForTest(deviceId = 7, keyCode = 300, action = android.view.KeyEvent.ACTION_DOWN, repeatCount = 0)
+        assertFalse(router.isActivated(7))
+    }
+
+    @Test
+    fun an_unbound_press_is_still_not_consumed() {
+        val (d, _, _) = setup(unidentifiedTemplate())
+        val handled = d.handleKeyEventForTest(deviceId = 7, keyCode = 96, action = android.view.KeyEvent.ACTION_DOWN, repeatCount = 0)
+        assertFalse(handled)
+    }
 }

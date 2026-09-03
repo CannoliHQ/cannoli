@@ -182,7 +182,7 @@ class ControllersViewModelTest {
     //
     // The ErrorLog.write side effect is deliberately not asserted. ErrorLog is a process-global
     // async singleton with no seam for tests, so pinning it would mean waiting on a flush and
-    // trading a real flake for coverage the ANDROID_DEFAULT assertion already provides: that
+    // trading a real flake for coverage the UNIDENTIFIED assertion already provides: that
     // assertion only holds if the failure branch ran.
     @Test
     fun `reset does not present success when the restore write fails`() {
@@ -195,7 +195,7 @@ class ControllersViewModelTest {
         model.resetMapping(renamed)
 
         assertFalse(File(tmp.root, "stadia.cfg").exists())
-        assertEquals(MappingSource.ANDROID_DEFAULT, portRouter.mappingFor(7)?.source)
+        assertEquals(MappingSource.UNIDENTIFIED, portRouter.mappingFor(7)?.source)
     }
 
     @Test

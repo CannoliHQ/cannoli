@@ -268,8 +268,9 @@ class ControllerBridge(
 
         for (id in targetEntryIds - existingEntryIds) {
             val connected = targetEntries.getValue(id)
-            // Bypass the resolver entirely: its fallback tier hands out AndroidDefaultMappingFactory
-            // gamepad keycodes, which a keyboard can never produce.
+            // Bypass the resolver entirely: it has no profile for a keyboard, and the pad it would
+            // report as unidentified would be sent to the setup wizard asking for gamepad buttons
+            // this device cannot produce.
             if (id == devKeyboardId) {
                 portRouter.onConnect(connected, DevKeyboardMapping.create(connected))
                 dev.cannoli.scorza.util.InputLog.write(

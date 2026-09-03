@@ -4,11 +4,11 @@ import dev.cannoli.scorza.input.DeviceMapping
 import dev.cannoli.scorza.input.InputBinding
 import dev.cannoli.scorza.input.MappingSource
 
-// A pad gets the legend wizard when Cannoli could not identify it, so its bindings are Android's
-// raw defaults. The wizard asks what each button does rather than where it sits, so every pad shape
-// can answer it and nothing else gates entry.
+// A pad gets the setup wizard when no profile matched it, which leaves it with no bindings at all.
+// The wizard asks what each button does rather than where it sits, so every pad shape can answer it
+// and nothing else gates entry.
 fun shouldRunLegendWizard(mapping: DeviceMapping): Boolean =
-    mapping.source == MappingSource.ANDROID_DEFAULT
+    mapping.source == MappingSource.UNIDENTIFIED
 
 /**
  * First run verifies the pad instead of assuming it: the button the user pressed a run of times has

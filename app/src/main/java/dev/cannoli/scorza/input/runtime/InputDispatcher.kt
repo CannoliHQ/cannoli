@@ -3,6 +3,7 @@ package dev.cannoli.scorza.input.runtime
 import android.view.KeyEvent
 import android.view.MotionEvent
 import dev.cannoli.scorza.input.CanonicalButton
+import dev.cannoli.scorza.input.MappingSource
 import dev.cannoli.scorza.input.DeviceMapping
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -114,7 +115,14 @@ class InputDispatcher @Inject constructor(
                     } else {
                         dev.cannoli.scorza.util.InputLog.write("key id=$deviceId code=$keyCode -> unbound")
                     }
-                    if (deltas.isEmpty()) return false
+                    if (deltas.isEmpty()) {
+                        // A pad with no profile has no bindings to produce a delta, so an unbound
+                        // press is the only way it can announce itself and reach the setup wizard.
+                        // Identified pads keep the older rule, where only a bound press claims a
+                        // port, so a stray media key cannot take one.
+                        if (mapping.source == MappingSource.UNIDENTIFIED) maybeActivate(deviceId)
+                        return false
+                    }
                     maybeActivate(deviceId)
                     activeMappingHolder.set(mapping)
                     var fired = false

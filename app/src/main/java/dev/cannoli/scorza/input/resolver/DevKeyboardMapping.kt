@@ -56,6 +56,6 @@ object DevKeyboardMapping {
         menuConfirm = CanonicalButton.BTN_SOUTH,
         menuBack = CanonicalButton.BTN_EAST,
         glyphStyle = GlyphStyle.PLUMBER,
-        source = MappingSource.ANDROID_DEFAULT,
+        source = MappingSource.BUNDLED,
     )
 }

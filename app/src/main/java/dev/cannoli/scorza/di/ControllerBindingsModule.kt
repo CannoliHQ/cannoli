@@ -17,6 +17,7 @@ import dev.cannoli.scorza.input.resolver.MappingResolver
 import dev.cannoli.scorza.input.runtime.ActiveMappingHolder
 import dev.cannoli.scorza.input.runtime.ControllerBridge
 import dev.cannoli.scorza.input.runtime.PortRouter
+import java.io.File
 import javax.inject.Qualifier
 import javax.inject.Singleton
 
@@ -42,9 +43,13 @@ object ControllerBindingsModule {
 
     @Provides
     @Singleton
-    fun provideAutoconfigRepository(paths: CannoliPathsProvider): AutoconfigRepository =
+    fun provideAutoconfigRepository(
+        @ApplicationContext context: Context,
+        paths: CannoliPathsProvider,
+    ): AutoconfigRepository =
         AutoconfigRepository(
             dirProvider = { paths.rootOrNull?.let { CannoliPaths(it).configInputAutoconfigAndroid } },
+            stagingDirProvider = { File(context.filesDir, "autoconfig") },
             debugBuild = dev.cannoli.scorza.BuildConfig.DEBUG,
         )
 

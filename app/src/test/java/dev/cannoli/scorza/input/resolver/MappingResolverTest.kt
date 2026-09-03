@@ -46,6 +46,17 @@ class MappingResolverTest {
         bundledRetroArchEntries = BundledAutoconfigEntries.forTest(bundled),
     )
 
+    private fun stagedResolver(
+        staging: java.io.File,
+        bundled: List<RetroArchCfgEntry> = emptyList(),
+    ) = MappingResolver(
+        diskRepository = AutoconfigRepository(
+            stagingDirProvider = { staging },
+            dirProvider = { tmp.root },
+        ),
+        bundledRetroArchEntries = BundledAutoconfigEntries.forTest(bundled),
+    )
+
     private fun writeCfg(name: String, contents: String) =
         java.io.File(tmp.root, name).writeText(contents)
 
@@ -139,7 +150,7 @@ class MappingResolverTest {
     @Test
     fun nothing_matches_yields_runtime_android_default_not_persisted() {
         val resolved = resolver().resolve(device())
-        assertEquals(MappingSource.ANDROID_DEFAULT, resolved.source)
+        assertEquals(MappingSource.UNIDENTIFIED, resolved.source)
         assertEquals(0, tmp.root.listFiles()!!.size)
     }
 
@@ -189,7 +200,7 @@ class MappingResolverTest {
             )
         )
         val resolved = resolver(bundled = ra).resolve(device())
-        assertEquals(MappingSource.ANDROID_DEFAULT, resolved.source)
+        assertEquals(MappingSource.UNIDENTIFIED, resolved.source)
     }
 
     // Retroid handhelds rewrite a paired BT pad's gamepad endpoint to report the built-in's
@@ -467,7 +478,7 @@ class MappingResolverTest {
             device(name = "Odin Controller", vendorId = 8224, productId = 273, androidBuildModel = "AYN Odin Portal")
         )
 
-        assertEquals(MappingSource.ANDROID_DEFAULT, resolved.source)
+        assertEquals(MappingSource.UNIDENTIFIED, resolved.source)
     }
 
     // The build-model tier applies to bundled entries too, so a shared-identity pad (AYN Thor)
@@ -516,7 +527,7 @@ class MappingResolverTest {
             device(name = "DualSense Wireless Controller", vendorId = 0x054C, productId = 0x0CE6, androidBuildModel = "AYN Thor")
         )
 
-        assertEquals(MappingSource.ANDROID_DEFAULT, resolved.source)
+        assertEquals(MappingSource.UNIDENTIFIED, resolved.source)
     }
 
     @Test fun `phantom ds4 does not inherit the built-in cfg when it carries a model pin`() {
@@ -675,5 +686,64 @@ class MappingResolverTest {
         val resolved = resolver().resolve(device(name = "GameSir-Pocket 1 Keyboard", vendorId = 13623, productId = 4402))
         assertTrue(resolved.userEdited)
         assertEquals(listOf(InputBinding.Button(97)), resolved.bindings[CanonicalButton.BTN_SOUTH])
+    }
+
+    @Test
+    fun `a staged cfg does not hide the shipped database from another pad`() {
+        // Staging holds the one pad configured before the storage grant. Folding it into the disk
+        // set would read as "the seeded database answers for everything" and send every other pad
+        // to the unknown path with its own entry sitting unread in the assets.
+        val staging = tmp.newFolder("staging")
+        java.io.File(staging, "PadA.cfg").writeText(
+            "input_device = \"Pad A\"\ninput_vendor_id = \"1\"\ninput_product_id = \"2\"\ninput_b_btn = \"96\"\ncannoli_user = \"true\"\n"
+        )
+        val bundled = RetroArchCfgParser.parse(
+            "input_device = \"Pad B\"\ninput_vendor_id = \"3\"\ninput_product_id = \"4\"\ninput_b_btn = \"97\"\n",
+            fileName = "PadB.cfg",
+        )
+        val resolved = stagedResolver(staging, bundled = listOf(bundled))
+            .resolve(device(name = "Pad B", vendorId = 3, productId = 4))
+        assertEquals("Pad B", resolved.match.name)
+    }
+
+    @Test
+    fun `a staged cfg resolves its own pad before the grant`() {
+        val staging = tmp.newFolder("staging")
+        java.io.File(staging, "PadA.cfg").writeText(
+            "input_device = \"Pad A\"\ninput_vendor_id = \"1\"\ninput_product_id = \"2\"\ninput_b_btn = \"99\"\ncannoli_user = \"true\"\n"
+        )
+        val resolved = stagedResolver(staging).resolve(device(name = "Pad A", vendorId = 1, productId = 2))
+        assertTrue(resolved.userEdited)
+        assertEquals(listOf(InputBinding.Button(99)), resolved.bindings[CanonicalButton.BTN_SOUTH])
+    }
+
+    @Test
+    fun `a staged cfg outranks a bundled entry for the same pad`() {
+        val staging = tmp.newFolder("staging")
+        java.io.File(staging, "PadA.cfg").writeText(
+            "input_device = \"Pad A\"\ninput_vendor_id = \"1\"\ninput_product_id = \"2\"\ninput_b_btn = \"99\"\ncannoli_user = \"true\"\n"
+        )
+        val bundled = RetroArchCfgParser.parse(
+            "input_device = \"Pad A\"\ninput_vendor_id = \"1\"\ninput_product_id = \"2\"\ninput_b_btn = \"96\"\n",
+            fileName = "PadA_bundled.cfg",
+        )
+        val resolved = stagedResolver(staging, bundled = listOf(bundled))
+            .resolve(device(name = "Pad A", vendorId = 1, productId = 2))
+        assertEquals(listOf(InputBinding.Button(99)), resolved.bindings[CanonicalButton.BTN_SOUTH])
+    }
+
+    @Test
+    fun `a pad matching nothing gets identity and no bindings, never a guessed layout`() {
+        val resolved = resolver().resolve(device(name = "Some Unknown Pad", vendorId = 9, productId = 9))
+        assertEquals(MappingSource.UNIDENTIFIED, resolved.source)
+        assertTrue(resolved.bindings.isEmpty())
+        assertEquals("Some Unknown Pad", resolved.displayName)
+        assertEquals("Some Unknown Pad", resolved.match.name)
+    }
+
+    @Test
+    fun `an unidentified pad is what sends the user to the wizard`() {
+        val resolved = resolver().resolve(device(name = "Some Unknown Pad", vendorId = 9, productId = 9))
+        assertTrue(dev.cannoli.scorza.input.legend.shouldRunLegendWizard(resolved))
     }
 }

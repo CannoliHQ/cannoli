@@ -32,11 +32,11 @@ class WizardTriggerTest {
     )
 
     @Test fun `an unidentified pad runs the wizard whatever shape it is`() {
-        assertTrue(shouldRunLegendWizard(mapping(MappingSource.ANDROID_DEFAULT)))
+        assertTrue(shouldRunLegendWizard(mapping(MappingSource.UNIDENTIFIED)))
         assertTrue(
             shouldRunLegendWizard(
                 mapping(
-                    MappingSource.ANDROID_DEFAULT,
+                    MappingSource.UNIDENTIFIED,
                     bindings = mapOf(CanonicalButton.BTN_SOUTH to listOf(InputBinding.Button(96))),
                 )
             )
@@ -65,7 +65,7 @@ class WizardTriggerTest {
     }
 
     @Test fun `an unidentified pad never verifies`() {
-        assertFalse(verifyConfirmPress(mapping(MappingSource.ANDROID_DEFAULT), keyCode = 96))
+        assertFalse(verifyConfirmPress(mapping(MappingSource.UNIDENTIFIED), keyCode = 96))
     }
 
     @Test fun `a mapping that binds nothing to confirm never verifies`() {

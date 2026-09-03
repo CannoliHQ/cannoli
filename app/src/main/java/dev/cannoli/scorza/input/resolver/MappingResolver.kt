@@ -9,7 +9,7 @@ import dev.cannoli.scorza.input.DeviceMapping
 class MappingResolver(
     private val diskRepository: AutoconfigRepository,
     private val bundledRetroArchEntries: BundledAutoconfigEntries,
-    /** Carried through to the fallback factory, which has no Context to look it up with. */
+    /** Shown for a pad that reports no name of its own. Passed in because this has no Context. */
     private val genericControllerName: String = "Generic Controller",
 ) {
 
@@ -18,8 +18,14 @@ class MappingResolver(
      */
     fun resolve(device: ConnectedDevice): DeviceMapping {
         val disk = diskRepository.listEntries()
-        // Assets cover the window before seeding lands or while storage is unreadable.
-        val candidates = disk.ifEmpty { bundledRetroArchEntries.entries() }
+        // Assets cover the window before seeding lands or while storage is unreadable. A non-empty
+        // disk set is the seeded database and answers for everything: falling back to assets then
+        // would resurrect profiles the seeder deliberately did not materialise for this handheld.
+        //
+        // Staged cfgs sit outside that rule. They are the one pad the user configured before first
+        // run chose a card, not a seeded database, so they join the candidates without silencing
+        // the assets for every other pad.
+        val candidates = diskRepository.stagedEntries() + disk.ifEmpty { bundledRetroArchEntries.entries() }
 
         val best = candidates
             .mapNotNull { entry -> IdentityMatcher.rank(entry, device)?.let { entry to it } }
@@ -36,6 +42,6 @@ class MappingResolver(
             ?.first
 
         return best?.let { RetroArchAutoconfigImporter.import(it, device) }
-            ?: AndroidDefaultMappingFactory(genericName = genericControllerName).create(device)
+            ?: unidentifiedMapping(device, genericControllerName)
     }
 }
