@@ -2,6 +2,7 @@ package dev.cannoli.igm
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -21,33 +22,31 @@ class IgmInputTranslatorTest {
         menuBack = CanonicalButton.BTN_SOUTH,
     )
 
-    @Test fun westButtonNormalizesToFilterKeycode() {
-        assertEquals(99, IgmInputTranslator(retroid).normalize(100))
-    }
-
-    @Test fun northButtonNormalizesToNorthKeycode() {
-        assertEquals(100, IgmInputTranslator(retroid).normalize(99))
+    @Test fun `face buttons resolve by position, not by the code they report`() {
+        val t = IgmInputTranslator(retroid)
+        assertEquals(MenuAction.WEST, t.normalize(100))
+        assertEquals(MenuAction.NORTH, t.normalize(99))
     }
 
     @Test fun confirmAndBackFollowMenuAssignment() {
         val t = IgmInputTranslator(retroid)
-        assertEquals(96, t.normalize(96))
-        assertEquals(97, t.normalize(97))
+        assertEquals(MenuAction.CONFIRM, t.normalize(96))
+        assertEquals(MenuAction.BACK, t.normalize(97))
     }
 
     @Test fun shoulderButtonsNormalize() {
         val t = IgmInputTranslator(retroid)
-        assertEquals(102, t.normalize(102))
-        assertEquals(103, t.normalize(103))
+        assertEquals(MenuAction.L1, t.normalize(102))
+        assertEquals(MenuAction.R1, t.normalize(103))
     }
 
     @Test fun dpadAndSystemBackPassThrough() {
         val t = IgmInputTranslator(retroid)
-        assertEquals(19, t.normalize(19))
-        assertEquals(20, t.normalize(20))
-        assertEquals(21, t.normalize(21))
-        assertEquals(22, t.normalize(22))
-        assertEquals(97, t.normalize(4))
+        assertEquals(MenuAction.UP, t.normalize(19))
+        assertEquals(MenuAction.DOWN, t.normalize(20))
+        assertEquals(MenuAction.LEFT, t.normalize(21))
+        assertEquals(MenuAction.RIGHT, t.normalize(22))
+        assertEquals(MenuAction.BACK, t.normalize(4))
     }
 
     // The Retroid Pocket Nova's menu button reports KEYCODE_BACK, and its cfg says so. Answering
@@ -57,7 +56,7 @@ class IgmInputTranslatorTest {
         val withMenu = retroid.copy(
             buttonKeycodes = retroid.buttonKeycodes + (CanonicalButton.BTN_MENU to listOf(4))
         )
-        assertEquals(82, IgmInputTranslator(withMenu).normalize(4))
+        assertEquals(MenuAction.MENU, IgmInputTranslator(withMenu).normalize(4))
     }
 
     @Test fun `the menu key is whichever button the mapping names`() {
@@ -78,8 +77,8 @@ class IgmInputTranslatorTest {
     }
 
     @Test fun `back still passes through where the device binds nothing to it`() {
-        assertEquals(97, IgmInputTranslator(retroid).normalize(4))
-        assertEquals(97, IgmInputTranslator(null).normalize(4))
+        assertEquals(MenuAction.BACK, IgmInputTranslator(retroid).normalize(4))
+        assertEquals(MenuAction.BACK, IgmInputTranslator(null).normalize(4))
     }
 
     @Test fun standardLayoutMapsCorrectly() {
@@ -94,10 +93,21 @@ class IgmInputTranslatorTest {
             menuBack = CanonicalButton.BTN_EAST,
         )
         val t = IgmInputTranslator(xbox)
-        assertEquals(96, t.normalize(96))
-        assertEquals(97, t.normalize(97))
-        assertEquals(99, t.normalize(99))
-        assertEquals(100, t.normalize(100))
+        assertEquals(MenuAction.CONFIRM, t.normalize(96))
+        assertEquals(MenuAction.BACK, t.normalize(97))
+        assertEquals(MenuAction.WEST, t.normalize(99))
+        assertEquals(MenuAction.NORTH, t.normalize(100))
+    }
+
+    // The same physical press means opposite things on the two layouts, which is the reason a
+    // handler is given the action rather than the button.
+    @Test fun `the same keycode confirms on one layout and goes back on the other`() {
+        val xbox = retroid.copy(
+            menuConfirm = CanonicalButton.BTN_SOUTH,
+            menuBack = CanonicalButton.BTN_EAST,
+        )
+        assertEquals(MenuAction.CONFIRM, IgmInputTranslator(retroid).normalize(96))
+        assertEquals(MenuAction.BACK, IgmInputTranslator(xbox).normalize(96))
     }
 
     @Test fun multipleKeycodesPerButton() {
@@ -105,20 +115,24 @@ class IgmInputTranslatorTest {
             buttonKeycodes = retroid.buttonKeycodes + (CanonicalButton.BTN_WEST to listOf(100, 188))
         )
         val t = IgmInputTranslator(m)
-        assertEquals(99, t.normalize(100))
-        assertEquals(99, t.normalize(188))
+        assertEquals(MenuAction.WEST, t.normalize(100))
+        assertEquals(MenuAction.WEST, t.normalize(188))
     }
 
-    @Test fun nullMappingIsIdentity() {
+    // No profile is not no meaning: the conventional numbering is all there is to assume, and it is
+    // what a pad launched outside Cannoli reports.
+    @Test fun `with no mapping the conventional numbering is assumed`() {
         val t = IgmInputTranslator(null)
-        assertEquals(96, t.normalize(96))
-        assertEquals(99, t.normalize(99))
-        assertEquals(100, t.normalize(100))
-        assertEquals(19, t.normalize(19))
+        assertEquals(MenuAction.CONFIRM, t.normalize(96))
+        assertEquals(MenuAction.WEST, t.normalize(99))
+        assertEquals(MenuAction.NORTH, t.normalize(100))
+        assertEquals(MenuAction.UP, t.normalize(19))
     }
 
-    @Test fun unknownKeycodePassesThrough() {
-        assertEquals(4242, IgmInputTranslator(retroid).normalize(4242))
+    // It used to arrive at the handlers as its own number, where it could match a branch by
+    // sharing it. A key this pad has no meaning for now means nothing.
+    @Test fun `an unrecognised keycode resolves to nothing`() {
+        assertNull(IgmInputTranslator(retroid).normalize(4242))
     }
 
     /**
@@ -128,21 +142,21 @@ class IgmInputTranslatorTest {
      */
     @Test fun everyMappedButtonNormalizesRatherThanFallingThrough() {
         val expected = mapOf(
-            CanonicalButton.BTN_UP to 19,
-            CanonicalButton.BTN_DOWN to 20,
-            CanonicalButton.BTN_LEFT to 21,
-            CanonicalButton.BTN_RIGHT to 22,
-            CanonicalButton.BTN_WEST to 99,
-            CanonicalButton.BTN_NORTH to 100,
-            CanonicalButton.BTN_L to 102,
-            CanonicalButton.BTN_R to 103,
-            CanonicalButton.BTN_L2 to 104,
-            CanonicalButton.BTN_R2 to 105,
-            CanonicalButton.BTN_L3 to 106,
-            CanonicalButton.BTN_R3 to 107,
-            CanonicalButton.BTN_START to 108,
-            CanonicalButton.BTN_SELECT to 109,
-            CanonicalButton.BTN_MENU to 82,
+            CanonicalButton.BTN_UP to MenuAction.UP,
+            CanonicalButton.BTN_DOWN to MenuAction.DOWN,
+            CanonicalButton.BTN_LEFT to MenuAction.LEFT,
+            CanonicalButton.BTN_RIGHT to MenuAction.RIGHT,
+            CanonicalButton.BTN_WEST to MenuAction.WEST,
+            CanonicalButton.BTN_NORTH to MenuAction.NORTH,
+            CanonicalButton.BTN_L to MenuAction.L1,
+            CanonicalButton.BTN_R to MenuAction.R1,
+            CanonicalButton.BTN_L2 to MenuAction.L2,
+            CanonicalButton.BTN_R2 to MenuAction.R2,
+            CanonicalButton.BTN_L3 to MenuAction.L3,
+            CanonicalButton.BTN_R3 to MenuAction.R3,
+            CanonicalButton.BTN_START to MenuAction.START,
+            CanonicalButton.BTN_SELECT to MenuAction.SELECT,
+            CanonicalButton.BTN_MENU to MenuAction.MENU,
         )
         // Deliberately nothing like the conventional numbering, so a fallthrough cannot pass.
         val odd = expected.keys.withIndex().associate { (i, b) -> b to listOf(700 + i) }
@@ -156,14 +170,14 @@ class IgmInputTranslatorTest {
                 menuBack = CanonicalButton.BTN_EAST,
             )
         )
-        for ((button, code) in expected) {
-            assertEquals(button.name, code, t.normalize(odd.getValue(button).single()))
+        for ((button, action) in expected) {
+            assertEquals(button.name, action, t.normalize(odd.getValue(button).single()))
         }
-        assertEquals(96, t.normalize(800))
-        assertEquals(97, t.normalize(801))
+        assertEquals(MenuAction.CONFIRM, t.normalize(800))
+        assertEquals(MenuAction.BACK, t.normalize(801))
     }
 
-    // Sticks are axes, so they carry no keycode meaning and must not be given one.
+    // Sticks are axes, so they carry no button meaning and must not be given one.
     @Test fun analogAxesAreNotTurnedIntoButtons() {
         val t = IgmInputTranslator(
             retroid.copy(
@@ -171,6 +185,6 @@ class IgmInputTranslatorTest {
                     (CanonicalButton.BTN_LSTICK_X to listOf(900))
             )
         )
-        assertEquals(900, t.normalize(900))
+        assertNull(t.normalize(900))
     }
 }

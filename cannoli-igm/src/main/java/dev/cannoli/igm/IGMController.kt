@@ -184,22 +184,23 @@ class IGMController(
 
 
 
-    private fun handleShortcutsKey(screen: IGMScreen.Shortcuts, keycode: Int) {
+    private fun handleShortcutsKey(screen: IGMScreen.Shortcuts, action: MenuAction) {
         val count = ShortcutAction.entries.size
-        when (keycode) {
-            19 -> replaceTop(screen.copy(selectedIndex = (screen.selectedIndex - 1 + count) % count))
-            20 -> replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count))
-            96 -> {
+        when (action) {
+            MenuAction.UP -> replaceTop(screen.copy(selectedIndex = (screen.selectedIndex - 1 + count) % count))
+            MenuAction.DOWN -> replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count))
+            MenuAction.CONFIRM -> {
                 replaceTop(screen.copy(listening = true, heldKeys = emptySet(), countdownMs = 0))
                 binding.startListening()
             }
             // CLEAR means the action has no chord here, which masks the global table rather than
             // deferring to it. A row already showing nothing has nothing to take away, so the press
             // stages no change and leaving Settings does not ask about a save that changes nothing.
-            100 -> shortcutRows.value.getOrNull(screen.selectedIndex)
+            MenuAction.NORTH -> shortcutRows.value.getOrNull(screen.selectedIndex)
                 ?.takeIf { it.chord.isNotEmpty() }
                 ?.let { row -> stagedShortcut(row.action) { bridge.setShortcutBinding(row.action, emptySet()) } }
-            97, 4 -> leaveShortcuts()
+            MenuAction.BACK -> leaveShortcuts()
+            else -> {}
         }
     }
 
@@ -391,29 +392,29 @@ class IGMController(
         onCheatsRestored?.invoke(restored.size)
     }
 
-    private fun handleCheatsKey(screen: IGMScreen.Cheats, keycode: Int) {
+    private fun handleCheatsKey(screen: IGMScreen.Cheats, action: MenuAction) {
         val restoreRows = cheatRestoreRows()
         val count = restoreRows + cheatVisibleItems.value.size
         val onRestoreRow = restoreRows == 1 && screen.selectedIndex == 0
-        val navigates = keycode == 19 || keycode == 20 || keycode == 97 || keycode == 4
+        val navigates = action == MenuAction.UP || action == MenuAction.DOWN || action == MenuAction.BACK
         // Between a queued load and its snapshot these rows are not the list the emulator holds. A
         // toggle sent now targets the old list and the bridge drops it as out of range, which would
         // leave a row reading enabled that is not. Moving and leaving stay live.
         if (cheatLoadPending && !navigates) return
-        when (keycode) {
-            19 -> if (count > 0) replaceTop(
+        when (action) {
+            MenuAction.UP -> if (count > 0) replaceTop(
                 screen.copy(
                     selectedIndex = if (screen.selectedIndex < 0) count - 1
                     else ((screen.selectedIndex - 1) + count) % count
                 )
             )
-            20 -> if (count > 0) replaceTop(
+            MenuAction.DOWN -> if (count > 0) replaceTop(
                 screen.copy(
                     selectedIndex = if (screen.selectedIndex < 0) 0
                     else (screen.selectedIndex + 1) % count
                 )
             )
-            96 -> if (onRestoreRow) {
+            MenuAction.CONFIRM -> if (onRestoreRow) {
                 reapplyLastUsedCheats()
             } else {
                 val rowIndex = selectedCheatRow(screen)
@@ -425,8 +426,9 @@ class IGMController(
                     }
                 }
             }
-            99 -> if (cheatItems.value.isNotEmpty()) cycleCheatFilter(screen)
-            97, 4 -> { pop(); if (screenStack.isEmpty()) onClose?.invoke() }
+            MenuAction.WEST -> if (cheatItems.value.isNotEmpty()) cycleCheatFilter(screen)
+            MenuAction.BACK -> { pop(); if (screenStack.isEmpty()) onClose?.invoke() }
+            else -> {}
         }
     }
 
@@ -439,14 +441,15 @@ class IGMController(
         return row.supported && !session.isEnabled(row)
     }
 
-    private fun handleCheatsHardcoreWarningKey(screen: IGMScreen.CheatsHardcoreWarning, keycode: Int) {
-        when (keycode) {
-            96 -> {
+    private fun handleCheatsHardcoreWarningKey(screen: IGMScreen.CheatsHardcoreWarning, action: MenuAction) {
+        when (action) {
+            MenuAction.CONFIRM -> {
                 cheatHardcoreWarned = true
                 pop()
                 toggleCheatRow(screen.pendingRowIndex)
             }
-            97, 4 -> pop()
+            MenuAction.BACK -> pop()
+            else -> {}
         }
     }
 
@@ -645,25 +648,27 @@ class IGMController(
     private fun achievementsHaveMix(list: List<AchievementInfo>): Boolean =
         list.any { it.unlocked } && list.any { !it.unlocked }
 
-    private fun handleAchievementsKey(screen: IGMScreen.Achievements, keycode: Int) {
+    private fun handleAchievementsKey(screen: IGMScreen.Achievements, action: MenuAction) {
         val filtered = filteredAchievements(screen)
         val count = filtered.size
-        when (keycode) {
-            19 -> if (count > 0) replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count))
-            20 -> if (count > 0) replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count))
-            96 -> filtered.getOrNull(screen.selectedIndex)?.let {
+        when (action) {
+            MenuAction.UP -> if (count > 0) replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count))
+            MenuAction.DOWN -> if (count > 0) replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count))
+            MenuAction.CONFIRM -> filtered.getOrNull(screen.selectedIndex)?.let {
                 push(IGMScreen.AchievementDetail(achievement = it, parentIndex = screen.selectedIndex))
             }
-            99 -> if (achievementsHaveMix(screen.achievements)) {
+            MenuAction.WEST -> if (achievementsHaveMix(screen.achievements)) {
                 replaceTop(screen.copy(filter = (screen.filter + 1) % 3, selectedIndex = 0))
             }
-            97, 4 -> { pop(); if (screenStack.isEmpty()) onClose?.invoke() }
+            MenuAction.BACK -> { pop(); if (screenStack.isEmpty()) onClose?.invoke() }
+            else -> {}
         }
     }
 
-    private fun handleAchievementDetailKey(screen: IGMScreen.AchievementDetail, keycode: Int) {
-        when (keycode) {
-            97, 4 -> pop()
+    private fun handleAchievementDetailKey(screen: IGMScreen.AchievementDetail, action: MenuAction) {
+        when (action) {
+            MenuAction.BACK -> pop()
+            else -> {}
         }
     }
 
@@ -687,54 +692,56 @@ class IGMController(
         push(IGMScreen.Guide(filePath = open.filePath, page = open.initialPage, textZoom = open.textZoom))
     }
 
-    private fun handleGuidePickerKey(screen: IGMScreen.GuidePicker, keycode: Int) {
+    private fun handleGuidePickerKey(screen: IGMScreen.GuidePicker, action: MenuAction) {
         val count = guideFiles.value.size
         if (count == 0) { pop(); if (screenStack.isEmpty()) onClose?.invoke(); return }
-        when (keycode) {
-            19 -> replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count))
-            20 -> replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count))
-            96 -> guideFiles.value.getOrNull(screen.selectedIndex)?.let { openGuide(it) }
-            97, 4 -> { pop(); if (screenStack.isEmpty()) onClose?.invoke() }
+        when (action) {
+            MenuAction.UP -> replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count))
+            MenuAction.DOWN -> replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count))
+            MenuAction.CONFIRM -> guideFiles.value.getOrNull(screen.selectedIndex)?.let { openGuide(it) }
+            MenuAction.BACK -> { pop(); if (screenStack.isEmpty()) onClose?.invoke() }
+            else -> {}
         }
     }
 
-    private fun handleGuideKey(screen: IGMScreen.Guide, keycode: Int) {
+    private fun handleGuideKey(screen: IGMScreen.Guide, action: MenuAction) {
         val guide = guideFiles.value.firstOrNull { it.file.absolutePath == screen.filePath } ?: return
         val type = guide.type
         // Help covers the page, so nothing behind it should move: only closing it is live.
         if (screen.help) {
-            if (keycode == 82 || keycode == 97 || keycode == 4) replaceTop(screen.copy(help = false))
+            if (action == MenuAction.MENU || action == MenuAction.BACK) replaceTop(screen.copy(help = false))
             return
         }
-        when (keycode) {
-            82 -> replaceTop(screen.copy(help = true))
-            19 -> guideController.scroll(-1)
-            20 -> guideController.scroll(1)
-            21 -> if (type != GuideType.TXT && screen.textZoom > 1) guideController.scrollX(-1)
-            22 -> if (type != GuideType.TXT && screen.textZoom > 1) guideController.scrollX(1)
-            102 -> if (type == GuideType.PDF) {
+        when (action) {
+            MenuAction.MENU -> replaceTop(screen.copy(help = true))
+            MenuAction.UP -> guideController.scroll(-1)
+            MenuAction.DOWN -> guideController.scroll(1)
+            MenuAction.LEFT -> if (type != GuideType.TXT && screen.textZoom > 1) guideController.scrollX(-1)
+            MenuAction.RIGHT -> if (type != GuideType.TXT && screen.textZoom > 1) guideController.scrollX(1)
+            MenuAction.L1 -> if (type == GuideType.PDF) {
                 replaceTop(screen.copy(page = (screen.page - 1).coerceAtLeast(0)))
             } else guideController.pageJump(-1)
-            103 -> if (type == GuideType.PDF) {
+            MenuAction.R1 -> if (type == GuideType.PDF) {
                 replaceTop(screen.copy(page = (screen.page + 1).coerceAtMost(guidePageCount.intValue - 1)))
             } else guideController.pageJump(1)
             // Clamped rather than wrapped, now that zooming out has a button of its own: at the
             // top, the wrap dropped you to the smallest size when you asked for a bigger one.
-            100 -> {
+            MenuAction.NORTH -> {
                 guideController.beginZoomReseed()
                 replaceTop(screen.copy(textZoom = (screen.textZoom + 1).coerceAtMost(GuideZoom.levels)))
             }
-            99 -> {
+            MenuAction.WEST -> {
                 guideController.beginZoomReseed()
                 replaceTop(screen.copy(textZoom = (screen.textZoom - 1).coerceAtLeast(1)))
             }
-            97, 4 -> {
+            MenuAction.BACK -> {
                 guideController.saveGuide(guide, if (type == GuideType.PDF) screen.page else null, screen.textZoom)
                 guideController.scroll(0)
                 guideController.scrollX(0)
                 pop()
                 if (screenStack.isEmpty()) onClose?.invoke()
             }
+            else -> {}
         }
     }
 
@@ -764,15 +771,12 @@ class IGMController(
         val screen = currentScreen as? IGMScreen.Guide ?: return
         if (screen.help) return
         when (inputTranslator.normalize(keycode)) {
-            19, 20 -> guideController.scroll(0)
-            21, 22 -> guideController.scrollX(0)
+            MenuAction.UP, MenuAction.DOWN -> guideController.scroll(0)
+            MenuAction.LEFT, MenuAction.RIGHT -> guideController.scrollX(0)
+            else -> {}
         }
     }
 
-    /**
-     * Android keycodes, which the screen handlers below match on raw: DPAD_UP=19, DPAD_DOWN=20,
-     * DPAD_LEFT=21, DPAD_RIGHT=22, BUTTON_A=96, BUTTON_B=97, BUTTON_Y=100, BACK=4.
-     */
     fun handleKeyDown(keycode: Int) {
         val screen = currentScreen ?: return
         // While a chord is being captured the keys are the binding, so they go to the detector raw:
@@ -784,52 +788,54 @@ class IGMController(
         }
         // The tail of a chord that has already committed, still repeating. Not a press.
         if (keycode in heldPastCapture) return
-        val normalized = inputTranslator.normalize(keycode)
+        // Null is a key this pad has no meaning for, which no screen has anything to do with.
+        val action = inputTranslator.normalize(keycode) ?: return
 
         when (screen) {
-            is IGMScreen.Menu -> handleMenuKey(screen, normalized)
-            is IGMScreen.GuidePicker -> handleGuidePickerKey(screen, normalized)
-            is IGMScreen.Guide -> handleGuideKey(screen, normalized)
-            is IGMScreen.Cheats -> handleCheatsKey(screen, normalized)
-            is IGMScreen.CheatsHardcoreWarning -> handleCheatsHardcoreWarningKey(screen, normalized)
-            is IGMScreen.Achievements -> handleAchievementsKey(screen, normalized)
-            is IGMScreen.AchievementDetail -> handleAchievementDetailKey(screen, normalized)
-            is IGMScreen.PreviewPicker -> handlePreviewPickerKey(screen, normalized)
-            is IGMScreen.ShaderSaveName -> handleShaderSaveNameKey(screen, normalized)
-            is IGMScreen.ProviderSettings -> handleProviderKey(normalized)
-            is IGMScreen.SettingsExitPrompt -> handleProviderKey(normalized)
-            is IGMScreen.Shortcuts -> handleShortcutsKey(screen, normalized)
+            is IGMScreen.Menu -> handleMenuKey(screen, action)
+            is IGMScreen.GuidePicker -> handleGuidePickerKey(screen, action)
+            is IGMScreen.Guide -> handleGuideKey(screen, action)
+            is IGMScreen.Cheats -> handleCheatsKey(screen, action)
+            is IGMScreen.CheatsHardcoreWarning -> handleCheatsHardcoreWarningKey(screen, action)
+            is IGMScreen.Achievements -> handleAchievementsKey(screen, action)
+            is IGMScreen.AchievementDetail -> handleAchievementDetailKey(screen, action)
+            is IGMScreen.PreviewPicker -> handlePreviewPickerKey(screen, action)
+            is IGMScreen.ShaderSaveName -> handleShaderSaveNameKey(screen, action)
+            is IGMScreen.ProviderSettings -> handleProviderKey(action)
+            is IGMScreen.SettingsExitPrompt -> handleProviderKey(action)
+            is IGMScreen.Shortcuts -> handleShortcutsKey(screen, action)
         }
     }
 
-    private fun handleMenuKey(screen: IGMScreen.Menu, keycode: Int) {
+    private fun handleMenuKey(screen: IGMScreen.Menu, action: MenuAction) {
         val menuOptions = buildMenuOptions()
         val itemCount = menuOptions.actions.size
 
         // The confirmation covers the menu, so only answering it is live.
         if (screen.confirmDeleteSlot) {
-            when (keycode) {
-                100 -> {
+            when (action) {
+                MenuAction.NORTH -> {
                     slots.delete(selectedSlotIndex.intValue)
                     invalidateSlotCache()
                     refreshSlotInfo()
                     replaceTop(screen.copy(confirmDeleteSlot = false))
                 }
-                97, 4 -> replaceTop(screen.copy(confirmDeleteSlot = false))
+                MenuAction.BACK -> replaceTop(screen.copy(confirmDeleteSlot = false))
+                else -> {}
             }
             return
         }
 
-        when (keycode) {
-            19 /* DPAD_UP */ -> {
+        when (action) {
+            MenuAction.UP -> {
                 val newIndex = if (screen.selectedIndex <= 0) itemCount - 1 else screen.selectedIndex - 1
                 replaceTop(screen.copy(selectedIndex = newIndex))
             }
-            20 /* DPAD_DOWN */ -> {
+            MenuAction.DOWN -> {
                 val newIndex = if (screen.selectedIndex >= itemCount - 1) 0 else screen.selectedIndex + 1
                 replaceTop(screen.copy(selectedIndex = newIndex))
             }
-            21 /* DPAD_LEFT */ -> {
+            MenuAction.LEFT -> {
                 if (menuOptions.actionAt(screen.selectedIndex) == IgmMenuAction.SWITCH_DISC) {
                     cycleDisc(-1)
                     stayOnDiscRow(screen)
@@ -840,7 +846,7 @@ class IGMController(
                     refreshSlotInfo()
                 }
             }
-            22 /* DPAD_RIGHT */ -> {
+            MenuAction.RIGHT -> {
                 if (menuOptions.actionAt(screen.selectedIndex) == IgmMenuAction.SWITCH_DISC) {
                     cycleDisc(1)
                     stayOnDiscRow(screen)
@@ -851,16 +857,16 @@ class IGMController(
                     refreshSlotInfo()
                 }
             }
-            96 /* BUTTON_A - confirm */ -> {
+            MenuAction.CONFIRM -> {
                 selectMenuItem(screen.selectedIndex)
             }
-            99 /* BUTTON_X - delete the selected slot */ -> {
+            MenuAction.WEST -> {
                 // Only where the legend offers it, which is the two rows the polaroid is beside.
                 val onSlotRow = screen.selectedIndex == menuOptions.saveStateIndex ||
                     screen.selectedIndex == menuOptions.loadStateIndex
                 if (onSlotRow && slotExists.value) replaceTop(screen.copy(confirmDeleteSlot = true))
             }
-            100 /* BUTTON_Y - undo the last save or load */ -> {
+            MenuAction.NORTH -> {
                 when (undoAction.value) {
                     // Undoing a save rewrites the slot file, so what was read off disk is stale.
                     UndoAction.SAVE -> { bridge.undoSaveState(); invalidateSlotCache() }
@@ -870,9 +876,10 @@ class IGMController(
                 undoAction.value = null
                 onClose?.invoke()
             }
-            97, 4, 82 /* BUTTON_B, BACK, MENU - back, and what opened the menu closes it */ -> {
+            MenuAction.BACK, MenuAction.MENU -> {
                 onClose?.invoke()
             }
+            else -> {}
         }
     }
 
@@ -1017,23 +1024,23 @@ class IGMController(
      * decides platform, game, or neither. There is nothing to configure: how a bezel looks is a
      * property of the artwork, not a menu.
      */
-    private fun handlePreviewPickerKey(screen: IGMScreen.PreviewPicker, keycode: Int) {
+    private fun handlePreviewPickerKey(screen: IGMScreen.PreviewPicker, action: MenuAction) {
         val picker = overlayPicker
-        when (keycode) {
-            21, 22 -> {
-                val dir = if (keycode == 21) -1 else 1
+        when (action) {
+            MenuAction.LEFT, MenuAction.RIGHT -> {
+                val dir = if (action == MenuAction.LEFT) -1 else 1
                 val stage = { providerNav?.markChangedExternally(picker.stagedKeys); Unit }
                 replaceTop(screen.copy(selectedIndex = picker.cycle(screen.selectedIndex, dir, stage)))
             }
             // Offered only while this game overrides the platform, so the action and the answer to
             // where the value came from are the same thing. Staged like a move: the save prompt on
             // the way out is still what decides, and Discard still puts the override back.
-            99 -> if (picker.canRestore.value) {
+            MenuAction.WEST -> if (picker.canRestore.value) {
                 providerNav?.markChangedExternally(picker.stagedKeys)
                 picker.onRestoreDefault?.invoke()
                 replaceTop(screen.copy(selectedIndex = picker.indexOf(picker.selected.value)))
             }
-            97, 4 -> {
+            MenuAction.BACK -> {
                 pop()
                 val nav = providerNav
                 // Only when a category push led here. See PreviewPicker.unwindOnBack.
@@ -1043,6 +1050,7 @@ class IGMController(
                     onClose?.invoke()
                 }
             }
+            else -> {}
         }
     }
 
@@ -1053,33 +1061,35 @@ class IGMController(
      * reads wrong until you have used it once and then is the only thing that does not need a
      * second press. Leaving is Cancel, which is what the keyboard's own legend says.
      */
-    private fun handleShaderSaveNameKey(screen: IGMScreen.ShaderSaveName, keycode: Int) {
+    private fun handleShaderSaveNameKey(screen: IGMScreen.ShaderSaveName, action: MenuAction) {
         if (screen.help) {
             // Any way out of the reference, since it covers the keyboard entirely.
-            if (keycode in setOf(97, 4, 82, 108, 96)) replaceTop(screen.copy(help = false))
+            if (action in setOf(MenuAction.BACK, MenuAction.MENU, MenuAction.START, MenuAction.CONFIRM))
+                replaceTop(screen.copy(help = false))
             return
         }
         val kb = screen.keyboard
         fun update(next: dev.cannoli.ui.components.KeyboardState) =
             replaceTop(screen.copy(keyboard = next))
-        when (keycode) {
-            19 -> update(KeyboardController.moveSelection(kb, Direction.UP))
-            20 -> update(KeyboardController.moveSelection(kb, Direction.DOWN))
-            21 -> update(KeyboardController.moveSelection(kb, Direction.LEFT))
-            22 -> update(KeyboardController.moveSelection(kb, Direction.RIGHT))
-            96 -> when (val r = KeyboardController.press(kb)) {
+        when (action) {
+            MenuAction.UP -> update(KeyboardController.moveSelection(kb, Direction.UP))
+            MenuAction.DOWN -> update(KeyboardController.moveSelection(kb, Direction.DOWN))
+            MenuAction.LEFT -> update(KeyboardController.moveSelection(kb, Direction.LEFT))
+            MenuAction.RIGHT -> update(KeyboardController.moveSelection(kb, Direction.RIGHT))
+            MenuAction.CONFIRM -> when (val r = KeyboardController.press(kb)) {
                 is KeyboardPress.Update -> update(r.state)
                 KeyboardPress.Confirm -> confirmShaderName(kb.text)
             }
-            97, 4 -> update(KeyboardController.backspace(kb))
-            99 -> leaveShaderSaveName()
-            100 -> update(KeyboardController.insertChar(kb, " "))
-            102 -> update(KeyboardController.moveCursor(kb, -1))
-            103 -> update(KeyboardController.moveCursor(kb, 1))
-            104 -> update(KeyboardController.cursorToStart(kb))
-            105 -> update(KeyboardController.cursorToEnd(kb))
-            108 -> confirmShaderName(kb.text)
-            82 -> replaceTop(screen.copy(help = true))
+            MenuAction.BACK -> update(KeyboardController.backspace(kb))
+            MenuAction.WEST -> leaveShaderSaveName()
+            MenuAction.NORTH -> update(KeyboardController.insertChar(kb, " "))
+            MenuAction.L1 -> update(KeyboardController.moveCursor(kb, -1))
+            MenuAction.R1 -> update(KeyboardController.moveCursor(kb, 1))
+            MenuAction.L2 -> update(KeyboardController.cursorToStart(kb))
+            MenuAction.R2 -> update(KeyboardController.cursorToEnd(kb))
+            MenuAction.START -> confirmShaderName(kb.text)
+            MenuAction.MENU -> replaceTop(screen.copy(help = true))
+            else -> {}
         }
     }
 
@@ -1107,50 +1117,51 @@ class IGMController(
         (currentScreen as? IGMScreen.ProviderSettings)?.path?.firstOrNull() ==
             CuratedCatalog.CATEGORY_SHADER
 
-    private fun handleProviderKey(keycode: Int) {
+    private fun handleProviderKey(action: MenuAction) {
         val nav = providerNav ?: return
         // A picked-up row owns every button, the same way the platform list works: nothing else on
         // the screen can be reached until it is put down, so nothing else can be pressed by mistake.
         if (settingsReordering.value) {
-            when (keycode) {
-                19 -> renderProviderState(nav.reorderSelection(-1))
-                20 -> renderProviderState(nav.reorderSelection(1))
-                96, 108, 109 -> settingsReordering.value = false
+            when (action) {
+                MenuAction.UP -> renderProviderState(nav.reorderSelection(-1))
+                MenuAction.DOWN -> renderProviderState(nav.reorderSelection(1))
+                MenuAction.CONFIRM, MenuAction.START, MenuAction.SELECT -> settingsReordering.value = false
                 // Back puts it down where it now is rather than undoing the moves. Every move has
                 // already been applied to the chain, and unwinding them would be a second history
                 // to keep; Discard on the way out of the tree is the undo that already exists.
-                97, 4 -> settingsReordering.value = false
+                MenuAction.BACK -> settingsReordering.value = false
+                else -> {}
             }
             return
         }
-        if (keycode == 109 && settingsCanReorder.value) {
+        if (action == MenuAction.SELECT && settingsCanReorder.value) {
             settingsReordering.value = true
             return
         }
         // Claimed only on a row that is a shader pass, which is the only place the legend offers it.
         // Taking the key everywhere is what left the description with no button to open it.
-        if (keycode == 100 && settingsCanRemovePass.value) {
+        if (action == MenuAction.NORTH && settingsCanRemovePass.value) {
             renderProviderState(nav.removeSelection())
             return
         }
         // Same button, and they never both apply: a pass row is inside the shader tree and reset is
         // offered at the root only. Checked after, so the deeper claim keeps the key where it is.
-        if (keycode == 100 && settingsCanReset.value) {
+        if (action == MenuAction.NORTH && settingsCanReset.value) {
             renderProviderState(nav.openResetPrompt())
             return
         }
         // Nothing else claims this button in the tree, and the legend only offers it where there is
         // an override to drop, so a press elsewhere is a no-op rather than a surprise.
-        if (keycode == 99 && !settingsCanRestore.value) return
-        val button = when (keycode) {
-            19 -> ProviderSettingsController.Nav.UP
-            20 -> ProviderSettingsController.Nav.DOWN
-            21 -> ProviderSettingsController.Nav.LEFT
-            22 -> ProviderSettingsController.Nav.RIGHT
-            96 -> ProviderSettingsController.Nav.CONFIRM
-            97, 4 -> ProviderSettingsController.Nav.BACK
-            99 -> ProviderSettingsController.Nav.WEST
-            82 -> ProviderSettingsController.Nav.HELP
+        if (action == MenuAction.WEST && !settingsCanRestore.value) return
+        val button = when (action) {
+            MenuAction.UP -> ProviderSettingsController.Nav.UP
+            MenuAction.DOWN -> ProviderSettingsController.Nav.DOWN
+            MenuAction.LEFT -> ProviderSettingsController.Nav.LEFT
+            MenuAction.RIGHT -> ProviderSettingsController.Nav.RIGHT
+            MenuAction.CONFIRM -> ProviderSettingsController.Nav.CONFIRM
+            MenuAction.BACK -> ProviderSettingsController.Nav.BACK
+            MenuAction.WEST -> ProviderSettingsController.Nav.WEST
+            MenuAction.MENU -> ProviderSettingsController.Nav.HELP
             else -> return
         }
         val wasBuildingChain = inShaderTree()

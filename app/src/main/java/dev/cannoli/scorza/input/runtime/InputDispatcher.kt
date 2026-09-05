@@ -2,6 +2,7 @@ package dev.cannoli.scorza.input.runtime
 
 import android.view.KeyEvent
 import android.view.MotionEvent
+import dev.cannoli.igm.MenuAction
 import dev.cannoli.scorza.input.CanonicalButton
 import dev.cannoli.scorza.input.MappingSource
 import dev.cannoli.scorza.input.DeviceMapping
@@ -200,34 +201,28 @@ class InputDispatcher @Inject constructor(
     }
 
     private fun dispatchPressed(canonical: CanonicalButton, mapping: DeviceMapping): Boolean {
-        when (canonical) {
-            CanonicalButton.BTN_UP -> onUp()
-            CanonicalButton.BTN_DOWN -> onDown()
-            CanonicalButton.BTN_LEFT -> onLeft()
-            CanonicalButton.BTN_RIGHT -> onRight()
-            CanonicalButton.BTN_EAST -> when {
-                mapping.menuConfirm == CanonicalButton.BTN_EAST -> onConfirm()
-                mapping.menuBack == CanonicalButton.BTN_EAST -> onBack()
-                else -> return false
-            }
-            CanonicalButton.BTN_SOUTH -> when {
-                mapping.menuConfirm == CanonicalButton.BTN_SOUTH -> onConfirm()
-                mapping.menuBack == CanonicalButton.BTN_SOUTH -> onBack()
-                else -> return false
-            }
-            CanonicalButton.BTN_WEST -> onWest()
-            CanonicalButton.BTN_NORTH -> onNorth()
-            CanonicalButton.BTN_L -> onL1()
-            CanonicalButton.BTN_R -> onR1()
-            CanonicalButton.BTN_L2 -> onL2()
-            CanonicalButton.BTN_R2 -> onR2()
-            CanonicalButton.BTN_L3 -> onL3()
-            CanonicalButton.BTN_R3 -> onR3()
-            CanonicalButton.BTN_START -> onStart()
-            CanonicalButton.BTN_SELECT -> onSelect()
-            CanonicalButton.BTN_MENU -> onMenu()
-            CanonicalButton.BTN_LSTICK_X, CanonicalButton.BTN_LSTICK_Y,
-            CanonicalButton.BTN_RSTICK_X, CanonicalButton.BTN_RSTICK_Y -> {}
+        // Resolved through the same function the in-game menu uses, so the two processes cannot
+        // disagree about which face button this profile calls confirm.
+        val action = dev.cannoli.igm.menuActionFor(canonical, mapping.menuConfirm, mapping.menuBack)
+            ?: return false
+        when (action) {
+            MenuAction.UP -> onUp()
+            MenuAction.DOWN -> onDown()
+            MenuAction.LEFT -> onLeft()
+            MenuAction.RIGHT -> onRight()
+            MenuAction.CONFIRM -> onConfirm()
+            MenuAction.BACK -> onBack()
+            MenuAction.WEST -> onWest()
+            MenuAction.NORTH -> onNorth()
+            MenuAction.L1 -> onL1()
+            MenuAction.R1 -> onR1()
+            MenuAction.L2 -> onL2()
+            MenuAction.R2 -> onR2()
+            MenuAction.L3 -> onL3()
+            MenuAction.R3 -> onR3()
+            MenuAction.START -> onStart()
+            MenuAction.SELECT -> onSelect()
+            MenuAction.MENU -> onMenu()
         }
         return true
     }
