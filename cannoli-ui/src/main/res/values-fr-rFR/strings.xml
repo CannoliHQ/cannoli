@@ -18,6 +18,7 @@
     <string name="label_change_emulator">CHANGER L\'ÉMULATEUR</string>
     <string name="label_delete">SUPPRIMER</string>
     <string name="label_confirm">CONFIRMER</string>
+    <string name="label_proceed">CONTINUER</string>
     <string name="label_toggle">BASCULER</string>
     <string name="label_new">NOUVEAU</string>
     <string name="label_settings">PARAMÈTRES</string>
@@ -84,7 +85,6 @@
     <string name="settings_emulation">Émulation</string>
     <string name="settings_integrations">Intégrations</string>
     <string name="settings_advanced">Avancé</string>
-    <string name="settings_debug">Débug</string>
     <string name="settings_about">À propos</string>
     <!-- Setting: which update channel to follow (e.g. stable versus test builds). -->
     <string name="settings_release_channel">Canal de diffusion</string>
@@ -160,6 +160,7 @@
     <!-- Input setting toggle: swap the on-screen positions of the Play and Resume actions. -->
     <string name="setting_swap_play_resume">Permuter la lecture et la reprise</string>
     <!-- Input setting toggle: controls whether the in-game Quit returns to the main menu. -->
+    <string name="setting_main_menu_quit"></string>
     <!-- Input toggle: automatically save a state when quitting a game. -->
     <string name="setting_always_save_on_quit">Enregistrer l\'état à la fermeture</string>
     <!-- Advanced setting toggle: skip the passcode gate for Nonna's Kitchen. Keep "Kitchen" consistent with the feature name. -->
@@ -167,6 +168,7 @@
     <string name="setting_experimental_features">Fonctionnalités expérimentales</string>
     <string name="setting_set_default_launcher">Définir comme Launcher par défaut</string>
     <!-- Same row as setting_set_default_launcher, shown when Cannoli is already the default launcher and the user wants to pick another one. -->
+    <string name="setting_change_default_launcher">Utiliser un autre Launcher</string>
     <!-- Advanced action: recreate the standard platform/system folders. -->
     <string name="setting_regenerate_system_folders">Régénérer les dossiers système</string>
     <!-- Library setting: which content layout to show (platforms, collections only, or Five Game Handheld). -->
@@ -343,7 +345,6 @@
     <string name="romm_vtype_mode">Modes de jeu</string>
     <string name="setting_logging">Journaux</string>
     <!-- Advanced toggle: log the intents used to launch external emulators. -->
-    <string name="setting_audit_emulator_intents">Intentions de l\'émulateur d\'Audit</string>
     <string name="logging_title">Journaux</string>
     <string name="logging_rom_scan">Scan de ROM</string>
     <string name="logging_input">Entrée</string>
@@ -390,6 +391,7 @@
     <!-- Shown in place of an emulator name when a platform has no emulator mapped yet. -->
     <string name="value_needs_setup">Configuration nécessaire</string>
     <string name="emulator_platform_setting">Paramètre de la plateforme</string>
+    <string name="emulator_platform_default">Plateforme par défaut</string>
     <!-- %1$s = the emulator name the platform is mapped to. -->
     <string name="emulator_platform_setting_named">Paramètre de la plateforme (%1$s)</string>
     <string name="rename_error_directory">Impossible de renommer le dossier</string>
@@ -420,10 +422,12 @@
     <string name="housekeeping_refresh_title">Actualisation de la bibliothèque</string>
     <string name="update_download_error_server">Échec du téléchargement. Le serveur a renvoyé une erreur. Réessayez plus tard.</string>
     <string name="update_download_error_network">Le téléchargement a échoué. Vérifiez votre connexion et réessayez.</string>
+    <string name="update_download_error_space">Pas assez de stockage. La mise à jour a besoin de %1$s gratuitement, et %2$s est disponible.</string>
     <string name="launch_error_resolve_file">Impossible de résoudre le fichier de lancement</string>
     <string name="launch_error_extract">Impossible d\'extraire l\'archive</string>
     <string name="launch_error_generic">Impossible de lancer le jeu</string>
     <!-- %1$s = file name. -->
+    <string name="launch_error_bad_game_file">Impossible de lire un ID de jeu depuis %1$s</string>
     <string name="launch_error_update_ricotta">Mettre à jour RicottaArch pour continuer</string>
     <string name="launch_error_update_cannoli">Mettre à jour Cannoli pour continuer</string>
     <!-- %1$s = core name, %2$s = emulator app. -->
@@ -598,6 +602,11 @@
     <string name="ra_load_offline_pending">RA: Hors ligne (données de jeu indisponibles)</string>
     <!-- Credits -->
     <string name="credits_title">Crédits et licences</string>
+    <string name="credits_cores">Noyaux d\'émulateur</string>
+    <string name="credits_shaders">Shaders</string>
+    <string name="credits_fonts">Polices</string>
+    <string name="credits_libraries">Bibliothèques</string>
+    <string name="credits_localization">Contributeurs à la traduction</string>
     <!-- Core picker / nav -->
     <string name="no_compatible_cores">Aucun noyau compatible trouvé</string>
     <string name="no_collections">Aucune collection</string>
@@ -607,6 +616,10 @@
     <!-- Update download -->
     <string name="update_retry">RÉESSAYER</string>
     <string name="restart_required">Redémarrage requis pour appliquer les modifications.</string>
+    <!-- Shown before the ROM directory is changed or cleared, since the rescan that follows prunes
+         database entries for every ROM that is not at the same relative path under the new
+         directory. Cannoli and RetroAchievements are product names; leave them untranslated. -->
+    <string name="library_switch_confirm">Changer le dossier de ROM est une action destructrice.\n\nCannoli re-scanne, efface les ROMs qu\'il ne trouve plus dans sa base de données. Les favoris, collections, surcharges de jeux, ID de jeux RetroAchievements et les jeux récents seront tous supprimés pour les ROMs qui n\'apparaissent pas sous le même chemin relatif dans le nouveau dossier de ROM.\n\nLes ROMs, sauvegardes et sauvegarde d\'état sur le disque restes inchangés.</string>
     <!-- IGM screen titles -->
     <string name="igm_settings">Paramètres</string>
     <string name="igm_video">Vidéo</string>
@@ -645,6 +658,7 @@
     <string name="ach_points_short">%1$dpts</string>
     <!-- %1$d = points. -->
     <string name="ach_points">%1$d points</string>
+    <string name="ach_unlocked_pending"></string>
     <!-- %1$s = date the achievement was unlocked. -->
     <string name="ach_unlocked_date">%1$s Débloqué</string>
     <string name="ach_unlocked">Débloqué</string>
@@ -672,8 +686,18 @@
     <!-- %d = number of required BIOS files missing. -->
     <string name="mapping_required_missing">%d requis manquant</string>
     <!-- Distinguishes platforms sharing a display name. %1$s = platform name, %2$s = platform tag. -->
+    <string name="mapping_platform_name_with_tag">%1$s (%2$s)</string>
+    <!-- Shown above the RetroArch core list when the installed build predates the receiver that answers core queries. -->
+    <string name="mapping_notice_cannot_report_cores">Cette version de RetroArch ne peut pas rapporter les noyaux installés</string>
+    <!-- Shown when RetroArch has the receiver but did not answer the query. -->
+    <string name="mapping_notice_no_response">RetroArch ne répond pas</string>
+    <!-- Shown above the core list when the configured RetroArch package is not installed at all. -->
+    <string name="mapping_notice_not_installed">RetroArch n\'est pas installé</string>
+    <!-- Debug builds only: a gallery of every Nerd Font glyph the launcher draws. Never shipped to users, so not sent to translators. -->
     <!-- Screen title. %s = platform name. -->
     <string name="title_platform_mapping">Mapping %s</string>
+    <!-- Screen title for the per-game emulator picker. %s = game name. -->
+    <string name="title_game_mapping">Émulateur %s</string>
     <!-- Screen title. %s = platform name. -->
     <string name="title_platform_bios">BIOS %s</string>
     <string name="filter_all">TOUT</string>
@@ -719,7 +743,7 @@
     <string name="value_no_cores_found">Aucun Noyau Trouvé</string>
     <string name="label_clear_override">EFFACER</string>
     <!-- %1$s = platform name. -->
-    <string name="dialog_reset_platform_confirm">Réinitialiser %1$s? Cela efface votre sélection d\'émulateurs pour cette plateforme et restaure la valeur par défaut groupée.</string>
+    <string name="dialog_reset_platform_confirm">Réinitialiser %1$s? Votre choix est remplacé par la valeur par défaut de Cannoli, ou effacé s\'il n\'y en a pas.</string>
     <!-- RA achievement preload. %1$s = game name. -->
     <string name="ra_preload_progress">Préchargement de %1$s</string>
     <string name="ra_preload_none">Aucun succès trouvé pour ce jeu</string>
@@ -749,6 +773,8 @@
     <!-- Conflicts resolution screen -->
     <string name="conflicts_title">Conflit de synchronisation</string>
     <string name="conflicts_applying">Application des conflits...</string>
+    <!-- Shown while saves are checked against the server before a game launches. -->
+    <string name="save_sync_checking">Vérification des sauvegardes...</string>
     <!-- %1$d = number of saves that could not be applied. -->
     <plurals name="conflicts_apply_failed">
         <item quantity="one">%1$d Sauvegardes n\'ont pas pu être appliquées</item>
