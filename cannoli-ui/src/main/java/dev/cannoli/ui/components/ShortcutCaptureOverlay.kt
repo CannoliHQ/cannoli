@@ -64,7 +64,7 @@ fun ShortcutCaptureOverlay(
                 text = heldText ?: stringResource(R.string.shortcut_hold_prompt),
                 style = MaterialTheme.typography.bodyMedium.copy(
                     fontSize = fontSize * 0.73f,
-                    color = colors.text.copy(alpha = 0.6f),
+                    color = colors.text,
                 ),
             )
             Spacer(modifier = Modifier.height(Spacing.Lg))

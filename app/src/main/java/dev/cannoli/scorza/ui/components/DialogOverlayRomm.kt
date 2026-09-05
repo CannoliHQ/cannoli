@@ -110,7 +110,7 @@ internal fun RommDialogs(
                 buttonStyle = buttonStyle,
             ) {
                 if (ordered.isEmpty()) {
-                    Text(stringResource(R.string.romm_download_empty), color = colors.text.copy(alpha = 0.5f), fontFamily = font, fontSize = listFontSize)
+                    Text(stringResource(R.string.romm_download_empty), color = colors.text, fontFamily = font, fontSize = listFontSize)
                 } else {
                     val active = if (firstDoneIndex < 0) ordered else ordered.subList(0, firstDoneIndex)
                     val done = if (firstDoneIndex < 0) emptyList() else ordered.subList(firstDoneIndex, ordered.size)

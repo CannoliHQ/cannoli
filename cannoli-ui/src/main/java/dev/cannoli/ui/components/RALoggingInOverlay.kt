@@ -38,7 +38,7 @@ fun RALoggingInOverlay(message: String, failed: Boolean = false, buttonStyle: Bu
             Text(
                 text = message,
                 style = typo.bodyMedium.copy(
-                    color = if (failed) ErrorText else LocalCannoliColors.current.text.copy(alpha = 0.6f)
+                    color = if (failed) ErrorText else LocalCannoliColors.current.text
                 )
             )
         }

@@ -60,7 +60,7 @@ fun RommPairingOverlay(
                 )
                 Text(
                     text = host.substringAfter("://", host),
-                    style = typo.bodyMedium.copy(color = LocalCannoliColors.current.text.copy(alpha = 0.6f)),
+                    style = typo.bodyMedium.copy(color = LocalCannoliColors.current.text),
                     textAlign = TextAlign.Center
                 )
             }

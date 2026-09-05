@@ -89,7 +89,7 @@ private fun ConnRow(label: String, value: String, typo: CannoliTypography, color
     ) {
         Text(
             text = label.uppercase(),
-            style = typo.labelSmall.copy(color = colors.text.copy(alpha = 0.55f), letterSpacing = 1.sp)
+            style = typo.labelSmall.copy(color = colors.text, letterSpacing = 1.sp)
         )
         Spacer(modifier = Modifier.width(Spacing.Md))
         Text(

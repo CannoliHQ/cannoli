@@ -294,7 +294,7 @@ internal fun EmulatorScreens(
                                     Text(
                                         text = tag,
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = cannoliColors.accent.copy(alpha = 0.8f)
+                                        color = cannoliColors.accent
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     if (requiredMissing) {
@@ -317,7 +317,7 @@ internal fun EmulatorScreens(
                                 Text(
                                     text = fw.entry.desc,
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = cannoliColors.text.copy(alpha = 0.55f),
+                                    color = cannoliColors.text,
                                     maxLines = 1
                                 )
                             }

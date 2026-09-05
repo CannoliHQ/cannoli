@@ -127,7 +127,7 @@ private fun Subtitle(platformName: String, localState: LocalState, scale: Float)
     val muted = colors.text.copy(alpha = 0.45f)
     val onDevice = localState == LocalState.PRESENT
     Row(modifier = Modifier.padding(start = pillInternalPadding()), verticalAlignment = Alignment.CenterVertically) {
-        Text(text = platformName, color = colors.text.copy(alpha = 0.6f), fontFamily = font, fontSize = (13 * scale).sp)
+        Text(text = platformName, color = colors.text, fontFamily = font, fontSize = (13 * scale).sp)
         Spacer(modifier = Modifier.width((12 * scale).dp))
         Box(
             modifier = Modifier

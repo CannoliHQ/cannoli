@@ -188,7 +188,7 @@ fun BoxScope.OsdPanel(
                 Text(
                     text = label,
                     style = MaterialTheme.typography.bodyMedium.copy(fontSize = OsdPanelLabelSp),
-                    color = colors.highlightText.copy(alpha = 0.55f),
+                    color = colors.highlightText,
                     modifier = Modifier.width(OsdPanelLabelWidth),
                 )
                 Text(
@@ -201,7 +201,7 @@ fun BoxScope.OsdPanel(
     }
 }
 
-private val OsdPanelLabelSp = 13.sp
+private val OsdPanelLabelSp = 11.sp
 private val OsdPanelValueSp = 14.sp
 
 // Fixed so the values line up in a column rather than stepping in and out as labels change width.

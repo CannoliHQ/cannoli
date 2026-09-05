@@ -76,7 +76,7 @@ internal fun SaveSyncDialogs(
                     )
                     androidx.compose.material3.Text(
                         text = stringResource(R.string.save_conflict_subtitle),
-                        color = LocalCannoliColors.current.text.copy(alpha = 0.55f),
+                        color = LocalCannoliColors.current.text,
                         fontSize = listFontSize * 0.8f,
                         lineHeight = listLineHeight * 0.8f,
                     )
@@ -144,7 +144,7 @@ internal fun SaveSyncDialogs(
                 if (dialogState.entries.isEmpty()) {
                     Text(
                         text = stringResource(R.string.sync_history_empty),
-                        color = colors.text.copy(alpha = 0.5f),
+                        color = colors.text,
                         fontFamily = font,
                         fontSize = listFontSize,
                     )
@@ -175,7 +175,7 @@ internal fun SaveSyncDialogs(
                 if (dialogState.errors.isEmpty()) {
                     Text(
                         text = stringResource(dev.cannoli.ui.R.string.sync_errors_empty),
-                        color = colors.text.copy(alpha = 0.5f),
+                        color = colors.text,
                         fontFamily = font,
                         fontSize = listFontSize,
                     )

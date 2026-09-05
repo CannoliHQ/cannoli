@@ -102,9 +102,7 @@ fun IGMSettingsScreen(
                     Spacer(modifier = Modifier.height(Spacing.Md))
                     Text(
                         text = description,
-                        style = typo.bodyMedium.copy(
-                            color = colors.text.copy(alpha = 0.8f)
-                        ),
+                        style = typo.bodyMedium,
                         modifier = Modifier.padding(start = pillInternalPadding())
                     )
                 }

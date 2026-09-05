@@ -76,7 +76,7 @@ fun LaunchIssue(
                 Text(
                     text = subject,
                     style = if (fits) bodyStyle else smallStyle,
-                    color = LocalCannoliColors.current.text.copy(alpha = 0.6f),
+                    color = LocalCannoliColors.current.text,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth()
                 )

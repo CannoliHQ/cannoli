@@ -151,7 +151,7 @@ private fun PickerDialog(
         if (dialogState.items.isEmpty() && empty != null) {
             Text(
                 text = empty,
-                color = LocalCannoliColors.current.text.copy(alpha = 0.5f),
+                color = LocalCannoliColors.current.text,
                 fontFamily = LocalCannoliFont.current,
                 fontSize = listFontSize,
             )
