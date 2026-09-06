@@ -278,7 +278,7 @@
     </plurals>
     <string name="romm_download_notification_title">Descargas RomM</string>
     <string name="romm_download_notification_starting">Iniciando descargas</string>
-    <string name="romm_download_notification_active">Bajando</string>
+    <string name="romm_download_notification_active">Descargando</string>
     <!-- Notification. %1$d is the number of active downloads. -->
     <string name="romm_download_notification_count">Descargando %1$d</string>
     <string name="romm_art_notification_active">Descargando box art</string>
@@ -470,7 +470,7 @@
     <string name="empty_content">No se encontró contenido. ¡Ve a añadir algunos!</string>
     <!-- 5GH = Five Game Handheld; keep "5GH" as-is. -->
     <string name="empty_fgh_collection">Tu colección de 5GH está vacía. ¡Ve a llenarla!</string>
-    <string name="label_recently_played">Reproducido recientemente</string>
+    <string name="label_recently_played">Recientes</string>
     <string name="label_favorites">Favoritos</string>
     <string name="label_collections">Colecciones</string>
     <!-- Screen title. %1$s = the search query. -->
@@ -573,7 +573,7 @@
     <string name="osd_disc_fallback">Disco %1$d</string>
     <string name="igm_quit">Salir</string>
     <string name="igm_cheats">Trampas</string>
-    <string name="title_cheats">Trampas</string>
+    <string name="title_cheats">Trucos</string>
     <string name="label_restore_session">RESTAR LA ÚLTIMA SESIÓN</string>
     <!-- Scaling mode: use the size the emulator core reports. -->
     <string name="scaling_core_reported">Núcleo reportado</string>
@@ -602,8 +602,8 @@
     <string name="ra_load_offline_pending">RA: Desconectado (datos del juego no disponibles)</string>
     <!-- Credits -->
     <string name="credits_title">Créditos y licencias</string>
-    <string name="credits_cores">Núcleos de emulador</string>
-    <string name="credits_shaders">Filtro visual</string>
+    <string name="credits_cores">Núcleos del emulador</string>
+    <string name="credits_shaders">Shaders</string>
     <string name="credits_fonts">Fuentes</string>
     <string name="credits_libraries">Bibliotecas</string>
     <string name="credits_localization">Ubicación de los colaboradores</string>
