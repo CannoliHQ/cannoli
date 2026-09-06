@@ -53,25 +53,33 @@ internal fun KitchenHttpServer.handleMappings(segments: List<String>): Response 
     val requested = segments.firstOrNull()
     if (requested != null) {
         val file = File(dir, requested)
-        if (!isSecure(file) || !file.isFile) return errorResponse(404, "not found")
+        // The same question the listing asks. Without it a file could be absent from the list and
+        // still fetchable by name, so the two halves would disagree about what a mapping is.
+        if (!isSecure(file) || mappingNameFor(file) == null) return errorResponse(404, "not found")
         return fileResponse(file, mimeForPath(file.name))
     }
-    val mappings = dir.listFiles { f: File -> f.isFile && f.extension.equals("cfg", ignoreCase = true) }
-        ?.mapNotNull { f ->
-            val entry = runCatching {
-                dev.cannoli.scorza.input.autoconfig.RetroArchCfgParser.parse(f.readText(), fileName = f.name)
-            }.getOrNull() ?: return@mapNotNull null
-            val device = entry.deviceName?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
-            MappingEntry(
-                file = f.name,
-                // A curated entry carries a friendly display name; one the wizard built repeats the
-                // pad's reported name, which is the most a device can say about itself.
-                name = entry.displayName?.takeIf { it.isNotBlank() } ?: device,
-            )
-        }
+    val mappings = dir.listFiles()
+        ?.mapNotNull { f -> mappingNameFor(f)?.let { MappingEntry(file = f.name, name = it) } }
         ?.sortedBy { it.name.lowercase(java.util.Locale.ROOT) }
         ?: emptyList()
     return jsonResponse(200, MappingsResponse.serializer(), MappingsResponse(mappings))
+}
+
+/**
+ * The name to show for [file], or null when it is not a mapping at all.
+ *
+ * A curated entry carries a friendly `input_device_display_name`; one the wizard built repeats the
+ * pad's reported name, which is the most a device can say about itself. Returning null is what keeps
+ * the seeder's stamp and RetroArch's autoconfig cache out of both the listing and the download,
+ * without either of them keeping a list of names to exclude.
+ */
+private fun mappingNameFor(file: File): String? {
+    if (!file.isFile || !file.extension.equals("cfg", ignoreCase = true)) return null
+    val entry = runCatching {
+        dev.cannoli.scorza.input.autoconfig.RetroArchCfgParser.parse(file.readText(), fileName = file.name)
+    }.getOrNull() ?: return null
+    val device = entry.deviceName?.takeIf { it.isNotBlank() } ?: return null
+    return entry.displayName?.takeIf { it.isNotBlank() } ?: device
 }
 
 internal const val MAPPINGS_DIR = "Config/Input/Autoconfig/android"

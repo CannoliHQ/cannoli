@@ -158,6 +158,18 @@ class KitchenServerTest {
         assertFalse(body.contains("nameless.cfg"))
     }
 
+    // Found on device: excluding a file from the listing is not enough if it is still fetchable by
+    // name, because then the two halves disagree about what a mapping is.
+    @Test fun whatIsNotListedCannotBeDownloaded() {
+        writeMapping("real.cfg", "input_device = \"Real Pad\"\n")
+        writeMapping(".seed_version", "5b4fddaa8e967470|Retroid Pocket Nova")
+        writeMapping("notes.txt", "not a mapping")
+
+        assertEquals(200, request("GET", "/api/mappings/real.cfg").first)
+        assertEquals(404, request("GET", "/api/mappings/.seed_version").first)
+        assertEquals(404, request("GET", "/api/mappings/notes.txt").first)
+    }
+
     @Test fun unknownApiRouteIs404() {
         val (code, _) = request("GET", "/api/nonsense")
         assertEquals(404, code)
