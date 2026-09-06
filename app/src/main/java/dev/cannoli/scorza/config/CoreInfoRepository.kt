@@ -66,6 +66,16 @@ class CoreInfoRepository(private val assets: AssetManager, private val cacheDir:
         "AMIGA" to listOf("Commodore - Amiga"),
         "AMIGA500" to listOf("Commodore - Amiga"),
         "AMIGA1200" to listOf("Commodore - Amiga"),
+        "CD32" to listOf("Commodore - CD32"),
+        "CDTV" to listOf("Commodore - CDTV"),
+        "MSX" to listOf("Microsoft - MSX", "Microsoft - MSX2"),
+        "NAOMI" to listOf("Sega - Naomi", "Sega - Naomi 2"),
+        "ATOMISWAVE" to listOf("Atomiswave"),
+        "SATELLAVIEW" to listOf("Nintendo - Satellaview"),
+        // No core declares a 64DD database: the 64DD in mupen64plus_next and parallel_n64 is a
+        // firmware entry for the IPL, not a DAT. The cores that run N64 are the cores that run its
+        // disks, so this deliberately borrows the N64 database rather than resolving to nothing.
+        "N64DD" to listOf("Nintendo - Nintendo 64"),
         "DOS" to listOf("DOS"),
         "SCUMMVM" to listOf("ScummVM")
     )

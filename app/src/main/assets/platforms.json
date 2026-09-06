@@ -19,6 +19,11 @@
     "group": "Nintendo",
     "core": "snes9x_libretro"
   },
+  "SATELLAVIEW": {
+    "name": "Satellaview",
+    "group": "Nintendo",
+    "core": "bsnes_libretro"
+  },
   "VIRTUALBOY": {
     "name": "Virtual Boy",
     "group": "Nintendo",
@@ -27,10 +32,16 @@
   "N64": {
     "name": "Nintendo 64",
     "group": "Nintendo",
+    "core": "mupen64plus_next_gles3_libretro",
     "app": [
       { "package": "org.mupen64plusae.v3.fzurita", "activity": "paulscode.android.mupen64plusae.SplashActivity", "action": "android.intent.action.VIEW", "data": { "kind": "absolute_path" } },
       { "package": "org.mupen64plusae.v3.fzurita.pro", "activity": "paulscode.android.mupen64plusae.SplashActivity", "action": "android.intent.action.VIEW", "data": { "kind": "absolute_path" } }
     ]
+  },
+  "N64DD": {
+    "name": "Nintendo 64DD",
+    "group": "Nintendo",
+    "core": "mupen64plus_next_gles3_libretro"
   },
   "GBC": {
     "name": "Game Boy Color",
@@ -145,6 +156,18 @@
       { "package": "com.flycast.emulator", "activity": "com.flycast.emulator.MainActivity", "action": "android.intent.action.VIEW", "data": { "kind": "external_storage_saf" } },
       { "package": "io.recompiled.redream", "action": "android.intent.action.VIEW", "data": { "kind": "file_provider" } }
     ]
+  },
+  "NAOMI": {
+    "name": "Naomi",
+    "group": "Sega",
+    "core": "flycast_libretro",
+    "arcade": true
+  },
+  "ATOMISWAVE": {
+    "name": "Atomiswave",
+    "group": "Arcade",
+    "core": "flycast_libretro",
+    "arcade": true
   },
 
   "PS": {
@@ -284,6 +307,21 @@
     "name": "Amiga",
     "group": "Computer",
     "core": "puae_libretro"
+  },
+  "CD32": {
+    "name": "Amiga CD32",
+    "group": "Computer",
+    "core": "puae_libretro"
+  },
+  "CDTV": {
+    "name": "Amiga CDTV",
+    "group": "Computer",
+    "core": "puae_libretro"
+  },
+  "MSX": {
+    "name": "MSX",
+    "group": "Computer",
+    "core": "bluemsx_libretro"
   },
   "SCUMMVM": {
     "name": "ScummVM",
