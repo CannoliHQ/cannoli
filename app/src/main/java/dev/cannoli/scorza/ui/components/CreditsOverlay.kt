@@ -17,7 +17,7 @@ import dev.cannoli.ui.components.pillItemHeight
 
 enum class CreditsCategory(@StringRes val titleRes: Int) {
     Cores(R.string.credits_cores),
-    Shaders(R.string.credits_shaders),
+    Shaders(R.string.label_shaders),
     Fonts(R.string.credits_fonts),
     Libraries(R.string.credits_libraries),
     Localization(R.string.credits_localization),

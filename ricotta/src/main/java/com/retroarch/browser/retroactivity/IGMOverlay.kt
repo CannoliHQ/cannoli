@@ -178,8 +178,8 @@ class IGMOverlay(
         bridge.onOpenNativeMenu = controller.onOpenNativeMenu
 
         bridge.raStrings = RaOptionStrings(
-            rootTitle = uiContext.getString(R.string.igm_settings),
-            on = uiContext.getString(R.string.igm_on),
+            rootTitle = uiContext.getString(R.string.settings_title),
+            on = uiContext.getString(R.string.value_on),
             off = uiContext.getString(R.string.igm_off),
             restartHint = uiContext.getString(R.string.igm_restart_hint),
             savePlatform = uiContext.getString(R.string.igm_save_platform, platformName),
@@ -206,7 +206,7 @@ class IGMOverlay(
             shaderFilterLinear = uiContext.getString(R.string.igm_shader_filter_linear),
             shaderFilterNearest = uiContext.getString(R.string.igm_shader_filter_nearest),
             shaderScaleX = { uiContext.getString(R.string.igm_shader_scale_x, it) },
-            shaderNone = uiContext.getString(R.string.igm_shader_none),
+            shaderNone = uiContext.getString(R.string.value_none),
             custom = uiContext.getString(R.string.igm_curated_custom),
             infoCore = uiContext.getString(R.string.igm_info_core),
             infoCoreVersion = uiContext.getString(R.string.igm_info_core_version),
@@ -224,18 +224,18 @@ class IGMOverlay(
             curatedCategoryTitles = mapOf(
                 CuratedCatalog.CATEGORY_VIDEO to uiContext.getString(R.string.igm_video),
                 CuratedCatalog.CATEGORY_EMULATOR to uiContext.getString(R.string.igm_emulator),
-                CuratedCatalog.CATEGORY_ADVANCED to uiContext.getString(R.string.igm_advanced),
+                CuratedCatalog.CATEGORY_ADVANCED to uiContext.getString(R.string.settings_advanced),
                 CuratedCatalog.CATEGORY_INFO to uiContext.getString(R.string.igm_info),
                 CuratedCatalog.CATEGORY_OVERLAY to uiContext.getString(R.string.igm_overlay),
-                CuratedCatalog.CATEGORY_INPUT to uiContext.getString(R.string.igm_input),
-                CuratedCatalog.CATEGORY_SHADER to uiContext.getString(R.string.igm_shader),
+                CuratedCatalog.CATEGORY_INPUT to uiContext.getString(R.string.settings_input),
+                CuratedCatalog.CATEGORY_SHADER to uiContext.getString(R.string.label_shaders),
             ),
             curatedRowLabels = mapOf(
                 "curated_screen_scaling" to uiContext.getString(R.string.igm_curated_screen_scaling),
                 "curated_screen_sharpness" to uiContext.getString(R.string.igm_curated_screen_sharpness),
                 "curated_max_ff_speed" to uiContext.getString(R.string.igm_curated_max_ff_speed),
                 "curated_ff_mute" to uiContext.getString(R.string.igm_curated_ff_mute),
-                "curated_rewind" to uiContext.getString(R.string.igm_curated_rewind),
+                "curated_rewind" to uiContext.getString(R.string.label_rewind),
                 "curated_show_fps" to uiContext.getString(R.string.igm_curated_show_fps),
                 "curated_debug_hud" to uiContext.getString(R.string.igm_curated_debug_hud),
             ),
@@ -249,7 +249,7 @@ class IGMOverlay(
                 "ff_4x" to uiContext.getString(R.string.igm_ff_multiplier, 4),
                 "ff_8x" to uiContext.getString(R.string.igm_ff_multiplier, 8),
                 "ff_unlimited" to uiContext.getString(R.string.igm_ff_unlimited),
-                "on" to uiContext.getString(R.string.igm_on),
+                "on" to uiContext.getString(R.string.value_on),
                 "off" to uiContext.getString(R.string.igm_off),
             ),
         )

@@ -104,7 +104,7 @@ internal fun RommDialogs(
                     // Its own button rather than sharing north: a queue can hold finished rows and
                     // active ones at the same time, so clearing and cancelling have to coexist.
                     if (ordered.any { it.status == DownloadStatus.Done || it.status is DownloadStatus.Failed }) {
-                        add(buttonStyle.west to stringResource(R.string.label_clear_finished))
+                        add(buttonStyle.west to stringResource(R.string.label_clear))
                     }
                 },
                 buttonStyle = buttonStyle,
@@ -162,7 +162,7 @@ private fun DownloadRow(item: DownloadItem, isSelected: Boolean, fontSize: TextU
                     else if (s.downloaded > 0) android.text.format.Formatter.formatShortFileSize(context, s.downloaded)
                     else stringResource(R.string.romm_download_downloading)
                 DownloadStatus.Queued -> stringResource(R.string.romm_download_queued)
-                is DownloadStatus.Failed -> stringResource(R.string.romm_download_failed)
+                is DownloadStatus.Failed -> stringResource(R.string.romm_art_failed)
                 else -> ""
             }
             // Same colour as the label it sits beside, and the row's own lineHeight: without it the

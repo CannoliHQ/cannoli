@@ -45,8 +45,8 @@ fun SaveSlotsScreen(
             listLineHeight = listLineHeight,
             leftBottomItems = buildList {
                 if (!isAutosave && selected != null) {
-                    add(GLYPH_L1 to stringResource(R.string.save_slots_delete))
-                    add(buttonStyle.west to stringResource(R.string.save_slots_rename))
+                    add(GLYPH_L1 to stringResource(R.string.label_delete))
+                    add(buttonStyle.west to stringResource(R.string.label_rename))
                 }
             },
             rightBottomItems = buildList {
@@ -75,7 +75,7 @@ fun SaveSlotsScreen(
             ConfirmOverlay(
                 message = stringResource(R.string.save_slots_delete_confirm, selected.slot),
                 buttonStyle = buttonStyle,
-                confirmLabel = stringResource(R.string.save_slots_delete),
+                confirmLabel = stringResource(R.string.label_delete),
             )
         }
     }

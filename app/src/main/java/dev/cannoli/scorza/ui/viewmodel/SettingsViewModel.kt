@@ -876,13 +876,13 @@ class SettingsViewModel @Inject constructor(
             }
             if (settings.contentMode != ContentMode.FIVE_GAME_HANDHELD) {
                 add(SettingsItem(SettingsKey.SHOW_RECENTLY_PLAYED.id, R.string.setting_show_recently_played, valueRes = showHide(settings.showRecentlyPlayed)))
-                add(SettingsItem(SettingsKey.SHOW_FAVORITES.id, R.string.setting_show_favorites, valueRes = showHide(settings.showFavorites)))
+                add(SettingsItem(SettingsKey.SHOW_FAVORITES.id, R.string.label_favorites, valueRes = showHide(settings.showFavorites)))
             }
             add(SettingsItem(SettingsKey.MANAGE_PORTS.id, R.string.setting_manage_ports, isEditable = true))
             add(SettingsItem(SettingsKey.MANAGE_TOOLS.id, R.string.setting_manage_tools, isEditable = true))
             val scanRes = if (settings.scanLibraryAutomatically) R.string.value_automatically else R.string.value_manually
             add(SettingsItem(SettingsKey.SCAN_LIBRARY.id, R.string.setting_scan_library, valueRes = scanRes))
-            add(SettingsItem(SettingsKey.SD_ROOT.id, R.string.setting_sd_root, valueText = settings.sdCardRoot, isEditable = true))
+            add(SettingsItem(SettingsKey.SD_ROOT.id, R.string.value_cannoli_root, valueText = settings.sdCardRoot, isEditable = true))
             val romDir = settings.romDirectory
             add(SettingsItem(SettingsKey.ROM_DIRECTORY.id, R.string.setting_rom_directory, valueText = romDir.ifEmpty { null }, valueRes = if (romDir.isEmpty()) R.string.value_cannoli_root else null, isEditable = true, canCycle = false))
         }
@@ -967,11 +967,11 @@ class SettingsViewModel @Inject constructor(
                 R.string.setting_update_cores,
                 valueText = settings.lastCoreUpdate.takeIf { it.isNotBlank() }?.let {
                     context.getString(
-                        if (settings.lastCoreUpdateCompleted) R.string.setting_update_cores_last
+                        if (settings.lastCoreUpdateCompleted) R.string.setting_update_last
                         else R.string.setting_update_cores_stopped,
                         it,
                     )
-                } ?: context.getString(R.string.setting_update_cores_never),
+                } ?: context.getString(R.string.setting_update_never),
                 isEditable = true,
                 isAction = true,
                 canCycle = false,
@@ -980,8 +980,8 @@ class SettingsViewModel @Inject constructor(
                 SettingsKey.UPDATE_SHADERS.id,
                 R.string.setting_update_shaders,
                 valueText = settings.lastShaderUpdate.takeIf { it.isNotBlank() }?.let {
-                    context.getString(R.string.setting_update_shaders_last, it)
-                } ?: context.getString(R.string.setting_update_shaders_never),
+                    context.getString(R.string.setting_update_last, it)
+                } ?: context.getString(R.string.setting_update_never),
                 isEditable = true,
                 isAction = true,
                 canCycle = false,
@@ -1028,7 +1028,7 @@ class SettingsViewModel @Inject constructor(
         SettingsCategory.ADVANCED -> buildList {
             add(SettingsItem(SettingsKey.LOGGING.id, R.string.setting_logging, isEditable = true))
             add(SettingsItem(SettingsKey.SCREEN_GEOMETRY.id, R.string.setting_screen_geometry, isEditable = true))
-            add(SettingsItem(SettingsKey.PERMISSIONS.id, R.string.setting_permissions, isEditable = true))
+            add(SettingsItem(SettingsKey.PERMISSIONS.id, R.string.onboarding_permissions_title, isEditable = true))
             add(SettingsItem(SettingsKey.REGENERATE_SYSTEM_FOLDERS.id, R.string.setting_regenerate_system_folders, isEditable = true))
             add(SettingsItem(SettingsKey.RESET_CUSTOM_CONFIG.id, R.string.setting_reset_custom_config, isEditable = true))
             add(SettingsItem(SettingsKey.KITCHEN_CODE_BYPASS.id, R.string.setting_kitchen_code_bypass, valueRes = onOff(settings.kitchenCodeBypass)))

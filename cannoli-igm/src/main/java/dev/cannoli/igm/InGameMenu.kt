@@ -313,15 +313,15 @@ fun PolaroidFrame(
 private fun igmMenuLabel(action: IgmMenuAction): String = stringResource(
     when (action) {
         IgmMenuAction.RESUME -> dev.cannoli.ui.R.string.igm_resume
-        IgmMenuAction.SAVE_STATE -> dev.cannoli.ui.R.string.igm_save_state
-        IgmMenuAction.LOAD_STATE -> dev.cannoli.ui.R.string.igm_load_state
-        IgmMenuAction.ACHIEVEMENTS -> dev.cannoli.ui.R.string.igm_achievements
-        IgmMenuAction.GUIDE -> dev.cannoli.ui.R.string.igm_guide
-        IgmMenuAction.CHEATS -> dev.cannoli.ui.R.string.igm_cheats
-        IgmMenuAction.SETTINGS -> dev.cannoli.ui.R.string.igm_settings
+        IgmMenuAction.SAVE_STATE -> dev.cannoli.ui.R.string.shortcut_action_save_state
+        IgmMenuAction.LOAD_STATE -> dev.cannoli.ui.R.string.shortcut_action_load_state
+        IgmMenuAction.ACHIEVEMENTS -> dev.cannoli.ui.R.string.label_achievements
+        IgmMenuAction.GUIDE -> dev.cannoli.ui.R.string.title_guide
+        IgmMenuAction.CHEATS -> dev.cannoli.ui.R.string.title_cheats
+        IgmMenuAction.SETTINGS -> dev.cannoli.ui.R.string.settings_title
         IgmMenuAction.SWITCH_DISC -> dev.cannoli.ui.R.string.igm_switch_disc
         IgmMenuAction.REASSIGN -> dev.cannoli.ui.R.string.igm_reassign_players
-        IgmMenuAction.RESET -> dev.cannoli.ui.R.string.igm_reset
+        IgmMenuAction.RESET -> dev.cannoli.ui.R.string.osd_reset
         IgmMenuAction.QUIT -> dev.cannoli.ui.R.string.igm_quit
     }
 )

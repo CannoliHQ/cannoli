@@ -28,7 +28,7 @@ fun keyboardHelpGroups(layout: KeyboardLayout): List<HelpGroup> {
             R.string.kbd_help_group_action,
             listOf(
                 HelpEntry(listOf(HelpGlyph.START), R.string.kbd_help_submit),
-                HelpEntry(listOf(HelpGlyph.WEST), R.string.kbd_help_cancel),
+                HelpEntry(listOf(HelpGlyph.WEST), R.string.label_cancel),
             )
         ),
     )

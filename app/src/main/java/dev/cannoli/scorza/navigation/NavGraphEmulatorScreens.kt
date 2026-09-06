@@ -49,7 +49,7 @@ internal fun EmulatorScreens(
                 1 -> stringResource(R.string.filter_missing)
                 2 -> stringResource(R.string.filter_unmapped)
                 3 -> stringResource(R.string.filter_mapped)
-                else -> stringResource(R.string.filter_all)
+                else -> stringResource(R.string.label_all)
             }
             val selected = currentScreen.mappings.getOrNull(currentScreen.selectedIndex)
             val canSelect = selected != null
@@ -339,7 +339,7 @@ internal fun EmulatorScreens(
                 listLineHeight = listLineHeight,
                 fullWidth = true,
                 rightBottomItems = buildList {
-                    if (currentScreen.overrides.isNotEmpty()) add(labels.north to stringResource(R.string.label_clear_override))
+                    if (currentScreen.overrides.isNotEmpty()) add(labels.north to stringResource(R.string.label_clear))
                 },
                 buttonStyle = labels
             ) {

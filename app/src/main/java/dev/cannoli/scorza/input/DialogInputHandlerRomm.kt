@@ -130,7 +130,7 @@ internal fun DialogInputHandler.rommActionsPicker(hasDownloads: Boolean): Dialog
 }
 
 internal fun DialogInputHandler.rommAdvancedPicker(): DialogState.Picker = DialogState.Picker(
-    title = context.getString(dev.cannoli.scorza.R.string.romm_settings_advanced),
+    title = context.getString(dev.cannoli.scorza.R.string.settings_advanced),
     confirmLabel = context.getString(dev.cannoli.scorza.R.string.label_select),
     items = dev.cannoli.scorza.ui.components.ROMM_ADVANCED_ROWS.map {
         dev.cannoli.scorza.ui.screens.PickerItem(context.getString(it))
@@ -176,7 +176,7 @@ internal fun DialogInputHandler.rommCollectionTogglePicker(
     items: List<dev.cannoli.scorza.ui.screens.RommCollectionToggleItem>,
     selectedIndex: Int = 0,
 ): DialogState.Picker = DialogState.Picker(
-    title = context.getString(dev.cannoli.scorza.R.string.romm_collections_title),
+    title = context.getString(dev.cannoli.scorza.R.string.label_collections),
     confirmLabel = context.getString(dev.cannoli.scorza.R.string.label_toggle),
     items = items.map { dev.cannoli.scorza.ui.screens.PickerItem(it.displayName, checked = it.visible) },
     selectedIndex = selectedIndex,
@@ -229,7 +229,7 @@ private fun DialogInputHandler.onRommSettingsSelected(row: dev.cannoli.scorza.ui
         }
         dev.cannoli.scorza.ui.components.RommSettingsRow.COLLECTIONS -> {
             val items = listOf(
-                dev.cannoli.scorza.ui.screens.RommCollectionToggleItem(dev.cannoli.scorza.romm.RommCollectionGroup.USER, context.getString(dev.cannoli.scorza.R.string.romm_collection_group_user), rommStore.showUserCollections),
+                dev.cannoli.scorza.ui.screens.RommCollectionToggleItem(dev.cannoli.scorza.romm.RommCollectionGroup.USER, context.getString(dev.cannoli.scorza.R.string.romm_collections_my), rommStore.showUserCollections),
                 dev.cannoli.scorza.ui.screens.RommCollectionToggleItem(dev.cannoli.scorza.romm.RommCollectionGroup.VIRTUAL, context.getString(dev.cannoli.scorza.R.string.romm_collection_group_virtual), rommStore.showVirtualCollections),
                 dev.cannoli.scorza.ui.screens.RommCollectionToggleItem(dev.cannoli.scorza.romm.RommCollectionGroup.SMART, context.getString(dev.cannoli.scorza.R.string.romm_collection_group_smart), rommStore.showSmartCollections),
             )
@@ -631,7 +631,7 @@ internal fun DialogInputHandler.artResultRowCount(ds: DialogState.RommArtResults
     dev.cannoli.scorza.ui.screens.rommArtIssueRows(
         ds.results,
         context.getString(dev.cannoli.ui.R.string.romm_art_section_no_match),
-        context.getString(dev.cannoli.ui.R.string.romm_art_section_failed),
+        context.getString(dev.cannoli.ui.R.string.romm_art_failed),
     ).size
 
 internal fun DialogInputHandler.rommSavesOptions(rom: dev.cannoli.scorza.model.Rom): List<String> = buildList {

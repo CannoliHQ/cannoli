@@ -65,7 +65,7 @@ fun RommArtResultsScreen(
     val rows = rommArtIssueRows(
         results,
         stringResource(R.string.romm_art_section_no_match),
-        stringResource(R.string.romm_art_section_failed),
+        stringResource(R.string.romm_art_failed),
     )
     ScreenBackground(backgroundImagePath = backgroundImagePath, backgroundTint = backgroundTint) {
         Box(modifier = Modifier.fillMaxSize().padding(screenInsets())) {

@@ -150,8 +150,8 @@ internal fun AppScreens(
                             lineHeight = listLineHeight,
                             verticalPadding = listVerticalPadding,
                         )
-                        else -> PillRowText(
-                            label = stringResource(row.labelRes),
+                        dev.cannoli.scorza.ui.components.RaAccountRow.OFFLINE_SETS -> PillRowText(
+                            label = stringResource(R.string.achievos_account_row_offline_sets),
                             isSelected = isSelected,
                             fontSize = listFontSize,
                             lineHeight = listLineHeight,

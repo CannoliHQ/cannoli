@@ -4,7 +4,7 @@ import dev.cannoli.ui.R
 
 enum class RommVirtualType(val serverValue: String, val labelRes: Int) {
     FRANCHISE("franchise", R.string.romm_vtype_franchise),
-    COLLECTION("collection", R.string.romm_vtype_collection),
+    COLLECTION("collection", R.string.label_collections),
     GENRE("genre", R.string.romm_vtype_genre),
     COMPANY("company", R.string.romm_vtype_company),
     MODE("mode", R.string.romm_vtype_mode);

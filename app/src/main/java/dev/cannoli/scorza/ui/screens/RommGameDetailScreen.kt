@@ -113,7 +113,7 @@ fun RommGameDetailScreen(
                     if (RommManual.isAvailable(game))
                         add(buttonStyle.west to stringResource(R.string.label_manual))
                     if (RommGameDetailLayout.showDownloadAction(localState, DOWNLOAD_ENABLED, folded = memberCount > 1))
-                        add(buttonStyle.north to stringResource(R.string.romm_detail_download))
+                        add(buttonStyle.north to stringResource(R.string.label_download))
                 },
             )
         }

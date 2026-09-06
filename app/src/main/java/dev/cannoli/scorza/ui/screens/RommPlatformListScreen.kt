@@ -74,7 +74,7 @@ fun RommPlatformListScreen(
                 ) { index, _, isSelected ->
                     if (showCollectionsRow && index == 0) {
                         PillRowKeyValue(
-                            label = stringResource(R.string.romm_collections_title),
+                            label = stringResource(R.string.label_collections),
                             value = collectionCount.toString(),
                             isSelected = isSelected,
                             fontSize = listFontSize,

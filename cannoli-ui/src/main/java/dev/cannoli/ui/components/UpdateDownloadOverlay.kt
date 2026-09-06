@@ -23,6 +23,6 @@ fun UpdateDownloadOverlay(
         progress = progress,
         error = error,
         buttonStyle = buttonStyle,
-        retryLabel = stringResource(R.string.update_retry),
+        retryLabel = stringResource(R.string.label_retry),
     )
 }

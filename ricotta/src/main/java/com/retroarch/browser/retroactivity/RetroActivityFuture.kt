@@ -220,7 +220,7 @@ class RetroActivityFuture : RetroActivityCamera() {
                             R.string.achievos_load_success,
                             it.who,
                             osdContext.getString(
-                                if (it.hardcore) R.string.achievos_hardcore else R.string.achievos_softcore
+                                if (it.hardcore) R.string.achievos_mode_hardcore else R.string.achievos_mode_softcore
                             ),
                             it.unlocked,
                             it.total,
@@ -273,7 +273,7 @@ class RetroActivityFuture : RetroActivityCamera() {
         "frames" -> getString(R.string.igm_debug_frames)
         "memory" -> getString(R.string.igm_debug_memory)
         "geometry" -> getString(R.string.igm_debug_geometry)
-        "core" -> getString(R.string.igm_debug_core)
+        "core" -> getString(R.string.igm_info_core)
         "driver" -> getString(R.string.igm_debug_driver)
         else -> key
     }

@@ -263,7 +263,7 @@ fun CannoliIGM(
                         settingsItems.getOrNull(screen.selectedIndex)?.description != null
                     val bottomBarRight = when {
                         settingsReordering ->
-                            listOf(labels.confirm to stringResource(dev.cannoli.ui.R.string.label_done))
+                            listOf(labels.confirm to stringResource(dev.cannoli.ui.R.string.romm_art_done))
                         description != null -> emptyList()
                         inShaderTree -> buildList {
                             // Offered only while this game overrides its platform, which is what
@@ -280,7 +280,7 @@ fun CannoliIGM(
                             )
                         }
                         hasDescription -> listOf(
-                            MENU_GLYPH to stringResource(dev.cannoli.ui.R.string.igm_help)
+                            MENU_GLYPH to stringResource(dev.cannoli.ui.R.string.label_help)
                         )
                         rowCycles -> emptyList()
                         else -> listOf(labels.confirm to selectLabel)
@@ -349,7 +349,7 @@ fun CannoliIGM(
                         )
                         return@Box
                     }
-                    val none = stringResource(dev.cannoli.ui.R.string.igm_shortcut_none)
+                    val none = stringResource(dev.cannoli.ui.R.string.value_none)
                     val listening = stringResource(dev.cannoli.ui.R.string.igm_shortcut_listening)
                     val items = shortcutRows.mapIndexed { i, row ->
                         val binding = screen.listening && i == screen.selectedIndex

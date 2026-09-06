@@ -15,10 +15,10 @@ enum class RommActionRow(@androidx.annotation.StringRes val labelRes: Int) {
     }
 }
 
-enum class RaAccountRow(@androidx.annotation.StringRes val labelRes: Int, val isCycle: Boolean = false) {
-    ACCOUNT(R.string.achievos_account_row_account),
-    HARDCORE(R.string.achievos_account_row_hardcore, isCycle = true),
-    OFFLINE_SETS(R.string.achievos_account_row_offline_sets),
+enum class RaAccountRow(val isCycle: Boolean = false) {
+    ACCOUNT,
+    HARDCORE(isCycle = true),
+    OFFLINE_SETS,
 }
 
 enum class RommSettingsRow(@androidx.annotation.StringRes val labelRes: Int, val isCycle: Boolean = false) {
@@ -27,7 +27,7 @@ enum class RommSettingsRow(@androidx.annotation.StringRes val labelRes: Int, val
     SAVE_SYNC(R.string.setting_romm_save_sync),
     PLATFORMS(R.string.romm_settings_platforms),
     COLLECTIONS(R.string.romm_settings_collections),
-    ADVANCED(R.string.romm_settings_advanced),
+    ADVANCED(R.string.settings_advanced),
     SERVER_INFO(R.string.romm_settings_server_info),
 }
 

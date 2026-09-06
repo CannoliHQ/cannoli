@@ -57,7 +57,7 @@ fun PermissionsScreen(
         Box(modifier = modifier.fillMaxSize().padding(screenInsets())) {
             Column(modifier = Modifier.fillMaxSize().padding(bottom = footerReservation())) {
                 ScreenTitle(
-                    text = stringResource(R.string.permissions_title),
+                    text = stringResource(R.string.onboarding_permissions_title),
                     fontSize = listFontSize,
                     lineHeight = listLineHeight,
                 )

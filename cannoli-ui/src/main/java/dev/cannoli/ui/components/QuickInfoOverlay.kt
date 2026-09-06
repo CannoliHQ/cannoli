@@ -36,7 +36,7 @@ fun QuickInfoOverlay(
         romm = stringResource(R.string.quick_info_romm),
         wifi = stringResource(R.string.quick_info_iface_wifi),
         ethernet = stringResource(R.string.quick_info_iface_ethernet),
-        vpn = stringResource(R.string.quick_info_iface_vpn),
+        vpn = stringResource(R.string.setting_vpn),
         other = stringResource(R.string.quick_info_iface_other),
         notConnected = stringResource(R.string.quick_info_not_connected),
         notRunning = stringResource(R.string.quick_info_not_running),
@@ -50,7 +50,7 @@ fun QuickInfoOverlay(
             modifier = Modifier.fillMaxSize().padding(screenInsets()),
         ) {
             ScreenTitle(
-                text = stringResource(R.string.quick_info_title),
+                text = stringResource(R.string.quick_menu_info),
                 fontSize = 22.sp,
                 lineHeight = 32.sp,
             )

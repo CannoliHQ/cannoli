@@ -425,8 +425,8 @@ class SettingsInputHandler @Inject constructor(
         val existing = appsRepository.all(appType).map { it.packageName }.toSet()
         val initialChecked = allApps.indices.filter { allApps[it].second in existing }.toSet()
         val title = context.getString(
-            if (type == VirtualPlatformTags.TOOLS) dev.cannoli.ui.R.string.title_manage_tools
-            else dev.cannoli.ui.R.string.title_manage_ports
+            if (type == VirtualPlatformTags.TOOLS) dev.cannoli.ui.R.string.setting_manage_tools
+            else dev.cannoli.ui.R.string.setting_manage_ports
         )
         nav.push(LauncherScreen.AppPicker(
             type = type,

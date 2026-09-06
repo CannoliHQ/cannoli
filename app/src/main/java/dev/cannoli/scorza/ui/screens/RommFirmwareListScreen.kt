@@ -91,7 +91,7 @@ fun RommFirmwareListScreen(
                                 rows.filterNot { it.present },
                             ),
                             ListSection(
-                                stringResource(R.string.romm_firmware_on_device),
+                                stringResource(R.string.romm_detail_on_device),
                                 rows.filter { it.present },
                             ),
                         )

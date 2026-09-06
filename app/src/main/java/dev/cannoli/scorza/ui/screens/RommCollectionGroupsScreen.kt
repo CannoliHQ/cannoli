@@ -48,7 +48,7 @@ fun RommCollectionGroupsScreen(
         Box(modifier = Modifier.fillMaxSize().padding(screenInsets())) {
             Column(modifier = Modifier.fillMaxSize().padding(bottom = footerReservation())) {
                 ScreenTitle(
-                    text = stringResource(R.string.romm_collections_title),
+                    text = stringResource(R.string.label_collections),
                     fontSize = listFontSize,
                     lineHeight = listLineHeight,
                 )

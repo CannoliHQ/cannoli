@@ -46,7 +46,7 @@ fun BootErrorScreen(
             BottomBar(
                 modifier = Modifier.align(Alignment.BottomCenter),
                 leftItems = emptyList(),
-                rightItems = listOf(buttonStyle.confirm to stringResource(R.string.update_retry)),
+                rightItems = listOf(buttonStyle.confirm to stringResource(R.string.label_retry)),
             )
         }
     }
