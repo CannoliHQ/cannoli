@@ -3,6 +3,7 @@ package dev.cannoli.scorza.server
 import androidx.test.core.app.ApplicationProvider
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -100,13 +101,18 @@ class KitchenServerTest {
         assertTrue(body.contains("Game.nes"))
     }
 
+    private fun writeMapping(name: String, body: String) {
+        val dir = File(root, "Config/Input/Autoconfig/android")
+        dir.mkdirs()
+        File(dir, name).writeText(body)
+    }
+
     // The wizard's cfgs, so a pad the database has never seen can be sent to whoever curates it.
     // Served verbatim: the capture keys were written when the mapping was built, because neither the
     // handheld model nor the source mask can be recovered from the file later.
     @Test fun listsAndServesControllerMappings() {
-        val dir = File(root, "Config/Input/Autoconfig/android")
-        dir.mkdirs()
-        File(dir, "android_default_some_pad.cfg").writeText(
+        writeMapping(
+            "android_default_some_pad.cfg",
             "input_device = \"Some Pad\"\nsubmission_build_model = \"AYN Thor\"\n"
         )
 
@@ -117,6 +123,39 @@ class KitchenServerTest {
         val (fileCode, fileBody) = request("GET", "/api/mappings/android_default_some_pad.cfg")
         assertEquals(200, fileCode)
         assertTrue(fileBody.contains("submission_build_model = \"AYN Thor\""))
+    }
+
+    // A mapping is named the way a person would recognise it, not by its filename. A curated entry
+    // carries a friendly display name; a wizard capture repeats the pad's reported name.
+    @Test fun mappingsAreNamedForReading() {
+        writeMapping(
+            "retroid_nova.cfg",
+            "input_device = \"Retroid Pocket Controller\"\n" +
+                "input_device_display_name = \"Retroid Pocket Nova\"\n" +
+                "input_vendor_id = \"8226\"\ninput_product_id = \"12289\"\n"
+        )
+        val (code, body) = request("GET", "/api/mappings")
+        assertEquals(200, code)
+        assertTrue(body.contains("\"name\":\"Retroid Pocket Nova\""))
+        assertTrue(body.contains("\"file\":\"retroid_nova.cfg\""))
+    }
+
+    // The directory also holds the seeder's stamp and RetroArch's own autoconfig cache. Neither is a
+    // mapping, and both showed up when this reused the generic file lister.
+    @Test fun mappingsListExcludesEverythingThatIsNotAMapping() {
+        writeMapping("real.cfg", "input_device = \"Real Pad\"\n")
+        writeMapping(".seed_version", "5b4fddaa8e967470|Retroid Pocket Nova")
+        writeMapping(".autoconfig_index", "f0 = \"real.cfg\"\n")
+        writeMapping("notes.txt", "not a mapping")
+        writeMapping("nameless.cfg", "input_vendor_id = \"1\"\n")
+
+        val (code, body) = request("GET", "/api/mappings")
+        assertEquals(200, code)
+        assertTrue(body.contains("real.cfg"))
+        assertFalse(body.contains("seed_version"))
+        assertFalse(body.contains("autoconfig_index"))
+        assertFalse(body.contains("notes.txt"))
+        assertFalse(body.contains("nameless.cfg"))
     }
 
     @Test fun unknownApiRouteIs404() {

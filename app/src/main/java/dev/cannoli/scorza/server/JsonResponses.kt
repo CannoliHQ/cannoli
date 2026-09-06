@@ -73,6 +73,23 @@ internal data class DirListResponse(
     val entries: List<DirEntry>,
 )
 
+/**
+ * A controller mapping, named the way a person would recognise it.
+ *
+ * [file] is the cfg's own filename and is what the download asks for, so it stays exactly as it is
+ * on the card. [name] is only for reading: a curated entry carries a friendly
+ * `input_device_display_name`, while one the wizard built repeats the pad's reported name, which is
+ * the best a device can say about itself.
+ */
+@Serializable
+internal data class MappingEntry(
+    val file: String,
+    val name: String,
+)
+
+@Serializable
+internal data class MappingsResponse(val mappings: List<MappingEntry>)
+
 @Serializable
 internal data class UploadResponse(
     val ok: Boolean = true,

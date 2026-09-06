@@ -170,6 +170,7 @@ class KitchenHttpServer internal constructor(
             method == "GET" && resource == "tags" -> handleTags()
             method == "GET" && resource == "apps" -> handleApps()
             method == "GET" && resource == "settings" -> handleSettings()
+            method == "GET" && resource == "mappings" -> handleMappings(apiSegments.drop(1))
             resource == "games" -> {
                 val gameSegments = apiSegments.drop(1)
                 handleGames(method, gameSegments, query, headers, session)
@@ -378,10 +379,7 @@ class KitchenHttpServer internal constructor(
             "wallpapers" to "Wallpapers",
             "guides" to "Guides",
             "cheats" to "Cheats",
-            "shaders" to "Shaders",
-            // The wizard's own cfgs, so a pad the database has never seen can be sent to whoever
-            // curates it. Read straight off the card, since the capture keys are already in the file.
-            "mappings" to "Config/Input/Autoconfig/android"
+            "shaders" to "Shaders"
         )
     }
 }

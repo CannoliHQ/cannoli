@@ -36,6 +36,46 @@ internal fun KitchenHttpServer.handleApps(): Response {
 internal fun KitchenHttpServer.handleSettings(): Response =
     jsonResponse(200, SettingsResponse.serializer(), settingsProvider())
 
+/**
+ * The controller mappings on the card, so a pad the input database has never seen can be sent to
+ * whoever curates it.
+ *
+ * Lists mappings rather than files. Every candidate is parsed and anything that is not a cfg naming
+ * a device is dropped, which is what keeps the seeder's `.seed_version` stamp and RetroArch's
+ * `.autoconfig_index` cache out of the list without keeping a blacklist of their names: a file
+ * earns a row by being a mapping, not by failing to be on a list.
+ *
+ * Read only. Deleting a profile from a web page is a different feature with a real cost, since a
+ * built-in pad has no second controller to fall back on while it has no mapping.
+ */
+internal fun KitchenHttpServer.handleMappings(segments: List<String>): Response {
+    val dir = File(cannoliRoot, MAPPINGS_DIR)
+    val requested = segments.firstOrNull()
+    if (requested != null) {
+        val file = File(dir, requested)
+        if (!isSecure(file) || !file.isFile) return errorResponse(404, "not found")
+        return fileResponse(file, mimeForPath(file.name))
+    }
+    val mappings = dir.listFiles { f: File -> f.isFile && f.extension.equals("cfg", ignoreCase = true) }
+        ?.mapNotNull { f ->
+            val entry = runCatching {
+                dev.cannoli.scorza.input.autoconfig.RetroArchCfgParser.parse(f.readText(), fileName = f.name)
+            }.getOrNull() ?: return@mapNotNull null
+            val device = entry.deviceName?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+            MappingEntry(
+                file = f.name,
+                // A curated entry carries a friendly display name; one the wizard built repeats the
+                // pad's reported name, which is the most a device can say about itself.
+                name = entry.displayName?.takeIf { it.isNotBlank() } ?: device,
+            )
+        }
+        ?.sortedBy { it.name.lowercase(java.util.Locale.ROOT) }
+        ?: emptyList()
+    return jsonResponse(200, MappingsResponse.serializer(), MappingsResponse(mappings))
+}
+
+internal const val MAPPINGS_DIR = "Config/Input/Autoconfig/android"
+
 internal fun KitchenHttpServer.handleList(dir: File, displayPath: String, recursive: Boolean = false, roots: List<File> = defaultRoots()): Response {
     if (!isSecure(dir, roots)) {
         return errorResponse(403, "forbidden")
