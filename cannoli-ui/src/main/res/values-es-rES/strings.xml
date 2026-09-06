@@ -606,15 +606,15 @@
     <string name="credits_shaders">Shaders</string>
     <string name="credits_fonts">Fuentes</string>
     <string name="credits_libraries">Bibliotecas</string>
-    <string name="credits_localization">Ubicación de los colaboradores</string>
+    <string name="credits_localization">Traductores</string>
     <!-- Core picker / nav -->
     <string name="no_compatible_cores">Núcleos compatibles no encontrados</string>
     <string name="no_collections">No hay colecciones</string>
     <string name="title_child_collections">Colecciones hijas</string>
-    <string name="title_shortcuts">Atajos</string>
+    <string name="title_shortcuts">Teclas de acceso directo</string>
     <string name="shortcut_hold_prompt" tools:ignore="TypographyEllipsis">Mantenga pulsado uno o más botones...</string>
     <!-- Update download -->
-    <string name="update_retry">RETRAR</string>
+    <string name="update_retry">REINTENTAR</string>
     <string name="restart_required">Es necesario reiniciar para aplicar los cambios.</string>
     <!-- Shown before the ROM directory is changed or cleared, since the rescan that follows prunes
          database entries for every ROM that is not at the same relative path under the new
@@ -688,7 +688,7 @@
     <!-- Distinguishes platforms sharing a display name. %1$s = platform name, %2$s = platform tag. -->
     <string name="mapping_platform_name_with_tag">%1$s (%2$s)</string>
     <!-- Shown above the RetroArch core list when the installed build predates the receiver that answers core queries. -->
-    <string name="mapping_notice_cannot_report_cores">Esta versión de RetroArch no puede encontrar los cores instalados</string>
+    <string name="mapping_notice_cannot_report_cores">Esta versión de RetroArch no muestra los cores instalados</string>
     <!-- Shown when RetroArch has the receiver but did not answer the query. -->
     <string name="mapping_notice_no_response">RetroArch no respondió</string>
     <!-- Shown above the core list when the configured RetroArch package is not installed at all. -->
