@@ -33,5 +33,25 @@ fun unidentifiedMapping(device: ConnectedDevice, genericName: String): DeviceMap
         ),
         bindings = emptyMap(),
         source = MappingSource.UNIDENTIFIED,
+        unmodeledLines = captureLines(device),
     )
+}
+
+/**
+ * What the device says about itself, recorded for whoever curates this pad into the input database.
+ *
+ * Written here because this is the only moment the answers exist: the model is the handheld that
+ * built the mapping rather than whichever one reads the cfg later, and the source mask is only
+ * knowable while the pad is connected. Neither can be recovered from the file afterwards.
+ *
+ * Deliberately not `cannoli_build_model` and `cannoli_source_mask`. Those are match keys, and
+ * writing them here would pin a profile the user has not verified to one handheld model. Under
+ * their own prefix they are outside `MANAGED_KEYS`, so they ride in `unmodeledLines` untouched,
+ * match nothing, and fail the database's own validator until a human converts them.
+ */
+private fun captureLines(device: ConnectedDevice): List<String> = buildList {
+    // A quote would produce a line the parser cannot match, exactly as RetroArchCfgWriter guards.
+    device.androidBuildModel.takeIf { it.isNotEmpty() }
+        ?.let { add("submission_build_model = \"${it.replace("\"", "")}\"") }
+    add("submission_source_mask = \"${device.sourceMask}\"")
 }
