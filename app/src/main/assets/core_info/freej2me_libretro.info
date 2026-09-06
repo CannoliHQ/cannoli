@@ -11,6 +11,7 @@ display_version = "GIT"
 # Hardware Information
 manufacturer = "Java"
 systemname = "J2ME"
+systemid = "j2me"
 
 # Libretro Features
 supports_no_game = "false"

@@ -12,6 +12,7 @@ categories = "Emulator"
 # Hardware Information
 manufacturer = "Thomson"
 systemname = "Thomson MO/TO"
+systemid = "thomson_moto"
 
 # Libretro Features
 supports_no_game = "true"

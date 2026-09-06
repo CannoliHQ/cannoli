@@ -10,6 +10,7 @@ categories = "Emulator"
 # Hardware Information
 manufacturer = "SNK"
 systemname = "SNK Neo Geo CD"
+systemid = "neo_geo_cd"
 database = "SNK - Neo Geo CD"
 
 # BIOS/Firmware

@@ -10,7 +10,8 @@ display_version = "v0.1"
 
 # Hardware Information
 manufacturer = "Zavod za udžbenike i nastavna sredstva with Elektronika Inženjering"
-# systemname = "Galaksija"
+systemname = "Galaksija"
+systemid = "galaksija"
 
 # BIOS / Firmware
 firmware_count = 3

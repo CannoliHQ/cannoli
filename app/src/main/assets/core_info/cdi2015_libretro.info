@@ -10,8 +10,8 @@ categories = "Emulator"
 
 # Hardware Information
 manufacturer = "Philips"
-systemname = "CDi"
-systemid = "cdi2015"
+systemname = "CD-i"
+systemid = "cdi"
 
 # Firmware / BIOS
 firmware_count = 1

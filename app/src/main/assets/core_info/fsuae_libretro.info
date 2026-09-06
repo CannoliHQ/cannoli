@@ -10,8 +10,8 @@ display_version = "v2.7.15"
 
 # Hardware Information
 manufacturer = "Commodore"
-systemname = "Commodore Amiga"
-systemid = "amiga"
+systemname = "Amiga"
+systemid = "commodore_amiga"
 
 # Libretro Features
 supports_no_game = "false"

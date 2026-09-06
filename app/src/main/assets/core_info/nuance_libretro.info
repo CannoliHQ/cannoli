@@ -29,7 +29,7 @@ libretro_saves = "false"
 core_options = "false"
 core_options_version = "null"
 load_subsystem = "false"
-is_experimental = "true"
+is_experimental = "false"
 
 # Firmware / BIOS
 firmware_count = 3

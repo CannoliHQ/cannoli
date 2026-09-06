@@ -10,7 +10,7 @@ categories = "Emulator"
 
 # Hardware Information
 manufacturer = "Commodore"
-systemid = "commodore_64"
+systemid = "commodore_c64"
 systemname = "C64"
 
 # Libretro Features
