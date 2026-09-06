@@ -378,7 +378,10 @@ class KitchenHttpServer internal constructor(
             "wallpapers" to "Wallpapers",
             "guides" to "Guides",
             "cheats" to "Cheats",
-            "shaders" to "Shaders"
+            "shaders" to "Shaders",
+            // The wizard's own cfgs, so a pad the database has never seen can be sent to whoever
+            // curates it. Read straight off the card, since the capture keys are already in the file.
+            "mappings" to "Config/Input/Autoconfig/android"
         )
     }
 }

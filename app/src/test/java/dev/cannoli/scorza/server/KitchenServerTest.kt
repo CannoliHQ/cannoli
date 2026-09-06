@@ -100,6 +100,25 @@ class KitchenServerTest {
         assertTrue(body.contains("Game.nes"))
     }
 
+    // The wizard's cfgs, so a pad the database has never seen can be sent to whoever curates it.
+    // Served verbatim: the capture keys were written when the mapping was built, because neither the
+    // handheld model nor the source mask can be recovered from the file later.
+    @Test fun listsAndServesControllerMappings() {
+        val dir = File(root, "Config/Input/Autoconfig/android")
+        dir.mkdirs()
+        File(dir, "android_default_some_pad.cfg").writeText(
+            "input_device = \"Some Pad\"\nsubmission_build_model = \"AYN Thor\"\n"
+        )
+
+        val (listCode, listBody) = request("GET", "/api/mappings")
+        assertEquals(200, listCode)
+        assertTrue(listBody.contains("android_default_some_pad.cfg"))
+
+        val (fileCode, fileBody) = request("GET", "/api/mappings/android_default_some_pad.cfg")
+        assertEquals(200, fileCode)
+        assertTrue(fileBody.contains("submission_build_model = \"AYN Thor\""))
+    }
+
     @Test fun unknownApiRouteIs404() {
         val (code, _) = request("GET", "/api/nonsense")
         assertEquals(404, code)
