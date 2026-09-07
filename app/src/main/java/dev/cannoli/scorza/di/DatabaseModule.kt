@@ -61,6 +61,12 @@ object DatabaseModule {
     ): RomsRepository = RomsRepository(paths, db, artwork)
 
     @Provides @Singleton
+    fun provideGameIdRepository(
+        paths: CannoliPathsProvider,
+        db: CannoliDatabase,
+    ): dev.cannoli.scorza.db.GameIdRepository = dev.cannoli.scorza.db.GameIdRepository(paths, db)
+
+    @Provides @Singleton
     fun provideAppsRepository(db: CannoliDatabase, artwork: ArtworkLookup): AppsRepository =
         AppsRepository(db, artwork)
 
