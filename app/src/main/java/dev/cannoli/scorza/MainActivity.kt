@@ -28,8 +28,12 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import dagger.hilt.android.AndroidEntryPoint
@@ -122,6 +126,9 @@ class MainActivity : ComponentActivity(), ActivityActions {
     @Inject lateinit var rommDownloader: dev.cannoli.scorza.download.Downloader
     @Inject lateinit var rommArtFetcher: dev.cannoli.scorza.romm.art.RommArtFetcher
     @Inject lateinit var syncScheduler: dev.cannoli.scorza.romm.sync.SyncScheduler
+    // Behind a Provider so the id backfill, and the scan scheduler it listens to, stay out of the
+    // boot graph until the launcher is actually in front with a library to work on.
+    @Inject lateinit var sigilBackfill: Provider<dev.cannoli.scorza.sigil.SigilBackfillService>
     @Inject lateinit var saveSyncStatusHolder: dev.cannoli.scorza.romm.sync.SaveSyncStatusHolder
     @Inject lateinit var cannoliPathsProvider: dev.cannoli.scorza.di.CannoliPathsProvider
     @field:dev.cannoli.scorza.di.IoScope @Inject lateinit var ioScope: kotlinx.coroutines.CoroutineScope
@@ -237,6 +244,23 @@ class MainActivity : ComponentActivity(), ActivityActions {
         })
 
         bootSequencer.advance()
+
+        // Not on onResume alone: the first resume of a cold start happens while boot is still
+        // preparing, the ready guard there returns, and nothing resumes again until the user
+        // backgrounds the launcher, so the backfill would simply never start. This says what it
+        // means instead, which is active exactly while the launcher is in front and ready.
+        lifecycleScope.launch {
+            lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                bootSequencer.state.first { it is BootState.Ready }
+                val backfill = sigilBackfill.get()
+                backfill.setActive(true)
+                try {
+                    awaitCancellation()
+                } finally {
+                    backfill.setActive(false)
+                }
+            }
+        }
 
         setContent {
             val boot by bootSequencer.state.collectAsState()
