@@ -2,3 +2,6 @@
 	path = retroarch
 	url = https://github.com/libretro/RetroArch.git
 	ignore = dirty
+[submodule "app/src/main/cpp/third_party/sigil"]
+	path = app/src/main/cpp/third_party/sigil
+	url = https://github.com/rommapp/argosy-sigil.git

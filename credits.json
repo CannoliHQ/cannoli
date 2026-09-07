@@ -11,7 +11,13 @@
   ],
   "libraries": [
     { "name": "Apache Commons Compress", "what": "Archive Extraction", "license": "Apache 2.0" },
+    { "name": "Argosy Sigil", "what": "Native Game ID Extraction", "license": "MPL 2.0" },
+    { "name": "libchdr", "what": "CHD Disc Image Reading", "license": "BSD 3-Clause" },
+    { "name": "LZMA SDK", "what": "CHD Decompression", "license": "Public domain" },
+    { "name": "tiny-AES-c", "what": "Encrypted Content Decryption", "license": "Public domain" },
     { "name": "XZ for Java", "what": "7z Decompression", "license": "Public domain" },
+    { "name": "zlib", "what": "Deflate Decompression", "license": "Zlib" },
+    { "name": "Zstandard", "what": "CHD Decompression", "license": "BSD 3-Clause" },
     { "name": "ZXing", "what": "QR Code Library", "license": "Apache 2.0" }
   ],
   "cores": [

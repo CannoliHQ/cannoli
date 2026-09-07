@@ -46,7 +46,13 @@ val CREDITS_FONTS: List<CreditEntry> = listOf(
 
 val CREDITS_LIBRARIES: List<CreditEntry> = listOf(
     CreditEntry("Apache Commons Compress", "Apache 2.0"),
+    CreditEntry("Argosy Sigil", "MPL 2.0"),
+    CreditEntry("libchdr", "BSD 3-Clause"),
+    CreditEntry("LZMA SDK", "Public domain"),
+    CreditEntry("tiny-AES-c", "Public domain"),
     CreditEntry("XZ for Java", "Public domain"),
+    CreditEntry("zlib", "Zlib"),
+    CreditEntry("Zstandard", "BSD 3-Clause"),
     CreditEntry("ZXing", "Apache 2.0"),
 )
 

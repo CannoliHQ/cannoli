@@ -28,3 +28,19 @@ target_compile_definitions(cannoli_hash PRIVATE RC_DISABLE_LUA)
 
 find_library(log-lib log)
 target_link_libraries(cannoli_hash ${log-lib})
+
+# Sigil reads a platform's own game id out of a rom. Its own CMake defines this only for Linux, and
+# Android is not Linux to CMake, so armeabi-v7a would build libchdr and io_file with a 32-bit off_t
+# and truncate every seek past 2 GiB. PS2 images are routinely larger than that. Set before the
+# subdirectory so it reaches libchdr, zlib, lzma and zstd too; cannoli_hash above is already
+# configured and keeps its own flags.
+add_compile_definitions(_FILE_OFFSET_BITS=64)
+
+set(SIGIL_BUILD_CLI OFF CACHE BOOL "" FORCE)
+set(SIGIL_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+add_subdirectory(third_party/sigil)
+
+# Its own library rather than folded into cannoli_hash: one answers which game a rom is to
+# RetroAchievements, the other what the platform calls it, and nothing needs both.
+add_library(sigil_jni SHARED sigil_jni.c)
+target_link_libraries(sigil_jni sigil ${log-lib})
