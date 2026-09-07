@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
@@ -21,6 +22,7 @@ import dev.cannoli.scorza.R
 import dev.cannoli.scorza.ui.components.ListDialogScreen
 import dev.cannoli.scorza.ui.viewmodel.SettingsViewModel
 import dev.cannoli.ui.components.List
+import dev.cannoli.ui.components.PillRow
 import dev.cannoli.ui.components.PillRowKeyValue
 import dev.cannoli.ui.components.SectionHeader
 import dev.cannoli.ui.theme.CannoliColors
@@ -103,9 +105,13 @@ internal fun EmulatorScreens(
                         return@List
                     }
                     val entry = (row as dev.cannoli.scorza.ui.screens.MappingListRow.Platform).entry
+                    // Only the standalone case is worth naming. A core running in Cannoli is the
+                    // ordinary answer, so "(Internal)" on every row said nothing and only made the
+                    // one row that is different harder to spot.
+                    val internalLabel = stringResource(R.string.value_emulator_source_internal)
                     val value = when {
                         entry.status == dev.cannoli.scorza.ui.screens.EmulatorMappingStatus.NEEDS_SETUP -> stringResource(R.string.value_unmapped)
-                        entry.runnerLabel.isEmpty() -> entry.coreDisplayName
+                        entry.runnerLabel.isEmpty() || entry.runnerLabel == internalLabel -> entry.coreDisplayName
                         else -> "${entry.coreDisplayName} (${entry.runnerLabel})"
                     }
                     val valueIcon = when (entry.status) {
@@ -266,19 +272,41 @@ internal fun EmulatorScreens(
                         )
                     } else {
                         List(
+                            // Scrolling follows the selection, so -1 pinned the list to the top and
+                            // a core with 23 firmware entries could not be read past the first few.
+                            // The row builder ignores isSelected, so nothing is highlighted by this.
+                            selectedIndex = currentScreen.selectedIndex,
                             items = currentScreen.firmware,
-                            selectedIndex = -1,
                             itemHeight = itemHeight,
                             scrollTarget = currentScreen.scrollTarget,
                             onListStateChanged = onListStateChanged,
                             modifier = Modifier.weight(1f)
-                        ) { _, fw, _ ->
-                            val required = !fw.entry.optional
-                            val tag = stringResource(if (required) R.string.bios_required else R.string.bios_optional)
+                        ) { _, fw, isSelected ->
+                            // A choose-one row is only wanting when nothing in its group was found,
+                            // so twelve unheld alternatives do not read as twelve missing files.
+                            val required = if (fw.anyOf) !fw.groupSatisfied else !fw.entry.optional
+                            val tag = stringResource(
+                                when {
+                                    fw.anyOf -> R.string.bios_any_of
+                                    required -> R.string.bios_required
+                                    else -> R.string.bios_optional
+                                }
+                            )
                             val statusText = stringResource(if (fw.present) R.string.bios_present else R.string.bios_missing)
                             val requiredMissing = required && !fw.present
-                            val rowColor = if (!fw.present && !required) cannoliColors.text.copy(alpha = 0.5f) else cannoliColors.text
-                            Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = listVerticalPadding)) {
+                            // On the highlight every colour comes from highlightText, or the row
+                            // keeps its unselected palette and goes unreadable on the pill.
+                            val baseColor = if (isSelected) cannoliColors.highlightText else cannoliColors.text
+                            val accentColor = if (isSelected) cannoliColors.highlightText else cannoliColors.accent
+                            val rowColor = if (!fw.present && !required) baseColor.copy(alpha = 0.5f) else baseColor
+                            // No lineHeight: this row is two lines, and passing one would clamp it
+                            // to a single line's height and clip the description.
+                            PillRow(
+                                isSelected = isSelected,
+                                verticalPadding = listVerticalPadding,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                              Column {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Text(
                                         text = fw.entry.path,
@@ -294,7 +322,7 @@ internal fun EmulatorScreens(
                                     Text(
                                         text = tag,
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = cannoliColors.accent
+                                        color = accentColor
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     if (requiredMissing) {
@@ -304,7 +332,7 @@ internal fun EmulatorScreens(
                                                 fontFamily = dev.cannoli.ui.theme.LocalCannoliIconFont.current,
                                                 fontSize = listFontSize,
                                             ),
-                                            color = cannoliColors.text
+                                            color = baseColor
                                         )
                                         Spacer(modifier = Modifier.width(4.dp))
                                     }
@@ -317,9 +345,10 @@ internal fun EmulatorScreens(
                                 Text(
                                     text = fw.entry.desc,
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = cannoliColors.text,
+                                    color = baseColor,
                                     maxLines = 1
                                 )
+                              }
                             }
                         }
                     }
