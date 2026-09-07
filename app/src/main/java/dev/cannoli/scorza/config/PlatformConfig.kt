@@ -9,6 +9,7 @@ import dev.cannoli.scorza.ui.screens.CoreAvailability
 import dev.cannoli.scorza.ui.screens.EmulatorMappingStatus
 import dev.cannoli.core.IniData
 import dev.cannoli.core.IniParser
+import dev.cannoli.scorza.util.NaturalSort
 import dev.cannoli.scorza.util.sortedNatural
 import org.json.JSONObject
 import java.io.File
@@ -45,18 +46,9 @@ class PlatformConfig(
     private var platformGroups = mapOf<String, String>()
 
     /**
-     * Group order, taken from where each group first appears in platforms.json rather than a second
-     * list to keep in step. "Other" is forced last: it is a catch-all, and the asset's order puts
-     * it wherever its first member happens to sit.
+     * Group order: A-Z, with "Other" forced last because it is a catch-all rather than a maker.
      */
     private var platformGroupOrder = listOf<String>()
-
-    /**
-     * Platform order within a group, taken from platforms.json, where the tags are listed by
-     * release year. Sorting the rows by name instead would read as alphabetical, which is not how
-     * anyone thinks about a console line.
-     */
-    private var platformTagOrder = mapOf<String, Int>()
     private var defaultApps = mapOf<String, List<AppConfig>>()
     private var arcadePlatforms = setOf<String>()
 
@@ -102,8 +94,7 @@ class PlatformConfig(
         defaultPlatformNames = names
         platformGroups = groups
         platformGroupOrder = groups.values.distinct()
-            .sortedBy { if (it == UNGROUPED) 1 else 0 }
-        platformTagOrder = groups.keys.withIndex().associate { (i, tag) -> tag to i }
+            .sortedWith(compareBy<String> { if (it == UNGROUPED) 1 else 0 }.thenBy(NaturalSort) { it })
         defaultApps = apps
         arcadePlatforms = arcade
     }
@@ -400,13 +391,9 @@ class PlatformConfig(
 
     fun getAllTags(): Set<String> = defaultPlatformNames.keys + ini.getSection("platforms").keys
 
-    /** Sort key for a group, so a list reads in the asset's order with the catch-all last. */
+    /** Sort key for a group, so a list reads A-Z with the catch-all last. */
     fun groupRank(group: String?): Int =
         if (group == null) Int.MAX_VALUE else platformGroupOrder.indexOf(group).takeIf { it >= 0 } ?: Int.MAX_VALUE
-
-    /** Position in platforms.json, which lists each group's tags by release year. */
-    fun tagRank(tag: String): Int =
-        platformTagOrder[tag.uppercase(java.util.Locale.ROOT)] ?: Int.MAX_VALUE
 
     /** Null for a tag the bundled definitions do not group, which callers show as ungrouped. */
     fun getGroup(tag: String): String? = platformGroups[tag.uppercase(java.util.Locale.ROOT)]

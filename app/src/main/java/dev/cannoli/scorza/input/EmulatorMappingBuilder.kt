@@ -15,6 +15,7 @@ import dev.cannoli.scorza.ui.screens.CoreAvailability
 import dev.cannoli.scorza.ui.screens.EmulatorMappingEntry
 import dev.cannoli.scorza.ui.screens.MappingActionKind
 import dev.cannoli.scorza.ui.screens.MappingItem
+import dev.cannoli.scorza.util.NaturalSort
 import dev.cannoli.scorza.util.sortedNatural
 import java.io.File
 import javax.inject.Inject
@@ -57,13 +58,14 @@ class EmulatorMappingBuilder @Inject constructor(
         }.let { order(it, alphabetical) }
     }
 
-    // Manufacturer mode takes both the group order and the order within a group from
-    // platforms.json, which lists each manufacturer's tags by release year. Alphabetical is a flat
-    // A-Z with no grouping, which is what the list falls back to when the user turns headers off.
+    // Manufacturer mode sorts A-Z within each group, under headers that are themselves A-Z.
+    // Alphabetical is the same sort with no grouping, which is what the list falls back to when
+    // the user turns headers off.
     private fun order(entries: List<EmulatorMappingEntry>, alphabetical: Boolean): List<EmulatorMappingEntry> =
         if (alphabetical) entries.sortedNatural { it.platformName }
         else entries.sortedWith(
-            compareBy({ platformConfig.groupRank(it.group) }, { platformConfig.tagRank(it.tag) }),
+            compareBy<EmulatorMappingEntry> { platformConfig.groupRank(it.group) }
+                .thenBy(NaturalSort) { it.platformName },
         )
 
     fun filter(all: List<EmulatorMappingEntry>, filter: Int): List<EmulatorMappingEntry> = when (filter) {

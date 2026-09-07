@@ -63,30 +63,39 @@ class PlatformGroupTest {
         assertNull(config().getGroup("NOT_A_PLATFORM"))
     }
 
-    // The mapping list reads by release year, so the asset's order is load-bearing rather than
-    // cosmetic. Each pair below is one an alphabetical sort would invert, which is the regression
-    // this guards: sorting by display name put Game Boy above NES and Game Boy Color above SNES.
+    // The mapping list reads A-Z, headers included, so the asset's order is no longer load-bearing.
+    // Each pair below is one the asset's own order inverts.
     @Test
-    fun `tags within a group are ordered by release year, not by name`() {
+    fun `groups rank alphabetically, not in the asset's order`() {
         val config = config()
         fun assertBefore(earlier: String, later: String) {
             assertTrue(
                 "$earlier should rank before $later",
-                config.tagRank(earlier) < config.tagRank(later),
+                config.groupRank(earlier) < config.groupRank(later),
             )
         }
-        assertBefore("NES", "GB")
-        assertBefore("SNES", "GBC")
-        assertBefore("N64", "GBA")
-        assertBefore("SG1000", "SMS")
-        assertBefore("PS2", "PSP")
-        assertBefore("ATARI2600", "LYNX")
-        assertBefore("NEOGEO", "NGP")
+        assertBefore("Arcade", "Nintendo")
+        assertBefore("Atari", "Sega")
+        assertBefore("NEC", "Sony")
+    }
+
+    // "Other" is a catch-all rather than a maker, so alphabetical does not apply to it.
+    @Test
+    fun `the catch-all group ranks after every maker`() {
+        val config = config()
+        val json = platformsJson()
+        val makers = json.keys().asSequence()
+            .map { json.getJSONObject(it).optString("group", "") }
+            .filter { it.isNotEmpty() && it != "Other" }
+            .distinct()
+            .toList()
+        val misplaced = makers.filter { config.groupRank(it) > config.groupRank("Other") }
+        assertTrue("these groups rank below Other: $misplaced", misplaced.isEmpty())
     }
 
     @Test
-    fun `an unknown tag ranks last rather than first`() {
-        assertEquals(Int.MAX_VALUE, config().tagRank("NOT_A_PLATFORM"))
+    fun `an unknown group ranks last rather than first`() {
+        assertEquals(Int.MAX_VALUE, config().groupRank("NOT_A_GROUP"))
     }
 
     // What the tags endpoint hands Kitchen: only the tags asked about, and nothing invented.
