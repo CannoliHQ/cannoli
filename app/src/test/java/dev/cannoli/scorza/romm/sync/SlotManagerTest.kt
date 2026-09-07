@@ -64,7 +64,7 @@ class SlotManagerTest {
     @Test fun delete_active_named_slot_falls_back_to_autosave() = runTest {
         store.upsert(SaveSyncRow("SNES/Mario.sfc", "before-boss", 42, 7, "t", "h", "h", "t", 1L))
         store.setActiveSlot("SNES/Mario.sfc", "before-boss")
-        every { client.getSaves(42, "dev-1") } returns emptyList()
+        every { client.getSaves(42, "dev-1", any()) } returns emptyList()
         slotManager.delete("SNES/Mario.sfc", 42, "before-boss")
         assertEquals(DEFAULT_SLOT, store.activeSlot("SNES/Mario.sfc"))
         assertNull(store.get("SNES/Mario.sfc", "before-boss"))

@@ -10,21 +10,25 @@ import java.io.File
  * The per-game config names the save directory outright instead of letting RetroArch derive it.
  * Deriving it means by-content sorting, which appends the ROM's *parent* directory: correct for a
  * loose ROM, wrong for a bundled multi-disc game whose parent is the bundle folder.
+ *
+ * The directory is the game's own folder under its platform, keyed the way guides, cheats and
+ * states already are, so one game's saves are one directory whatever shape the emulator writes.
  */
 class GameConfigSaveDirTest : LaunchConfigHarness() {
 
-    @Test fun `a loose ROM saves into its platform directory`() {
+    @Test fun `a loose ROM saves into its own folder under its platform`() {
         val root = tmp.newFolder()
         val cfg = launchedConfig(root, rom(root, "Roms/GBA/Game.gba", "GBA"))
-        assertEquals(File(root, "Saves/GBA").absolutePath, cfg["savefile_directory"])
+        assertEquals(File(root, "Saves/GBA/Game").absolutePath, cfg["savefile_directory"])
     }
 
     // The regression this exists for. By-content sorting would resolve the parent of the .cue,
     // putting saves in Saves/Game where neither the launcher nor save sync looks for them.
-    @Test fun `a bundled multi-disc game saves into its platform directory, not the bundle folder`() {
+    @Test fun `a bundled multi-disc game saves under its platform, not the bundle folder`() {
         val root = tmp.newFolder()
         val cfg = launchedConfig(root, rom(root, "Roms/PSX/Game/disc1.cue", "PSX"))
-        assertEquals(File(root, "Saves/PSX").absolutePath, cfg["savefile_directory"])
+        assertEquals(File(root, "Saves/PSX/disc1").absolutePath, cfg["savefile_directory"])
+        assertNotEquals(File(root, "Saves/Game").absolutePath, cfg["savefile_directory"])
     }
 
     // Pinning the directory only holds if the sorting that would append to it is off. Leaving
@@ -79,6 +83,6 @@ class GameConfigSaveDirTest : LaunchConfigHarness() {
         val mgr = manager(root)
         every { platformConfig.getPlatformChoice(any()) } returns null
         val cfg = launchedConfig(root, rom(root, "Roms/GBA/Game.gba", "GBA"), mgr)
-        assertEquals(File(root, "Saves/GBA").absolutePath, cfg["savefile_directory"])
+        assertEquals(File(root, "Saves/GBA/Game").absolutePath, cfg["savefile_directory"])
     }
 }

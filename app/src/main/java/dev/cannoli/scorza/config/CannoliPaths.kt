@@ -92,6 +92,20 @@ class CannoliPaths(val root: File) {
     fun cheatsFor(tag: String): File = File(cheatsDir, tag)
 
     // Per-game helpers
+    /**
+     * The per-game save folder.
+     *
+     * Deliberately one level shallower than a state directory: a state is only loadable by the core
+     * that wrote it, while an .srm surviving a switch from mGBA to VBA-M is the whole point of the
+     * format. Keying saves by core would strand every save the first time someone changed one.
+     *
+     * The folder carries Cannoli's key; the files inside carry whatever name the emulator chooses,
+     * which is what lets one shape hold a lone .srm, an .srm beside its .rtc, N64's four save types
+     * and a directory tree without any of them being a special case.
+     */
+    fun saveDirFor(tag: String, romBaseName: String): File =
+        File(savesFor(tag), romBaseName)
+
     /** The per-game folder. Every core's states for that game live under it, one folder each. */
     fun saveStateGameDir(tag: String, romBaseName: String): File =
         File(saveStatesFor(tag), romBaseName)

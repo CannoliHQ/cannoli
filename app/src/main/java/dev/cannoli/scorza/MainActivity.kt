@@ -129,6 +129,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
     // Behind a Provider so the id backfill, and the scan scheduler it listens to, stay out of the
     // boot graph until the launcher is actually in front with a library to work on.
     @Inject lateinit var sigilBackfill: Provider<dev.cannoli.scorza.sigil.SigilBackfillService>
+    @Inject lateinit var saveMigrationSweep: Provider<dev.cannoli.scorza.saves.SaveMigrationSweep>
     @Inject lateinit var saveSyncStatusHolder: dev.cannoli.scorza.romm.sync.SaveSyncStatusHolder
     @Inject lateinit var cannoliPathsProvider: dev.cannoli.scorza.di.CannoliPathsProvider
     @field:dev.cannoli.scorza.di.IoScope @Inject lateinit var ioScope: kotlinx.coroutines.CoroutineScope
@@ -252,6 +253,11 @@ class MainActivity : ComponentActivity(), ActivityActions {
         lifecycleScope.launch {
             lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
                 bootSequencer.state.first { it is BootState.Ready }
+                // Saves first, and to completion. It decides whether a save is findable at all,
+                // while the id drain only fills a column nothing reads yet, so letting the two
+                // compete for the card would slow the one that matters. Cancelled if the launcher
+                // goes away, and it resumes from the top next time.
+                saveMigrationSweep.get().runOnce()
                 val backfill = sigilBackfill.get()
                 backfill.setActive(true)
                 try {

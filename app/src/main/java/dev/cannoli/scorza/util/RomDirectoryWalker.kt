@@ -633,7 +633,16 @@ class RomDirectoryWalker(
 
     private fun migrateSidecarFiles(tag: String, fromStem: String, toStem: String) {
         val paths = CannoliPaths(cannoliRoot)
-        renameStemMatchedFiles(paths.savesFor(tag), fromStem, toStem)
+        val savesTagDir = paths.savesFor(tag)
+        renameStemMatchedFiles(savesTagDir, fromStem, toStem)
+        // The per-game save folder follows the stem the way the state folder below does. Only the
+        // files carrying the ROM's name are renamed inside it; the rest were written by the
+        // emulator under names of its own choosing.
+        val saveSub = File(savesTagDir, fromStem)
+        val saveSubTarget = File(savesTagDir, toStem)
+        if (saveSub.isDirectory && !saveSubTarget.exists() && saveSub.renameTo(saveSubTarget)) {
+            renameStemMatchedFiles(saveSubTarget, fromStem, toStem)
+        }
         val statesTagDir = paths.saveStatesFor(tag)
         renameStemMatchedFiles(statesTagDir, fromStem, toStem)
         val stateSub = File(statesTagDir, fromStem)

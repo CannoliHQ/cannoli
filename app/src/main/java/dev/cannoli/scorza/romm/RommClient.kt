@@ -29,6 +29,17 @@ class RommException(val statusCode: Int?, message: String, cause: Throwable? = n
 
 class RommDownloadCancelled : Exception("download cancelled")
 
+/**
+ * How many saves the rolling autosave bucket keeps on the server. Argosy uses ten; this is fifteen,
+ * because the autosave is the copy nobody chose to make and therefore the one whose history gets
+ * reached for when something goes wrong.
+ *
+ * Only the autosave slot is ever pruned. A named slot is a save the user made deliberately, so it
+ * is never auto-deleted however many of them accumulate; this is a bound on the bucket that
+ * rewrites itself on every launch, not on anything anyone chose to keep.
+ */
+const val AUTOSAVE_HISTORY_LIMIT = 15
+
 class RommClient(
     private val baseUrlProvider: () -> String,
     private val clientProvider: () -> OkHttpClient,
@@ -257,22 +268,46 @@ class RommClient(
         return execute(request, SyncNegotiateResponse.serializer())
     }
 
-    fun getSaves(romId: Int, deviceId: String): List<RommSaveDto> {
+    fun getSaves(romId: Int, deviceId: String, slot: String? = null): List<RommSaveDto> {
         val url = endpoint("/api/saves").newBuilder()
             .addQueryParameter("rom_id", romId.toString())
             .addQueryParameter("device_id", deviceId)
+            // The server filters by slot, so asking for one costs less than fetching a rom's whole
+            // save history and dropping most of it here.
+            .apply { if (slot != null) addQueryParameter("slot", slot) }
             .build()
         val request = Request.Builder().url(url).get().build()
         return execute(request, ListSerializer(RommSaveDto.serializer()))
     }
 
-    fun uploadSave(romId: Int, emulator: String?, slot: String, deviceId: String, overwrite: Boolean, file: File): RommSaveDto {
+    fun uploadSave(
+        romId: Int,
+        emulator: String?,
+        slot: String,
+        deviceId: String,
+        overwrite: Boolean,
+        file: File,
+        sessionId: Int? = null,
+        pruneHistory: Boolean = false,
+    ): RommSaveDto {
         val url = endpoint("/api/saves").newBuilder()
             .addQueryParameter("rom_id", romId.toString())
             .apply { if (emulator != null) addQueryParameter("emulator", emulator) }
             .addQueryParameter("slot", slot)
             .addQueryParameter("device_id", deviceId)
             .addQueryParameter("overwrite", overwrite.toString())
+            // Every sync added a row and nothing ever removed one. Pruning is confined to the
+            // autosave bucket, which rewrites itself on every launch; a named slot is a save
+            // somebody chose to keep and is never auto-deleted.
+            .apply {
+                if (pruneHistory) {
+                    addQueryParameter("autocleanup", "true")
+                    addQueryParameter("autocleanup_limit", AUTOSAVE_HISTORY_LIMIT.toString())
+                }
+            }
+            // Lets the server account for what actually happened in the session it opened, instead
+            // of taking our word for it at complete time.
+            .apply { if (sessionId != null) addQueryParameter("session_id", sessionId.toString()) }
             .build()
         val multipart = MultipartBody.Builder().setType(MultipartBody.FORM)
             .addFormDataPart("saveFile", file.name, file.asRequestBody("application/octet-stream".toMediaType()))

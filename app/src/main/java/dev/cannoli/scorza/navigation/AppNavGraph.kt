@@ -430,6 +430,7 @@ fun AppNavGraph(
             downloads = overlayDownloads,
             updateAvailable = updateAvailable,
             buttonStyle = labels,
+            use24hTime = appSettings.use24h,
             appListPlatformTag = gameListViewModel?.state?.collectAsState()?.value?.platformTag,
         )
 

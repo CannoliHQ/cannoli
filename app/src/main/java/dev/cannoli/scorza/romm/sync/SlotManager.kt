@@ -80,7 +80,7 @@ class SlotManager(
             try {
                 client.downloadSaveContent(serverLatest.id, deviceId, tmp)
                 service.backupBeforeDownload(tag, base)
-                resolver.applyDownload(tag, base, tmp)
+                resolver.applyDownload(tag, base, tmp, serverLatest.fileName)
                 val confirmed = runCatching { client.confirmSaveDownloaded(serverLatest.id, deviceId) }.getOrNull()
                 val hash = resolver.resolve(tag, base)?.contentHash
                 store.upsert(

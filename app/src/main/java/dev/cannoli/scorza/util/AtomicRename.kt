@@ -124,6 +124,7 @@ class AtomicRename(private val cannoliRoot: () -> File, private val walker: RomD
     private fun hasSaveData(tag: String, baseName: String): Boolean {
         val statesTagDir = File(statesDir, tag)
         return File(statesTagDir, baseName).isDirectory ||
+            File(File(savesDir, tag), baseName).isDirectory ||
             findMatchingFiles(File(savesDir, tag), baseName).isNotEmpty() ||
             findMatchingFiles(statesTagDir, baseName).isNotEmpty()
     }
@@ -139,11 +140,16 @@ class AtomicRename(private val cannoliRoot: () -> File, private val walker: RomD
         if (stateSubDir.isDirectory) {
             stateSubDir.copyRecursively(File(backupTagDir, "statedir_$baseName"), overwrite = true)
         }
+        val saveSubDir = File(File(savesDir, tag), baseName)
+        if (saveSubDir.isDirectory) {
+            saveSubDir.copyRecursively(File(backupTagDir, "savedir_$baseName"), overwrite = true)
+        }
     }
 
     private fun moveSaveData(tag: String, oldBaseName: String, newBaseName: String) {
         val savesTagDir = File(savesDir, tag)
         val statesTagDir = File(statesDir, tag)
+        moveSaveDir(savesTagDir, oldBaseName, newBaseName)
         moveMatching(savesTagDir, oldBaseName, newBaseName)
         moveMatching(statesTagDir, oldBaseName, newBaseName)
         val stateSubDir = File(statesTagDir, oldBaseName)
@@ -161,6 +167,20 @@ class AtomicRename(private val cannoliRoot: () -> File, private val walker: RomD
         }
     }
 
+    /**
+     * The per-game save folder, moved the way the per-game state folder already is. The files
+     * inside carry whatever name the emulator wrote, so the ones named after the old base follow
+     * the folder; anything else keeps its name because it was never ours to rename.
+     */
+    private fun moveSaveDir(savesTagDir: File, oldBaseName: String, newBaseName: String) {
+        val from = File(savesTagDir, oldBaseName)
+        if (!from.isDirectory) return
+        val to = File(savesTagDir, newBaseName)
+        if (to.isDirectory && to.list()?.isEmpty() == true) to.delete()
+        if (!from.renameTo(to)) throw Exception("Failed to move save dir")
+        moveMatching(to, oldBaseName, newBaseName)
+    }
+
     private fun moveMatching(dir: File, oldBaseName: String, newBaseName: String) {
         findMatchingFiles(dir, oldBaseName).forEach { file ->
             val renamed = newBaseName + file.name.substring(oldBaseName.length)
@@ -170,6 +190,7 @@ class AtomicRename(private val cannoliRoot: () -> File, private val walker: RomD
 
     private fun clearSaveData(tag: String, baseName: String) {
         File(File(statesDir, tag), baseName).deleteRecursively()
+        File(File(savesDir, tag), baseName).deleteRecursively()
         findMatchingFiles(File(statesDir, tag), baseName).forEach { it.delete() }
         findMatchingFiles(File(savesDir, tag), baseName).forEach { it.delete() }
     }
@@ -186,6 +207,11 @@ class AtomicRename(private val cannoliRoot: () -> File, private val walker: RomD
                     dest.deleteRecursively()
                     b.copyRecursively(dest, overwrite = true)
                 }
+                b.name.startsWith("savedir_") -> {
+                    val dest = File(File(savesDir, tag), b.name.removePrefix("savedir_"))
+                    dest.deleteRecursively()
+                    b.copyRecursively(dest, overwrite = true)
+                }
             }
         }
     }
@@ -194,9 +220,10 @@ class AtomicRename(private val cannoliRoot: () -> File, private val walker: RomD
         val targetSaves = findMatchingFiles(File(savesDir, tag), newBaseName)
         val targetStates = findMatchingFiles(File(statesDir, tag), newBaseName)
         val targetStateSub = File(File(statesDir, tag), newBaseName)
+        val targetSaveSub = File(File(savesDir, tag), newBaseName)
 
         val anyTarget = targetSaves.isNotEmpty() || targetStates.isNotEmpty() ||
-            targetStateSub.isDirectory
+            targetStateSub.isDirectory || targetSaveSub.isDirectory
         if (!anyTarget) return
 
         val targetBackup = File(rootBackupDir, "target")
@@ -209,6 +236,9 @@ class AtomicRename(private val cannoliRoot: () -> File, private val walker: RomD
         }
         if (targetStateSub.isDirectory) {
             targetStateSub.copyRecursively(File(targetBackup, "statedir_$newBaseName"), overwrite = true)
+        }
+        if (targetSaveSub.isDirectory) {
+            targetSaveSub.copyRecursively(File(targetBackup, "savedir_$newBaseName"), overwrite = true)
         }
     }
 

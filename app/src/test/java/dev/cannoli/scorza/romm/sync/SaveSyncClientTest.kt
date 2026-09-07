@@ -45,6 +45,76 @@ class SaveSyncClientTest {
         assertEquals("/api/sync/negotiate", server.takeRequest().path)
     }
 
+    /** Every sync added a row and nothing removed one, so the server grew without bound. */
+    @Test fun upload_prunes_the_autosave_bucket() {
+        server.enqueue(MockResponse().setBody("""{"id":100,"slot":"autosave"}"""))
+        val f = tmp.newFile("A.srm").apply { writeBytes("S".toByteArray()) }
+
+        client.uploadSave(42, "snes9x", "autosave", "dev-1", false, f, pruneHistory = true)
+
+        val path = server.takeRequest().path!!
+        assertTrue(path, path.contains("autocleanup=true"))
+        assertTrue(path, path.contains("autocleanup_limit=15"))
+    }
+
+    /**
+     * A named slot is a save somebody chose to keep. Pruning is for the bucket that rewrites itself
+     * on every launch, which is what Argosy does too.
+     */
+    @Test fun upload_never_prunes_a_named_slot() {
+        server.enqueue(MockResponse().setBody("""{"id":100,"slot":"before boss"}"""))
+        val f = tmp.newFile("D.srm").apply { writeBytes("S".toByteArray()) }
+
+        client.uploadSave(42, "snes9x", "before boss", "dev-1", false, f)
+
+        val path = server.takeRequest().path!!
+        assertTrue(path, !path.contains("autocleanup"))
+    }
+
+    /** The server counts what a session actually did, but only if the upload names the session. */
+    @Test fun upload_names_the_sync_session_when_it_has_one() {
+        server.enqueue(MockResponse().setBody("""{"id":100,"slot":"autosave"}"""))
+        val f = tmp.newFile("B.srm").apply { writeBytes("S".toByteArray()) }
+
+        client.uploadSave(42, "snes9x", "autosave", "dev-1", false, f, sessionId = 7)
+
+        assertTrue(server.takeRequest().path!!.contains("session_id=7"))
+    }
+
+    @Test fun upload_omits_the_session_when_there_is_none() {
+        server.enqueue(MockResponse().setBody("""{"id":100,"slot":"autosave"}"""))
+        val f = tmp.newFile("C.srm").apply { writeBytes("S".toByteArray()) }
+
+        client.uploadSave(42, "snes9x", "autosave", "dev-1", false, f)
+
+        assertTrue(!server.takeRequest().path!!.contains("session_id"))
+    }
+
+    /** The server filters by slot, so a rom's whole save history need not come back to be dropped. */
+    @Test fun getSaves_scopes_to_a_slot_when_one_is_named() {
+        server.enqueue(MockResponse().setBody("[]"))
+        client.getSaves(42, "dev-1", "autosave")
+        assertTrue(server.takeRequest().path!!.contains("slot=autosave"))
+
+        server.enqueue(MockResponse().setBody("[]"))
+        client.getSaves(42, "dev-1")
+        assertTrue(!server.takeRequest().path!!.contains("slot="))
+    }
+
+    /** Server-side sync state was written on every download and never read back. */
+    @Test fun a_save_carries_the_server_record_of_this_device() {
+        server.enqueue(MockResponse().setBody("""[{"id":100,"rom_id":42,"slot":"autosave","origin_device_id":"deck",
+            "device_syncs":[{"device_id":"deck","device_name":"Steam Deck","last_synced_at":"2026-09-01T10:00:00+00:00","is_untracked":false,"is_current":false},
+                            {"device_id":"dev-1","device_name":"Nova","last_synced_at":"2026-09-02T10:00:00+00:00","is_untracked":true,"is_current":true}]}]"""))
+
+        val save = client.getSaves(42, "dev-1").single()
+
+        assertEquals("Steam Deck", save.originDeviceName())
+        assertTrue(save.isUntrackedOn("dev-1"))
+        assertTrue(!save.isUntrackedOn("deck"))
+        assertEquals("2026-09-02T10:00:00+00:00", save.syncFor("dev-1")?.lastSyncedAt)
+    }
+
     @Test fun upload_is_multipart_with_query_params() {
         server.enqueue(MockResponse().setBody("""{"id":100,"slot":"autosave","content_hash":"abc"}"""))
         val f = tmp.newFile("Mario.srm").apply { writeBytes("SRAM".toByteArray()) }

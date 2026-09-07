@@ -33,6 +33,10 @@ internal fun DialogInputHandler.onSaveConflictConfirm(ds: DialogState.SaveSyncCo
         return
     }
     val keepLocal = ds.selectedIndex == 0
+    // Applying a choice is an upload or a download, so the press has to land before the network
+    // does. Leaving the conflict on screen for the whole round trip reads as a button that did
+    // nothing. Same swap the conflicts list already makes for the same reason.
+    nav.dialogState.value = DialogState.ConflictsApplying
     ioScope.launch {
         try {
             if (keepLocal) saveSyncService.applyConflictKeepLocal(ds.conflict, deviceId)
@@ -499,11 +503,7 @@ internal fun DialogInputHandler.openConflictsMenu(fromSaveSyncMenu: Boolean = fa
     }
 }
 
-private fun isoToMillis(iso: String): Long? = try {
-    java.time.Instant.parse(iso).toEpochMilli()
-} catch (_: Exception) {
-    try { java.time.OffsetDateTime.parse(iso).toInstant().toEpochMilli() } catch (_: Exception) { null }
-}
+private fun isoToMillis(iso: String): Long? = dev.cannoli.scorza.romm.RommTime.millisOrNull(iso)
 
 internal fun DialogInputHandler.cycleConflictChoice(ds: DialogState.ConflictsMenu, delta: Int) {
     val row = ds.rows.getOrNull(ds.selectedIndex) ?: return

@@ -218,7 +218,7 @@ class LaunchManagerConfigTest : LaunchConfigHarness() {
         val root = tmp.newFolder()
         write(CannoliPaths(root.absolutePath).customCfg, "savefile_directory = \"/tmp/attacker\"")
         val cfg = launchedConfig(root, rom(root, "Roms/GBA/Game.gba", "GBA"))
-        assertEquals(File(root, "Saves/GBA").absolutePath, cfg["savefile_directory"])
+        assertEquals(File(root, "Saves/GBA/Game").absolutePath, cfg["savefile_directory"])
     }
 
     @Test fun `auto overrides are disabled in the launch config`() {
@@ -240,6 +240,6 @@ class LaunchManagerConfigTest : LaunchConfigHarness() {
     @Test fun `missing tier files contribute nothing and do not fail the launch`() {
         val root = tmp.newFolder()
         val cfg = launchedConfig(root, rom(root, "Roms/GBA/Game.gba", "GBA"))
-        assertEquals(File(root, "Saves/GBA").absolutePath, cfg["savefile_directory"])
+        assertEquals(File(root, "Saves/GBA/Game").absolutePath, cfg["savefile_directory"])
     }
 }

@@ -32,6 +32,7 @@ import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.LocalCannoliFont
 import dev.cannoli.ui.components.List
 import dev.cannoli.ui.components.PillRowKeyValue
+import dev.cannoli.ui.components.pillInternalPadding
 import dev.cannoli.ui.components.PillRowText
 import dev.cannoli.ui.components.OverlayScrim
 import dev.cannoli.ui.theme.Spacing
@@ -46,12 +47,12 @@ internal fun SaveSyncDialogs(
     listVerticalPadding: Dp,
     buttonStyle: ButtonStyle,
     itemHeight: Dp,
+    use24hTime: Boolean = false,
 ) {
     when (dialogState) {
         is DialogState.SaveSyncConflict -> {
-            val unknown = stringResource(android.R.string.unknownName)
-            val localLabel = dialogState.conflict.localTime ?: unknown
-            val serverLabel = dialogState.conflict.serverTime ?: unknown
+            val localLabel = formatConflictIso(dialogState.conflict.localTime, use24hTime)
+            val serverLabel = formatConflictIso(dialogState.conflict.serverTime, use24hTime)
             val options = listOf(
                 stringResource(R.string.save_conflict_keep_local) to localLabel,
                 stringResource(R.string.save_conflict_use_server) to serverLabel,
@@ -73,12 +74,9 @@ internal fun SaveSyncDialogs(
                         lineHeight = listLineHeight,
                         maxLines = 1,
                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                    )
-                    androidx.compose.material3.Text(
-                        text = stringResource(R.string.save_conflict_subtitle),
-                        color = LocalCannoliColors.current.text,
-                        fontSize = listFontSize * 0.8f,
-                        lineHeight = listLineHeight * 0.8f,
+                        // The rows below indent by their own pill padding, so the name has to take
+                        // the same or it hangs off the left of everything it titles.
+                        modifier = Modifier.padding(horizontal = pillInternalPadding()),
                     )
                     Spacer(modifier = Modifier.height(Spacing.Sm))
                     List(
@@ -214,6 +212,7 @@ internal fun SaveSyncDialogs(
                     selectedIndex = dialogState.selectedIndex,
                 ) { _, row, isSelected ->
                     ConflictRowItem(
+                        use24hTime = use24hTime,
                         row = row,
                         choiceLabel = conflictChoiceLabel(row.choice),
                         isSelected = isSelected,
@@ -282,6 +281,7 @@ private fun conflictChoiceLabel(choice: ConflictChoice): String = when (choice) 
 
 @Composable
 private fun ConflictRowItem(
+    use24hTime: Boolean,
     row: dev.cannoli.scorza.ui.screens.ConflictRow,
     choiceLabel: String,
     isSelected: Boolean,
@@ -319,8 +319,8 @@ private fun ConflictRowItem(
                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 modifier = Modifier.fillMaxWidth(),
             )
-            ConflictTimeLine(stringResource(dev.cannoli.ui.R.string.conflict_yours), local, localOlder, sub, textColor)
-            ConflictTimeLine(stringResource(dev.cannoli.ui.R.string.conflict_server), server, serverOlder, sub, textColor)
+            ConflictTimeLine(stringResource(dev.cannoli.ui.R.string.conflict_yours), local, localOlder, sub, textColor, use24hTime)
+            ConflictTimeLine(stringResource(dev.cannoli.ui.R.string.conflict_server), server, serverOlder, sub, textColor, use24hTime)
         }
         Spacer(modifier = Modifier.width(Spacing.Sm))
         Text(text = choiceLabel, color = textColor, fontSize = fontSize, lineHeight = lineHeight, maxLines = 1)
@@ -334,12 +334,13 @@ private fun ConflictTimeLine(
     older: Boolean,
     fontSize: TextUnit,
     color: androidx.compose.ui.graphics.Color,
+    use24hTime: Boolean,
 ) {
     val suffix = if (older) "  · " + stringResource(dev.cannoli.ui.R.string.conflict_older) else ""
     Row(modifier = Modifier.fillMaxWidth().padding(top = 1.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(text = label, color = color, fontSize = fontSize, lineHeight = fontSize * 1.1f, maxLines = 1, modifier = Modifier.width(58.dp))
         Text(
-            text = formatConflictTime(millis) + suffix,
+            text = formatConflictTime(millis, use24hTime) + suffix,
             color = color,
             fontSize = fontSize,
             lineHeight = fontSize * 1.1f,
@@ -349,8 +350,24 @@ private fun ConflictTimeLine(
     }
 }
 
-private fun formatConflictTime(millis: Long?): String =
+/**
+ * The same wording the conflicts list uses, from the ISO instant the launch path carries. An
+ * ISO-8601 string is exact and unreadable at a glance, and this screen exists to be read at a
+ * glance: the whole question is which of two times is the one you want.
+ */
+@Composable
+private fun formatConflictIso(iso: String?, use24hTime: Boolean): String {
+    val millis = dev.cannoli.scorza.romm.RommTime.millisOrNull(iso)
+    return if (millis == null) stringResource(android.R.string.unknownName) else formatConflictTime(millis, use24hTime)
+}
+
+/**
+ * The clock the user chose, as the status bar already honours it. The locale decides the month
+ * name; it does not decide the clock, because that is a Cannoli setting rather than a regional one.
+ */
+private fun formatConflictTime(millis: Long?, use24hTime: Boolean): String =
     millis?.let {
-        java.text.SimpleDateFormat("MMM d, h:mm a", java.util.Locale.getDefault()).format(java.util.Date(it))
+        val pattern = if (use24hTime) "MMM d, HH:mm" else "MMM d, h:mm a"
+        java.text.SimpleDateFormat(pattern, java.util.Locale.getDefault()).format(java.util.Date(it))
     } ?: "—"
 

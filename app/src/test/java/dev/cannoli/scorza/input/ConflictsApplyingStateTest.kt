@@ -34,6 +34,39 @@ class ConflictsApplyingStateTest {
             ioScope = CoroutineScope(dispatcher),
             context = ApplicationProvider.getApplicationContext(),
             saveSyncStatusHolder = SaveSyncStatusHolder(),
+            saveSyncService = io.mockk.mockk(relaxed = true) {
+                io.mockk.every { deviceIdOrNull() } returns "dev-1"
+            },
+        )
+    }
+
+    private fun singleConflict() = DialogState.SaveSyncConflict(
+        dev.cannoli.scorza.romm.sync.PreLaunchOutcome.Conflict(
+            gameKey = "snes/Zelda.sfc",
+            slot = "autosave",
+            localTime = null,
+            serverTime = null,
+            serverDevice = null,
+            saveId = 1,
+            romId = 42,
+            tag = "SNES",
+            base = "Zelda",
+            emulator = null,
+        )
+    )
+
+    /**
+     * The same reason the list swaps: resolving one conflict is an upload or a download, and until
+     * this the screen sat unchanged for the whole round trip, so Start read as a dead button.
+     */
+    @Test fun `confirming a single conflict swaps to applying before the network runs`() {
+        nav.dialogState.value = singleConflict()
+
+        handler.onConfirm()
+
+        assertTrue(
+            "expected ConflictsApplying, got ${nav.dialogState.value}",
+            nav.dialogState.value is DialogState.ConflictsApplying,
         )
     }
 

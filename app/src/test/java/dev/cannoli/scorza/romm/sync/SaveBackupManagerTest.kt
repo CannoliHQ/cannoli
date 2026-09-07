@@ -74,7 +74,7 @@ class SaveBackupManagerTest {
         val ok = m.restore("SNES", "Mario", stamp = 1000L, keepCount = 5)
 
         assertTrue(ok)
-        assertEquals("LOCAL", File(tmp.root, "Saves/SNES/Mario.srm").readText())
+        assertEquals("LOCAL", File(tmp.root, "Saves/SNES/Mario/Mario.srm").readText())
         // the pre-restore "CHANGED" save was backed up, so we now have two snapshots + none lost
         assertTrue(m.list("SNES", "Mario").size >= 2)
     }

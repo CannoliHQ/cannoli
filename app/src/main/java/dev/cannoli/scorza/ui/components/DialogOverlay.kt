@@ -49,6 +49,7 @@ fun DialogOverlay(
     downloads: List<DownloadItem> = emptyList(),
     updateAvailable: Boolean = false,
     buttonStyle: ButtonStyle = ButtonStyle(),
+    use24hTime: Boolean = false,
     // Only the Tools and Ports lists offer to drop a shortcut for an app that has gone missing,
     // and that depends on the list being viewed rather than on anything the dialog carries.
     appListPlatformTag: String? = null,
@@ -99,6 +100,7 @@ fun DialogOverlay(
         listVerticalPadding = listVerticalPadding,
         buttonStyle = buttonStyle,
         itemHeight = itemHeight,
+        use24hTime = use24hTime,
     )
     if (dialogState is DialogState.Picker) {
         PickerDialog(

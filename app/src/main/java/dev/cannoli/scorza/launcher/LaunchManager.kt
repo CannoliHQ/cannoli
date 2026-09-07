@@ -234,7 +234,11 @@ class LaunchManager(
         )
         val stateDir = paths.saveStateDir(rom.platformTag, romName, core)
         stateDir.mkdirs()
-        val saveDir = paths.savesFor(rom.platformTag)
+        // Just in time, before the config names the folder: the background sweep may not have
+        // reached this game yet, and a game launched into a folder its save has not moved to would
+        // start with no save at all. Idempotent, so a migrated game costs a directory listing.
+        dev.cannoli.scorza.saves.SaveMigration(paths).migrateGame(rom.platformTag, romName)
+        val saveDir = paths.saveDirFor(rom.platformTag, romName)
         saveDir.mkdirs()
         val biosDir = prepareBios(rom.platformTag, paths.biosFor(rom.platformTag))
         val raSlot = if (slot > 0) slot - 1 else 0
@@ -247,12 +251,13 @@ class LaunchManager(
             put("sort_savestates_by_content_enable", "false")
             // Named outright rather than derived. RetroArch's by-content sorting appends the ROM's
             // parent directory, which is the platform directory only for a loose ROM: a bundled
-            // multi-disc game at Roms/PSX/Game/disc1.cue would land in Saves/Game. Resolving the
-            // platform tag here keeps every game on one system in Saves/<tag>, which is where the
-            // launcher and save sync both look.
+            // multi-disc game at Roms/PSX/Game/disc1.cue would land in Saves/Game. Naming the
+            // folder here puts every save for one game in Saves/<tag>/<game>, keyed the way guides,
+            // cheats and states already are, which is where the launcher and save sync both look.
             put("savefile_directory", saveDir.absolutePath)
             put("sort_savefiles_enable", "false")
             put("sort_savefiles_by_content_enable", "false")
+            put("save_file_compression", "false")
             put("state_slot", raSlot.toString())
             // Also in the base config; emitted in the plumbing band too so a tier or custom.cfg
             // cannot turn it off.
@@ -907,6 +912,11 @@ class LaunchManager(
             appendLine("sort_savestates_by_content_enable = \"true\"")
             appendLine("sort_savestates_enable = \"false\"")
             appendLine("savestate_file_compression = \"false\"")
+            // Saves too, and for a reason beyond consistency: a compressed .srm is an rzip
+            // container rather than SRAM, which another launcher restoring it writes to the save
+            // path verbatim and a desktop emulator will not read. The same save also hashes
+            // differently compressed and uncompressed, which is a sync anchor that never settles.
+            appendLine("save_file_compression = \"false\"")
             // RetroArch defaults this off everywhere but x86_64, and the slot thumbnails are the
             // whole point of the save and load rows.
             appendLine("savestate_thumbnail_enable = \"true\"")

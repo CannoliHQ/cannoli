@@ -29,6 +29,8 @@ sealed interface PreLaunchOutcome {
         val emulator: String?,
         val serverContentHash: String? = null,
         val reason: String? = null,
+        /** The format the server's copy is in, which is what the save must be called on disk. */
+        val serverFileName: String? = null,
     ) : PreLaunchOutcome
     data class KnownStaleBlock(val gameKey: String, val slot: String) : PreLaunchOutcome
 }
@@ -80,6 +82,7 @@ class SaveSyncService(
         client.negotiateSync(
             SyncNegotiatePayload(
                 deviceId = deviceId,
+                romIds = romIdScope(listOf(romId)),
                 saves = listOf(
                     ClientSaveState(
                         romId = romId,
@@ -99,23 +102,34 @@ class SaveSyncService(
 
     // RomM keeps every save as its own append-only row, so the newest one is the head. Ordering by
     // id breaks ties when a server hands back timestamps we cannot parse.
-    private fun headSaveFor(saves: List<RommSaveDto>, slot: String): RommSaveDto? =
-        saves.filter { (it.slot ?: DEFAULT_SLOT) == slot }
+    /**
+     * The save a slot is currently at, ignoring any this device has untracked. RomM's negotiate
+     * already skips untracked saves; this is the other path into a download, and without the same
+     * rule it would pull back the save the user asked this device to leave alone.
+     */
+    private fun headSaveFor(saves: List<RommSaveDto>, slot: String, deviceId: String): RommSaveDto? =
+        saves.filter { (it.slot ?: DEFAULT_SLOT) == slot && !it.isUntrackedOn(deviceId) }
             .maxWithOrNull(compareBy({ savedAtMillis(it.updatedAt) }, { it.id }))
 
-    private fun savedAtMillis(updatedAt: String): Long = try {
-        java.time.OffsetDateTime.parse(updatedAt).toInstant().toEpochMilli()
-    } catch (_: Exception) {
-        try { Instant.parse(updatedAt).toEpochMilli() } catch (_: Exception) { 0L }
-    }
+    private fun savedAtMillis(updatedAt: String): Long =
+        dev.cannoli.scorza.romm.RommTime.millisOrNull(updatedAt) ?: 0L
 
-    private fun buildConflict(op: SyncOperationDto, local: LocalSave?, slot: String, romId: Int, tag: String, base: String, gameKey: String, emulator: String?): PreLaunchOutcome.Conflict =
+    /**
+     * The device that last wrote the server's copy, when the server can tell us. Choosing between
+     * two saves by timestamp alone is hard; "changed on Steam Deck" is usually the whole answer.
+     * One scoped request, on a path that has already stopped to ask a question.
+     */
+    private fun serverDeviceNameFor(romId: Int, slot: String, deviceId: String): String? = runCatching {
+        headSaveFor(client.getSaves(romId, deviceId, slot), slot, deviceId)?.originDeviceName()
+    }.getOrNull()
+
+    private fun buildConflict(op: SyncOperationDto, local: LocalSave?, slot: String, romId: Int, tag: String, base: String, gameKey: String, emulator: String?, deviceId: String? = null): PreLaunchOutcome.Conflict =
         PreLaunchOutcome.Conflict(
             gameKey = gameKey,
             slot = slot,
             localTime = local?.let { isoOf(it.modifiedMillis) },
             serverTime = op.serverUpdatedAt,
-            serverDevice = null,
+            serverDevice = deviceId?.let { serverDeviceNameFor(romId, slot, it) },
             saveId = op.saveId ?: 0,
             romId = romId,
             tag = tag,
@@ -123,15 +137,67 @@ class SaveSyncService(
             emulator = emulator,
             serverContentHash = op.serverContentHash,
             reason = op.reason.ifEmpty { null },
+            serverFileName = op.fileName,
         )
 
-    // A negotiate "upload" verdict we cannot satisfy: we already pushed exactly this content
-    // (anchor == local) yet the server's newest save is different. RomM's overwrite=false upload
-    // dedups our bytes back onto the old row, so re-uploading never converges. Treat it as a conflict.
-    private fun isStuckUpload(op: SyncOperationDto, anchor: SaveSyncRow?, local: LocalSave): Boolean =
-        anchor?.lastUploadedHash == local.contentHash &&
-            op.serverContentHash != null &&
-            op.serverContentHash != local.contentHash
+    /**
+     * An "upload" verdict that would destroy a server save rather than advance it.
+     *
+     * The server decides upload from timestamps, and a timestamp is only evidence when this device
+     * knows what it last synced. With no anchor it knows nothing, and the local file's mtime says
+     * nothing either: a core rewrites its save file on load whether or not anything was played, so
+     * a blank save freshly written by launching a game looks newer than a real save on the server.
+     * That is exactly how a good Chrono Trigger save was overwritten by an empty one on 2026-09-07.
+     *
+     * So an upload is refused, and surfaced as a conflict for a person to settle, whenever the
+     * server holds something different and we cannot show we are ahead of it. Nothing is refused
+     * when the server has no save, or when both sides already hold the same bytes.
+     */
+    private fun uploadWouldClobber(op: SyncOperationDto, anchor: SaveSyncRow?, local: LocalSave): Boolean {
+        val server = op.serverContentHash ?: return false
+        if (server == local.contentHash) return false
+        // No record of ever having synced: which side is authoritative is genuinely unknown.
+        if (anchor == null) return true
+        // We already pushed exactly this content and the server still differs. RomM's
+        // overwrite=false upload dedups our bytes back onto the old row, so this never converges.
+        return anchor.lastUploadedHash == local.contentHash
+    }
+
+    /**
+     * The anchor this device lost, rebuilt from the server's record of it.
+     *
+     * RomM tracks per device what it last synced, and Cannoli writes that on every confirmed
+     * download while never reading it back, so a local row that goes missing left it with no
+     * history at all and every later decision fell back to timestamps. When the server's copy has
+     * not moved since this device last synced it, that copy is exactly what we last had, which is
+     * what an anchor records.
+     *
+     * Only ever adopts what the server can prove. A save the server has changed since our last
+     * sync tells us nothing about what we held, so it is left alone and the conflict stands.
+     */
+    private fun reconstructAnchor(gameKey: String, slot: String, romId: Int, deviceId: String): SaveSyncRow? {
+        val head = runCatching { headSaveFor(client.getSaves(romId, deviceId, slot), slot, deviceId) }
+            .getOrNull() ?: return null
+        val syncedAt = head.syncFor(deviceId)?.lastSyncedAt ?: return null
+        val syncedMillis = dev.cannoli.scorza.romm.RommTime.millisOrNull(syncedAt) ?: return null
+        val serverMillis = dev.cannoli.scorza.romm.RommTime.millisOrNull(head.updatedAt) ?: return null
+        if (serverMillis > syncedMillis) return null
+        val hash = head.contentHash ?: return null
+        val row = SaveSyncRow(
+            gameKey = gameKey,
+            slot = slot,
+            rommRomId = romId,
+            rommSaveId = head.id,
+            lastSyncedAt = syncedAt,
+            lastUploadedHash = hash,
+            localContentHash = hash,
+            serverUpdatedAt = head.updatedAt,
+            updatedAt = System.currentTimeMillis(),
+        )
+        store.upsert(row)
+        dev.cannoli.scorza.util.RommLog.write("anchor rebuilt from server for $gameKey slot=$slot hash=${hash.take(8)}")
+        return row
+    }
 
     suspend fun syncBeforeLaunch(tag: String, base: String, gameKey: String, emulator: String?): PreLaunchOutcome =
         withContext(Dispatchers.IO) {
@@ -139,7 +205,9 @@ class SaveSyncService(
             val deviceId = registrar.deviceId() ?: return@withContext PreLaunchOutcome.Proceed
             val slot = store.activeSlot(gameKey)
             val local = resolver.resolve(tag, base)
-            val anchor = store.get(gameKey, slot)
+            // Without this every game on a device that lost its rows conflicts once, because a
+            // missing anchor is treated as never having synced.
+            val anchor = store.get(gameKey, slot) ?: reconstructAnchor(gameKey, slot, romId, deviceId)
             if (local == null) {
                 // No local save: if we previously synced this game, the local copy was deleted -> pull it back.
                 return@withContext if (anchor != null) {
@@ -158,20 +226,25 @@ class SaveSyncService(
                         dev.cannoli.scorza.util.RommLog.write("launch [$base]: downloaded server save")
                     }
                 }
-                SyncAction.Upload -> if (isStuckUpload(op, anchor, local)) {
-                    dev.cannoli.scorza.util.RommLog.write("launch [$base]: upload cannot converge, surfacing conflict")
-                    buildConflict(op, local, slot, romId, tag, base, gameKey, emulator)
+                SyncAction.Upload -> if (uploadWouldClobber(op, anchor, local)) {
+                    dev.cannoli.scorza.util.RommLog.write("launch [$base]: upload would replace a different server save, surfacing conflict")
+                    buildConflict(op, local, slot, romId, tag, base, gameKey, emulator, deviceId)
                 } else {
                     try {
-                        uploadActive(tag, base, gameKey, slot, romId, emulator, deviceId, overwrite = false)
+                        uploadActive(tag, base, gameKey, slot, romId, emulator, deviceId, overwrite = false, sessionId = response.sessionId)
                         dev.cannoli.scorza.util.RommLog.write("launch [$base]: uploaded local save")
+                        PreLaunchOutcome.Proceed
                     } catch (t: Throwable) {
                         val code = (t as? dev.cannoli.scorza.romm.RommException)?.statusCode
                         dev.cannoli.scorza.util.RommLog.write("launch [$base]: upload failed ${code ?: t.message}")
+                        // 409 is the server saying the slot moved on since our last sync, which is
+                        // the same thing the sweep escalates. Proceeding here launched the game
+                        // against a save the server had just refused, and said so only to a log.
+                        if (code == 409) buildConflict(op, local, slot, romId, tag, base, gameKey, emulator, deviceId)
+                        else PreLaunchOutcome.Proceed
                     }
-                    PreLaunchOutcome.Proceed
                 }
-                SyncAction.Conflict -> buildConflict(op, local, slot, romId, tag, base, gameKey, emulator)
+                SyncAction.Conflict -> buildConflict(op, local, slot, romId, tag, base, gameKey, emulator, deviceId)
                 // A verdict this build does not know is not a no-op: nothing has been settled, so
                 // proceeding would launch against a save the server may consider stale.
                 SyncAction.Unknown -> {
@@ -217,7 +290,7 @@ class SaveSyncService(
             client.downloadSaveContent(saveId, deviceId, tmp)
             verifyDownloaded(tmp, op.serverContentHash)
             backupBeforeDownload(tag, base)
-            resolver.applyDownload(tag, base, tmp)
+            resolver.applyDownload(tag, base, tmp, op.fileName)
             val confirmed = runCatching { client.confirmSaveDownloaded(saveId, deviceId) }.getOrNull()
             val hash = resolver.resolve(tag, base)?.contentHash
             // We verified non-empty bytes a moment ago, so an empty read-back means the storage
@@ -262,7 +335,7 @@ class SaveSyncService(
         } catch (t: Throwable) {
             return PreLaunchOutcome.Proceed
         }
-        val save = headSaveFor(serverSaves, slot) ?: return PreLaunchOutcome.Proceed
+        val save = headSaveFor(serverSaves, slot, deviceId) ?: return PreLaunchOutcome.Proceed
         val outcome = downloadOp(tag, base, gameKey, slot, romId, deviceId, downloadOpFor(save, romId, slot))
         if (outcome == PreLaunchOutcome.Proceed) {
             dev.cannoli.scorza.util.RommLog.write("launch [$base]: regenerated save (local was deleted)")
@@ -276,7 +349,7 @@ class SaveSyncService(
             client.downloadSaveContent(c.saveId, deviceId, tmp)
             verifyDownloaded(tmp, c.serverContentHash)
             backupBeforeDownload(c.tag, c.base)
-            resolver.applyDownload(c.tag, c.base, tmp)
+            resolver.applyDownload(c.tag, c.base, tmp, c.serverFileName)
             val confirmed = runCatching { client.confirmSaveDownloaded(c.saveId, deviceId) }.getOrNull()
             val hash = resolver.resolve(c.tag, c.base)?.contentHash
             store.upsert(
@@ -298,7 +371,29 @@ class SaveSyncService(
     }
 
     suspend fun applyConflictKeepLocal(c: PreLaunchOutcome.Conflict, deviceId: String) = withContext(Dispatchers.IO) {
+        backupServerCopy(c.tag, c.base, c.romId, c.slot, deviceId)
         uploadActive(c.tag, c.base, c.gameKey, c.slot, c.romId, c.emulator, deviceId, overwrite = true)
+    }
+
+    /**
+     * Keep the server's save before overwriting it. Downloads guard the local copy with
+     * backupBeforeDownload and nothing guarded the remote one, so choosing "keep this device" was
+     * the one moment something irreplaceable was discarded with no net under it. It lands in the
+     * same backup store the restore screen already lists, so recovering it needs no new surface.
+     */
+    private fun backupServerCopy(tag: String, base: String, romId: Int, slot: String, deviceId: String) {
+        runCatching {
+            val head = headSaveFor(client.getSaves(romId, deviceId, slot), slot, deviceId) ?: return
+            val tmp = File.createTempFile("romm-server", ".bin", paths.configCache.apply { mkdirs() })
+            try {
+                client.downloadSaveContent(head.id, deviceId, tmp)
+                if (tmp.length() > 0) {
+                    backupManager.keepIncoming(tag, base, tmp, System.currentTimeMillis(), settings.rommSaveBackupCount)
+                }
+            } finally {
+                tmp.delete()
+            }
+        }
     }
 
     fun backupBeforeDownload(tag: String, base: String) =
@@ -355,7 +450,7 @@ class SaveSyncService(
         deviceId: String,
     ): PromoteResult {
         val head = try {
-            headSaveFor(client.getSaves(romId, deviceId), slot)
+            headSaveFor(client.getSaves(romId, deviceId, slot), slot, deviceId)
         } catch (t: Throwable) {
             return PromoteResult.UNREACHABLE
         }
@@ -432,6 +527,7 @@ class SaveSyncService(
         emulator: String?,
         deviceId: String,
         overwrite: Boolean,
+        sessionId: Int? = null,
     ) {
         val local = resolver.resolve(tag, base) ?: return
         statusHolder.setActive(SaveSyncStatus.UPLOADING)
@@ -442,7 +538,11 @@ class SaveSyncService(
             local.files.single()
         }
         val saved = try {
-            client.uploadSave(romId, emulator, slot, deviceId, overwrite, file)
+            client.uploadSave(
+                romId, emulator, slot, deviceId, overwrite, file, sessionId,
+                // Only the bucket that rewrites itself. A named slot the user made is never pruned.
+                pruneHistory = slot == DEFAULT_SLOT,
+            )
         } finally {
             if (local.isBundle) file.delete()
         }
@@ -542,6 +642,10 @@ class SaveSyncService(
             dev.cannoli.scorza.util.RommLog.write("=== sweep: negotiating ${withLocal.size} saves with RomM ===")
             val payload = SyncNegotiatePayload(
                 deviceId = deviceId,
+                // Exactly the games this sweep reads an answer for. A game with no local save is
+                // resolved by its own lookup rather than from this response, so widening the scope
+                // to it would buy work nothing consumes.
+                romIds = romIdScope(withLocal.map { it.romId }),
                 saves = withLocal.map { s ->
                     ClientSaveState(
                         romId = s.romId,
@@ -644,12 +748,12 @@ class SaveSyncService(
             // No local save: pull the server copy if one exists, even with no prior anchor
             // (first-time restore / restore after a local delete).
             val serverSaves = try {
-                client.getSaves(s.romId, deviceId).also { onReach(true) }
+                client.getSaves(s.romId, deviceId, s.slot).also { onReach(true) }
             } catch (t: Throwable) {
                 onReach(false)
                 return plan(SweepAction.UNREACHABLE)
             }
-            val save = headSaveFor(serverSaves, s.slot) ?: return plan(SweepAction.NO_SAVE)
+            val save = headSaveFor(serverSaves, s.slot, deviceId) ?: return plan(SweepAction.NO_SAVE)
             val action = if (s.anchor == null) SweepAction.DOWNLOAD else SweepAction.REGENERATE
             return plan(action, downloadOp = downloadOpFor(save, s.romId, s.slot))
         }
@@ -657,13 +761,13 @@ class SaveSyncService(
         if (batchFailed) return plan(SweepAction.UNREACHABLE)
         return when (op?.verdict) {
             SyncAction.Download -> plan(SweepAction.DOWNLOAD, downloadOp = op)
-            SyncAction.Upload -> if (isStuckUpload(op, s.anchor, local)) {
-                plan(SweepAction.ESCALATE, conflict = buildConflict(op, local, s.slot, s.romId, s.tag, s.base, s.gameKey, s.emulator))
+            SyncAction.Upload -> if (uploadWouldClobber(op, s.anchor, local)) {
+                plan(SweepAction.ESCALATE, conflict = buildConflict(op, local, s.slot, s.romId, s.tag, s.base, s.gameKey, s.emulator, deviceId))
             } else {
                 plan(SweepAction.UPLOAD)
             }
             SyncAction.Conflict -> {
-                val cf = buildConflict(op, local, s.slot, s.romId, s.tag, s.base, s.gameKey, s.emulator)
+                val cf = buildConflict(op, local, s.slot, s.romId, s.tag, s.base, s.gameKey, s.emulator, deviceId)
                 when (ConflictAutoResolver.classify(local.contentHash, s.anchor?.localContentHash, op.serverContentHash, s.anchor?.lastUploadedHash)) {
                     ConflictResolution.KEEP_LOCAL -> plan(SweepAction.KEEP_LOCAL, conflict = cf)
                     ConflictResolution.KEEP_SERVER -> plan(SweepAction.KEEP_SERVER, conflict = cf)
@@ -693,7 +797,7 @@ class SaveSyncService(
         plan: (SweepAction, SyncOperationDto?, PreLaunchOutcome.Conflict?, RestorePromotion?) -> SweepPlan,
     ): SweepPlan {
         val head = try {
-            headSaveFor(client.getSaves(s.romId, deviceId), s.slot).also { onReach(true) }
+            headSaveFor(client.getSaves(s.romId, deviceId, s.slot), s.slot, deviceId).also { onReach(true) }
         } catch (t: Throwable) {
             onReach(false)
             return plan(SweepAction.UNREACHABLE, null, null, null)
@@ -779,7 +883,7 @@ class SaveSyncService(
         } catch (t: Throwable) {
             return ExecResult(SyncDirection.UPLOAD, false, "upload failed (409; ${errLabel(t)})")
         }
-        val save = headSaveFor(serverSaves, p.slot)
+        val save = headSaveFor(serverSaves, p.slot, deviceId)
             ?: return ExecResult(SyncDirection.UPLOAD, false, "upload failed (409)")
         val local = resolver.resolve(p.tag, p.name)
         if (local != null && save.contentHash != null && save.contentHash == local.contentHash) {
