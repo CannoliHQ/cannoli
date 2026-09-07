@@ -90,6 +90,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
     @Inject lateinit var bindingController: BindingController
     @Inject lateinit var osdController: dev.cannoli.ui.components.OsdController
     @Inject lateinit var inputTesterController: InputTesterController
+    @Inject lateinit var inputTesterMusic: dev.cannoli.scorza.input.InputTesterMusic
     @Inject lateinit var updateManager: UpdateManager
     @Inject lateinit var coreDownloadService: dev.cannoli.scorza.launcher.CoreDownloadService
     @Inject lateinit var launchManager: Provider<LaunchManager>
@@ -587,6 +588,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
         heldAdvanceKey = null
         syncScheduler.stop()
         menuNavigationPoller.stop()
+        inputTesterMusic.stop()
         // Cancel any in-flight stick auto-repeat so it does not keep firing dispatcher callbacks
         // once the launcher is no longer in front.
         stickAutoRepeat.stop()

@@ -6,13 +6,16 @@ import android.view.KeyEvent
 import android.view.MotionEvent
 import dev.cannoli.scorza.input.runtime.ActiveMappingHolder
 import dev.cannoli.scorza.input.runtime.PortRouter
+import dev.cannoli.scorza.input.runtime.labelSet
 import dev.cannoli.scorza.ui.viewmodel.DeviceInfo
 import dev.cannoli.scorza.ui.viewmodel.InputTesterViewModel
+import dev.cannoli.ui.ButtonLabelSet
 
 class InputTesterController(
     private val viewModel: InputTesterViewModel,
     private val portRouter: PortRouter,
     private val activeMappingHolder: ActiveMappingHolder,
+    private val music: InputTesterMusic,
     private val unknownDeviceName: String,
     private val keyboardDeviceName: String,
 ) {
@@ -23,6 +26,8 @@ class InputTesterController(
     private val axisTriggerR2Held = mutableSetOf<Int>()
     private val exitHandler = Handler(Looper.getMainLooper())
     private val exitRunnable = Runnable { viewModel.requestExit() }
+    private val konami = KonamiDetector()
+    private val hatHeld = mutableMapOf<Int, Set<CanonicalButton>>()
 
     fun enter() {
         portRouter.resetAllEvaluators()
@@ -31,11 +36,24 @@ class InputTesterController(
         selectHeld = false
         startHeld = false
         exitHandler.removeCallbacks(exitRunnable)
+        resetKonami()
         refreshPorts()
     }
 
     fun exit() {
         portRouter.resetAllEvaluators()
+        resetKonami()
+    }
+
+    private fun resetKonami() {
+        konami.reset()
+        hatHeld.clear()
+        music.stop()
+    }
+
+    private fun feedKonami(port: Int, button: CanonicalButton) {
+        val labelSet = portRouter.mappingForPort(port).labelSet(ButtonLabelSet.PLUMBER)
+        if (konami.onPress(port, button, labelSet)) music.start()
     }
 
     fun dispatchKey(event: KeyEvent, down: Boolean): Boolean {
@@ -69,6 +87,7 @@ class InputTesterController(
             if (!isRepeat) {
                 viewModel.setActivePort(port)
                 portRouter.mappingForPort(port)?.let { activeMappingHolder.set(it) }
+                if (navButton != null) feedKonami(port, navButton)
             }
         } else {
             if (navButton == CanonicalButton.BTN_SELECT && selectHeld) {
@@ -109,12 +128,18 @@ class InputTesterController(
         )
         val hatX = event.getAxisValue(MotionEvent.AXIS_HAT_X)
         val hatY = event.getAxisValue(MotionEvent.AXIS_HAT_Y)
+        val hatButtons = mappingHatButtons(mapping) { event.getAxisValue(it) } ?: rawHatButtons(hatX, hatY)
         viewModel.onMotion(
             port = port, deviceId = deviceId, deviceName = name,
             leftX = leftX, leftY = leftY, rightX = rightX, rightY = rightY,
             leftTrigger = leftTrigger, rightTrigger = rightTrigger,
-            hatButtons = mappingHatButtons(mapping) { event.getAxisValue(it) } ?: rawHatButtons(hatX, hatY),
+            hatButtons = hatButtons,
         )
+
+        // Most pads report the d-pad here rather than as key events, so the code has to be watched
+        // on both paths or it can never be entered at all.
+        (hatButtons - hatHeld[port].orEmpty()).forEach { feedKonami(port, it) }
+        hatHeld[port] = hatButtons
 
         val activatesPort = leftTrigger > 0.1f || rightTrigger > 0.1f ||
             kotlin.math.abs(hatX) > 0.5f || kotlin.math.abs(hatY) > 0.5f
