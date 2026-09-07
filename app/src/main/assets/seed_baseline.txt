@@ -1,0 +1,60 @@
+# Platforms that shipped before Cannoli recorded what it had scaffolded.
+#
+# An install from before the record has no list of the folders it was given, and its Roms
+# directory cannot supply one: a tag with no folder looks exactly like a tag the user deleted.
+# This is that list, frozen at the last release without the record, so an upgrade seeds the
+# platforms added since and leaves everything older alone.
+#
+# PC is deliberately absent. It arrived after this set, carrying its own .seeded_PC marker, and
+# an install that already has that marker keeps it. Nothing new belongs here; new platforms are
+# recorded on the disk that seeds them.
+GB
+GBC
+GBA
+NES
+FDS
+SNES
+N64
+NDS
+GG
+SMS
+MD
+SG1000
+32X
+SEGACD
+SATURN
+PS
+PSP
+DC
+LYNX
+JAGUAR
+ATARI2600
+ATARI5200
+ATARI7800
+PCE
+PCFX
+PICO8
+NGP
+NGPC
+WS
+WSC
+NEOGEO
+MAME
+FBN
+VIRTUALBOY
+POKEMINI
+COLECOVISION
+VECTREX
+INTELLIVISION
+SUPERGRAFX
+DOS
+SCUMMVM
+AMIGA
+PS2
+GC
+WII
+3DS
+WIIU
+PSVITA
+PS3
+NSW

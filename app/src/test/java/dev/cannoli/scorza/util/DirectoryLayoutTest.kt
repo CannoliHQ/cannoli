@@ -60,34 +60,89 @@ class DirectoryLayoutTest {
         assertEquals(0, createdAgain)
     }
 
-    @Test fun seedRomFolderOnce_creates_the_tag_folder_and_marker() {
+    private fun assets(): android.content.res.AssetManager =
+        androidx.test.core.app.ApplicationProvider
+            .getApplicationContext<android.content.Context>().assets
+
+    @Test fun seedNewRomFolders_creates_only_tags_the_record_has_not_seen() {
         val rom = tmp.newFolder("Roms")
         val state = tmp.newFolder("State")
-        assertTrue(DirectoryLayout.seedRomFolderOnce(rom, state, "PC"))
-        assertTrue(File(rom, "PC").isDirectory)
-        assertTrue(File(state, ".seeded_PC").isFile)
+        File(state, "seeded_platforms.txt").writeText("NES\nSNES")
+
+        val created = DirectoryLayout.seedNewRomFolders(rom, state, listOf("NES", "SNES", "CPS1"), assets())
+
+        assertEquals(1, created)
+        assertTrue(File(rom, "CPS1").isDirectory)
+        assertFalse(File(rom, "NES").exists())
     }
 
-    @Test fun seedRomFolderOnce_does_not_recreate_a_deleted_folder() {
+    @Test fun seedNewRomFolders_does_not_recreate_a_deleted_folder() {
         val rom = tmp.newFolder("Roms")
         val state = tmp.newFolder("State")
-        DirectoryLayout.seedRomFolderOnce(rom, state, "PC")
-        File(rom, "PC").delete()
+        DirectoryLayout.seedNewRomFolders(rom, state, listOf("CPS1"), assets())
+        File(rom, "CPS1").delete()
 
-        assertFalse(DirectoryLayout.seedRomFolderOnce(rom, state, "PC"))
+        assertEquals(0, DirectoryLayout.seedNewRomFolders(rom, state, listOf("CPS1"), assets()))
+        assertFalse(File(rom, "CPS1").exists())
+    }
+
+    @Test fun seedNewRomFolders_leaves_pre_record_platforms_alone() {
+        val rom = tmp.newFolder("Roms")
+        val state = tmp.newFolder("State")
+
+        DirectoryLayout.seedNewRomFolders(rom, state, listOf("SNES", "CPS1"), assets())
+
+        assertFalse(File(rom, "SNES").exists())
+        assertTrue(File(rom, "CPS1").isDirectory)
+    }
+
+    @Test fun seedNewRomFolders_honours_the_legacy_seeded_marker() {
+        val rom = tmp.newFolder("Roms")
+        val state = tmp.newFolder("State")
+        File(state, ".seeded_PC").writeText("1")
+
+        DirectoryLayout.seedNewRomFolders(rom, state, listOf("PC", "CPS1"), assets())
+
         assertFalse(File(rom, "PC").exists())
+        assertTrue(File(rom, "CPS1").isDirectory)
     }
 
-    @Test fun ensure_seeds_the_pc_rom_folder_on_an_existing_install() {
+    @Test fun seedNewRomFolders_records_every_tag_it_was_given() {
+        val rom = tmp.newFolder("Roms")
+        val state = tmp.newFolder("State")
+
+        DirectoryLayout.seedNewRomFolders(rom, state, listOf("SNES", "CPS1"), assets())
+
+        val recorded = File(state, "seeded_platforms.txt").readLines().toSet()
+        assertTrue("SNES" in recorded)
+        assertTrue("CPS1" in recorded)
+    }
+
+    @Test fun ensure_seeds_platforms_added_since_the_baseline_on_an_existing_install() {
         val root = tmp.newFolder("cannoli")
         val rom = tmp.newFolder("Roms")
         File(rom, "NES").mkdirs()
-        val assets = androidx.test.core.app.ApplicationProvider
-            .getApplicationContext<android.content.Context>().assets
+        val assets = assets()
         val config = dev.cannoli.scorza.config.PlatformConfig({ root }, assets)
         DirectoryLayout.ensure(root, rom, assets, config)
 
         assertTrue(File(rom, "PC").isDirectory)
+        assertTrue(File(rom, "CPS1").isDirectory)
+        assertFalse(File(rom, "SNES").exists())
+    }
+
+    @Test fun ensure_records_every_tag_when_it_scaffolds_a_fresh_install() {
+        val root = tmp.newFolder("cannoli")
+        val rom = tmp.newFolder("Roms")
+        val assets = assets()
+        val config = dev.cannoli.scorza.config.PlatformConfig({ root }, assets)
+        DirectoryLayout.ensure(root, rom, assets, config)
+
+        val recorded = File(root, "Config/Internal/State/seeded_platforms.txt").readLines().toSet()
+        assertEquals(config.getAllTags(), recorded)
+
+        File(rom, "SNES").deleteRecursively()
+        DirectoryLayout.ensure(root, rom, assets, config)
         assertFalse(File(rom, "SNES").exists())
     }
 

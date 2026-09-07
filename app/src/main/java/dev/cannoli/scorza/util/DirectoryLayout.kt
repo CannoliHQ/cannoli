@@ -10,6 +10,8 @@ import dev.cannoli.scorza.model.artTag
 import java.io.File
 
 private const val CUSTOM_CFG_BANNER = "# This file is yours. Cannoli never overwrites it. Keys here win.\n"
+private const val SEED_RECORD_FILE = "seeded_platforms.txt"
+private const val SEED_BASELINE_ASSET = "seed_baseline.txt"
 
 object DirectoryLayout {
     fun ensure(
@@ -61,8 +63,10 @@ object DirectoryLayout {
         val tags = platformConfig.getAllTags()
         if (romDirNeedsScaffold(romDirectory)) {
             scaffoldRomFolders(romDirectory, tags)
+            writeSeedRecord(paths.configState, tags)
+        } else {
+            seedNewRomFolders(romDirectory, paths.configState, tags, assets)
         }
-        seedRomFolderOnce(romDirectory, paths.configState, "PC")
         hideFromGallery(paths.artDir)
         for (tag in tags) {
             paths.artFor(tag).also { it.mkdirs(); hideFromGallery(it) }
@@ -113,18 +117,63 @@ object DirectoryLayout {
         } catch (_: Exception) {}
     }
 
-    // Tags added after a user's install was scaffolded never get a Roms folder, because the
-    // scaffold only runs on an empty Roms directory. Seed such a tag once, keyed by a marker so
-    // a folder the user then deletes stays deleted.
-    fun seedRomFolderOnce(romDirectory: File, stateDir: File, tag: String): Boolean {
-        val marker = File(stateDir, ".seeded_$tag")
-        if (marker.exists()) return false
-        val created = File(romDirectory, tag).mkdirs()
-        try {
-            marker.parentFile?.mkdirs()
-            marker.writeText("1")
-        } catch (_: Exception) {}
+    /**
+     * A platform added after a user's install was scaffolded never gets a Roms folder, because the
+     * scaffold only runs on an empty Roms directory. Give every tag the record has not seen its
+     * folder, then record all of them, so a new platform arrives once and a folder the user then
+     * deletes stays deleted.
+     */
+    fun seedNewRomFolders(
+        romDirectory: File,
+        stateDir: File,
+        tags: Collection<String>,
+        assets: AssetManager,
+    ): Int {
+        val seeded = readSeedRecord(stateDir) ?: legacyBaseline(stateDir, assets) ?: return 0
+        var created = 0
+        for (tag in tags) {
+            if (tag !in seeded && File(romDirectory, tag).mkdirs()) created++
+        }
+        writeSeedRecord(stateDir, seeded + tags)
         return created
+    }
+
+    /**
+     * What an install from before the record was scaffolded with. The bundled list covers the
+     * releases up to the record, and the .seeded_<tag> markers it supersedes carry the platforms
+     * seeded after that. Null when the list cannot be read, which leaves the record unwritten so
+     * the next launch migrates instead of seeding every platform at once.
+     */
+    private fun legacyBaseline(stateDir: File, assets: AssetManager): Set<String>? {
+        val shipped = try {
+            assets.open(SEED_BASELINE_ASSET).bufferedReader().use { reader ->
+                reader.readLines().map { it.trim() }.filter { it.isNotEmpty() && !it.startsWith("#") }
+            }
+        } catch (_: Exception) {
+            return null
+        }
+        val markers = stateDir.listFiles()
+            ?.filter { it.name.startsWith(".seeded_") }
+            ?.map { it.name.removePrefix(".seeded_") }
+            .orEmpty()
+        return shipped.toSet() + markers
+    }
+
+    private fun readSeedRecord(stateDir: File): Set<String>? {
+        val file = File(stateDir, SEED_RECORD_FILE)
+        if (!file.isFile) return null
+        return try {
+            file.readLines().map { it.trim() }.filter { it.isNotEmpty() }.toSet()
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun writeSeedRecord(stateDir: File, tags: Collection<String>) {
+        try {
+            stateDir.mkdirs()
+            File(stateDir, SEED_RECORD_FILE).writeText(tags.toSortedSet().joinToString("\n"))
+        } catch (_: Exception) {}
     }
 
     fun romDirNeedsScaffold(romDirectory: File): Boolean =
