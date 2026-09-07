@@ -649,8 +649,16 @@ class LaunchManager(
     private fun missingRequiredBios(tag: String, core: String): List<String> {
         val biosDir = prepareBios(tag, CannoliPaths(File(settings.sdCardRoot)).biosFor(tag))
         return platformConfig.getFirmwareStatus(tag, core, biosDir)
-            .filter { (entry, present) -> !entry.optional && !present }
-            .map { (entry, _) -> File(entry.path).name }
+            .filterNot { it.satisfied }
+            .map { req ->
+                when (req) {
+                    is dev.cannoli.scorza.config.FirmwareRequirement.Single -> File(req.entry.path).name
+                    // Naming one of a dozen interchangeable dumps would read as the only answer, so
+                    // the choice is stated as a choice.
+                    is dev.cannoli.scorza.config.FirmwareRequirement.AnyOf ->
+                        req.options.joinToString(" or ") { File(it.first.path).name }
+                }
+            }
     }
 
     private fun errorAndReset(dialog: DialogState): DialogState {

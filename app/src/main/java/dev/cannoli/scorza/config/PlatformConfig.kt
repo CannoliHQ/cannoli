@@ -440,35 +440,65 @@ class PlatformConfig(
      * Requiredness comes from `bios_required.txt` where a core spans platforms with different
      * needs, since `firmware*_opt` is declared once per core and cannot vary by platform.
      */
-    fun getFirmwareStatus(tag: String, coreId: String, biosDir: File): List<Pair<FirmwareEntry, Boolean>> {
+    fun getFirmwareStatus(tag: String, coreId: String, biosDir: File): List<FirmwareRequirement> {
         val all = coreInfo?.getFirmwareFor(coreId) ?: emptyList()
-        val required = requiredBios[tag.uppercase(java.util.Locale.ROOT) to coreId].orEmpty()
-        return all.map { entry ->
+        val rule = biosRules[tag.uppercase(java.util.Locale.ROOT) to coreId]
+        fun present(entry: FirmwareEntry): Boolean {
             val name = File(entry.path).name
-            val present = File(biosDir, entry.path).exists() || File(biosDir, name).exists()
-            val corrected = if (entry.optional && name in required) entry.copy(optional = false) else entry
-            corrected to present
+            return File(biosDir, entry.path).exists() || File(biosDir, name).exists()
         }
+        // A file can appear in at most one group, so grouping first leaves the singles as whatever
+        // the groups did not claim, in the core's own order.
+        val grouped = rule?.anyOf.orEmpty()
+        val claimed = grouped.flatten().toSet()
+        val byName = all.associateBy { File(it.path).name }
+        val groups = grouped.mapNotNull { names ->
+            val options = names.mapNotNull { byName[File(it).name] }.map { it to present(it) }
+            options.takeIf { it.isNotEmpty() }?.let { FirmwareRequirement.AnyOf(it) }
+        }
+        val singles = all
+            .filterNot { File(it.path).name in claimed.map { c -> File(c).name } }
+            .map { entry ->
+                val name = File(entry.path).name
+                val corrected =
+                    if (entry.optional && name in rule?.required.orEmpty()) entry.copy(optional = false) else entry
+                FirmwareRequirement.Single(corrected, present(entry))
+            }
+        return groups + singles
     }
 
     /** What the core parses. Empty when its `.info` did not say, which reads as unknown. */
     fun coreExtensions(coreId: String): List<String> = coreInfo?.getExtensionsFor(coreId).orEmpty()
 
+    /** What one platform and core pair genuinely needs, beyond what the core's own flags say. */
+    internal data class BiosRule(val required: Set<String>, val anyOf: List<List<String>>)
+
     /** Platform and core to the BIOS that pair genuinely needs. Hand-maintained. */
-    private val requiredBios: Map<Pair<String, String>, Set<String>> by lazy {
-        val parsed = mutableMapOf<Pair<String, String>, MutableSet<String>>()
+    private val biosRules: Map<Pair<String, String>, BiosRule> by lazy {
+        val parsed = mutableMapOf<Pair<String, String>, BiosRule>()
         try {
-            assets.open("bios_required.txt").bufferedReader().useLines { lines ->
-                for (line in lines) {
-                    val parts = line.trim().takeIf { it.isNotEmpty() && !it.startsWith("#") }
-                        ?.split(Regex("\\s+")) ?: continue
-                    if (parts.size < 3) continue
-                    parsed.getOrPut(parts[0].uppercase(java.util.Locale.ROOT) to parts[1]) { mutableSetOf() }
-                        .add(parts[2])
-                }
+            val text = assets.open("bios_required.json").bufferedReader().use { it.readText() }
+            val arr = org.json.JSONArray(text)
+            for (i in 0 until arr.length()) {
+                val obj = arr.optJSONObject(i) ?: continue
+                val tag = obj.optString("tag").uppercase(java.util.Locale.ROOT)
+                val core = obj.optString("core")
+                // The leading object carries the file's own notes and names no pair.
+                if (tag.isEmpty() || core.isEmpty()) continue
+                val required = obj.optJSONArray("required")
+                    ?.let { a -> (0 until a.length()).mapNotNull { a.optString(it).takeIf(String::isNotEmpty) } }
+                    .orEmpty().map { File(it).name }.toSet()
+                val anyOf = obj.optJSONArray("anyOf")?.let { groups ->
+                    (0 until groups.length()).mapNotNull { g ->
+                        groups.optJSONArray(g)?.let { a ->
+                            (0 until a.length()).mapNotNull { a.optString(it).takeIf(String::isNotEmpty) }
+                        }?.takeIf { it.isNotEmpty() }
+                    }
+                }.orEmpty()
+                parsed[tag to core] = BiosRule(required, anyOf)
             }
         } catch (e: Exception) {
-            dev.cannoli.scorza.util.ErrorLog.write("bios_required.txt unreadable: ${e.message}")
+            dev.cannoli.scorza.util.ErrorLog.write("bios_required.json unreadable: ${e.message}")
         }
         parsed
     }

@@ -76,7 +76,17 @@ data class GameOverrideRow(val romId: Long, val gameName: String, val label: Str
  */
 enum class RaTokenState { CHECKING, VALID, INVALID, UNREACHABLE }
 
-data class FirmwareStatus(val entry: dev.cannoli.scorza.config.FirmwareEntry, val present: Boolean)
+/**
+ * One firmware row. [anyOf] marks a file the core accepts as one of several interchangeable dumps,
+ * where [groupSatisfied] says whether any of them was found, so a row can read as a choice rather
+ * than as one of a dozen separate things the user is missing.
+ */
+data class FirmwareStatus(
+    val entry: dev.cannoli.scorza.config.FirmwareEntry,
+    val present: Boolean,
+    val anyOf: Boolean = false,
+    val groupSatisfied: Boolean = false,
+)
 data class ColorEntry(val key: String, @androidx.annotation.StringRes val labelRes: Int, val hex: String, val color: Long)
 
 /**

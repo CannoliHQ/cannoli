@@ -189,7 +189,7 @@ class EmulatorMappingBuilder @Inject constructor(
             if (biosCore.isNotBlank()) {
                 val biosDir = CannoliPaths(File(settings.sdCardRoot)).biosFor(tag)
                 val firmware = platformConfig.getFirmwareStatus(tag, biosCore, biosDir)
-                val requiredMissing = firmware.count { (entry, present) -> !entry.optional && !present }
+                val requiredMissing = firmware.count { !it.satisfied }
                 val warning = requiredMissing > 0
                 val status = if (warning) context.getString(dev.cannoli.scorza.R.string.mapping_required_missing, requiredMissing) else ""
                 items.add(MappingItem.Action(MappingActionKind.BIOS, context.getString(dev.cannoli.scorza.R.string.mapping_action_bios), status, warning))
@@ -280,8 +280,17 @@ class EmulatorMappingBuilder @Inject constructor(
             ?: platformConfig.getCoreMapping(tag)
         val runner = platformConfig.getRunnerLabel(tag, coreId)
         val biosDir = CannoliPaths(File(settings.sdCardRoot)).biosFor(tag)
-        val firmware = platformConfig.getFirmwareStatus(tag, coreId, biosDir)
-            .map { dev.cannoli.scorza.ui.screens.FirmwareStatus(it.first, it.second) }
+        // The screen still lists every file, so someone can see what they might supply, but a row
+        // that belongs to a choose-one group says so rather than reading as thirteen missing files.
+        val firmware = platformConfig.getFirmwareStatus(tag, coreId, biosDir).flatMap { req ->
+            when (req) {
+                is dev.cannoli.scorza.config.FirmwareRequirement.Single ->
+                    listOf(dev.cannoli.scorza.ui.screens.FirmwareStatus(req.entry, req.present))
+                is dev.cannoli.scorza.config.FirmwareRequirement.AnyOf -> req.options.map { (entry, present) ->
+                    dev.cannoli.scorza.ui.screens.FirmwareStatus(entry, present, anyOf = true, groupSatisfied = req.satisfied)
+                }
+            }
+        }
         return LauncherScreen.BiosStatus(
             tag = tag,
             platformName = platformName,

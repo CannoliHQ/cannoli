@@ -3,6 +3,7 @@ package dev.cannoli.scorza.launcher
 import dev.cannoli.scorza.config.EmulatorChoice
 import dev.cannoli.scorza.config.EmulatorSource
 import dev.cannoli.scorza.config.FirmwareEntry
+import dev.cannoli.scorza.config.FirmwareRequirement
 import dev.cannoli.scorza.config.PlatformConfig
 import dev.cannoli.scorza.input.DeviceMapping
 import dev.cannoli.scorza.input.runtime.ActiveMappingHolder
@@ -41,7 +42,7 @@ class MissingBiosGateTest {
         return Rom(id = 1L, path = f, platformTag = "NEOGEO", displayName = "Metal Slug")
     }
 
-    private fun manager(root: File, firmware: List<Pair<FirmwareEntry, Boolean>>): LaunchManager {
+    private fun manager(root: File, firmware: List<FirmwareRequirement>): LaunchManager {
         val settings = mockk<SettingsRepository>(relaxed = true)
         every { settings.sdCardRoot } returns root.absolutePath
         every { gameOverrides.get(any()) } returns null
@@ -74,7 +75,7 @@ class MissingBiosGateTest {
 
     @Test fun `a required BIOS that is absent stops the launch and names the file`() {
         val root = tmp.newFolder()
-        val fw = listOf(entry("fbneo/neogeo.zip", optional = false) to false)
+        val fw = listOf(FirmwareRequirement.Single(entry("fbneo/neogeo.zip", optional = false), present = false))
 
         val dialog = manager(root, fw).launchRom(rom(root)) as DialogState.MissingBios
 
@@ -86,7 +87,7 @@ class MissingBiosGateTest {
 
     @Test fun `an optional BIOS that is absent does not stop the launch`() {
         val root = tmp.newFolder()
-        val fw = listOf(entry("fbneo/neocdz.zip", optional = true) to false)
+        val fw = listOf(FirmwareRequirement.Single(entry("fbneo/neocdz.zip", optional = true), present = false))
 
         manager(root, fw).launchRom(rom(root))
 
@@ -95,7 +96,7 @@ class MissingBiosGateTest {
 
     @Test fun `a required BIOS that is present does not stop the launch`() {
         val root = tmp.newFolder()
-        val fw = listOf(entry("fbneo/neogeo.zip", optional = false) to true)
+        val fw = listOf(FirmwareRequirement.Single(entry("fbneo/neogeo.zip", optional = false), present = true))
 
         manager(root, fw).launchRom(rom(root))
 
@@ -105,9 +106,9 @@ class MissingBiosGateTest {
     @Test fun `every absent required file is named, not just the first`() {
         val root = tmp.newFolder()
         val fw = listOf(
-            entry("fbneo/neogeo.zip", optional = false) to false,
-            entry("aes.zip", optional = false) to false,
-            entry("fbneo/neocdz.zip", optional = true) to false,
+            FirmwareRequirement.Single(entry("fbneo/neogeo.zip", optional = false), present = false),
+            FirmwareRequirement.Single(entry("aes.zip", optional = false), present = false),
+            FirmwareRequirement.Single(entry("fbneo/neocdz.zip", optional = true), present = false),
         )
 
         val dialog = manager(root, fw).launchRom(rom(root)) as DialogState.MissingBios

@@ -1,0 +1,120 @@
+[
+  {
+    "_comment": [
+      "BIOS a platform genuinely needs, where the core's own .info does not say so.",
+      "",
+      "Firmware is declared per core, but a core can span platforms with different needs. FBNeo",
+      "marks every one of its 23 entries optional, which is honest for arcade romsets and wrong for",
+      "Neo Geo: neogeo.zip carries the mandatory MVS BIOS. Nothing upstream can express that",
+      "difference, so the pair is named here instead.",
+      "",
+      "Keyed by platform AND core, because two cores on one platform can differ. Geolith needed both",
+      "aes.zip and neogeo.zip and declared them correctly; FBNeo needs neither declared nor aes.zip.",
+      "",
+      "'required' names files that must all be present. 'anyOf' holds groups, and a group is",
+      "satisfied by any one of its members: several cores accept a dozen interchangeable regional",
+      "BIOS dumps, and demanding all of them, or picking one and demanding that, would both be",
+      "wrong. A pair can need more than one group, since a core can want one BIOS and one of a",
+      "separate set beside it.",
+      "",
+      "This only ever tightens what a core already declared. It cannot add a file the core does not",
+      "name, and cannot make a mandatory file optional. So a wrong entry here reports a working",
+      "setup as incomplete rather than letting a broken one through, which is why nothing goes in",
+      "without being confirmed."
+    ]
+  },
+  {
+    "tag": "NEOGEO",
+    "core": "fbneo_libretro",
+    "required": [
+      "neogeo.zip"
+    ]
+  },
+  {
+    "tag": "3DO",
+    "core": "opera_libretro",
+    "anyOf": [
+      [
+        "panafz1.bin",
+        "panafz10.bin",
+        "panafz10-norsa.bin",
+        "panafz10e-anvil.bin",
+        "panafz10e-anvil-norsa.bin",
+        "goldstar.bin",
+        "sanyotry.bin",
+        "3do_arcade_saot.bin",
+        "panafz1-kanji.bin",
+        "panafz10ja-anvil-kanji.bin",
+        "panafz1j.bin",
+        "panafz1j-norsa.bin",
+        "panafz1j-kanji.bin"
+      ]
+    ]
+  },
+  {
+    "tag": "NEOGEOCD",
+    "core": "neocd_libretro",
+    "anyOf": [
+      [
+        "neocd/neocd_f.rom",
+        "neocd/neocd_sf.rom",
+        "neocd/front-sp1.bin",
+        "neocd/neocd_t.rom",
+        "neocd/neocd_st.rom",
+        "neocd/top-sp1.bin",
+        "neocd/neocd_z.rom",
+        "neocd/neocd_sz.rom",
+        "neocd/neocd.bin",
+        "neocd/uni-bioscd.rom"
+      ]
+    ]
+  },
+  {
+    "tag": "PCECD",
+    "core": "mednafen_pce_fast_libretro",
+    "anyOf": [
+      [
+        "syscard3.pce",
+        "syscard2.pce",
+        "syscard1.pce",
+        "gexpress.pce"
+      ]
+    ]
+  },
+  {
+    "tag": "PCECD",
+    "core": "mednafen_pce_libretro",
+    "anyOf": [
+      [
+        "syscard3.pce",
+        "syscard2.pce",
+        "syscard1.pce",
+        "gexpress.pce"
+      ]
+    ]
+  },
+  {
+    "tag": "PCECD",
+    "core": "mednafen_supergrafx_libretro",
+    "anyOf": [
+      [
+        "syscard3.pce",
+        "syscard2.pce",
+        "syscard1.pce",
+        "gexpress.pce"
+      ]
+    ]
+  },
+  {
+    "tag": "PCECD",
+    "core": "geargrafx_libretro",
+    "anyOf": [
+      [
+        "syscard3.pce",
+        "syscard2.pce",
+        "syscard1.pce",
+        "gexpress.pce"
+      ]
+    ]
+  }
+]

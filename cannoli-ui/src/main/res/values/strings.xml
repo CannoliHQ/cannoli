@@ -1055,6 +1055,9 @@
     <string name="osd_core_queued">%1$s queued</string>
     <string name="bios_required">REQUIRED</string>
     <string name="bios_optional">OPTIONAL</string>
+    <!-- Badge on a BIOS row the core accepts as one of several interchangeable dumps, where holding
+         any single one is enough. Keep it short: it sits beside the filename. -->
+    <string name="bios_any_of">ANY ONE</string>
     <string name="bios_present">Present</string>
     <string name="bios_missing">Missing</string>
     <!-- %d = number of games with per-game overrides. -->

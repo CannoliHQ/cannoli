@@ -4,12 +4,14 @@
 # sync-core-info.yml copies only these from libretro-super. Adding one here is what makes it ship.
 # Every entry must have a build for both arm64-v8a and armeabi-v7a: CuratedCatalogueTest enforces
 # that, so a core with only one ABI fails the build rather than vanishing on half the devices.
+81_libretro
 DoubleCherryGB_libretro
 a5200_libretro
 atari800_libretro
 bluemsx_libretro
 bsnes_hd_beta_libretro
 bsnes_libretro
+cap32_libretro
 dosbox_core_libretro
 dosbox_pure_libretro
 dosbox_svn_libretro
@@ -27,7 +29,9 @@ genesis_plus_gx_libretro
 genesis_plus_gx_wide_libretro
 geolith_libretro
 gpsp_libretro
+gw_libretro
 handy_libretro
+hatari_libretro
 mame2003_plus_libretro
 mednafen_gba_libretro
 mednafen_ngp_libretro
@@ -47,7 +51,10 @@ mesen_libretro
 mgba_libretro
 mupen64plus_next_gles2_libretro
 mupen64plus_next_gles3_libretro
+neocd_libretro
 nestopia_libretro
+o2em_libretro
+opera_libretro
 pcsx_rearmed_libretro
 picodrive_libretro
 pokemini_libretro
@@ -55,6 +62,7 @@ ppsspp_libretro
 prosystem_libretro
 puae2021_libretro
 puae_libretro
+px68k_libretro
 race_libretro
 sameboy_libretro
 scummvm_libretro
@@ -69,6 +77,7 @@ tgbdual_libretro
 vba_next_libretro
 vbam_libretro
 vecx_libretro
+vice_x64sc_libretro
 virtualjaguar_libretro
 yabasanshiro_libretro
 yabause_libretro

@@ -246,6 +246,11 @@
     "group": "NEC",
     "core": "mednafen_pce_fast_libretro"
   },
+  "PCECD": {
+    "name": "PC Engine CD",
+    "group": "NEC",
+    "core": "mednafen_pce_fast_libretro"
+  },
   "SUPERGRAFX": {
     "name": "PC Engine SuperGrafx",
     "group": "NEC",
@@ -262,6 +267,11 @@
     "group": "SNK",
     "core": "fbneo_libretro",
     "arcade": true
+  },
+  "NEOGEOCD": {
+    "name": "Neo Geo CD",
+    "group": "SNK",
+    "core": "neocd_libretro"
   },
   "NGP": {
     "name": "Neo Geo Pocket",
@@ -285,6 +295,24 @@
     "core": "mednafen_wswan_libretro"
   },
 
+  "CPS1": {
+    "name": "CPS-1",
+    "group": "Arcade",
+    "core": "fbneo_libretro",
+    "arcade": true
+  },
+  "CPS2": {
+    "name": "CPS-2",
+    "group": "Arcade",
+    "core": "fbneo_libretro",
+    "arcade": true
+  },
+  "CPS3": {
+    "name": "CPS-3",
+    "group": "Arcade",
+    "core": "fbneo_libretro",
+    "arcade": true
+  },
   "MAME": {
     "name": "Arcade",
     "group": "Arcade",
@@ -322,6 +350,31 @@
     "name": "MSX",
     "group": "Computer",
     "core": "bluemsx_libretro"
+  },
+  "C64": {
+    "name": "Commodore 64",
+    "group": "Computer",
+    "core": "vice_x64sc_libretro"
+  },
+  "AMSTRADCPC": {
+    "name": "Amstrad CPC",
+    "group": "Computer",
+    "core": "cap32_libretro"
+  },
+  "ATARIST": {
+    "name": "Atari ST",
+    "group": "Computer",
+    "core": "hatari_libretro"
+  },
+  "X68000": {
+    "name": "X68000",
+    "group": "Computer",
+    "core": "px68k_libretro"
+  },
+  "ZX81": {
+    "name": "ZX81",
+    "group": "Computer",
+    "core": "81_libretro"
   },
   "SCUMMVM": {
     "name": "ScummVM",
@@ -367,6 +420,21 @@
     ]
   },
 
+  "3DO": {
+    "name": "3DO",
+    "group": "Other",
+    "core": "opera_libretro"
+  },
+  "ODYSSEY2": {
+    "name": "Odyssey 2",
+    "group": "Other",
+    "core": "o2em_libretro"
+  },
+  "GAMEANDWATCH": {
+    "name": "Game & Watch",
+    "group": "Other",
+    "core": "gw_libretro"
+  },
   "INTELLIVISION": {
     "name": "Intellivision",
     "group": "Other",

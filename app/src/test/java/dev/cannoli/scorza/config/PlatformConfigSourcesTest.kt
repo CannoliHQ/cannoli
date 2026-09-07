@@ -40,12 +40,18 @@ class PlatformConfigSourcesTest {
         val biosDir = File(ctx.cacheDir, "fw-bios").apply { mkdirs() }
         val missing = pc.getFirmwareStatus("ATARI5200", coreId, biosDir)
         assertTrue(missing.isNotEmpty())
-        assertTrue("no firmware files present yet", missing.all { !it.second })
+        // Presence, not satisfaction: a5200's entries are optional, so an absent one is satisfied
+        // while still being absent, and asking the wrong question passed an empty BIOS folder.
+        assertTrue(
+            "no firmware files present yet",
+            missing.filterIsInstance<FirmwareRequirement.Single>().none { it.present },
+        )
 
         val firstPath = expected.first().path
         File(biosDir, firstPath).apply { parentFile?.mkdirs() }.writeText("stub")
         val afterPlacing = pc.getFirmwareStatus("ATARI5200", coreId, biosDir)
         assertTrue("placed firmware is reported present",
-            afterPlacing.first { it.first.path == firstPath }.second)
+            afterPlacing.filterIsInstance<FirmwareRequirement.Single>()
+                .first { it.entry.path == firstPath }.present)
     }
 }

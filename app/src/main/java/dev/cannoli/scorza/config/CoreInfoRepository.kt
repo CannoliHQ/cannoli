@@ -19,6 +19,28 @@ data class FirmwareEntry(
     val optional: Boolean
 )
 
+/**
+ * One thing a platform needs before a core can run, which is not always one file.
+ *
+ * A core declares firmware file by file, so that is all its `.info` can say. Several cores accept a
+ * dozen interchangeable regional BIOS dumps where holding any single one is enough, and asking the
+ * question per file cannot express that: it would either demand all thirteen or pick one and call
+ * the other twelve missing.
+ */
+sealed interface FirmwareRequirement {
+    val satisfied: Boolean
+
+    /** One file the core named, required or optional exactly as declared. */
+    data class Single(val entry: FirmwareEntry, val present: Boolean) : FirmwareRequirement {
+        override val satisfied: Boolean get() = present || entry.optional
+    }
+
+    /** Interchangeable files, any one of which satisfies the whole group. */
+    data class AnyOf(val options: List<Pair<FirmwareEntry, Boolean>>) : FirmwareRequirement {
+        override val satisfied: Boolean get() = options.any { it.second }
+    }
+}
+
 class CoreInfoRepository(private val assets: AssetManager, private val cacheDir: File? = null, private val apkLastModified: Long = 0L) {
 
     @Volatile private var cores = listOf<CoreInfo>()
@@ -49,6 +71,7 @@ class CoreInfoRepository(private val assets: AssetManager, private val cacheDir:
         "ATARI5200" to listOf("Atari - 5200"),
         "ATARI7800" to listOf("Atari - 7800"),
         "PCE" to listOf("NEC - PC Engine - TurboGrafx 16", "NEC - PC Engine CD - TurboGrafx-CD"),
+        "PCECD" to listOf("NEC - PC Engine CD - TurboGrafx-CD"),
         "SUPERGRAFX" to listOf("NEC - PC Engine SuperGrafx"),
         "PCFX" to listOf("NEC - PC-FX"),
         "NEOGEO" to listOf("SNK - Neo Geo", "FBNeo - Arcade Games"),
@@ -76,6 +99,22 @@ class CoreInfoRepository(private val assets: AssetManager, private val cacheDir:
         // firmware entry for the IPL, not a DAT. The cores that run N64 are the cores that run its
         // disks, so this deliberately borrows the N64 database rather than resolving to nothing.
         "N64DD" to listOf("Nintendo - Nintendo 64"),
+        // FBNeo runs all three CPS generations. MAME joins the first two and is deliberately absent
+        // from CPS-3, which arrived in MAME long after the 0.78 the 2003 builds are cut from.
+        "CPS1" to listOf("FBNeo - Arcade Games", "MAME", "MAME 2003-Plus", "MAME 2000", "MAME 2003", "MAME 2010"),
+        "CPS2" to listOf("FBNeo - Arcade Games", "MAME", "MAME 2003-Plus", "MAME 2000", "MAME 2003", "MAME 2010"),
+        "CPS3" to listOf("FBNeo - Arcade Games"),
+        "3DO" to listOf("The 3DO Company - 3DO"),
+        "C64" to listOf("Commodore - 64"),
+        "AMSTRADCPC" to listOf("Amstrad - CPC"),
+        "NEOGEOCD" to listOf("SNK - Neo Geo CD"),
+        "X68000" to listOf("Sharp - X68000"),
+        "ATARIST" to listOf("Atari - ST"),
+        "ODYSSEY2" to listOf("Magnavox - Odyssey2", "Philips - Videopac+"),
+        // The gw core's database is the generic LCD handheld set, not a Nintendo one, so this
+        // platform matches Game & Watch alongside every other maker's LCD game.
+        "GAMEANDWATCH" to listOf("Handheld Electronic Game"),
+        "ZX81" to listOf("Sinclair - ZX 81"),
         "DOS" to listOf("DOS"),
         "SCUMMVM" to listOf("ScummVM")
     )
