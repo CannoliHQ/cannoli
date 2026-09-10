@@ -247,4 +247,34 @@ class ConfigLayoutMigrationTest {
         assertEquals(0, ConfigLayoutMigration.run(root))
         assertEquals("db", paths.database.readText())
     }
+
+    private fun v1Mappings(root: File) = File(root, "Config/Input/Mappings")
+
+    // Autoconfig sits beside Mappings and holds v2's live cfgs, so deleting one level too high takes
+    // the user's current mappings with it.
+    @Test
+    fun `v1 input mappings are deleted without touching the autoconfig cfgs beside them`() {
+        val root = tmp.newFolder()
+        write(File(v1Mappings(root), "pad.ini"), "[meta]")
+        write(File(v1Mappings(root), "other_pad.ini.tmp"), "[meta]")
+        val liveCfg = File(root, "Config/Input/Autoconfig/android/pad.cfg")
+        write(liveCfg, "input_device = \"pad\"")
+
+        ConfigLayoutMigration.run(root)
+
+        assertFalse(v1Mappings(root).exists())
+        assertEquals("input_device = \"pad\"", liveCfg.readText())
+    }
+
+    @Test
+    fun `a file v1 never wrote keeps the mappings folder`() {
+        val root = tmp.newFolder()
+        write(File(v1Mappings(root), "pad.ini"), "[meta]")
+        write(File(v1Mappings(root), "notes.txt"), "mine")
+
+        ConfigLayoutMigration.run(root)
+
+        assertFalse(File(v1Mappings(root), "pad.ini").exists())
+        assertEquals("mine", File(v1Mappings(root), "notes.txt").readText())
+    }
 }

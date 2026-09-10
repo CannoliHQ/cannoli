@@ -35,10 +35,22 @@ object ConfigLayoutMigration {
     fun run(root: File): Int {
         val paths = CannoliPaths(root)
         if (!paths.configDir.isDirectory) return 0
+        deleteV1InputMappings(paths)
         val pending = moves(paths).filter { (from, to) -> from.exists() && !to.exists() }
         if (pending.isEmpty()) return 0
         backupDatabases(paths)
         return pending.count { (from, to) -> move(from, to) }
+    }
+
+    // v2 never creates this folder, so finding one means a 1.x install left it. File.delete refuses
+    // a non-empty directory, so anything v1 did not write keeps the folder.
+    private fun deleteV1InputMappings(paths: CannoliPaths) {
+        val dir = paths.configInputMappings
+        val files = dir.listFiles() ?: return
+        for (file in files) {
+            if (file.isFile && (file.name.endsWith(".ini") || file.name.endsWith(".ini.tmp"))) file.delete()
+        }
+        dir.delete()
     }
 
     /**
