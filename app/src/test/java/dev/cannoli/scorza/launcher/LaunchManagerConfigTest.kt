@@ -242,4 +242,26 @@ class LaunchManagerConfigTest : LaunchConfigHarness() {
         val cfg = launchedConfig(root, rom(root, "Roms/GBA/Game.gba", "GBA"))
         assertEquals(File(root, "Saves/GBA/Game").absolutePath, cfg["savefile_directory"])
     }
+
+    @Test fun `only a platform that forces the stick puts it on the D-pad, on every port`() {
+        every { platformConfig.forcesStickDpad("NDS") } returns true
+        val forcedRoot = tmp.newFolder()
+        val forced = launchedConfig(forcedRoot, rom(forcedRoot, "Roms/NDS/Game.nds", "NDS"))
+        val plainRoot = tmp.newFolder()
+        val plain = launchedConfig(plainRoot, rom(plainRoot, "Roms/GBA/Game.gba", "GBA"))
+
+        for (port in 1..16) assertEquals("3", forced["input_player${port}_analog_dpad_mode"])
+        assertFalse(plain.containsKey("input_player1_analog_dpad_mode"))
+    }
+
+    @Test fun `a platform override outranks the forced stick default on its own port only`() {
+        every { platformConfig.forcesStickDpad("NDS") } returns true
+        val root = tmp.newFolder()
+        write(CannoliPaths(root.absolutePath).systemSharedCfg("NDS"), "input_player1_analog_dpad_mode = \"1\"")
+
+        val cfg = launchedConfig(root, rom(root, "Roms/NDS/Game.nds", "NDS"))
+
+        assertEquals("1", cfg["input_player1_analog_dpad_mode"])
+        assertEquals("3", cfg["input_player2_analog_dpad_mode"])
+    }
 }

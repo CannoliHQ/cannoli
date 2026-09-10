@@ -51,6 +51,7 @@ class PlatformConfig(
     private var platformGroupOrder = listOf<String>()
     private var defaultApps = mapOf<String, List<AppConfig>>()
     private var arcadePlatforms = setOf<String>()
+    private var stickDpadPlatforms = setOf<String>()
 
     init {
         // Bundled asset defaults are always available regardless of storage permission, so seed
@@ -65,12 +66,14 @@ class PlatformConfig(
         val groups = mutableMapOf<String, String>()
         val apps = mutableMapOf<String, List<AppConfig>>()
         val arcade = mutableSetOf<String>()
+        val stickDpad = mutableSetOf<String>()
         for (tag in json.keys()) {
             val entry = json.getJSONObject(tag)
             entry.optString("name", "").takeIf { it.isNotEmpty() }?.let { names[tag] = it }
             entry.optString("core", "").takeIf { it.isNotEmpty() }?.let { cores[tag] = it }
             entry.optString("group", "").takeIf { it.isNotEmpty() }?.let { groups[tag] = it }
             if (entry.optBoolean("arcade")) arcade.add(tag)
+            if (entry.optBoolean("force_stick_dpad")) stickDpad.add(tag)
             val appArray = entry.optJSONArray("app")
             val list = mutableListOf<AppConfig>()
             if (appArray != null) {
@@ -97,6 +100,7 @@ class PlatformConfig(
             .sortedWith(compareBy<String> { if (it == UNGROUPED) 1 else 0 }.thenBy(NaturalSort) { it })
         defaultApps = apps
         arcadePlatforms = arcade
+        stickDpadPlatforms = stickDpad
     }
 
     private var ini: IniData = IniData(emptyMap())
@@ -388,6 +392,8 @@ class PlatformConfig(
     }
 
     fun isArcade(tag: String): Boolean = tag.uppercase() in arcadePlatforms
+
+    fun forcesStickDpad(tag: String): Boolean = tag.uppercase() in stickDpadPlatforms
 
     fun getAllTags(): Set<String> = defaultPlatformNames.keys + ini.getSection("platforms").keys
 

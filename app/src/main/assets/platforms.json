@@ -71,6 +71,7 @@
     "name": "Nintendo DS",
     "group": "Nintendo",
     "core": "melondsds_libretro",
+    "force_stick_dpad": true,
     "app": [
       { "package": "me.magnum.melonds", "action": "me.magnum.melonds.LAUNCH_ROM", "extras": [{ "key": "uri", "kind": "uri_parcelable" }] },
       { "package": "me.magnum.melondualds", "action": "me.magnum.melondualds.LAUNCH_ROM", "extras": [{ "key": "uri", "kind": "uri_parcelable" }] },
@@ -161,13 +162,15 @@
     "name": "Naomi",
     "group": "Sega",
     "core": "flycast_libretro",
-    "arcade": true
+    "arcade": true,
+    "force_stick_dpad": true
   },
   "ATOMISWAVE": {
     "name": "Atomiswave",
     "group": "Arcade",
     "core": "flycast_libretro",
-    "arcade": true
+    "arcade": true,
+    "force_stick_dpad": true
   },
 
   "PS": {
@@ -354,7 +357,8 @@
   "C64": {
     "name": "Commodore 64",
     "group": "Computer",
-    "core": "vice_x64sc_libretro"
+    "core": "vice_x64sc_libretro",
+    "force_stick_dpad": true
   },
   "AMSTRADCPC": {
     "name": "Amstrad CPC",
@@ -443,7 +447,8 @@
   "COLECOVISION": {
     "name": "ColecoVision",
     "group": "Other",
-    "core": "bluemsx_libretro"
+    "core": "bluemsx_libretro",
+    "force_stick_dpad": true
   },
   "VECTREX": {
     "name": "Vectrex",
