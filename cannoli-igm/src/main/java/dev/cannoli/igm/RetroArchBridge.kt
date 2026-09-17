@@ -82,6 +82,16 @@ interface RetroArchBridge {
 
     fun discardShortcuts() {}
 
+    /**
+     * What each RetroPad button sends, by RetroArch button id, this visit's staged edits included.
+     *
+     * A button the map does not mention sends itself.
+     */
+    fun buttonRemap(): Map<Int, Int> = emptyMap()
+
+    /** Stages [button] sending [target], or [ButtonRemap.UNBOUND], and applies it to the game. */
+    fun setButtonRemap(button: RemapButton, target: Int) {}
+
     /** RetroArch writes the auto slot itself while shutting down when this is on. */
     val savesOnQuit: Boolean
 
@@ -114,6 +124,12 @@ interface RetroArchBridge {
     fun getDiskCount(): Int
     fun getDiskIndex(): Int
     fun setDiskIndex(index: Int)
+
+    /** Players 1 to 4 in order, with the pad driving each. Empty before RetroArch is running. */
+    fun players(): List<PlayerSlot> = emptyList()
+
+    /** Queues an exchange of two players' pads. Players count from zero. */
+    fun swapPlayers(a: Int, b: Int) {}
 
     fun openNativeMenu()
     fun setOnNativeMenuClosed(callback: () -> Unit)

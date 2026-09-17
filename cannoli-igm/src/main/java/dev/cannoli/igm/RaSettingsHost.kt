@@ -7,6 +7,15 @@ interface RaSettingsHost {
     /** Label and value pairs describing the running core, in display order. Empty when unavailable. */
     fun systemInfo(): List<Pair<String, String>> = emptyList()
 
+    /** The controller types the core offers on [port], or null before RetroArch is running. */
+    fun portDeviceTypes(port: Int): PortDevices? = null
+
+    /** Queues a controller type onto the running core. */
+    fun setPortDevice(port: Int, id: Int) {}
+
+    /** Same method as [RetroArchBridge.players]: the one class implements both interfaces. */
+    fun players(): List<PlayerSlot> = emptyList()
+
     fun raGetSetting(key: String): RaSetting?
     fun raSetSetting(key: String, value: MachineValue): Boolean
     fun raSaveOverride(scope: RaOverrideScope, keys: Set<String>)

@@ -13,6 +13,8 @@ import dev.cannoli.core.shader.ShaderIndex
 import dev.cannoli.core.shader.ShaderPreset
 import java.io.File
 import dev.cannoli.igm.AchievementInfo
+import dev.cannoli.igm.ButtonRemap
+import dev.cannoli.igm.RemapButton
 import dev.cannoli.igm.RetroArchBridge
 import dev.cannoli.igm.RaOverrideScope
 import dev.cannoli.igm.MachineValue
@@ -21,13 +23,16 @@ import dev.cannoli.igm.RaSetting
 import dev.cannoli.igm.RaSettingType
 import dev.cannoli.igm.RaScreenRow
 import dev.cannoli.igm.RaSettingsHost
+import dev.cannoli.igm.PlayerSlot
+import dev.cannoli.igm.PortDeviceType
+import dev.cannoli.igm.PortDevices
 
 class EmbeddedRetroArchBridge(
     private val hardcoreInEffect: Boolean,
     private val cannoliRoot: String,
     private val platformTag: String,
     private val romBaseName: String,
-    coreId: String,
+    private val coreId: String,
 ) : RetroArchBridge, RaSettingsHost {
 
     override val supportsAchievements = true
@@ -87,7 +92,11 @@ class EmbeddedRetroArchBridge(
 
     @Suppress("unused")
     fun onRunloopReady() {
-        mainHandler.post { onRunloopReady?.invoke() }
+        mainHandler.post {
+            applyStoredPortDevices(afterReset = false)
+            applyRemap(storedRemap())
+            onRunloopReady?.invoke()
+        }
     }
 
     /** A key belonging to some shortcut chord went down or up during play. */
@@ -345,6 +354,24 @@ class EmbeddedRetroArchBridge(
     override fun getDiskCount() = nativeDiskCount()
     override fun getDiskIndex() = nativeDiskIndex()
     override fun setDiskIndex(index: Int) = nativeSetDiskIndex(index)
+
+    // A queued write has not reached RetroArch when the menu reads the port straight back, so the
+    // type last queued for a port is reported as the current one.
+    private val queuedPortDevices = mutableMapOf<Int, Int>()
+
+    override fun portDeviceTypes(port: Int): PortDevices? =
+        decodePortDevices(nativePortDeviceTypes(port))?.let { devices ->
+            queuedPortDevices[port]?.let { devices.copy(current = it) } ?: devices
+        }
+
+    override fun setPortDevice(port: Int, id: Int) {
+        queuedPortDevices[port] = id
+        nativeSetPortDevice(port, id)
+    }
+
+    override fun players(): List<PlayerSlot> = decodePlayers(nativePlayers())
+
+    override fun swapPlayers(a: Int, b: Int) = nativeSwapPlayers(a, b)
 
     var raStrings: dev.cannoli.igm.RaOptionStrings = dev.cannoli.igm.RaOptionStrings()
     var onOpenNativeMenu: (() -> Unit)? = null
@@ -622,6 +649,11 @@ class EmbeddedRetroArchBridge(
     override fun revertCannoliOverride() {
         // Discarding the visit discards anything the shortcut screen staged during it.
         discardShortcuts()
+        // A discarded remap has to leave the game too: the edits were live the moment they were made.
+        if (pendingRemap.isNotEmpty()) {
+            pendingRemap.clear()
+            applyRemap(storedRemap())
+        }
         // The shader in force when the tree was entered, reloaded rather than merely rewritten.
         // Without this a discarded audition stays on screen: nothing was saved, but what you are
         // looking at is the last preset you tried.
@@ -650,6 +682,44 @@ class EmbeddedRetroArchBridge(
      * Staged rather than written, so leaving Settings decides which tier they land in.
      */
     private val pendingShortcuts = LinkedHashMap<dev.cannoli.igm.ShortcutAction, TierValue>()
+
+    /**
+     * Remap edits waiting to be saved, by RetroArch button id.
+     *
+     * Staged the way a shortcut edit is: leaving Settings decides which tier they land in, and the
+     * buttons never touched stay inherited.
+     */
+    private val pendingRemap = LinkedHashMap<Int, Int>()
+
+    // Seeded to identity rather than empty: RetroArch's own remap array already holds identity once
+    // the core has initialized, so starting empty here would make every button look changed on the
+    // first reapply and queue all sixteen even when nothing is remapped.
+    /** What RetroArch was last told, so a reapply queues only the buttons that moved. */
+    private var appliedRemap: Map<Int, Int> = ButtonRemap.identity()
+
+    override fun buttonRemap(): Map<Int, Int> = storedRemap() + pendingRemap
+
+    override fun setButtonRemap(button: RemapButton, target: Int) {
+        pendingRemap[button.id] = target
+        applyRemap(buttonRemap())
+    }
+
+    private fun storedRemap(): Map<Int, Int> = remapFromTiers(
+        game = gameTier()?.let(::readTier).orEmpty(),
+        system = systemTier()?.let(::readTier).orEmpty(),
+    )
+
+    private fun applyRemap(next: Map<Int, Int>) {
+        for ((id, target) in remapChanges(appliedRemap, next)) {
+            nativeSetButtonRemap(ButtonRemap.ALL_PORTS, id, target)
+        }
+        appliedRemap = next
+    }
+
+    private fun stagedRemapValues(): Map<String, TierValue> =
+        pendingRemap.entries.mapNotNull { (id, target) ->
+            RemapButton.forId(id)?.let { ButtonRemap.keyFor(it) to TierValue.Set(target.toString()) }
+        }.toMap()
 
     /** The global table from the launch parcel, which the tiers layer over. */
     var globalShortcuts: Map<dev.cannoli.igm.ShortcutAction, Set<Int>> = emptyMap()
@@ -696,7 +766,7 @@ class EmbeddedRetroArchBridge(
     override fun saveCannoliOverride(scope: RaOverrideScope, changed: Set<String>) {
         // Only the keys this visit actually moved. Otherwise saving any setting at platform scope
         // would copy a game's bezel, or its shader, onto the whole platform.
-        val staged = stagedShortcutValues()
+        val staged = stagedShortcutValues() + stagedRemapValues()
         val mine = (CANNOLI_KEYS + staged.keys).filter { it in changed }
         if (mine.isEmpty() && cleared.isEmpty()) return
         if (cannoliRoot.isEmpty()) return
@@ -722,6 +792,7 @@ class EmbeddedRetroArchBridge(
         }
         cleared.clear()
         pendingShortcuts.clear()
+        pendingRemap.clear()
         onCannoliSaved?.invoke()
     }
 
@@ -910,16 +981,17 @@ class EmbeddedRetroArchBridge(
      * Staged edits go with it: a visit that resets and then saves would write the tier straight back
      * out, which is the reset undoing itself on the way to the door.
      *
-     * The bezel, the shader and the shortcut table are applied by Cannoli and can be walked back
-     * here. RetroArch's own settings are live in its config and only the launcher composes that, so
-     * they come back on the next launch, which is what the rows saying Applies On Relaunch already
-     * promise for the same reason.
+     * The bezel, the shader, the shortcut table and controller types are applied by Cannoli and can
+     * be walked back here. RetroArch's own settings are live in its config and only the launcher
+     * composes that, so they come back on the next launch, which is what the rows saying Applies On
+     * Relaunch already promise for the same reason.
      */
     override fun resetOverrides(scope: RaOverrideScope) {
         val dir = tierDir(scope) ?: return
         dir.listFiles()?.forEach { if (it.isFile) it.delete() }
 
         pendingShortcuts.clear()
+        pendingRemap.clear()
         cleared.clear()
         pendingChain = null
 
@@ -928,8 +1000,23 @@ class EmbeddedRetroArchBridge(
         appliedShader = shader
         cannoliOverlayName = storedOverlayName()
 
+        applyStoredPortDevices(afterReset = true)
+        applyRemap(storedRemap())
+
         onShortcutsStaged?.invoke()
         onCannoliReset?.invoke()
+    }
+
+    // RetroArch never loads a saved controller type and resets every port when the core starts, so
+    // the stored one is put back here, the way the stored shader is.
+    private fun applyStoredPortDevices(afterReset: Boolean) {
+        val files = coreTierFiles(cannoliRoot, platformTag, romBaseName, coreId)
+        for (port in 0 until PortDevices.PLAYER_ROWS) {
+            val devices = portDeviceTypes(port) ?: continue
+            val offered = devices.choices.mapTo(mutableSetOf()) { it.id }
+            val id = resolvePortDevice(storedInt(files, PortDevices.keyFor(port)), offered, afterReset) ?: continue
+            if (id != devices.current) setPortDevice(port, id)
+        }
     }
 
     /** Fired after a reset so the host redraws whatever it draws itself, the bezel above all. */
@@ -1040,6 +1127,11 @@ class EmbeddedRetroArchBridge(
     private external fun nativeDiskIndex(): Int
     private external fun nativeDiskLabel(index: Int): String?
     private external fun nativeSetDiskIndex(index: Int)
+    private external fun nativePortDeviceTypes(port: Int): Array<String>?
+    private external fun nativeSetPortDevice(port: Int, id: Int)
+    private external fun nativeSetButtonRemap(port: Int, source: Int, target: Int)
+    private external fun nativePlayers(): Array<String>?
+    private external fun nativeSwapPlayers(a: Int, b: Int)
     private external fun nativeSetIGMVisible(visible: Boolean)
     private external fun nativeSetIgmTriggerKeycodes(keycodes: IntArray)
     private external fun nativeSetShortcutChords(table: IntArray)
@@ -1113,6 +1205,75 @@ class EmbeddedRetroArchBridge(
                     supported = parts[3] == "1",
                 )
             }
+        }
+
+        internal fun decodePortDevices(fields: Array<String>?): PortDevices? {
+            if (fields == null || fields.size < 2) return null
+            val current = fields[1].toIntOrNull() ?: return null
+            val types = fields.drop(2).chunked(2).mapNotNull { pair ->
+                if (pair.size < 2) return@mapNotNull null
+                PortDeviceType(pair[0].toIntOrNull() ?: return@mapNotNull null, pair[1])
+            }
+            return PortDevices(current, types)
+        }
+
+        internal fun decodePlayers(fields: Array<String>?): List<PlayerSlot> {
+            if (fields == null) return emptyList()
+            return fields.toList().chunked(6).mapIndexedNotNull { player, row ->
+                if (row.size < 6) return@mapIndexedNotNull null
+                PlayerSlot(
+                    player = player,
+                    padIndex = row[1].toIntOrNull() ?: return@mapIndexedNotNull null,
+                    name = row[5].ifEmpty { null },
+                    setNumber = row[3].toIntOrNull() ?: 0,
+                )
+            }
+        }
+
+        internal fun resolvePortDevice(stored: Int?, offered: Set<Int>, afterReset: Boolean): Int? = when {
+            stored != null && stored in offered -> stored
+            afterReset -> PortDevices.RETRO_DEVICE_JOYPAD
+            else -> null
+        }
+
+        // storedTierValue reads only the core-independent cannoli.cfg. A controller type is saved by
+        // the native writer into the core-keyed files, game first.
+        internal fun coreTierFiles(root: String, tag: String, base: String, core: String): List<File> {
+            if (root.isEmpty() || core.isEmpty()) return emptyList()
+            val system = File(File(File(root, OverrideTiers.SYSTEMS_DIR), tag), "$core.cfg")
+            if (base.isEmpty()) return listOf(system)
+            val game = File(File(File(File(root, OverrideTiers.GAMES_DIR), tag), base), "$core.cfg")
+            return listOf(game, system)
+        }
+
+        /**
+         * What each button sends, the game tier winning key by key.
+         *
+         * Per key rather than whole file, unlike RetroArch's own remaps, because every other tier
+         * key here works that way: a platform remap shows through to a game that never mentions it.
+         */
+        internal fun remapFromTiers(
+            game: Map<String, String>,
+            system: Map<String, String>,
+        ): Map<Int, Int> = RemapButton.entries.associate { button ->
+            val key = ButtonRemap.keyFor(button)
+            val value = ButtonRemap.valueOf(game[key])
+                ?: ButtonRemap.valueOf(system[key])
+                ?: button.id
+            button.id to value
+        }
+
+        /** Only what moved, because the command queue holds 32 entries and drains once a frame. */
+        internal fun remapChanges(applied: Map<Int, Int>, next: Map<Int, Int>): Map<Int, Int> =
+            next.filter { (id, target) -> applied[id] != target }
+
+        internal fun storedInt(files: List<File>, key: String): Int? = files.firstNotNullOfOrNull { file ->
+            val raw = try {
+                if (file.isFile) RetroArchConfigComposer.parse(file.readText())[key] else null
+            } catch (_: Exception) {
+                null
+            }
+            raw?.toIntOrNull()
         }
 
         // Title and description are RetroAchievements server text, so they carry the same escaping

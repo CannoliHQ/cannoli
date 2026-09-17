@@ -50,6 +50,9 @@ static long long get_time_ms(void)
 #include "../../../../cheat_manager.h"
 #include "../../../../cheevos/cheevos.h"
 #include "../../../../core.h"
+#include "../../../../dynamic.h"
+#include "../../../../input/input_driver.h"
+#include "../../../../menu/menu_cbs.h"
 
 /* Cached JVM and bridge object refs for callbacks */
 static JavaVM *g_jvm           = NULL;
@@ -245,6 +248,13 @@ static jobjectArray ricotta_fields_to_array(JNIEnv *env, const ricotta_field *f,
 #define RICOTTA_QCMD_SHADER_SET       -10
 #define RICOTTA_QCMD_REWIND_RESET     -11
 #define RICOTTA_QCMD_CHEEVOS_LOAD     -12
+#define RICOTTA_QCMD_PORT_DEVICE_SET  -13
+#define RICOTTA_QCMD_PLAYERS_SWAP     -14
+#define RICOTTA_QCMD_REMAP_SET        -15
+/* Matches PortDevices.PLAYER_ROWS in cannoli-igm. */
+#define RICOTTA_PLAYER_ROWS           4
+/* RetroPad's sixteen digital buttons, matching RemapButton in cannoli-igm. */
+#define RICOTTA_REMAP_BUTTONS         16
 typedef struct
 {
    int   cmd;
@@ -259,6 +269,9 @@ typedef struct
    int   vp_w;
    int   vp_h;
    int   vp_integer_scale;
+   int   port_a;
+   int   port_b;
+   int   remap_value;
 } ricotta_cmd_entry;
 static ricotta_cmd_entry g_cmd_queue[RICOTTA_CMD_QUEUE_SIZE];
 static int g_cmd_head = 0;
@@ -294,6 +307,50 @@ static void ricotta_enqueue_command(int cmd, int slot, int has_slot)
    entry.slot     = slot;
    entry.has_slot = has_slot;
    ricotta_enqueue_entry(entry);
+}
+
+/* The name RetroArch's own menu shows for a controller type: the core's description, else generic. */
+static const char *ricotta_port_device_label(rarch_system_info_t *sys_info,
+      unsigned port, unsigned device)
+{
+   const struct retro_controller_description *desc = NULL;
+
+   if (sys_info && port < sys_info->ports.size)
+      desc = libretro_find_controller_description(&sys_info->ports.data[port], device);
+   if (desc && desc->desc && *desc->desc)
+      return desc->desc;
+   switch (device)
+   {
+      case RETRO_DEVICE_NONE:
+         return msg_hash_to_str(MENU_ENUM_LABEL_VALUE_NONE);
+      case RETRO_DEVICE_JOYPAD:
+         return msg_hash_to_str(MENU_ENUM_LABEL_VALUE_RETROPAD);
+      case RETRO_DEVICE_ANALOG:
+         return msg_hash_to_str(MENU_ENUM_LABEL_VALUE_RETROPAD_WITH_ANALOG);
+      default:
+         return msg_hash_to_str(MENU_ENUM_LABEL_VALUE_UNKNOWN);
+   }
+}
+
+/* One exchange of two players' pads. Stepping RetroArch's device index action instead swaps with
+ * every player it passes, which rotates them. Player 1 is never left without a pad. */
+static void ricotta_swap_players(unsigned a, unsigned b)
+{
+   settings_t *settings = config_get_ptr();
+   unsigned pad_a, pad_b;
+
+   if (!settings || a == b || a >= RICOTTA_PLAYER_ROWS || b >= RICOTTA_PLAYER_ROWS)
+      return;
+   pad_a = settings->uints.input_joypad_index[a];
+   pad_b = settings->uints.input_joypad_index[b];
+   if (pad_a >= MAX_INPUT_DEVICES || pad_b >= MAX_INPUT_DEVICES)
+      return;
+   if (a == 0 && !input_config_get_device_name(pad_b))
+      return;
+   if (b == 0 && !input_config_get_device_name(pad_a))
+      return;
+   settings->uints.input_joypad_index[a] = pad_b;
+   settings->uints.input_joypad_index[b] = pad_a;
 }
 
 /* Cheat descriptions and codes have no fixed bound (CHEAT_CODE_SCRATCH_SIZE is 16 KB), so a
@@ -636,6 +693,40 @@ void ricotta_bridge_poll_commands(void)
             ricotta_ra_apply(entry.ra_key, entry.ra_value);
          free(entry.ra_key);
          free(entry.ra_value);
+         continue;
+      }
+      if (entry.cmd == RICOTTA_QCMD_PORT_DEVICE_SET)
+      {
+         retro_ctx_controller_info_t pad;
+         input_config_set_device((unsigned)entry.port_a, (unsigned)entry.port_b);
+         pad.port   = (unsigned)entry.port_a;
+         pad.device = (unsigned)entry.port_b;
+         core_set_controller_port_device(&pad);
+         continue;
+      }
+      if (entry.cmd == RICOTTA_QCMD_PLAYERS_SWAP)
+      {
+         ricotta_swap_players((unsigned)entry.port_a, (unsigned)entry.port_b);
+         continue;
+      }
+      if (entry.cmd == RICOTTA_QCMD_REMAP_SET)
+      {
+         settings_t *settings = config_get_ptr();
+         if (settings)
+         {
+            unsigned target = entry.remap_value < 0
+               ? RARCH_UNMAPPED
+               : (unsigned)entry.remap_value;
+            /* Nothing reloads a remap: input_driver_poll reads this array every frame. */
+            if (entry.port_a < 0)
+            {
+               unsigned port;
+               for (port = 0; port < MAX_USERS; port++)
+                  settings->uints.input_remap_ids[port][entry.port_b] = target;
+            }
+            else if (entry.port_a < MAX_USERS)
+               settings->uints.input_remap_ids[entry.port_a][entry.port_b] = target;
+         }
          continue;
       }
       if (entry.cmd == RICOTTA_QCMD_SHADER_SET)
@@ -2342,6 +2433,117 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSetDiskIndex(
    (void)env;
    (void)obj;
    ricotta_enqueue_command(RICOTTA_QCMD_DISK_SET, (int)index, 0);
+}
+
+JNIEXPORT jobjectArray JNICALL
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativePortDeviceTypes(
+      JNIEnv *env, jobject obj, jint port)
+{
+   unsigned devices[128];
+   char ids[129][16];
+   ricotta_field fields[129];
+   unsigned count, i;
+   rarch_system_info_t *sys_info;
+   (void)obj;
+
+   if (!g_runloop_ready || port < 0 || port >= RICOTTA_PLAYER_ROWS)
+      return NULL;
+   sys_info = &runloop_state_get_ptr()->system;
+   count    = libretro_device_get_size(devices, sizeof(devices) / sizeof(devices[0]), (unsigned)port);
+
+   snprintf(ids[0], sizeof(ids[0]), "%u", input_config_get_device((unsigned)port));
+   fields[0].name  = "current";
+   fields[0].value = ids[0];
+   for (i = 0; i < count; i++)
+   {
+      snprintf(ids[i + 1], sizeof(ids[i + 1]), "%u", devices[i]);
+      fields[i + 1].name  = ids[i + 1];
+      fields[i + 1].value = ricotta_port_device_label(sys_info, (unsigned)port, devices[i]);
+   }
+   return ricotta_fields_to_array(env, fields, count + 1);
+}
+
+JNIEXPORT void JNICALL
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSetPortDevice(
+      JNIEnv *env, jobject obj, jint port, jint id)
+{
+   ricotta_cmd_entry entry = {0};
+   (void)env;
+   (void)obj;
+   if (port < 0 || port >= RICOTTA_PLAYER_ROWS || id < 0)
+      return;
+   entry.cmd    = RICOTTA_QCMD_PORT_DEVICE_SET;
+   entry.port_a = (int)port;
+   entry.port_b = (int)id;
+   ricotta_enqueue_entry(entry);
+}
+
+JNIEXPORT void JNICALL
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSetButtonRemap(
+      JNIEnv *env, jobject obj, jint port, jint source, jint target)
+{
+   ricotta_cmd_entry entry = {0};
+   (void)env;
+   (void)obj;
+   if (source < 0 || source >= RICOTTA_REMAP_BUTTONS)
+      return;
+   if (target < -1 || target >= RICOTTA_REMAP_BUTTONS)
+      return;
+   entry.cmd         = RICOTTA_QCMD_REMAP_SET;
+   entry.port_a      = (int)port;
+   entry.port_b      = (int)source;
+   entry.remap_value = (int)target;
+   ricotta_enqueue_entry(entry);
+}
+
+JNIEXPORT jobjectArray JNICALL
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativePlayers(
+      JNIEnv *env, jobject obj)
+{
+   settings_t *settings = config_get_ptr();
+   char pads[RICOTTA_PLAYER_ROWS][16];
+   char sets[RICOTTA_PLAYER_ROWS][16];
+   ricotta_field fields[RICOTTA_PLAYER_ROWS * 3];
+   unsigned p;
+   (void)obj;
+
+   if (!g_runloop_ready || !settings)
+      return NULL;
+   for (p = 0; p < RICOTTA_PLAYER_ROWS; p++)
+   {
+      unsigned pad     = settings->uints.input_joypad_index[p];
+      const char *name = NULL;
+      unsigned set     = 0;
+      if (pad < MAX_INPUT_DEVICES)
+      {
+         const char *display = input_config_get_device_display_name(pad);
+         name = display ? display : input_config_get_device_name(pad);
+         if (name)
+            set = input_config_get_device_name_index(pad);
+      }
+      snprintf(pads[p], sizeof(pads[p]), "%u", pad);
+      snprintf(sets[p], sizeof(sets[p]), "%u", set);
+      fields[p * 3].name      = "pad";
+      fields[p * 3].value     = pads[p];
+      fields[p * 3 + 1].name  = "set";
+      fields[p * 3 + 1].value = sets[p];
+      fields[p * 3 + 2].name  = "name";
+      fields[p * 3 + 2].value = name;
+   }
+   return ricotta_fields_to_array(env, fields, RICOTTA_PLAYER_ROWS * 3);
+}
+
+JNIEXPORT void JNICALL
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSwapPlayers(
+      JNIEnv *env, jobject obj, jint a, jint b)
+{
+   ricotta_cmd_entry entry = {0};
+   (void)env;
+   (void)obj;
+   entry.cmd    = RICOTTA_QCMD_PLAYERS_SWAP;
+   entry.port_a = (int)a;
+   entry.port_b = (int)b;
+   ricotta_enqueue_entry(entry);
 }
 
 JNIEXPORT jboolean JNICALL
