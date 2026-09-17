@@ -59,6 +59,7 @@ object CannoliIcons {
     val SyncDownload = CannoliIcon("\uF063", "SyncDownload", "fa-arrow_down", "Save sync: pulling from the server", "Dialogs")
     val SyncUpload = CannoliIcon("\uF062", "SyncUpload", "fa-arrow_up", "Save sync: pushing to the server", "Dialogs")
     val SyncAlert = CannoliIcon("\uF071", "SyncAlert", "fa-warning", "Save sync: conflict or error on this save", "Dialogs")
+    val SwapMarked = CannoliIcon("\uF061", "SwapMarked", "fa-arrow_right", "Reassign Players: the player picked up to swap", "Dialogs")
 
     // Emulator mapping
     val NotInstalled = CannoliIcon("\uDB80\uDC26", "NotInstalled", "md-alert", "Core or app confirmed absent", "Emulator mapping")
@@ -78,7 +79,7 @@ object CannoliIcons {
         CloudSync, CloudCheck,
         CloudAlert, CloudOff, AlertCircle, DatabaseSync,
         DatabaseAlert, Primary, CheckCircle, SyncDownload,
-        SyncUpload, SyncAlert, NotInstalled, Unknown,
+        SyncUpload, SyncAlert, SwapMarked, NotInstalled, Unknown,
         Variants,
     )
 }

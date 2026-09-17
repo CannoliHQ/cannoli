@@ -91,6 +91,8 @@ class IGMController(
 
     /** The rows the filter lets through, in the order the screen draws them. */
     val cheatVisibleItems = mutableStateOf<List<CheatItem>>(emptyList())
+    // Read once per menu open: buildMenuOptions() runs on every D-pad move, and this is a native read.
+    val players = mutableStateOf<List<PlayerSlot>>(emptyList())
     val cheatFilter = mutableStateOf(CheatFilter.ALL)
     val cheatHasRemembered = mutableStateOf(false)
 
@@ -199,22 +201,99 @@ class IGMController(
             MenuAction.NORTH -> shortcutRows.value.getOrNull(screen.selectedIndex)
                 ?.takeIf { it.chord.isNotEmpty() }
                 ?.let { row -> stagedShortcut(row.action) { bridge.setShortcutBinding(row.action, emptySet()) } }
-            MenuAction.BACK -> leaveShortcuts()
+            MenuAction.BACK -> closeInputScreen()
             else -> {}
         }
     }
 
-    private fun leaveShortcuts() = closeShortcuts()
-
     /**
-     * Leaves the screen and steps the settings navigator back out of the category that opened it.
+     * Leaves an Input category subscreen and steps the settings navigator back out of the category
+     * that opened it. Shared by Shortcuts and Button Mappings, the two screens Input hands off to.
      *
      * Entering pushed a level on the provider, so popping only this screen would leave the tree one
      * level deeper than the screen behind it, the same reason the overlay picker unwinds.
      */
-    private fun closeShortcuts() {
+    private fun closeInputScreen() {
         pop()
         providerNav?.let { renderProviderState(it.onNav(ProviderSettingsController.Nav.BACK)) }
+    }
+
+    val remapRows = androidx.compose.runtime.mutableStateOf<Map<Int, Int>>(emptyMap())
+
+    fun openButtonMappings() {
+        heldPastCapture.clear()
+        refreshRemapRows()
+        push(IGMScreen.ButtonMappings())
+    }
+
+    private fun refreshRemapRows() {
+        remapRows.value = bridge.buttonRemap()
+    }
+
+    /** Tells the settings tree a binding moved, the same way a staged shortcut does. */
+    private fun stagedRemap(keys: Set<String>, change: () -> Unit) {
+        providerNav?.markChangedExternally(keys)
+        change()
+        refreshRemapRows()
+    }
+
+    private fun bindButtonMapping(screen: IGMScreen.ButtonMappings, keycode: Int) {
+        // The rest of the confirm hold that started listening, still repeating. Not a press.
+        if (keycode in heldPastCapture) return
+        if (inputTranslator.isMenuKey(keycode)) {
+            replaceTop(screen.copy(listening = false))
+            return
+        }
+        val row = RemapButton.entries.getOrNull(screen.selectedIndex) ?: return
+        val canonical = inputTranslator.canonicalFor(keycode)
+        val target = canonical?.let(RemapButton::forPosition)
+        if (target == null) {
+            // A profiled pad names this key as some button, just not one this screen can bind
+            // (BTN_MENU, a stick axis): nothing to do. An unprofiled pad names nothing at all, and
+            // its Back keycode still falls out of the PASS_THROUGH table as MenuAction.BACK, which
+            // is the only way out of a listening row without a profile to bind a press against.
+            if (canonical == null && inputTranslator.normalize(keycode) == MenuAction.BACK) {
+                replaceTop(screen.copy(listening = false))
+            }
+            return
+        }
+        if (ButtonRemap.target(remapRows.value, row) != target.id) {
+            stagedRemap(setOf(ButtonRemap.keyFor(row))) { bridge.setButtonRemap(row, target.id) }
+        }
+        // The rest of this hold arrives as navigation otherwise, so binding the confirm button
+        // would open the next row for binding on its own repeat.
+        heldPastCapture.add(keycode)
+        replaceTop(screen.copy(listening = false))
+    }
+
+    private fun handleButtonMappingsKey(screen: IGMScreen.ButtonMappings, action: MenuAction, keycode: Int) {
+        val count = RemapButton.entries.size
+        val row = RemapButton.entries.getOrNull(screen.selectedIndex)
+        when (action) {
+            MenuAction.UP -> replaceTop(screen.copy(selectedIndex = (screen.selectedIndex - 1 + count) % count))
+            MenuAction.DOWN -> replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count))
+            MenuAction.CONFIRM -> {
+                // The rest of this hold arrives as a bind otherwise, since listening reads it raw.
+                heldPastCapture.add(keycode)
+                replaceTop(screen.copy(listening = true))
+            }
+            MenuAction.NORTH -> {
+                if (row != null && ButtonRemap.target(remapRows.value, row) != ButtonRemap.UNBOUND) {
+                    stagedRemap(setOf(ButtonRemap.keyFor(row))) {
+                        bridge.setButtonRemap(row, ButtonRemap.UNBOUND)
+                    }
+                }
+            }
+            MenuAction.WEST -> {
+                if (!ButtonRemap.isDefault(remapRows.value)) {
+                    stagedRemap(RemapButton.entries.map(ButtonRemap::keyFor).toSet()) {
+                        RemapButton.entries.forEach { bridge.setButtonRemap(it, it.id) }
+                    }
+                }
+            }
+            MenuAction.BACK -> closeInputScreen()
+            else -> {}
+        }
     }
 
     fun openCheats() {
@@ -469,6 +548,7 @@ class IGMController(
         refreshDiskInfo()
         requestCheatsIfMissing()
         refreshAchievementCount()
+        players.value = bridge.players()
         // Always Resume, never where the menu was left. The menu is opened mid-game far more often
         // to get back to the game than to do anything else, and a remembered row means the most
         // common action is never the one under the cursor.
@@ -704,6 +784,34 @@ class IGMController(
         }
     }
 
+    private fun handleReassignPlayersKey(screen: IGMScreen.ReassignPlayers, action: MenuAction) {
+        val slots = players.value
+        if (slots.isEmpty()) {
+            pop()
+            return
+        }
+        val row = screen.selectedIndex
+        when (action) {
+            MenuAction.UP -> replaceTop(screen.copy(selectedIndex = (row - 1 + slots.size) % slots.size))
+            MenuAction.DOWN -> replaceTop(screen.copy(selectedIndex = (row + 1) % slots.size))
+            MenuAction.CONFIRM -> {
+                val marked = screen.marked
+                when {
+                    marked == null -> if (slots[row].hasPad) replaceTop(screen.copy(marked = row))
+                    marked == row -> replaceTop(screen.copy(marked = null))
+                    swapAllowed(slots, marked, row) -> {
+                        bridge.swapPlayers(marked, row)
+                        // The swap is queued, so reading RetroArch back now can still give the old order.
+                        players.value = slots.swapped(marked, row)
+                        replaceTop(screen.copy(marked = null))
+                    }
+                }
+            }
+            MenuAction.BACK -> if (screen.marked != null) replaceTop(screen.copy(marked = null)) else pop()
+            else -> {}
+        }
+    }
+
     private fun handleGuideKey(screen: IGMScreen.Guide, action: MenuAction) {
         val guide = guideFiles.value.firstOrNull { it.file.absolutePath == screen.filePath } ?: return
         val type = guide.type
@@ -786,6 +894,12 @@ class IGMController(
             binding.keyDown(keycode)
             return
         }
+        // The press names a button rather than a direction, so it goes in raw: what this menu calls
+        // confirm is a position on the pad, and a position is exactly what is being bound.
+        if (screen is IGMScreen.ButtonMappings && screen.listening) {
+            bindButtonMapping(screen, keycode)
+            return
+        }
         // The tail of a chord that has already committed, still repeating. Not a press.
         if (keycode in heldPastCapture) return
         // Null is a key this pad has no meaning for, which no screen has anything to do with.
@@ -804,6 +918,8 @@ class IGMController(
             is IGMScreen.ProviderSettings -> handleProviderKey(action)
             is IGMScreen.SettingsExitPrompt -> handleProviderKey(action)
             is IGMScreen.Shortcuts -> handleShortcutsKey(screen, action)
+            is IGMScreen.ReassignPlayers -> handleReassignPlayersKey(screen, action)
+            is IGMScreen.ButtonMappings -> handleButtonMappingsKey(screen, action, keycode)
         }
     }
 
@@ -934,6 +1050,7 @@ class IGMController(
             hasAchievements = bridge.supportsAchievements && achievementCount > 0,
             hasGuides = guideFiles.value.isNotEmpty(),
             hasCheats = cheatSession?.rows?.isNotEmpty() == true,
+            hasReassign = players.value.count { it.hasPad } >= 2,
             hasSaveStates = bridge.savestatesAllowed,
         )
         menuOptions = opts
@@ -975,6 +1092,11 @@ class IGMController(
                 // Cannoli's own screen too: binding a chord is a press-and-hold, not a list.
                 if (state.path == listOf(CuratedCatalog.CATEGORY_INPUT, CuratedCatalog.INPUT_SHORTCUTS)) {
                     if (currentScreen !is IGMScreen.Shortcuts) openShortcuts()
+                    return
+                }
+                // Cannoli's own screen too: binding a button is a press, not a list.
+                if (state.path == listOf(CuratedCatalog.CATEGORY_INPUT, CuratedCatalog.INPUT_BUTTONS)) {
+                    if (currentScreen !is IGMScreen.ButtonMappings) openButtonMappings()
                     return
                 }
                 if (state.path.lastOrNull() == CuratedCatalog.CATEGORY_OVERLAY) {
@@ -1185,7 +1307,8 @@ class IGMController(
             }
             IgmMenuAction.ACHIEVEMENTS -> openAchievements()
             IgmMenuAction.CHEATS -> openCheats()
-            IgmMenuAction.SWITCH_DISC, IgmMenuAction.REASSIGN, null -> {}
+            IgmMenuAction.REASSIGN -> push(IGMScreen.ReassignPlayers())
+            IgmMenuAction.SWITCH_DISC, null -> {}
         }
     }
 }

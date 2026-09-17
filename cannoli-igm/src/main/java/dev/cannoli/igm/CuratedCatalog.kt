@@ -155,4 +155,5 @@ object CuratedCatalog {
     // to a screen of Cannoli's rather than to a list of RetroArch settings.
     const val CATEGORY_INPUT = "input"
     const val INPUT_SHORTCUTS = "shortcuts"
+    const val INPUT_BUTTONS = "buttons"
 }

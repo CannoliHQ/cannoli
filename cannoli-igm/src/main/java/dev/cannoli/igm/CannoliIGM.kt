@@ -51,6 +51,7 @@ import dev.cannoli.ui.components.LocalStatusBarLeftEdge
 import dev.cannoli.ui.components.ScreenBackground
 import dev.cannoli.ui.components.StatusBar
 import dev.cannoli.ui.components.screenInsets
+import dev.cannoli.ui.theme.CannoliIcons
 import dev.cannoli.ui.theme.LocalCannoliFont
 import dev.cannoli.ui.theme.LocalCannoliTypography
 import dev.cannoli.ui.theme.LocalPillScale
@@ -72,6 +73,8 @@ fun CannoliIGM(
     undoAction: UndoAction?,
     settingsItems: List<IGMSettingsItem>,
     shortcutRows: List<RetroArchBridge.ShortcutBinding> = emptyList(),
+    remapRows: Map<Int, Int> = emptyMap(),
+    players: List<PlayerSlot> = emptyList(),
     previewTitle: String = "",
     previewItems: List<String> = emptyList(),
     previewCanRestore: Boolean = false,
@@ -600,6 +603,72 @@ fun CannoliIGM(
                         }
                     }
                 }
+                is IGMScreen.ButtonMappings -> {
+                    val unbound = stringResource(dev.cannoli.ui.R.string.igm_button_unbound)
+                    val listening = stringResource(dev.cannoli.ui.R.string.igm_button_listening)
+                    val items = RemapButton.entries.mapIndexed { i, button ->
+                        val target = ButtonRemap.target(remapRows, button)
+                        IGMSettingsItem(
+                            label = remapLabel(button, labels),
+                            value = when {
+                                screen.listening && i == screen.selectedIndex -> listening
+                                target == ButtonRemap.UNBOUND -> unbound
+                                // A row sending its own button says nothing, so the remapped rows
+                                // are the only ones carrying a word.
+                                target == button.id -> ""
+                                else -> RemapButton.forId(target)?.let { remapLabel(it, labels) }.orEmpty()
+                            },
+                        )
+                    }
+                    IGMSettingsScreen(
+                        title = stringResource(dev.cannoli.ui.R.string.igm_button_mappings),
+                        items = items,
+                        selectedIndex = screen.selectedIndex,
+                        bottomBarLeft = if (screen.listening) emptyList() else buildList {
+                            add(labels.back to stringResource(dev.cannoli.ui.R.string.label_back))
+                            if (!ButtonRemap.isDefault(remapRows)) {
+                                add(labels.west to stringResource(dev.cannoli.ui.R.string.label_reset_all))
+                            }
+                        },
+                        bottomBarRight = if (screen.listening) emptyList() else listOf(
+                            labels.north to stringResource(dev.cannoli.ui.R.string.label_clear),
+                            labels.confirm to stringResource(dev.cannoli.ui.R.string.label_set),
+                        ),
+                        fontSize = igmFontSize,
+                        lineHeight = igmLineHeight,
+                    )
+                }
+                is IGMScreen.ReassignPlayers -> {
+                    val marked = screen.marked
+                    val items = players.map { slot ->
+                        IGMSettingsItem(
+                            label = stringResource(dev.cannoli.ui.R.string.igm_player, slot.player + 1),
+                            value = slot.name?.let { if (slot.setNumber > 0) "$it (${slot.setNumber})" else it } ?: "-",
+                            leadingIcon = if (slot.player == marked) CannoliIcons.SwapMarked.glyph else null,
+                        )
+                    }
+                    val confirmLabel = when {
+                        marked == null ->
+                            if (players.getOrNull(screen.selectedIndex)?.hasPad == true) {
+                                stringResource(dev.cannoli.ui.R.string.label_select)
+                            } else {
+                                null
+                            }
+                        marked == screen.selectedIndex -> null
+                        swapAllowed(players, marked, screen.selectedIndex) -> stringResource(dev.cannoli.ui.R.string.label_swap)
+                        else -> null
+                    }
+                    val backLabel = if (marked == null) dev.cannoli.ui.R.string.label_back else dev.cannoli.ui.R.string.label_cancel
+                    IGMSettingsScreen(
+                        title = stringResource(dev.cannoli.ui.R.string.igm_reassign_players),
+                        items = items,
+                        selectedIndex = screen.selectedIndex,
+                        bottomBarLeft = listOf(labels.back to stringResource(backLabel)),
+                        bottomBarRight = listOfNotNull(confirmLabel?.let { labels.confirm to it }),
+                        fontSize = igmFontSize,
+                        lineHeight = igmLineHeight,
+                    )
+                }
                 null -> {}
             }
 
@@ -629,3 +698,14 @@ fun CannoliIGM(
         }
     }
 }
+
+/** The pad's own name for where a button sits, so a row reads the way the pad in hand is printed. */
+@Composable
+private fun remapLabel(button: RemapButton, labels: ButtonStyle): String =
+    when (button.position) {
+        CanonicalButton.BTN_SOUTH -> labels.south
+        CanonicalButton.BTN_EAST -> labels.east
+        CanonicalButton.BTN_WEST -> labels.west
+        CanonicalButton.BTN_NORTH -> labels.north
+        else -> button.labelRes?.let { stringResource(it) } ?: button.raKey
+    }

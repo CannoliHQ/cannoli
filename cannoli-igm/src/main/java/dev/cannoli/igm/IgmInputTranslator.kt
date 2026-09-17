@@ -37,8 +37,26 @@ class IgmInputTranslator(private val mapping: IgmInputMapping?) {
     fun isMenuKey(rawKeycode: Int): Boolean =
         if (mapping == null) rawKeycode in MENU_DEFAULTS else normalize(rawKeycode) == MenuAction.MENU
 
+    /** Where a press sits on the pad, for a screen binding a button rather than reading a meaning. */
+    fun canonicalFor(rawKeycode: Int): CanonicalButton? {
+        rawToCanonical[rawKeycode]?.let { return it }
+        // A profile only ever comes from buttonKeycodes, which the factory builds from digital
+        // button events, so a D-pad wired as a hat or a trigger read as an analog axis never gets an
+        // entry there. Without this fallback those presses vanish while a row is listening: they
+        // neither bind nor cancel, and the row is left listening with the game paused. Gated on the
+        // pad having a mapping at all, so an unprofiled pad still returns null here and keeps BACK as
+        // its way out of a listening row.
+        return if (mapping != null) HAT_AND_AXIS_FALLBACK[rawKeycode] else null
+    }
+
     companion object {
         private val MENU_DEFAULTS = setOf(4, 82, 110)
+
+        private val HAT_AND_AXIS_FALLBACK = mapOf(
+            19 to CanonicalButton.BTN_UP, 20 to CanonicalButton.BTN_DOWN,
+            21 to CanonicalButton.BTN_LEFT, 22 to CanonicalButton.BTN_RIGHT,
+            104 to CanonicalButton.BTN_L2, 105 to CanonicalButton.BTN_R2,
+        )
 
         // What a pad means with no profile behind it, and the reason this table is spelled out
         // rather than passing the keycode through: an id absent from here now means nothing at all,

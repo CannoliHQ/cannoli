@@ -64,4 +64,17 @@ sealed class IGMScreen {
         override val selectedIndex: Int = 0,
         val pendingRowIndex: Int,
     ) : IGMScreen()
+    data class ReassignPlayers(override val selectedIndex: Int = 0, val marked: Int? = null) : IGMScreen()
+
+    /**
+     * The button remap, one row per RetroPad button.
+     *
+     * [listening] is the row waiting for a press: the keys arriving then name the button that row
+     * should send rather than navigating, which is why the screen says so rather than the handler
+     * guessing.
+     */
+    data class ButtonMappings(
+        override val selectedIndex: Int = 0,
+        val listening: Boolean = false,
+    ) : IGMScreen()
 }

@@ -147,18 +147,26 @@ class RaIgmSettingsProvider(
         // live preview picker on seeing this path and never renders what is returned here.
         path.first() == CuratedCatalog.CATEGORY_OVERLAY ->
             GenericIgmSettingsScreen(curatedTitle(CuratedCatalog.CATEGORY_OVERLAY), emptyList())
-        // One row, which hands off to Cannoli's own screen. The category exists so shortcuts sit
-        // where the rest of a platform's settings sit rather than in the menu above them.
+        // Controller Type rows, then the rows that hand off to Cannoli's own Button Mappings and
+        // Shortcuts screens. The category exists so these sit where the rest of a platform's
+        // settings sit.
         path.first() == CuratedCatalog.CATEGORY_INPUT && path.size == 1 ->
             GenericIgmSettingsScreen(
                 curatedTitle(CuratedCatalog.CATEGORY_INPUT),
-                listOf(GenericIgmSettingsItem.Category(
+                controllerTypeRows() + GenericIgmSettingsItem.Category(
+                    CuratedCatalog.INPUT_BUTTONS,
+                    strings.buttonMappings,
+                ) + GenericIgmSettingsItem.Category(
                     CuratedCatalog.INPUT_SHORTCUTS,
                     strings.shortcuts,
-                )),
+                ),
             )
         path.first() == CuratedCatalog.CATEGORY_INPUT ->
-            GenericIgmSettingsScreen(strings.shortcuts, emptyList())
+            GenericIgmSettingsScreen(
+                if (path.getOrNull(1) == CuratedCatalog.INPUT_BUTTONS) strings.buttonMappings
+                else strings.shortcuts,
+                emptyList(),
+            )
         path.first() == CuratedCatalog.CATEGORY_SHADER ->
             if (curated) shaderScreen(path.drop(1)) else shaderPipelineScreen(path.drop(1))
         curated -> curatedCategoryScreen(path.first())
@@ -706,6 +714,7 @@ class RaIgmSettingsProvider(
 
     override fun cycle(itemKey: String, direction: Int) {
         if (itemKey.startsWith(INFO_ROW_PREFIX)) return
+        PortDevices.portFor(itemKey)?.let { return cyclePortDevice(it, direction) }
         CuratedCatalog.rowFor(itemKey)?.let { return cycleCurated(it, direction) }
         // Before the RetroArch lookup: this screen never populates currentSettings.
         if (!curated && cyclePipeline(itemKey, direction)) return
@@ -727,6 +736,36 @@ class RaIgmSettingsProvider(
                     ?: newValue.raw,
             ))
         }
+    }
+
+    // One row per player holding a pad, or one row for Player 1 with at most one pad. Read on every
+    // visit, so a pad connected mid-game gets its row the next time the screen opens.
+    private fun controllerTypeRows(): List<GenericIgmSettingsItem> {
+        val padded = host.players().filter { it.hasPad && it.player < PortDevices.PLAYER_ROWS }.map { it.player }
+        val ports = if (padded.size <= 1) listOf(0) else padded
+        return ports.mapNotNull { port ->
+            val devices = host.portDeviceTypes(port)?.takeIf { it.hasChoice } ?: return@mapNotNull null
+            GenericIgmSettingsItem.Choice(
+                key = PortDevices.keyFor(port),
+                label = if (ports.size == 1) strings.controllerType else strings.playerController(port + 1),
+                value = devices.labelFor(devices.current),
+            )
+        }
+    }
+
+    // A raw write would store a number the core never sees, so the type goes through the port.
+    private fun cyclePortDevice(port: Int, direction: Int) {
+        val devices = host.portDeviceTypes(port)?.takeIf { it.hasChoice } ?: return
+        val choices = devices.choices
+        val at = choices.indexOfFirst { it.id == devices.current }.coerceAtLeast(0)
+        val next = choices[Math.floorMod(at + direction, choices.size)].id
+        if (next == devices.current) return
+        val key = PortDevices.keyFor(port)
+        if (!priorValues.containsKey(key)) priorValues[key] = MachineValue(devices.current.toString())
+        host.setPortDevice(port, next)
+        dirty = true
+        changedKeys.add(key)
+        onChanged?.invoke()
     }
 
     private fun replaceSetting(index: Int, updated: RaSetting) {
@@ -933,6 +972,11 @@ class RaIgmSettingsProvider(
 
     private fun restorePriorValues() {
         for ((key, value) in priorValues) {
+            val port = PortDevices.portFor(key)
+            if (port != null) {
+                value.raw.toIntOrNull()?.let { host.setPortDevice(port, it) }
+                continue
+            }
             host.raSetSetting(key, value)
             if (curatedValues.containsKey(key)) curatedValues[key] = value.raw
         }

@@ -44,6 +44,21 @@ open class FakeRetroArchBridge : RetroArchBridge {
     override fun getDiskIndex() = disc
     override fun setDiskIndex(index: Int) { disc = index }
 
+    var playerSlots: List<PlayerSlot> = emptyList()
+    val swaps = mutableListOf<Pair<Int, Int>>()
+
+    override fun players() = playerSlots
+    override fun swapPlayers(a: Int, b: Int) { swaps += a to b }
+
+    val remap = mutableMapOf<Int, Int>()
+    val remapSets = mutableListOf<Pair<Int, Int>>()
+
+    override fun buttonRemap(): Map<Int, Int> = remap.toMap()
+    override fun setButtonRemap(button: RemapButton, target: Int) {
+        remap[button.id] = target
+        remapSets += button.id to target
+    }
+
     var nativeMenuOpened = 0
     private var menuClosedCallback: (() -> Unit)? = null
 

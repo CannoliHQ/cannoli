@@ -190,6 +190,9 @@ class IGMOverlay(
             resetGame = uiContext.getString(R.string.igm_reset_game),
             emulator = uiContext.getString(R.string.igm_emulator),
             shortcuts = uiContext.getString(R.string.igm_shortcuts_title),
+            buttonMappings = uiContext.getString(R.string.igm_button_mappings),
+            controllerType = uiContext.getString(R.string.igm_controller_type),
+            playerController = { uiContext.getString(R.string.igm_player_controller, it) },
             shaderApplied = uiContext.getString(R.string.igm_shader_applied),
             shaderEnabled = uiContext.getString(R.string.igm_shader_enabled),
             shaderLoad = uiContext.getString(R.string.igm_shader_load),
@@ -582,6 +585,9 @@ class IGMOverlay(
                     settingsItems = controller.settingsItems.value,
                     shortcutRows = (controller.currentScreen as? dev.cannoli.igm.IGMScreen.Shortcuts)
                         ?.let { controller.shortcutRows.value }.orEmpty(),
+                    remapRows = (controller.currentScreen as? dev.cannoli.igm.IGMScreen.ButtonMappings)
+                        ?.let { controller.remapRows.value }.orEmpty(),
+                    players = controller.players.value,
                     previewTitle = controller.overlayPicker.title.value,
                     previewItems = controller.overlayPicker.items.value,
                     previewCanRestore = controller.overlayPicker.canRestore.value,

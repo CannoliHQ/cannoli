@@ -42,6 +42,8 @@
     <string name="label_parent">PARENT</string>
     <string name="label_slot">SLOT</string>
     <string name="label_disc">DISC</string>
+    <!-- Legend label for the action that puts every button back to its own button on the button mapping screen -->
+    <string name="label_reset_all">RESET ALL</string>
     <string name="igm_resume">Resume</string>
     <string name="label_achievements">Achievements</string>
     <string name="igm_switch_disc">Switch Disc</string>
@@ -81,8 +83,16 @@
     <string name="label_remap">REMAP</string>
     <string name="label_unmap">UNMAP</string>
     <string name="label_grant">GRANT</string>
+    <!-- Bottom-bar button on Reassign Players; exchanges the pads of the marked player and this one. -->
+    <string name="label_swap">SWAP</string>
     <!-- In-game menu action: reassign connected controllers to player slots. -->
     <string name="igm_reassign_players">Reassign Players</string>
+    <!-- In-game Input setting: which controller the core emulates for Player 1, shown when at most one pad is connected. -->
+    <string name="igm_controller_type">Controller Type</string>
+    <!-- In-game Input setting: which controller the core emulates for one player. %1$d is the player number, counted from 1. -->
+    <string name="igm_player_controller">Player %1$d Controller</string>
+    <!-- In-game Reassign Players row label. %1$d is the player number, counted from 1. -->
+    <string name="igm_player">Player %1$d</string>
 
     <!-- In-game shortcut actions -->
     <string name="shortcut_action_save_state">Save State</string>
@@ -851,6 +861,24 @@
     <!-- IGM screen titles -->
     <!-- Title of the IGM shortcut list. -->
     <string name="igm_shortcuts_title">Shortcuts</string>
+    <!-- Title of the in-game screen where a player changes what each pad button does in the game -->
+    <string name="igm_button_mappings">Button Mappings</string>
+    <!-- Name of the up direction on the pad -->
+    <string name="igm_button_up">Up</string>
+    <!-- Name of the down direction on the pad -->
+    <string name="igm_button_down">Down</string>
+    <!-- Name of the left direction on the pad -->
+    <string name="igm_button_left">Left</string>
+    <!-- Name of the right direction on the pad -->
+    <string name="igm_button_right">Right</string>
+    <!-- Name of the left shoulder button -->
+    <string name="igm_button_l">L</string>
+    <!-- Name of the right shoulder button -->
+    <string name="igm_button_r">R</string>
+    <!-- Shown for a button that has been unbound, so it does nothing in the game -->
+    <string name="igm_button_unbound" translatable="false">-</string>
+    <!-- Shown on a row that is waiting for the player to press the button it should send -->
+    <string name="igm_button_listening" translatable="false">…</string>
     <!-- Shown on a shortcut row while it waits for a chord to be held. -->
     <string name="igm_shortcut_listening">Hold a chord</string>
     <string name="igm_video">Video</string>

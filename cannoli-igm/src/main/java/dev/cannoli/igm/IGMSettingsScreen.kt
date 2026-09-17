@@ -132,7 +132,8 @@ fun IGMSettingsScreen(
                                 isSelected = isSelected,
                                 fontSize = fontSize,
                                 lineHeight = lineHeight,
-                                verticalPadding = verticalPadding
+                                verticalPadding = verticalPadding,
+                                leadingIcon = item.leadingIcon,
                             )
                         } else {
                             PillRowText(
