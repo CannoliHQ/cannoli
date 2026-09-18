@@ -75,14 +75,14 @@ class GameIdMigrationTest {
         conn.close()
     }
 
-    @Test fun `migrating leaves the schema at fourteen`() {
+    @Test fun `migrating leaves the schema at fifteen`() {
         val conn = v13Connection("version")
         Migrations.applyFrom(conn, 13)
         conn.prepare("PRAGMA user_version").use { stmt ->
             stmt.step()
-            assertEquals(14, stmt.getInt(0))
+            assertEquals(15, stmt.getInt(0))
         }
-        assertEquals(14, Migrations.current)
+        assertEquals(15, Migrations.current)
         conn.close()
     }
 

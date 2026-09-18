@@ -272,7 +272,25 @@ internal object Migrations {
             // keeps the lookup cheap despite them.
             db.execSQL("CREATE INDEX roms_sigil_pending ON roms(platform_tag) WHERE sigil_probe IS NULL")
         },
+        Migration(15) { db ->
+            // Migration 13 was rewritten in place: it first shipped adding force_softcore and was
+            // later changed to add ra_hardcore. An install that ran the first version is stamped 13
+            // and so never runs it again, leaving it without a column every game list selects, which
+            // is a crash on the first platform opened rather than a missing feature. Adding it here
+            // heals those and does nothing to an install that got the column the ordinary way.
+            if (!hasColumn(db, "roms", "ra_hardcore")) {
+                db.execSQL("ALTER TABLE roms ADD COLUMN ra_hardcore INTEGER")
+            }
+        },
     )
+
+    private fun hasColumn(db: SQLiteConnection, table: String, column: String): Boolean =
+        db.prepare("PRAGMA table_info($table)").use { stmt ->
+            while (stmt.step()) {
+                if (stmt.getText(1) == column) return true
+            }
+            false
+        }
 
     val current: Int = all.maxOf { it.version }
 
