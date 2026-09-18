@@ -85,9 +85,19 @@ class CheevosOfflineHandler(
     private fun cachedSetForUnknownGame(postData: String, body: String): String? {
         if (lookup.requestType(postData) != "achievementsets") return null
         if (!saysNoSuchGame(body)) return null
+        val cached = lookup.bodyFor(postData) ?: return null
+        // Held as the pair for the session that follows, so an online session refreshes this game
+        // the way an ordinary one does. The server will never identify this ROM, so write-through
+        // has no set of its own to pair, and an overridden game's unlock state could otherwise only
+        // be refreshed by preloading it again.
+        lookup.gameIdFor(postData)?.takeIf { it > 0 }?.let { id ->
+            gameId = id
+            sets[id] = cached
+            RaOfflineLookup.field(postData, "m")?.let { romHash = it }
+        }
         // Deliberately not flagged as served from cache: the network is up, the session, the pings
         // and every unlock are the server's, and only the set definitions came from here.
-        return lookup.bodyFor(postData)
+        return cached
     }
 
     /**

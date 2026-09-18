@@ -183,6 +183,35 @@ class CheevosOfflineHandlerTest {
         assertEquals(cachedSets, h.response(setsRequest, unknownGameBody, 404))
     }
 
+    // Without this the cache of an overridden game could only ever be refreshed by preloading it
+    // again: the server refuses to identify the ROM, so write-through never gets a set to pair with
+    // the session, and the unlock state stayed frozen at whatever the last preload saw.
+    @Test fun `an overridden game refreshes its cached session by being played online`() {
+        val (h, store, _) = handler(gameId = 0)
+        seed(store, hash = romHash)
+        h.response(setsRequest, unknownGameBody, 404)
+
+        h.response(sessionRequest, """{"Success":true,"Unlocks":[{"ID":7}]}""", 200)
+
+        assertEquals(
+            """{"Success":true,"Unlocks":[{"ID":7}]}""",
+            File(offlineDir(), "42/startsession.json").readText(),
+        )
+    }
+
+    // The game process is handed content by RetroArch and has no launcher-side path to write, so a
+    // write-through used to blank the path a preload had recorded, which is what the offline
+    // browser re-preloads from.
+    @Test fun `a write-through keeps the rom path the preload recorded`() {
+        val (h, store, _) = handler(gameId = 0)
+        seed(store, hash = romHash)
+        h.response(setsRequest, unknownGameBody, 404)
+
+        h.response(sessionRequest, """{"Success":true}""", 200)
+
+        assertEquals("SNES\n/roms/SNES/Game.sfc", File(offlineDir(), "42/source").readText())
+    }
+
     @Test fun `a substituted set does not make an online session read as offline`() {
         val (h, store, _) = handler(gameId = 0)
         seed(store, hash = romHash)

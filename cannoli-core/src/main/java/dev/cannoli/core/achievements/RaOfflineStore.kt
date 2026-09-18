@@ -65,9 +65,14 @@ class RaOfflineStore(
         val g = gameDir(gameId)
         return try {
             g.mkdirs()
+            // A writer with no path does not erase one. The game process is handed content by
+            // RetroArch and has no launcher-side path to write, while a preload knows the path the
+            // offline browser refreshes from, so a session played online would otherwise cost the
+            // entry the only path it had.
+            val path = romPath.ifEmpty { readSource(g)?.second ?: "" }
             val ok = writeAtomic(File(g, "achievementsets.json"), achievementSets) &&
                 writeAtomic(File(g, "startsession.json"), startSession) &&
-                writeAtomic(File(g, "source"), "$platformTag\n$romPath") &&
+                writeAtomic(File(g, "source"), "$platformTag\n$path") &&
                 (hash.isNullOrEmpty() || addHash(g, hash))
             check(ok)
             true
