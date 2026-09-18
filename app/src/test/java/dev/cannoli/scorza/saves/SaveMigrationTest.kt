@@ -115,6 +115,23 @@ class SaveMigrationTest {
         assertEquals("SAVE", File(dir, "data.bin").readText())
     }
 
+    /**
+     * PPSSPP keeps one memory stick for the platform and files a game inside SAVEDATA by disc id.
+     * Moving that into a per-game folder is what stranded it, so the migration leaves it alone.
+     */
+    @Test fun `a shared save root is left exactly as it is`() {
+        val savedata = File(paths.savesFor("PSP"), "SAVEDATA/UCUS98653").apply { mkdirs() }
+        File(savedata, "DATA.BIN").writeText("SAVE")
+        loose("PSP", "God of War.srm", "STRAY")
+
+        val result = migration.migrateGame("PSP", "God of War")
+
+        assertEquals(SaveMigration.Outcome.NOTHING_TO_DO, result.outcome)
+        assertEquals("SAVE", File(savedata, "DATA.BIN").readText())
+        assertEquals("STRAY", File(paths.savesFor("PSP"), "God of War.srm").readText())
+        assertFalse(paths.saveDirFor("PSP", "God of War").exists())
+    }
+
     @Test fun `every move is written to the manifest`() {
         loose("GBA", "Pokemon.srm")
 

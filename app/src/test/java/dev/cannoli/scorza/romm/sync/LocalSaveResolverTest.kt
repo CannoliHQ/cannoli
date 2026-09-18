@@ -45,16 +45,27 @@ class LocalSaveResolverTest {
         assertEquals(expected, s.contentHash)
     }
 
-    /** The same bytes must hash the same before and after the move, or every anchor re-uploads. */
-    @Test fun the_hash_does_not_change_when_a_save_moves_into_its_folder() {
+    /**
+     * The migration changes the hash, once, and that is the right trade.
+     *
+     * The hash has to be the hash of the archive the server receives, and a folder save's archive
+     * roots its entries at the folder name where a loose bundle's does not, so the same bytes
+     * genuinely produce a different archive. The cost is one re-upload per folder save after the
+     * migration, after which both sides agree again. Keying on anything stabler would mean a hash
+     * the server can never arrive at, and a negotiate that never sees two copies as identical.
+     */
+    @Test fun the_hash_follows_the_archive_across_the_migration() {
         File(saves("GBA"), "Pokemon.srm").writeBytes("SAVE".toByteArray())
         File(saves("GBA"), "Pokemon.rtc").writeBytes("RTC".toByteArray())
-        val loose = LocalSaveResolver(tmp.root).resolve("GBA", "Pokemon")!!.contentHash
+        val resolver = LocalSaveResolver(tmp.root)
+        val loose = resolver.resolve("GBA", "Pokemon")!!.contentHash
 
         dev.cannoli.scorza.saves.SaveMigration(dev.cannoli.scorza.config.CannoliPaths(tmp.root))
             .migrateGame("GBA", "Pokemon")
+        val migrated = resolver.resolve("GBA", "Pokemon")!!.contentHash
 
-        assertEquals(loose, LocalSaveResolver(tmp.root).resolve("GBA", "Pokemon")!!.contentHash)
+        assertTrue(loose != migrated)
+        assertEquals(serverStyleHash(resolver.bundleToZip("GBA", "Pokemon", tmp.newFile("m.zip"))), migrated)
     }
 
     @Test fun a_folder_save_wins_over_loose_files() {
@@ -183,6 +194,147 @@ class LocalSaveResolverTest {
         LocalSaveResolver(tmp.root).applyDownload("SNES", "Mario", single)
 
         assertEquals("SAVE", File(game("SNES", "Mario"), "Mario.srm").readText())
+    }
+
+    /**
+     * The server hashes the archive it receives, so the hash we record has to be the hash of the
+     * archive we send. RomM's hash_zip_contents, Argosy's calculateZipHash and our hashBundle are
+     * the same algorithm; agreeing on the algorithm is worth nothing if the entry names differ,
+     * and a negotiate that cannot see two copies are identical falls back to timestamps.
+     */
+    private fun serverStyleHash(zip: File): String {
+        val entries = ZipFile(zip).use { zf ->
+            zf.entries().toList().filter { !it.isDirectory }.map { e ->
+                e.name to SaveHasher.md5Hex(zf.getInputStream(e).readBytes())
+            }
+        }
+        return SaveHasher.md5Hex(
+            entries.sortedBy { it.first }.joinToString("\n") { "${it.first}:${it.second}" }
+                .toByteArray(Charsets.UTF_8)
+        )
+    }
+
+    @Test fun a_folder_save_hashes_as_the_archive_the_server_receives() {
+        val dir = game("GBA", "Pokemon").apply { mkdirs() }
+        File(dir, "Pokemon.srm").writeText("SAVE")
+        File(dir, "Pokemon.rtc").writeText("RTC")
+        val resolver = LocalSaveResolver(tmp.root)
+
+        val zip = resolver.bundleToZip("GBA", "Pokemon", tmp.newFile("h1.zip"))
+
+        assertEquals(serverStyleHash(zip), resolver.resolve("GBA", "Pokemon")!!.contentHash)
+    }
+
+    @Test fun a_loose_bundle_hashes_as_the_archive_the_server_receives() {
+        File(saves("N64"), "Zelda.sra").writeText("SRA")
+        File(saves("N64"), "Zelda.eep").writeText("EEP")
+        val resolver = LocalSaveResolver(tmp.root)
+
+        val zip = resolver.bundleToZip("N64", "Zelda", tmp.newFile("h2.zip"))
+
+        assertEquals(serverStyleHash(zip), resolver.resolve("N64", "Zelda")!!.contentHash)
+    }
+
+    @Test fun a_shared_root_hashes_as_the_archive_the_server_receives() {
+        savedata("UCUS98653")
+        savedata("UCUS98653DATA00", body = "PROFILE")
+        val resolver = pspResolver()
+
+        val zip = resolver.bundleToZip("PSP", "God of War", tmp.newFile("h3.zip"))
+
+        assertEquals(serverStyleHash(zip), resolver.resolve("PSP", "God of War")!!.contentHash)
+    }
+
+    private fun pspId(saveId: String = "UCUS98653") = dev.cannoli.scorza.sigil.GameId(
+        titleId = saveId, saveId = saveId, rawSerial = saveId,
+        usage = dev.cannoli.scorza.sigil.SaveUsage.FOLDER_PREFIX,
+        source = dev.cannoli.scorza.sigil.IdSource.BINARY, experimental = false,
+    )
+
+    private fun pspResolver(id: dev.cannoli.scorza.sigil.GameId? = pspId()) =
+        LocalSaveResolver({ tmp.root }, gameIdFor = { _, _ -> id })
+
+    private fun savedata(name: String, file: String = "DATA.BIN", body: String = "SAVE"): File {
+        val d = File(saves("PSP"), "SAVEDATA/$name").apply { mkdirs() }
+        File(d, file).writeText(body)
+        return d
+    }
+
+    /**
+     * PPSSPP shares one memory stick, so a game is the folders inside SAVEDATA whose names begin
+     * with its disc id, not a directory of its own. Sigil supplies the id and says it is a prefix.
+     */
+    @Test fun a_shared_root_resolves_the_folders_the_disc_id_owns() {
+        savedata("UCUS98653")
+        savedata("UCUS98653DATA00", body = "PROFILE")
+        savedata("ULUS10064", body = "ANOTHER GAME")
+
+        val save = pspResolver().resolve("PSP", "God of War")!!
+
+        assertEquals(2, save.files.size)
+        assertTrue(save.files.none { it.readText() == "ANOTHER GAME" })
+        assertEquals("UCUS98653.zip", save.uploadFileName)
+    }
+
+    /** Argosy roots each matched folder at its own name, and reads the same shape back. */
+    @Test fun a_shared_root_zips_each_folder_at_its_own_name() {
+        savedata("UCUS98653")
+        savedata("UCUS98653DATA00")
+
+        val zip = pspResolver().bundleToZip("PSP", "God of War", tmp.newFile("psp.zip"))
+
+        ZipFile(zip).use {
+            assertEquals(
+                setOf("UCUS98653/DATA.BIN", "UCUS98653DATA00/DATA.BIN"),
+                it.entries().toList().map { e -> e.name }.toSet(),
+            )
+        }
+    }
+
+    /** Every other game lives in the same directory, so a restore must not sweep them away. */
+    @Test fun a_shared_root_restore_leaves_other_games_alone() {
+        savedata("UCUS98653", body = "OLD")
+        val other = savedata("ULUS10064", body = "ANOTHER GAME")
+        val zip = tmp.newFile("incoming.zip")
+        ZipOutputStream(zip.outputStream()).use { zos ->
+            zos.putNextEntry(ZipEntry("UCUS98653/DATA.BIN")); zos.write("NEW".toByteArray()); zos.closeEntry()
+        }
+
+        pspResolver().applyDownload("PSP", "God of War", zip)
+
+        assertEquals("NEW", File(saves("PSP"), "SAVEDATA/UCUS98653/DATA.BIN").readText())
+        assertEquals("ANOTHER GAME", File(other, "DATA.BIN").readText())
+    }
+
+    /** A folder the game owned but the archive does not carry is gone, as Argosy clears them too. */
+    @Test fun a_shared_root_restore_clears_the_game_own_stale_folders() {
+        savedata("UCUS98653")
+        savedata("UCUS98653DATA00")
+        val zip = tmp.newFile("incoming2.zip")
+        ZipOutputStream(zip.outputStream()).use { zos ->
+            zos.putNextEntry(ZipEntry("UCUS98653/DATA.BIN")); zos.write("NEW".toByteArray()); zos.closeEntry()
+        }
+
+        pspResolver().applyDownload("PSP", "God of War", zip)
+
+        assertFalse(File(saves("PSP"), "SAVEDATA/UCUS98653DATA00").exists())
+    }
+
+    /** No id means no way to tell one game's folders from another's, so nothing is claimed. */
+    @Test fun a_shared_root_without_an_id_resolves_nothing() {
+        savedata("UCUS98653")
+        assertNull(pspResolver(id = null).resolve("PSP", "God of War"))
+    }
+
+    /** The stick's own folders are not any one game's save. */
+    @Test fun a_shared_root_ignores_the_memory_stick_own_folders() {
+        savedata("UCUS98653")
+        File(saves("PSP"), "SYSTEM/CACHE").mkdirs()
+        File(saves("PSP"), "PPSSPP_STATE").mkdirs()
+
+        val save = pspResolver().resolve("PSP", "God of War")!!
+
+        assertTrue(save.files.all { it.absolutePath.contains("SAVEDATA") })
     }
 
     @Test fun applyDownload_single_clears_stale_bundle_files() {

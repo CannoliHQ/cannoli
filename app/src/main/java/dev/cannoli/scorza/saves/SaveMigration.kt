@@ -30,6 +30,9 @@ class SaveMigration(
      * find and answers [Outcome.NOTHING_TO_DO] without touching the card.
      */
     fun migrateGame(tag: String, romBaseName: String): Result {
+        // A platform with a shared save root keeps its layout: its games are identified inside it
+        // by disc id, and moving one into a folder of its own is what strands it.
+        if (SharedSaveRoots.isShared(tag)) return Result(Outcome.NOTHING_TO_DO)
         val platformDir = paths.savesFor(tag)
         val loose = looseFilesFor(platformDir, romBaseName)
         if (loose.isEmpty()) return Result(Outcome.NOTHING_TO_DO)

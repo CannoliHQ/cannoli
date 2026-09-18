@@ -122,8 +122,15 @@ object RommModule {
     )
 
     @Provides @Singleton
-    fun provideLocalSaveResolver(paths: CannoliPathsProvider): LocalSaveResolver =
-        LocalSaveResolver({ paths.root })
+    fun provideLocalSaveResolver(
+        paths: CannoliPathsProvider,
+        gameIds: dev.cannoli.scorza.db.GameIdRepository,
+    ): LocalSaveResolver = LocalSaveResolver(
+        { paths.root },
+        // Only consulted for a platform whose core shares one save root, which is where a game has
+        // to be told apart from its neighbours by disc id.
+        gameIdFor = { tag, base -> runCatching { gameIds.readByBaseName(tag, base) }.getOrNull() },
+    )
 
     @Provides @Singleton
     fun provideSaveBackupManager(paths: CannoliPathsProvider, resolver: LocalSaveResolver): SaveBackupManager =
