@@ -23,12 +23,12 @@ val buildTimeMillis: Long = System.currentTimeMillis()
 
 // Read from the vendored tree rather than restated here, because RetroAchievements identifies the
 // client by this version and a stale copy would claim a RetroArch that is not the one playing the set.
-val retroArchVersion: String = rootProject.file("retroarch/version.all").takeIf { it.isFile }
-    ?.readLines()
-    ?.firstNotNullOfOrNull { line ->
+val retroArchVersion: String = rootProject.file("retroarch/version.all").let { versionAll ->
+    if (!versionAll.isFile) error("$versionAll not found. Run git submodule update --init.")
+    versionAll.readLines().firstNotNullOfOrNull { line ->
         Regex("""#define\s+PACKAGE_VERSION\s+"([^"]+)"""").find(line)?.groupValues?.get(1)
-    }
-    ?: error("retroarch/version.all is missing PACKAGE_VERSION")
+    } ?: error("$versionAll no longer declares PACKAGE_VERSION.")
+}
 
 // Reads the cfg directory inside obtain() rather than at plain configuration time, so the
 // configuration cache tracks these files as an input instead of freezing the digest -- mirrors
