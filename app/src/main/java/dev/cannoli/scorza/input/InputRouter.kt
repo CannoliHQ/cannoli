@@ -76,6 +76,7 @@ class InputRouter @Inject constructor(
     private val rommDownloader: dev.cannoli.scorza.download.Downloader,
     private val osdController: dev.cannoli.ui.components.OsdController,
     private val raPreloadController: dev.cannoli.scorza.achievements.RaPreloadController,
+    private val raPendingDrainer: dev.cannoli.scorza.achievements.RaPendingDrainer,
     @IoScope private val ioScope: CoroutineScope,
 ) {
 
@@ -235,8 +236,12 @@ class InputRouter @Inject constructor(
         else -> object : ScreenInputHandler {}
     }
 
-    private fun raOfflineStore() = dev.cannoli.scorza.achievements.RaOfflineStore(
+    private fun raOfflineStore() = dev.cannoli.core.achievements.RaOfflineStore(
         dev.cannoli.scorza.config.CannoliPaths(settings.sdCardRoot).configRaOffline
+    )
+
+    private fun raPendingUnlocks() = dev.cannoli.core.achievements.RaPendingUnlocks(
+        dev.cannoli.scorza.config.CannoliPaths(settings.sdCardRoot).configRetroAchievements.resolve("Pending")
     )
 
     // Both Back and Log Out drop the account screen and, when it was reached by logging in from the
@@ -296,7 +301,11 @@ class InputRouter @Inject constructor(
     private fun reloadOfflineSets() {
         val s = nav.currentScreen as? LauncherScreen.RetroAchievementsOfflineSets ?: return
         val entries = raOfflineStore().entries().filter { it.platformTag == s.platformTag }
-        nav.replaceTop(s.copy(entries = entries, selectedIndex = s.selectedIndex.coerceIn(0, (entries.size - 1).coerceAtLeast(0))))
+        nav.replaceTop(s.copy(
+            entries = entries,
+            pendingByGame = raPendingUnlocks().countByGame(),
+            selectedIndex = s.selectedIndex.coerceIn(0, (entries.size - 1).coerceAtLeast(0)),
+        ))
     }
 
     private fun refreshOfflinePlatforms() {
@@ -318,6 +327,7 @@ class InputRouter @Inject constructor(
                     platformTag = p.tag,
                     platformName = p.name,
                     entries = entries,
+                    pendingByGame = raPendingUnlocks().countByGame(),
                 )
             )
         },
@@ -343,7 +353,21 @@ class InputRouter @Inject constructor(
             raOfflineStore().deleteGame(entry.gameId)
             reloadOfflineSets()
         },
+        onStart = {
+            if (entries.none { (pendingByGame[it.gameId] ?: 0) > 0 }) return@scrollable
+            syncPendingUnlocksNow()
+        },
     )
+
+    // Drains the whole queue, not just this platform's: the queue has no concept of platform, and
+    // a game the user is not currently browsing should not sit unsent because SYNC NOW was pressed
+    // from a different platform's screen.
+    private fun syncPendingUnlocksNow() {
+        ioScope.launch {
+            raPendingDrainer.drain()
+            withContext(Dispatchers.Main) { reloadOfflineSets() }
+        }
+    }
 
     private inline fun <reified T> scrollable(
         crossinline onConfirm: T.() -> Unit = {},

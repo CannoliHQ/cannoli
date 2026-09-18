@@ -30,4 +30,5 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach 
 
 dependencies {
     testImplementation(libs.junit)
+    testImplementation("org.json:json:20240303")
 }

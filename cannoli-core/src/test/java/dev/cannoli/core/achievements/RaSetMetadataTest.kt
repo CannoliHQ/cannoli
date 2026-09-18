@@ -1,4 +1,4 @@
-package dev.cannoli.scorza.achievements
+package dev.cannoli.core.achievements
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull

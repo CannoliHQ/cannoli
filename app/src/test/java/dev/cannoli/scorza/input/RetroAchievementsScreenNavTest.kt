@@ -107,6 +107,7 @@ class RetroAchievementsScreenNavTest {
         rommDownloader = mockk(relaxed = true),
         osdController = mockk(relaxed = true),
         raPreloadController = mockk(relaxed = true),
+        raPendingDrainer = mockk(relaxed = true),
         ioScope = CoroutineScope(Dispatchers.Unconfined),
         )
     }

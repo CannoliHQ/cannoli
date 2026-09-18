@@ -169,6 +169,9 @@ static jmethodID g_on_cheevos_load_mid = NULL;
 static volatile int g_cheevos_outcome = -1;
 static jmethodID g_on_ra_applied_mid = NULL;
 static jmethodID g_on_cheats_loaded_mid = NULL;
+static jmethodID g_on_cheevos_request_mid = NULL;
+static jmethodID g_on_cheevos_response_mid = NULL;
+static jmethodID g_on_cheevos_failed_mid = NULL;
 
 /* Cached JNIEnv for the native runloop thread (attached once, never detached) */
 static JNIEnv *g_native_env = NULL;
@@ -2268,6 +2271,12 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeInit(
    g_on_osd_achievement_mid = (*env)->GetMethodID(env, cls, "onOsdAchievement", "(Ljava/lang/String;)V");
    g_on_cheevos_load_mid = (*env)->GetMethodID(env, cls, "onCheevosLoad", "(Ljava/lang/String;)V");
    g_on_cheats_loaded_mid = (*env)->GetMethodID(env, cls, "onCheatsLoaded", "(Ljava/lang/String;)V");
+   g_on_cheevos_request_mid = (*env)->GetMethodID(env, cls, "onCheevosRequest",
+         "(Ljava/lang/String;)Ljava/lang/String;");
+   g_on_cheevos_response_mid = (*env)->GetMethodID(env, cls, "onCheevosResponse",
+         "(Ljava/lang/String;Ljava/lang/String;I)Ljava/lang/String;");
+   g_on_cheevos_failed_mid = (*env)->GetMethodID(env, cls, "onCheevosFailed",
+         "(Ljava/lang/String;)V");
 }
 
 JNIEXPORT void JNICALL
@@ -3207,4 +3216,146 @@ void ricotta_osd_achievement(const char *title)
    if (!entry.ra_key)
       return;
    ricotta_enqueue_entry(entry);
+}
+
+/* The achievement client calls these from whichever thread issued the request: the runloop thread
+ * for an unlock, a task thread during content load. Neither may use the cached runloop JNIEnv, so
+ * each call attaches and detaches its own, the way menu_close_poll_func does. */
+static JNIEnv *ricotta_cheevos_attach(int *attached)
+{
+   JNIEnv *env = NULL;
+   *attached = 0;
+   if (!g_jvm)
+      return NULL;
+   if ((*g_jvm)->GetEnv(g_jvm, (void **)&env, JNI_VERSION_1_6) != JNI_OK)
+   {
+      if ((*g_jvm)->AttachCurrentThread(g_jvm, &env, NULL) != JNI_OK)
+         return NULL;
+      *attached = 1;
+   }
+   return env;
+}
+
+int ricotta_cheevos_intercept(const char *post_data, char **out_body)
+{
+   JNIEnv *env;
+   int attached = 0;
+   jstring jpost;
+   jstring jbody;
+   int answered = 0;
+
+   if (!post_data || !out_body || !g_bridge_obj || !g_on_cheevos_request_mid)
+      return 0;
+
+   env = ricotta_cheevos_attach(&attached);
+   if (!env)
+      return 0;
+
+   jpost = (*env)->NewStringUTF(env, post_data);
+   jbody = (jstring)(*env)->CallObjectMethod(env, g_bridge_obj, g_on_cheevos_request_mid, jpost);
+   ricotta_jni_check(env, "onCheevosRequest");
+
+   if (jbody)
+   {
+      const char *utf = (*env)->GetStringUTFChars(env, jbody, NULL);
+      if (utf)
+      {
+         *out_body = strdup(utf);
+         answered = (*out_body != NULL);
+         (*env)->ReleaseStringUTFChars(env, jbody, utf);
+      }
+      (*env)->DeleteLocalRef(env, jbody);
+   }
+   if (jpost)
+      (*env)->DeleteLocalRef(env, jpost);
+
+   if (attached)
+      (*g_jvm)->DetachCurrentThread(g_jvm);
+   return answered;
+}
+
+/* Says a request's own network attempt failed. A cache is served only for a request that has
+ * actually been refused, so this has to be told before the body is asked for. */
+void ricotta_cheevos_failed(const char *post_data)
+{
+   JNIEnv *env;
+   int attached = 0;
+   jstring jpost;
+
+   if (!post_data || !g_bridge_obj || !g_on_cheevos_failed_mid)
+      return;
+
+   env = ricotta_cheevos_attach(&attached);
+   if (!env)
+      return;
+
+   jpost = (*env)->NewStringUTF(env, post_data);
+   (*env)->CallVoidMethod(env, g_bridge_obj, g_on_cheevos_failed_mid, jpost);
+   ricotta_jni_check(env, "onCheevosFailed");
+
+   if (jpost)
+      (*env)->DeleteLocalRef(env, jpost);
+
+   if (attached)
+      (*g_jvm)->DetachCurrentThread(g_jvm);
+}
+
+/* Shows Cannoli what the server said and lets it answer instead. Returns NULL to keep the server's
+ * body, or a heap buffer the caller owns and must free.
+ *
+ * The body is taken with its length because RetroArch's HTTP task hands back exactly the bytes that
+ * arrived: net_http shrinks the receive buffer to the body length, so there is no terminator to
+ * read and the copy made here is what NewStringUTF can safely be given. */
+char *ricotta_cheevos_filter(const char *post_data, const char *body, size_t body_length,
+      int http_status)
+{
+   JNIEnv *env;
+   int attached = 0;
+   jstring jpost;
+   jstring jbody;
+   jstring jreplacement;
+   char *terminated;
+   char *replacement = NULL;
+
+   if (!post_data || !body || !g_bridge_obj || !g_on_cheevos_response_mid)
+      return NULL;
+
+   terminated = (char *)malloc(body_length + 1);
+   if (!terminated)
+      return NULL;
+   memcpy(terminated, body, body_length);
+   terminated[body_length] = '\0';
+
+   env = ricotta_cheevos_attach(&attached);
+   if (!env)
+   {
+      free(terminated);
+      return NULL;
+   }
+
+   jpost = (*env)->NewStringUTF(env, post_data);
+   jbody = (*env)->NewStringUTF(env, terminated);
+   jreplacement = (jstring)(*env)->CallObjectMethod(env, g_bridge_obj, g_on_cheevos_response_mid,
+         jpost, jbody, (jint)http_status);
+   ricotta_jni_check(env, "onCheevosResponse");
+
+   if (jreplacement)
+   {
+      const char *utf = (*env)->GetStringUTFChars(env, jreplacement, NULL);
+      if (utf)
+      {
+         replacement = strdup(utf);
+         (*env)->ReleaseStringUTFChars(env, jreplacement, utf);
+      }
+      (*env)->DeleteLocalRef(env, jreplacement);
+   }
+   if (jpost)
+      (*env)->DeleteLocalRef(env, jpost);
+   if (jbody)
+      (*env)->DeleteLocalRef(env, jbody);
+   free(terminated);
+
+   if (attached)
+      (*g_jvm)->DetachCurrentThread(g_jvm);
+   return replacement;
 }

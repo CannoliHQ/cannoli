@@ -312,7 +312,8 @@ sealed class LauncherScreen {
     data class RetroAchievementsOfflineSets(
         val platformTag: String = "",
         val platformName: String = "",
-        val entries: List<dev.cannoli.scorza.achievements.RaOfflineStore.Entry> = emptyList(),
+        val entries: List<dev.cannoli.core.achievements.RaOfflineStore.Entry> = emptyList(),
+        val pendingByGame: Map<Int, Int> = emptyMap(),
         override val selectedIndex: Int = 0,
         override val scrollTarget: Int = 0,
     ) : LauncherScreen(), ScrollableScreen {

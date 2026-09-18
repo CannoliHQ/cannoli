@@ -31,6 +31,7 @@ ROSTER="
 android_input:input/drivers/android_input.c
 cheat_manager:cheat_manager.c
 cheevos:cheevos/cheevos.c
+cheevos_client:cheevos/cheevos_client.c
 command:command.c
 configuration:configuration.c configuration.h
 disk_control_interface:disk_control_interface.c

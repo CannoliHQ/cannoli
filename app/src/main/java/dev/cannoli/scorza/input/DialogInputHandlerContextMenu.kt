@@ -237,7 +237,7 @@ internal fun DialogInputHandler.achievementsOptions(rom: dev.cannoli.scorza.mode
             )
         ) {
             val cached = effectiveRaGameId(rom)?.let { gid ->
-                dev.cannoli.scorza.achievements.RaOfflineStore(
+                dev.cannoli.core.achievements.RaOfflineStore(
                     dev.cannoli.scorza.config.CannoliPaths(settings.sdCardRoot).configRaOffline
                 ).isCached(gid)
             } ?: false

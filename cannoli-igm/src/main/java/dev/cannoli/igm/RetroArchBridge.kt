@@ -121,6 +121,12 @@ interface RetroArchBridge {
     val supportsAchievements: Boolean
     fun getAchievements(): List<AchievementInfo> = emptyList()
 
+    /**
+     * A line to show under the achievements screen when this session's set came from Cannoli's
+     * offline cache rather than the server. Empty when it did not.
+     */
+    fun achievementsStatus(): String = ""
+
     fun getDiskCount(): Int
     fun getDiskIndex(): Int
     fun setDiskIndex(index: Int)

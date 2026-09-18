@@ -1,4 +1,4 @@
-package dev.cannoli.scorza.achievements
+package dev.cannoli.core.achievements
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -25,7 +25,7 @@ class RaOfflineStoreTest {
         assertTrue(tmp.root.resolve("55/achievementsets.json").exists())
         assertTrue(tmp.root.resolve("55/startsession.json").exists())
         assertEquals("SNES\n/roms/sm.sfc", tmp.root.resolve("55/source").readText())
-        assertEquals("abc", tmp.root.resolve("55/hash").readText())
+        assertEquals("abc", tmp.root.resolve("55/hashes").readText())
 
         val entries = store.entries()
         assertEquals(1, entries.size)
@@ -37,6 +37,17 @@ class RaOfflineStoreTest {
         assertEquals("SNES", e.platformTag)
         assertEquals("/roms/sm.sfc", e.romPath)
         assertTrue(e.cachedAtMs > 0)
+    }
+
+    @Test
+    fun writeGame_keepsEveryRomCachedUnderOneGameId() {
+        val store = RaOfflineStore(tmp.root)
+        store.writeGame(55, sets("Super Metroid", 5, 10), "session", "SNES", "/roms/one.sfc", "abc")
+        store.writeGame(55, sets("Super Metroid", 5, 10), "session", "SNES", "/roms/two.sfc", "def")
+        store.writeGame(55, sets("Super Metroid", 5, 10), "session", "SNES", "/roms/two.sfc", "DEF")
+
+        assertEquals(listOf("abc", "def"), tmp.root.resolve("55/hashes").readText().lines())
+        assertEquals(1, store.entries().size)
     }
 
     @Test
@@ -96,6 +107,36 @@ class RaOfflineStoreTest {
         val store = RaOfflineStore(tmp.root)
         store.writeGame(8, sets("Zelda", 5), "s", "NES", "/z.nes", null)
         File(tmp.root, "8/source").writeText("\n/z.nes")
+        assertTrue(store.entries().isEmpty())
+    }
+
+    @Test fun `two writers scratch in files of their own, so neither can publish the other's half`() {
+        val dir = tmp.newFolder("Offline")
+        val a = RaOfflineStore(dir, writerTag = "a")
+        val b = RaOfflineStore(dir, writerTag = "b")
+        File(dir, "login2.json.b.tmp").mkdirs()
+        assertTrue(a.writeLogin2("good"))
+        assertFalse(b.writeLogin2("new"))
+        assertEquals("good", File(dir, "login2.json").readText())
+    }
+
+    @Test fun `a login write that cannot use its temporary file leaves the stored one alone`() {
+        val dir = tmp.newFolder("Offline")
+        val store = RaOfflineStore(dir, writerTag = "w")
+        store.writeLogin2("good")
+        // A directory where the temporary file must go, so the write cannot get that far. A writer
+        // that wrote straight to the target would sail past this and replace a good body.
+        File(dir, "login2.json.w.tmp").mkdirs()
+        assertFalse(store.writeLogin2("new"))
+        assertEquals("good", File(dir, "login2.json").readText())
+    }
+
+    @Test fun `a game write that cannot use its temporary file fails rather than half writing`() {
+        val dir = tmp.newFolder("Offline")
+        val store = RaOfflineStore(dir, writerTag = "w")
+        File(dir, "7").mkdirs()
+        File(dir, "7/achievementsets.json.w.tmp").mkdirs()
+        assertFalse(store.writeGame(7, sets("good-sets", 5), "session", "SNES", "/roms/SNES/G.sfc", null))
         assertTrue(store.entries().isEmpty())
     }
 }

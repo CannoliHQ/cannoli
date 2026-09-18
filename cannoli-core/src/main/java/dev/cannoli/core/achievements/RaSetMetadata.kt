@@ -1,14 +1,17 @@
-package dev.cannoli.scorza.achievements
+package dev.cannoli.core.achievements
 
 import org.json.JSONObject
 
 object RaSetMetadata {
-    data class Parsed(val title: String, val count: Int, val points: Int)
+    data class Parsed(val title: String, val count: Int, val points: Int, val gameId: Int = 0)
 
     fun parse(body: String): Parsed? {
         val obj = try { JSONObject(body) } catch (_: Exception) { return null }
         if (!obj.optBoolean("Success", false)) return null
         val title = obj.optString("Title", "")
+        // The top-level GameId, not a subset's: the first sets request asks by ROM hash and carries
+        // no id, so this body is the only place the game the answer belongs to is named.
+        val gameId = obj.optInt("GameId", 0)
         var count = 0
         var points = 0
         val sets = obj.optJSONArray("Sets")
@@ -21,6 +24,6 @@ object RaSetMetadata {
                 }
             }
         }
-        return Parsed(title, count, points)
+        return Parsed(title, count, points, gameId)
     }
 }

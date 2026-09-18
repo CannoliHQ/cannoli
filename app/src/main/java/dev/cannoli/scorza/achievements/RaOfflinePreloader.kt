@@ -1,5 +1,7 @@
 package dev.cannoli.scorza.achievements
 
+import dev.cannoli.core.achievements.RaOfflineStore
+import dev.cannoli.core.achievements.RaSetMetadata
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 

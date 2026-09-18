@@ -1,5 +1,6 @@
 package dev.cannoli.scorza.achievements
 
+import dev.cannoli.core.achievements.RaOfflineStore
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
@@ -63,7 +64,7 @@ class RaOfflinePreloaderTest {
         server.start()
         val (pre, _) = preloader(server)
         pre.preload("/roms/sm.sfc", "SNES", 55, "bob", "tok", hash = "abc123")
-        assertEquals("abc123", tmp.root.resolve("55/hash").readText())
+        assertEquals("abc123", tmp.root.resolve("55/hashes").readText())
         server.shutdown()
     }
 

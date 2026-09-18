@@ -106,6 +106,13 @@ class CheevosLaunchConfigTest : LaunchConfigHarness() {
         assertEquals("true", cfg["savestate_auto_load"])
     }
 
+    @Test fun `a hardcore game runs hardcore under a softcore global`() {
+        val root = tmp.newFolder()
+        loggedIn(hardcore = false)
+        val cfg = launchedConfig(root, rom(root, "Roms/GBA/Game.gba", "GBA", raHardcore = true))
+        assertEquals("true", cfg["cheevos_hardcore_mode_enable"])
+    }
+
     // A manual Game ID forces softcore even when the game asks for nothing: the association is
     // unofficial, so hardcore would be invalid, and it must not depend on the game's own mode.
     @Test fun `a game id forces softcore under global hardcore`() {

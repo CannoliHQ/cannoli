@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -153,7 +154,15 @@ fun CannoliIGM(
                 heightPx = surfaceSize.value.height,
             )
 
-            Box(modifier = Modifier.fillMaxSize().padding(viewportPadding)) {
+            // Every screen here, and the status bar below, keeps clear of the display cutout,
+            // the guide included: a strip of page lost to padding is visible and pannable, where a
+            // strip hidden behind the notch is neither. The guide's full-bleed black background is
+            // unaffected, since that is a reading-mode choice, not a cutout one.
+            val menuAreaModifier = Modifier
+                .fillMaxSize()
+                .displayCutoutPadding()
+                .padding(viewportPadding)
+            Box(modifier = menuAreaModifier) {
             when (screen) {
                 is IGMScreen.Menu -> {
                     InGameMenu(
@@ -501,11 +510,13 @@ fun CannoliIGM(
                     val filterLabel = when (screen.filter) {
                         1 -> stringResource(dev.cannoli.ui.R.string.label_unlocked)
                         2 -> stringResource(dev.cannoli.ui.R.string.label_locked)
+                        3 -> stringResource(dev.cannoli.ui.R.string.label_unsynced)
                         else -> stringResource(dev.cannoli.ui.R.string.label_all)
                     }
                     val filtered = when (screen.filter) {
                         1 -> screen.achievements.filter { it.unlocked }.sortedByUnlockedNewestFirst()
                         2 -> screen.achievements.filter { !it.unlocked }
+                        3 -> screen.achievements.filter { it.pendingSync }
                         else -> screen.achievements
                     }
                     IGMSettingsScreen(
@@ -524,7 +535,8 @@ fun CannoliIGM(
                         selectedIndex = screen.selectedIndex.coerceAtMost((filtered.size - 1).coerceAtLeast(0)),
                         bottomBarLeft = listOf(labels.back to stringResource(dev.cannoli.ui.R.string.label_back)),
                         bottomBarRight = buildList {
-                            if (screen.achievements.any { it.unlocked } && screen.achievements.any { !it.unlocked }) {
+                            val hasMix = screen.achievements.any { it.unlocked } && screen.achievements.any { !it.unlocked }
+                            if (hasMix || screen.achievements.any { it.pendingSync }) {
                                 add(labels.west to filterLabel)
                             }
                             add(labels.confirm to stringResource(dev.cannoli.ui.R.string.label_details))

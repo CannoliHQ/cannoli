@@ -51,6 +51,9 @@ data class RaOptionStrings(
     val achievementsUnrecognised: String = "Inactive (Game not recognized)",
     val achievementsNone: String = "Inactive (No achievements)",
     val achievementsOffline: String = "Inactive (Could not reach server)",
+    /** Formats the achievements screen's status line when the set came from the offline cache. The
+     *  argument is the cache's relative age, such as "3 days ago". */
+    val achievementsOfflineCached: (String) -> String = { "Offline - cached $it" },
     val infoGameId: String = "RA Game ID",
     val infoHash: String = "RA Hash",
     val curatedCategoryTitles: Map<String, String> = mapOf(

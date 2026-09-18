@@ -158,6 +158,32 @@ class EmbeddedRetroArchBridge(
         }
     }
 
+    private val cheevosOffline: CheevosOfflineHandler? by lazy {
+        if (!cheevosOfflineAllowedFor(hardcoreInEffect)) return@lazy null
+        if (cannoliRoot.isEmpty()) return@lazy null
+        val root = java.io.File(java.io.File(java.io.File(cannoliRoot), "Config/Internal"), "RetroAchievements")
+        val offline = java.io.File(root, "Offline")
+        CheevosOfflineHandler(
+            store = dev.cannoli.core.achievements.RaOfflineStore(offline),
+            lookup = dev.cannoli.core.achievements.RaOfflineLookup(offline),
+            pending = dev.cannoli.core.achievements.RaPendingUnlocks(java.io.File(root, "Pending")),
+        ).also { it.platformTag = platformTag }
+    }
+
+    // Called from ricotta_cheevos_intercept, on whichever thread issued the request.
+    fun onCheevosRequest(postData: String): String? = cheevosOffline?.request(postData)
+
+    // Called from ricotta_cheevos_filter when a request came back. A non-null return replaces the
+    // body the achievement client is about to read.
+    fun onCheevosResponse(postData: String, body: String, httpStatus: Int): String? =
+        cheevosOffline?.response(postData, body, httpStatus)
+
+    // Called from the patched failure path before a cached body is asked for, so a cache is only
+    // ever served for a request the network has actually refused.
+    fun onCheevosFailed(postData: String) {
+        cheevosOffline?.failed(postData)
+    }
+
     fun setIgmTriggerKeycodes(keycodes: IntArray) = nativeSetIgmTriggerKeycodes(keycodes)
 
     /** Flat [action ordinal, hold ms, key count, keys...], one array so the table is never half set. */
@@ -348,8 +374,20 @@ class EmbeddedRetroArchBridge(
     override fun shaderToRestore(): String? =
         (shaderBeforeToggle ?: storedTierValue(KEY_SHADER).chosen)?.takeIf { File(it).isFile }
 
-    override fun getAchievements(): List<AchievementInfo> =
-        decodeAchievements(nativeGetAchievementData())
+    override fun getAchievements(): List<AchievementInfo> {
+        val decoded = decodeAchievements(nativeGetAchievementData())
+        val queued = cheevosOffline?.pendingAchievementIds() ?: return decoded
+        if (queued.isEmpty()) return decoded
+        return decoded.map { if (it.id in queued) it.copy(pendingSync = true) else it }
+    }
+
+    override fun achievementsStatus(): String {
+        val offline = cheevosOffline ?: return ""
+        if (!offline.servedFromCache()) return ""
+        val cachedAtMs = offline.cachedAtMs() ?: return ""
+        val rel = android.text.format.DateUtils.getRelativeTimeSpanString(cachedAtMs).toString()
+        return raStrings.achievementsOfflineCached(rel)
+    }
 
     override fun getDiskCount() = nativeDiskCount()
     override fun getDiskIndex() = nativeDiskIndex()
@@ -1183,6 +1221,12 @@ class EmbeddedRetroArchBridge(
         // resume and save-on-quit gating by construction instead of re-deriving it from live
         // settings a stale per-game override can clobber.
         internal fun savestatesAllowedFor(hardcoreInEffect: Boolean): Boolean = !hardcoreInEffect
+
+        // Hardcore is the one session Cannoli stays out of entirely. The offline handler serves
+        // cached sets, spoofs unlocks and substitutes for a game the server refused, so a run it
+        // touched could never be trusted as hardcore. Withholding the handler makes all three
+        // entry points no-ops and leaves RetroArch to reach the server or fail on its own.
+        internal fun cheevosOfflineAllowedFor(hardcoreInEffect: Boolean): Boolean = !hardcoreInEffect
 
         // RA setting names are safe ASCII with no newlines, so the changed-key set crosses JNI as
         // a plain newline-delimited list that ricotta_ra_save_override splits on '\n'. An empty set

@@ -80,6 +80,8 @@
     <string name="label_filter">FILTER</string>
     <string name="label_unlocked">UNLOCKED</string>
     <string name="label_locked">LOCKED</string>
+    <!-- Filter on the in-game achievements list: only those unlocked offline and not yet sent to the server -->
+    <string name="label_unsynced">UNSYNCED</string>
     <string name="label_remap">REMAP</string>
     <string name="label_unmap">UNMAP</string>
     <string name="label_grant">GRANT</string>
@@ -1113,7 +1115,20 @@
     <string name="achievos_offline_sets_empty">No achievement sets cached</string>
     <!-- %1$d = achievement count, %2$s = set name. -->
     <string name="achievos_offline_set_value">%1$d Achievements - %2$s</string>
+    <!-- Offline set row when the cache is over a month old. %1$d = achievement count, %2$s = when it
+         was cached, such as "2 months ago". -->
+    <string name="achievos_offline_set_value_stale">%1$d Achievements - %2$s (stale)</string>
+    <!-- Offline set row for a game with unlocks waiting to be sent. %1$d = how many. -->
+    <plurals name="achievos_offline_pending">
+        <item quantity="one">%1$d unsynced</item>
+        <item quantity="other">%1$d unsynced</item>
+    </plurals>
+    <!-- Shown on the in-game achievements screen when the set came from Cannoli's cache because the
+         server could not be reached. %1$s is how long ago it was cached, such as "3 days ago". -->
+    <string name="ach_offline_cached">Offline - cached %1$s</string>
     <string name="label_refresh">REFRESH</string>
+    <!-- Footer action on the offline sets screen: send queued unlocks to RetroAchievements now -->
+    <string name="label_sync_now">SYNC NOW</string>
 
     <!-- Save Slots screen -->
     <!-- Screen title. %1$s = game name. -->

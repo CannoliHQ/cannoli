@@ -1,0 +1,127 @@
+diff --git a/cheevos/cheevos_client.c b/cheevos/cheevos_client.c
+index c9dadeea24..6bcc0d35fc 100644
+--- a/cheevos/cheevos_client.c
++++ b/cheevos/cheevos_client.c
+@@ -42,6 +42,13 @@
+ #include "../deps/rcheevos/include/rc_api_runtime.h"
+ #include "../deps/rcheevos/include/rc_api_user.h"
+ 
++#ifdef HAVE_RICOTTA_CHEEVOS
++extern int ricotta_cheevos_intercept(const char *post_data, char **out_body);
++extern char *ricotta_cheevos_filter(const char *post_data, const char *body, size_t body_length,
++      int http_status);
++extern void ricotta_cheevos_failed(const char *post_data);
++#endif
++
+ /* Define this macro to log URLs. */
+ #undef CHEEVOS_LOG_URLS
+ 
+@@ -241,6 +248,9 @@ typedef struct rc_client_http_task_data_t
+ {
+    rc_client_server_callback_t callback;
+    void* callback_data;
++#ifdef HAVE_RICOTTA_CHEEVOS
++   char* post_data;
++#endif
+ } rc_client_http_task_data_t;
+ 
+ static void rcheevos_client_http_task_callback(retro_task_t* task,
+@@ -251,14 +261,28 @@ static void rcheevos_client_http_task_callback(retro_task_t* task,
+    rc_api_server_response_t server_response;
+    memset(&server_response, 0, sizeof(server_response));
+ 
+-   if (!http_data)
+-   {
+-      CHEEVOS_LOG(RCHEEVOS_TAG "http_task returned null\n");
+-      callback_data->callback(&server_response, callback_data->callback_data);
+-   }
+-   else if (http_data->status < 0)
++   if (!http_data || http_data->status < 0)
+    {
+-      CHEEVOS_LOG(RCHEEVOS_TAG "http_task returned %d\n", http_data->status);
++      CHEEVOS_LOG(RCHEEVOS_TAG "http_task returned %d\n", http_data ? http_data->status : -1);
++#ifdef HAVE_RICOTTA_CHEEVOS
++      {
++         char* cached = NULL;
++         if (callback_data->post_data)
++            ricotta_cheevos_failed(callback_data->post_data);
++         if (callback_data->post_data &&
++             ricotta_cheevos_intercept(callback_data->post_data, &cached))
++         {
++            server_response.body = cached;
++            server_response.body_length = strlen(cached);
++            server_response.http_status_code = 200;
++            callback_data->callback(&server_response, callback_data->callback_data);
++            free(cached);
++            free(callback_data->post_data);
++            free(callback_data);
++            return;
++         }
++      }
++#endif
+       callback_data->callback(&server_response, callback_data->callback_data);
+    }
+    else
+@@ -267,9 +291,32 @@ static void rcheevos_client_http_task_callback(retro_task_t* task,
+       server_response.body_length = http_data->len;
+       server_response.http_status_code = http_data->status;
+ 
++#ifdef HAVE_RICOTTA_CHEEVOS
++      {
++         char* replacement = NULL;
++         if (callback_data->post_data && http_data->data)
++            replacement = ricotta_cheevos_filter(callback_data->post_data,
++                  http_data->data, http_data->len, http_data->status);
++         if (replacement)
++         {
++            server_response.body = replacement;
++            server_response.body_length = strlen(replacement);
++            server_response.http_status_code = 200;
++            callback_data->callback(&server_response, callback_data->callback_data);
++            free(replacement);
++            free(callback_data->post_data);
++            free(callback_data);
++            return;
++         }
++      }
++#endif
++
+       callback_data->callback(&server_response, callback_data->callback_data);
+    }
+ 
++#ifdef HAVE_RICOTTA_CHEEVOS
++   free(callback_data->post_data);
++#endif
+    free(callback_data);
+ }
+ 
+@@ -371,6 +418,29 @@ void rcheevos_client_server_call(const rc_api_request_t* request,
+    taskdata->callback      = callback;
+    taskdata->callback_data = callback_data;
+ 
++#ifdef HAVE_RICOTTA_CHEEVOS
++   if (request->post_data)
++   {
++      char* cached = NULL;
++      taskdata->post_data = strdup(request->post_data);
++      if (ricotta_cheevos_intercept(request->post_data, &cached))
++      {
++         rc_api_server_response_t server_response;
++         memset(&server_response, 0, sizeof(server_response));
++         server_response.body = cached;
++         server_response.body_length = strlen(cached);
++         server_response.http_status_code = 200;
++         callback(&server_response, callback_data);
++         free(cached);
++         free(taskdata->post_data);
++         free(taskdata);
++         return;
++      }
++   }
++   else
++      taskdata->post_data = NULL;
++#endif
++
+    if (request->post_data)
+    {
+       rcheevos_log_post_url(request->url, request->post_data);

@@ -1,15 +1,17 @@
 package dev.cannoli.scorza.achievements
 
 import okhttp3.FormBody
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.io.IOException
 
-class RaConnectClient(
+open class RaConnectClient(
     private val baseUrlProvider: () -> String = { "https://retroachievements.org" },
     private val clientProvider: () -> OkHttpClient = { sharedClient },
-    private val userAgent: String = "Cannoli",
+    private val userAgent: String = defaultUserAgent(),
     private val log: (String) -> Unit = {},
 ) {
     data class RawResponse(val code: Int, val body: String)
@@ -61,6 +63,14 @@ class RaConnectClient(
         return try { JSONObject(res.body).optInt("GameID", 0) } catch (_: Exception) { 0 }
     }
 
+    /**
+     * Sends a request body the achievement client built, exactly as it built it.
+     *
+     * Replayed rather than rebuilt: an unlock carries fields only that client can produce, and asking
+     * the server the same question it was asked keeps this a courier rather than a second client.
+     */
+    open fun replay(postData: String): RawResponse = postRaw(postData)
+
     private fun post(form: FormBody): RawResponse {
         val url = baseUrlProvider().trimEnd('/') + "/dorequest.php"
         val request = Request.Builder().url(url).header("User-Agent", userAgent).post(form).build()
@@ -74,8 +84,48 @@ class RaConnectClient(
         }
     }
 
+    private fun postRaw(postData: String): RawResponse {
+        val url = baseUrlProvider().trimEnd('/') + "/dorequest.php"
+        val body = postData.toRequestBody("application/x-www-form-urlencoded".toMediaType())
+        val request = Request.Builder().url(url).header("User-Agent", userAgent).post(body).build()
+        return try {
+            clientProvider().newCall(request).execute().use { resp ->
+                RawResponse(resp.code, resp.body?.string() ?: "")
+            }
+        } catch (e: IOException) {
+            log("ra replay failed: ${e.javaClass.simpleName}: ${e.message}")
+            RawResponse(-1, "")
+        }
+    }
+
     companion object {
-        private const val RA_CLIENT_VERSION = "12.3.0"
+        // Must track RCHEEVOS_VERSION_MAJOR/MINOR/PATCH in
+        // retroarch/deps/rcheevos/src/rc_version.h, the vendored copy RetroArch itself hashes and
+        // caches with, since a launch and its cached session are served by the same rcheevos.
+        private const val RA_CLIENT_VERSION = "12.4.0"
+
+        /**
+         * The user agent the embedded RetroArch sends, because the server identifies the client from
+         * it and answers an unrecognised one with a set carrying a "Warning: Unknown Emulator"
+         * achievement that always fires. What this fetches is played by that RetroArch.
+         *
+         * Same shape as `rcheevos_get_user_agent`, with the release parsed the way
+         * `frontend_android_get_version` parses `ro.build.version.release`. The core clause RetroArch
+         * appends once a core is loaded has no counterpart here, which is the shape it sends itself
+         * before one is.
+         */
+        fun retroArchUserAgent(retroArchVersion: String, androidRelease: String): String {
+            val parts = Regex("\\d+").findAll(androidRelease).map { it.value.toInt() }.toList()
+            return "RetroArch/$retroArchVersion (Android ${parts.getOrElse(0) { 0 }}.${parts.getOrElse(1) { 0 }})"
+        }
+
+        // The default rather than a value each construction site passes: the site that fetches a
+        // preload is not the site the achievements module builds, and only one of them carried the
+        // agent the server was reading.
+        private fun defaultUserAgent(): String = retroArchUserAgent(
+            dev.cannoli.scorza.BuildConfig.RETROARCH_VERSION,
+            android.os.Build.VERSION.RELEASE.orEmpty(),
+        )
 
         /**
          * The API's Success flag, or null when the body is not the JSON it promises.

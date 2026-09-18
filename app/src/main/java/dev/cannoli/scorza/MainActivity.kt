@@ -15,6 +15,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Surface
@@ -134,6 +135,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
     @Inject lateinit var cannoliPathsProvider: dev.cannoli.scorza.di.CannoliPathsProvider
     @field:dev.cannoli.scorza.di.IoScope @Inject lateinit var ioScope: kotlinx.coroutines.CoroutineScope
     @Inject lateinit var raLoginController: dev.cannoli.scorza.achievements.RaLoginController
+    @Inject lateinit var raPendingDrainer: Provider<dev.cannoli.scorza.achievements.RaPendingDrainer>
 
     private val isTv: Boolean by lazy { dev.cannoli.scorza.util.DeviceType.isTv(this) }
 
@@ -260,6 +262,9 @@ class MainActivity : ComponentActivity(), ActivityActions {
                 saveMigrationSweep.get().runOnce()
                 val backfill = sigilBackfill.get()
                 backfill.setActive(true)
+                // An unlock earned offline should reach the server while the player is still on the
+                // game list, so this runs when the launcher comes forward rather than on a timer.
+                ioScope.launch { runCatching { raPendingDrainer.get().drain() } }
                 try {
                     awaitCancellation()
                 } finally {
@@ -274,7 +279,10 @@ class MainActivity : ComponentActivity(), ActivityActions {
             val themeFont = appSettings?.fontFamily ?: appFonts.mplus1Code
             dev.cannoli.scorza.i18n.ProvideLocalizedResources(appSettings?.languageTag) {
             CannoliTheme(fontFamily = themeFont, iconFontFamily = appFonts.mplus1Code) {
-                Surface(modifier = Modifier.fillMaxSize()) {
+                // Every boot state renders under this one Surface, so this is the single place
+                // that keeps content out of the display cutout; AppNavGraph used to repeat this
+                // for the Ready path alone, which left the boot-time screens unprotected.
+                Surface(modifier = Modifier.fillMaxSize().displayCutoutPadding()) {
                     CompositionLocalProvider(
                         LocalViewportInsets provides ViewportInsetsPx(
                             geometryWidthPct = settings.screenGeometryWidth,

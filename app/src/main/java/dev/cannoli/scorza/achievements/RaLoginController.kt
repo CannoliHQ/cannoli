@@ -3,7 +3,6 @@ package dev.cannoli.scorza.achievements
 import android.content.Context
 import dagger.hilt.android.qualifiers.ActivityContext
 import dagger.hilt.android.scopes.ActivityScoped
-import dev.cannoli.scorza.BuildConfig
 import dev.cannoli.scorza.di.IoScope
 import dev.cannoli.scorza.navigation.LauncherScreen
 import dev.cannoli.scorza.navigation.NavigationController
@@ -17,10 +16,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
-private fun defaultClient() = RaConnectClient(
-    userAgent = "Cannoli/${BuildConfig.VERSION_NAME}",
-    log = ErrorLog::write,
-)
+private fun defaultClient() = RaConnectClient(log = ErrorLog::write)
 
 @ActivityScoped
 class RaLoginController(

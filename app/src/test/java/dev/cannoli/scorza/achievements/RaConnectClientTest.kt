@@ -19,6 +19,50 @@ class RaConnectClientTest {
     }
 
     @Test
+    fun userAgent_readsAsTheEmbeddedRetroArch() {
+        assertEquals("RetroArch/1.22.2 (Android 13.0)", RaConnectClient.retroArchUserAgent("1.22.2", "13"))
+        assertEquals("RetroArch/1.22.2 (Android 9.0)", RaConnectClient.retroArchUserAgent("1.22.2", "9.0.1"))
+        assertEquals("RetroArch/1.22.2 (Android 0.0)", RaConnectClient.retroArchUserAgent("1.22.2", ""))
+    }
+
+    // The server reads this header to decide whether it knows the client, and answers a client it
+    // does not know with a set carrying a warning achievement that always fires. Every request the
+    // launcher makes is for a set the embedded RetroArch plays, so they all have to say so.
+    @Test
+    fun everyRequestIdentifiesAsRetroArchByDefault() {
+        val server = MockWebServer()
+        server.enqueue(MockResponse().setBody("""{"Success":true}"""))
+        server.start()
+        val ok = OkHttpClient()
+
+        RaConnectClient(
+            baseUrlProvider = { server.url("/").toString().trimEnd('/') },
+            clientProvider = { ok },
+        ).achievementSets("bob", "tok", 1234)
+
+        val agent = server.takeRequest().getHeader("User-Agent")
+        assertEquals(
+            RaConnectClient.retroArchUserAgent(
+                dev.cannoli.scorza.BuildConfig.RETROARCH_VERSION,
+                android.os.Build.VERSION.RELEASE.orEmpty(),
+            ),
+            agent,
+        )
+        server.shutdown()
+    }
+
+    // The version is generated from the vendored tree, so an RetroArch bump cannot leave the
+    // launcher claiming a version it no longer ships.
+    @Test
+    fun theClaimedVersionIsTheOneWeVendor() {
+        val here = java.io.File("retroarch/version.all")
+        val versionAll = if (here.exists()) here else java.io.File("../retroarch/version.all")
+        val vendored = Regex("""#define\s+PACKAGE_VERSION\s+"([^"]+)"""")
+            .find(versionAll.readText())!!.groupValues[1]
+        assertEquals(vendored, dev.cannoli.scorza.BuildConfig.RETROARCH_VERSION)
+    }
+
+    @Test
     fun achievementSets_postsExpectedParamsToDorequest() {
         val server = MockWebServer()
         server.enqueue(MockResponse().setBody("""{"Success":true}"""))

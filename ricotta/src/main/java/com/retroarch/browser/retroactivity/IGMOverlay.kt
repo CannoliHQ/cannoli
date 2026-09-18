@@ -222,6 +222,7 @@ class IGMOverlay(
             achievementsUnrecognised = uiContext.getString(R.string.igm_achievements_unrecognised),
             achievementsNone = uiContext.getString(R.string.igm_achievements_none),
             achievementsOffline = uiContext.getString(R.string.igm_achievements_offline),
+            achievementsOfflineCached = { uiContext.getString(R.string.ach_offline_cached, it) },
             infoGameId = uiContext.getString(R.string.igm_info_game_id),
             infoHash = uiContext.getString(R.string.igm_info_hash),
             curatedCategoryTitles = mapOf(

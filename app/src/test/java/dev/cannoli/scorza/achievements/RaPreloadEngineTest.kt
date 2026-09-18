@@ -1,5 +1,6 @@
 package dev.cannoli.scorza.achievements
 
+import dev.cannoli.core.achievements.RaOfflineStore
 import dev.cannoli.scorza.db.RomsRepository
 import dev.cannoli.scorza.model.Rom
 import io.mockk.mockk
@@ -9,6 +10,7 @@ import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -89,6 +91,49 @@ class RaPreloadEngineTest {
         server.shutdown()
     }
 
+    @Test fun refreshCached_keepsThePlatformAndPathTheGameWasCachedWith() = runBlocking {
+        val store = RaOfflineStore(tmp.root)
+        store.writeGame(55, setsBody, """{"Success":true}""", "SNES", "/roms/sm.sfc", "deadbeef")
+        val server = MockWebServer()
+        server.enqueue(MockResponse().setBody("""{"Success":true}"""))
+        server.enqueue(MockResponse().setBody(setsBody))
+        server.enqueue(MockResponse().setBody("""{"Success":true}"""))
+        server.start()
+
+        val result = engine(mockk(relaxed = true)).refreshCached(client(server), 55)
+
+        assertTrue(result is RaOfflinePreloader.Result.Success)
+        val entry = store.entries().single()
+        assertEquals(55, entry.gameId)
+        assertEquals("SNES", entry.platformTag)
+        assertEquals("/roms/sm.sfc", entry.romPath)
+        server.shutdown()
+    }
+
+    @Test fun refreshCached_gameTheStoreDoesNotKnow_isLeftAlone() = runBlocking {
+        val server = MockWebServer()
+        server.start()
+
+        val result = engine(mockk(relaxed = true)).refreshCached(client(server), 999)
+
+        assertNull(result)
+        assertEquals(0, server.requestCount)
+        server.shutdown()
+    }
+
+    @Test fun preloadOne_hashesEvenWhenTheGameIdWasSetByHand() = runBlocking {
+        val server = MockWebServer()
+        server.enqueue(MockResponse().setBody("""{"Success":true}"""))
+        server.enqueue(MockResponse().setBody(setsBody))
+        server.enqueue(MockResponse().setBody("""{"Success":true}"""))
+        server.start()
+
+        engine(mockk(relaxed = true)).preloadOne(client(server), rom(raGameId = 55))
+
+        assertEquals("deadbeef", File(File(tmp.root, "55"), "hashes").readText())
+        server.shutdown()
+    }
+
     @Test fun preloadAll_countsSuccessesAndSurvivesFailures() = runBlocking {
         val server = MockWebServer()
         // rom 1 (game 55): full success
@@ -101,12 +146,12 @@ class RaPreloadEngineTest {
         server.start()
         val repo = mockk<RomsRepository>(relaxed = true)
 
-        val cached = engine(repo).preloadAll(
+        val bulk = engine(repo).preloadAll(
             client(server),
             listOf(rom(id = 1L, raGameId = 55), rom(id = 2L, raGameId = 77)),
         )
 
-        assertEquals(1, cached)
+        assertEquals(1, bulk.cached)
         verify(exactly = 1) { repo.setRaCachedGameId(1L, 55) }
         verify(exactly = 0) { repo.setRaCachedGameId(2L, 77) }
         server.shutdown()

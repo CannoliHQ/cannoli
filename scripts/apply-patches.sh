@@ -100,6 +100,18 @@ DEFINES += -DHAVE_RICOTTA_OSD' "$ANDROID_MK"
     echo "Added HAVE_RICOTTA_OSD define"
 fi
 
+# Ensure HAVE_RICOTTA_CHEEVOS is defined (Cannoli answers achievement requests when offline)
+if ! grep -q "HAVE_RICOTTA_CHEEVOS" "$ANDROID_MK"; then
+    if [[ "$OSTYPE" == darwin* ]]; then
+        sed -i '' '/^LOCAL_MODULE := retroarch-activity/a\
+\
+DEFINES += -DHAVE_RICOTTA_CHEEVOS' "$ANDROID_MK"
+    else
+        sed -i '/^LOCAL_MODULE := retroarch-activity/a\\nDEFINES += -DHAVE_RICOTTA_CHEEVOS' "$ANDROID_MK"
+    fi
+    echo "Added HAVE_RICOTTA_CHEEVOS define"
+fi
+
 # Read-only so an edit fails loudly. Both are generated: this script copies the bridge from
 # ricotta/jni, and cannoli_ra_settings_strings.patch creates the strings file. Editing either in
 # place is silently lost, because the next clean run overwrites it and a dirty tree makes

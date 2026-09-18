@@ -11,13 +11,16 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.cannoli.core.achievements.RaCacheAge
 import dev.cannoli.scorza.navigation.LauncherScreen
 import dev.cannoli.ui.ButtonStyle
+import dev.cannoli.ui.START_GLYPH
 import dev.cannoli.ui.components.BottomBar
 import dev.cannoli.ui.components.List
 import dev.cannoli.ui.components.PillRowKeyValue
@@ -59,9 +62,19 @@ fun RetroAchievementsOfflineSetsScreen(
                 ) { _, entry, isSelected ->
                     val rel = DateUtils.getRelativeTimeSpanString(entry.cachedAtMs).toString()
                         .replaceFirstChar { it.uppercaseChar() }
+                    val stale = RaCacheAge.isStale(entry.cachedAtMs, System.currentTimeMillis())
+                    val baseValue = stringResource(
+                        if (stale) dev.cannoli.ui.R.string.achievos_offline_set_value_stale
+                        else dev.cannoli.ui.R.string.achievos_offline_set_value,
+                        entry.achievementCount, rel,
+                    )
+                    val pendingCount = screen.pendingByGame[entry.gameId] ?: 0
+                    val value = if (pendingCount > 0) {
+                        baseValue + " " + pluralStringResource(dev.cannoli.ui.R.plurals.achievos_offline_pending, pendingCount, pendingCount)
+                    } else baseValue
                     PillRowKeyValue(
                         label = entry.gameName,
-                        value = stringResource(dev.cannoli.ui.R.string.achievos_offline_set_value, entry.achievementCount, rel),
+                        value = value,
                         isSelected = isSelected,
                         fontSize = listFontSize,
                         lineHeight = listLineHeight,
@@ -72,10 +85,15 @@ fun RetroAchievementsOfflineSetsScreen(
             BottomBar(
                 modifier = Modifier.align(Alignment.BottomCenter),
                 leftItems = listOf(buttonStyle.back to stringResource(dev.cannoli.ui.R.string.label_back)),
-                rightItems = if (entries.isEmpty()) emptyList() else listOf(
-                    buttonStyle.north to stringResource(dev.cannoli.ui.R.string.label_refresh),
-                    buttonStyle.west to stringResource(dev.cannoli.ui.R.string.label_delete),
-                ),
+                rightItems = buildList {
+                    if (entries.isNotEmpty()) {
+                        add(buttonStyle.north to stringResource(dev.cannoli.ui.R.string.label_refresh))
+                        add(buttonStyle.west to stringResource(dev.cannoli.ui.R.string.label_delete))
+                    }
+                    if (entries.any { (screen.pendingByGame[it.gameId] ?: 0) > 0 }) {
+                        add(START_GLYPH to stringResource(dev.cannoli.ui.R.string.label_sync_now))
+                    }
+                },
             )
         }
     }

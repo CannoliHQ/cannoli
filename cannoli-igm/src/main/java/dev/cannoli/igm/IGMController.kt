@@ -716,17 +716,24 @@ class IGMController(
     }
 
     fun openAchievements() {
-        push(IGMScreen.Achievements(achievements = bridge.getAchievements()))
+        push(IGMScreen.Achievements(
+            achievements = bridge.getAchievements(),
+            status = bridge.achievementsStatus(),
+        ))
     }
 
     private fun filteredAchievements(screen: IGMScreen.Achievements): List<AchievementInfo> = when (screen.filter) {
         1 -> screen.achievements.filter { it.unlocked }.sortedByUnlockedNewestFirst()
         2 -> screen.achievements.filter { !it.unlocked }
+        3 -> screen.achievements.filter { it.pendingSync }
         else -> screen.achievements
     }
 
     private fun achievementsHaveMix(list: List<AchievementInfo>): Boolean =
         list.any { it.unlocked } && list.any { !it.unlocked }
+
+    private fun achievementFilterCount(list: List<AchievementInfo>): Int =
+        if (list.any { it.pendingSync }) 4 else 3
 
     private fun handleAchievementsKey(screen: IGMScreen.Achievements, action: MenuAction) {
         val filtered = filteredAchievements(screen)
@@ -737,8 +744,11 @@ class IGMController(
             MenuAction.CONFIRM -> filtered.getOrNull(screen.selectedIndex)?.let {
                 push(IGMScreen.AchievementDetail(achievement = it, parentIndex = screen.selectedIndex))
             }
-            MenuAction.WEST -> if (achievementsHaveMix(screen.achievements)) {
-                replaceTop(screen.copy(filter = (screen.filter + 1) % 3, selectedIndex = 0))
+            MenuAction.WEST -> if (achievementsHaveMix(screen.achievements) || screen.achievements.any { it.pendingSync }) {
+                replaceTop(screen.copy(
+                    filter = (screen.filter + 1) % achievementFilterCount(screen.achievements),
+                    selectedIndex = 0,
+                ))
             }
             MenuAction.BACK -> { pop(); if (screenStack.isEmpty()) onClose?.invoke() }
             else -> {}

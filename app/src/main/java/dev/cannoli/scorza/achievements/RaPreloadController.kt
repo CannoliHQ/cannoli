@@ -3,7 +3,7 @@ package dev.cannoli.scorza.achievements
 import android.content.Context
 import dagger.hilt.android.qualifiers.ActivityContext
 import dagger.hilt.android.scopes.ActivityScoped
-import dev.cannoli.scorza.BuildConfig
+import dev.cannoli.core.achievements.RaOfflineStore
 import dev.cannoli.scorza.config.CannoliPaths
 import dev.cannoli.scorza.db.RomsRepository
 import dev.cannoli.scorza.di.IoScope
@@ -27,10 +27,6 @@ class RaPreloadController @Inject constructor(
     private val romsRepository: RomsRepository,
 ) {
     fun preloadRom(rom: Rom, onComplete: () -> Unit = {}) {
-        if (!isOnline()) {
-            showResult(false, rom.displayName, context.getString(dev.cannoli.scorza.R.string.achievos_preload_failed))
-            return
-        }
         nav.dialogState.value = DialogState.RAPreloadProgress(rom.displayName)
         ioScope.launch {
             val result = runCatching { engine().preloadOne(client(), rom) }
@@ -46,10 +42,6 @@ class RaPreloadController @Inject constructor(
         gameId: Int,
         onComplete: () -> Unit = {},
     ) {
-        if (!isOnline()) {
-            showResult(false, displayName, context.getString(dev.cannoli.scorza.R.string.achievos_preload_failed))
-            return
-        }
         nav.dialogState.value = DialogState.RAPreloadProgress(displayName)
         ioScope.launch {
             val result = runCatching { engine().refresh(client(), romPath, platformTag, gameId, null) }
@@ -63,15 +55,8 @@ class RaPreloadController @Inject constructor(
             nav.dialogState.value = DialogState.None
             return
         }
-        if (!isOnline()) {
-            nav.dialogState.value = DialogState.RAPreloadResult(
-                success = false,
-                message = context.getString(dev.cannoli.scorza.R.string.achievos_preload_failed),
-            )
-            return
-        }
         ioScope.launch {
-            val cached = runCatching {
+            val bulk = runCatching {
                 engine().preloadAll(client(), roms) { rom, i ->
                     withContext(Dispatchers.Main) {
                         if (!activityGone()) {
@@ -80,7 +65,8 @@ class RaPreloadController @Inject constructor(
                         }
                     }
                 }
-            }.getOrDefault(0)
+            }.getOrDefault(RaPreloadEngine.BulkResult(0))
+            val cached = bulk.cached
             withContext(Dispatchers.Main) {
                 onComplete()
                 if (!activityGone()) {
@@ -113,14 +99,6 @@ class RaPreloadController @Inject constructor(
         nav.dialogState.value = DialogState.RAPreloadResult(success = success, message = "$displayName\n\n$message")
     }
 
-    private fun isOnline(): Boolean {
-        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager ?: return false
-        val network = cm.activeNetwork ?: return false
-        val caps = cm.getNetworkCapabilities(network) ?: return false
-        return caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
-            caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED)
-    }
-
     /** The preload coroutines run on the process-lifetime IoScope so they finish even if the user
      *  navigates away; this skips the UI transitions once the hosting Activity is gone. */
     private fun activityGone(): Boolean {
@@ -128,10 +106,7 @@ class RaPreloadController @Inject constructor(
         return act.isFinishing || act.isDestroyed
     }
 
-    private fun client() = RaConnectClient(
-        userAgent = "Cannoli/${BuildConfig.VERSION_NAME}",
-        log = ErrorLog::write,
-    )
+    private fun client() = RaConnectClient(log = ErrorLog::write)
 
     private fun messageFor(result: RaOfflinePreloader.Result): String = when (result) {
         is RaOfflinePreloader.Result.Success -> context.resources.getQuantityString(
