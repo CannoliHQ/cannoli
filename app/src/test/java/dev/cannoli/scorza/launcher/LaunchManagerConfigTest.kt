@@ -227,6 +227,12 @@ class LaunchManagerConfigTest : LaunchConfigHarness() {
         assertEquals("false", cfg["auto_overrides_enable"])
     }
 
+    @Test fun `auto remaps are disabled in the launch config`() {
+        val root = tmp.newFolder()
+        val cfg = launchedConfig(root, rom(root, "Roms/GBA/Game.gba", "GBA"))
+        assertEquals("false", cfg["auto_remaps_enable"])
+    }
+
     @Test fun `a malformed custom cfg line is dropped without failing the launch`() {
         val root = tmp.newFolder()
         write(
