@@ -3,6 +3,7 @@ package dev.cannoli.scorza.achievements
 import dev.cannoli.core.achievements.RaPendingUnlocks
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -57,6 +58,8 @@ class RaPendingDrainerTest {
         val result = RaPendingDrainer(q, client).drain()
         assertEquals(0, result.submitted)
         assertEquals(2, result.left)
+        // What the OSD reads to say the server was never asked rather than that it took none.
+        assertFalse(result.reached)
         assertEquals(1, client.sent.size)
         assertEquals(2, q.list().size)
     }
@@ -70,15 +73,18 @@ class RaPendingDrainerTest {
         val result = RaPendingDrainer(q, client).drain()
         assertEquals(1, result.submitted)
         assertEquals(1, result.left)
+        // The server answered and refused one, which is not the same as being unreachable.
+        assertTrue(result.reached)
         assertEquals(listOf(7), q.list().map { it.achievementId })
     }
 
-    @Test fun `an empty queue contacts nothing`() = runBlocking {
+    @Test fun `an empty queue reaches nobody and reports no failure`() = runBlocking {
         val q = RaPendingUnlocks(File(tmp.root, "Pending"))
         val client = FakeClient(mutableListOf())
         val result = RaPendingDrainer(q, client).drain()
         assertEquals(0, result.submitted)
         assertEquals(0, result.left)
+        assertTrue(result.reached)
         assertTrue(client.sent.isEmpty())
     }
 

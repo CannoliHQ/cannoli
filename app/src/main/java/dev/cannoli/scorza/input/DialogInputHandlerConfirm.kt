@@ -300,7 +300,17 @@ private fun DialogInputHandler.hasActiveVpn(): Boolean {
  */
 private fun DialogInputHandler.syncQueuedUnlocks() {
     ioScope.launch {
-        raPendingDrainer.drain()
+        val result = raPendingDrainer.drain()
+        // A count cannot say the difference between the server refusing them and never being asked,
+        // and only one of those is the player's to fix.
+        osdController.show(
+            if (!result.reached) context.getString(dev.cannoli.ui.R.string.achievos_osd_sync_unreachable)
+            else context.resources.getQuantityString(
+                dev.cannoli.ui.R.plurals.achievos_osd_sync_done,
+                result.submitted,
+                result.submitted,
+            )
+        )
         openQuickMenu(dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.UNSYNCED_UNLOCKS)
     }
 }

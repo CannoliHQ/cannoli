@@ -4,7 +4,9 @@ import androidx.test.core.app.ApplicationProvider
 import dev.cannoli.scorza.navigation.NavigationController
 import dev.cannoli.scorza.ui.quickmenu.QuickMenuRow
 import dev.cannoli.scorza.ui.screens.DialogState
+import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.verify
 import io.mockk.mockk
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -26,6 +28,7 @@ import org.robolectric.annotation.Config
 class QuickMenuSyncUnlocksTest {
 
     private val drainer: dev.cannoli.scorza.achievements.RaPendingDrainer = mockk(relaxed = true)
+    private val osd: dev.cannoli.ui.components.OsdController = mockk(relaxed = true)
 
     private fun handler(dispatcher: TestDispatcher, nav: NavigationController) =
         testDialogInputHandler(
@@ -33,7 +36,13 @@ class QuickMenuSyncUnlocksTest {
             ioScope = CoroutineScope(dispatcher),
             context = ApplicationProvider.getApplicationContext(),
             raPendingDrainer = drainer,
+            osdController = osd,
         )
+
+    private fun drainReturns(submitted: Int, left: Int, reached: Boolean) {
+        coEvery { drainer.drain() } returns
+            dev.cannoli.scorza.achievements.RaPendingDrainer.Result(submitted, left, reached)
+    }
 
     private fun menuWith(row: QuickMenuRow) = DialogState.QuickMenu(
         rows = listOf(row),
@@ -71,6 +80,34 @@ class QuickMenuSyncUnlocksTest {
         val menu = nav.dialogState.value as DialogState.QuickMenu
         assertEquals(0, menu.pendingUnlockCount)
         assertFalse(menu.rows.contains(QuickMenuRow.UNSYNCED_UNLOCKS))
+    }
+
+    // The count alone cannot tell a refusal from never having asked, and only one of those is
+    // something the player can act on.
+    @Test fun `a server that could not be reached says so rather than reporting none synced`() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val nav = NavigationController()
+        val h = handler(dispatcher, nav)
+        drainReturns(submitted = 0, left = 3, reached = false)
+        nav.dialogState.value = menuWith(QuickMenuRow.UNSYNCED_UNLOCKS)
+
+        h.onConfirm()
+        advanceUntilIdle()
+
+        verify { osd.show("Could not reach RetroAchievements", any(), any()) }
+    }
+
+    @Test fun `what the server took is reported`() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val nav = NavigationController()
+        val h = handler(dispatcher, nav)
+        drainReturns(submitted = 3, left = 0, reached = true)
+        nav.dialogState.value = menuWith(QuickMenuRow.UNSYNCED_UNLOCKS)
+
+        h.onConfirm()
+        advanceUntilIdle()
+
+        verify { osd.show("3 unlocks synced", any(), any()) }
     }
 
     @Test fun `a row that is not the unlock queue does not send it`() = runTest {

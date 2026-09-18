@@ -32,6 +32,7 @@ internal fun testDialogInputHandler(
     raToken: String = "",
     raPreloadController: dev.cannoli.scorza.achievements.RaPreloadController = mockk(relaxed = true),
     raPendingDrainer: dev.cannoli.scorza.achievements.RaPendingDrainer = mockk(relaxed = true),
+    osdController: dev.cannoli.ui.components.OsdController = mockk(relaxed = true),
     raHardcore: Boolean = false,
 ) = DialogInputHandler(
     nav = nav,
@@ -73,7 +74,7 @@ internal fun testDialogInputHandler(
     syncHistoryStore = mockk(relaxed = true),
     pendingConflictStore = mockk(relaxed = true),
     saveSyncStatusHolder = saveSyncStatusHolder,
-    osdController = mockk(relaxed = true),
+    osdController = osdController,
     rommDevicePairing = mockk(relaxed = true),
     coreUpdateController = mockk(relaxed = true),
     shaderUpdateController = mockk(relaxed = true),

@@ -20,12 +20,24 @@ class RaPendingDrainer(
     // state the server now holds.
     private val refreshGame: suspend (Int) -> Unit = {},
 ) {
-    data class Result(val submitted: Int, val left: Int, val refreshed: Set<Int> = emptySet())
+    /**
+     * [reached] is whether the server answered at all, which a count cannot say: nothing submitted
+     * means the network was gone or the server refused every one of them, and only the first is
+     * worth telling the player to fix. A queue with nothing in it reached nobody and failed nobody,
+     * so it reports true rather than inventing a network problem.
+     */
+    data class Result(
+        val submitted: Int,
+        val left: Int,
+        val reached: Boolean = true,
+        val refreshed: Set<Int> = emptySet(),
+    )
 
     suspend fun drain(): Result = withContext(Dispatchers.IO) {
         val queued = pending.list()
         if (queued.isEmpty()) return@withContext Result(0, 0)
         var submitted = 0
+        var reached = false
         var stopped = false
         for (p in queued) {
             if (stopped) break
@@ -34,6 +46,7 @@ class RaPendingDrainer(
                 stopped = true
                 continue
             }
+            reached = true
             if (accepted(res.body)) {
                 pending.delete(p)
                 submitted++
@@ -42,7 +55,7 @@ class RaPendingDrainer(
         val left = pending.list()
         val emptied = queued.map { it.gameId }.toSet() - left.map { it.gameId }.toSet()
         for (gameId in emptied) runCatching { refreshGame(gameId) }
-        Result(submitted, left.size, emptied)
+        Result(submitted, left.size, reached, emptied)
     }
 
     // "User already has" is RetroAchievements saying the unlock is recorded, just not by this call.

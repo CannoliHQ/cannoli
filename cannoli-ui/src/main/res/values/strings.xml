@@ -1159,6 +1159,13 @@
         <item quantity="one">Sync Unlocks (1)</item>
         <item quantity="other">Sync Unlocks (%1$d)</item>
     </plurals>
+    <string name="achievos_osd_sync_unreachable">Could not reach RetroAchievements</string>
+    <!-- Shown after syncing unlocks earned offline. %1$d = how many the server took, which can be
+         zero when it answered and refused them. -->
+    <plurals name="achievos_osd_sync_done">
+        <item quantity="one">1 unlock synced</item>
+        <item quantity="other">%1$d unlocks synced</item>
+    </plurals>
     <string name="sync_errors_title">Sync Errors</string>
     <string name="sync_errors_empty">No sync errors</string>
     <!-- %1$d = number of sync errors. -->
