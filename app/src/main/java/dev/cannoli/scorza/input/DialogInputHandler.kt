@@ -68,6 +68,7 @@ class DialogInputHandler @Inject constructor(
     internal val rommBrowseViewModel: dev.cannoli.scorza.ui.viewmodel.RommBrowseViewModel,
     internal val rommArtFetcher: dev.cannoli.scorza.romm.art.RommArtFetcher,
     internal val raPreloadController: dev.cannoli.scorza.achievements.RaPreloadController,
+    internal val raPendingDrainer: dev.cannoli.scorza.achievements.RaPendingDrainer,
     internal val deviceRegistrar: dev.cannoli.scorza.romm.sync.DeviceRegistrar,
     internal val saveSyncService: dev.cannoli.scorza.romm.sync.SaveSyncService,
     internal val slotManager: dev.cannoli.scorza.romm.sync.SlotManager,
@@ -100,12 +101,14 @@ class DialogInputHandler @Inject constructor(
     private suspend fun quickMenuState(selected: dev.cannoli.scorza.ui.quickmenu.QuickMenuRow? = null): DialogState.QuickMenu {
         val conflicts = saveSyncService.pendingConflictCount()
         val errors = saveSyncStatusHolder.errors.value.size
+        val queuedUnlocks = pendingUnlocks().list().size
         val rows = dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.visibleRows(
             rommPaired = rommStore.isConfigured,
             kitchenRunning = dev.cannoli.scorza.server.KitchenManager.isRunning,
             saveSyncEnabled = settings.rommSaveSyncEnabled,
             pendingConflicts = conflicts,
             syncErrors = errors,
+            pendingUnlocks = queuedUnlocks,
             downloadCount = rommDownloader.state.value.size,
             devBuild = dev.cannoli.scorza.BuildConfig.DEV_BUILD,
         )
@@ -115,8 +118,15 @@ class DialogInputHandler @Inject constructor(
             selectedIndex = selected?.let { rows.indexOf(it).coerceAtLeast(0) } ?: 0,
             conflictCount = conflicts,
             syncErrorCount = errors,
+            pendingUnlockCount = queuedUnlocks,
         )
     }
+
+    // Read from the card each time the menu is built, like the conflict count above it: the game
+    // process writes this queue while the launcher is not looking.
+    internal fun pendingUnlocks() = dev.cannoli.core.achievements.RaPendingUnlocks(
+        File(dev.cannoli.scorza.config.CannoliPaths(settings.sdCardRoot).configRetroAchievements, "Pending")
+    )
 
     // Single-flight: held Back / Menu key-repeat re-enters these branches before the
     // coroutine below completes. Without this guard a second rebuild can win the race

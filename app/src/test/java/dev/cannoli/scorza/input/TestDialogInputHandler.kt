@@ -31,6 +31,7 @@ internal fun testDialogInputHandler(
     // test says otherwise.
     raToken: String = "",
     raPreloadController: dev.cannoli.scorza.achievements.RaPreloadController = mockk(relaxed = true),
+    raPendingDrainer: dev.cannoli.scorza.achievements.RaPendingDrainer = mockk(relaxed = true),
     raHardcore: Boolean = false,
 ) = DialogInputHandler(
     nav = nav,
@@ -64,6 +65,7 @@ internal fun testDialogInputHandler(
     rommBrowseViewModel = mockk(relaxed = true),
     rommArtFetcher = mockk(relaxed = true),
     raPreloadController = raPreloadController,
+    raPendingDrainer = raPendingDrainer,
     deviceRegistrar = mockk(relaxed = true),
     saveSyncService = saveSyncService,
     slotManager = mockk(relaxed = true),

@@ -67,6 +67,31 @@ class QuickMenuRowsTest {
         )
     }
 
+    // Unlocks earned offline are queued on the card, and the queue is Cannoli's own: it is not
+    // RomM's, so it shows whether or not a server is paired.
+    @Test fun `queued offline unlocks join the rows that lead the menu`() {
+        val rows = QuickMenuRow.visibleRows(
+            rommPaired = true, kitchenRunning = false, saveSyncEnabled = true,
+            pendingConflicts = 1, syncErrors = 1, pendingUnlocks = 3,
+        )
+        assertEquals(
+            listOf(QuickMenuRow.CONFLICTS, QuickMenuRow.ERRORS, QuickMenuRow.UNSYNCED_UNLOCKS, QuickMenuRow.SETTINGS),
+            rows.take(4),
+        )
+    }
+
+    @Test fun `an empty unlock queue shows no row, paired or not`() {
+        for (paired in listOf(true, false)) {
+            val rows = QuickMenuRow.visibleRows(rommPaired = paired, kitchenRunning = false, pendingUnlocks = 0)
+            assertEquals(false, rows.contains(QuickMenuRow.UNSYNCED_UNLOCKS))
+        }
+    }
+
+    @Test fun `queued unlocks show without a paired server`() {
+        val rows = QuickMenuRow.visibleRows(rommPaired = false, kitchenRunning = false, pendingUnlocks = 1)
+        assertEquals(QuickMenuRow.UNSYNCED_UNLOCKS, rows.first())
+    }
+
     @Test fun `errors row is first when only errors are present`() {
         val rows = QuickMenuRow.visibleRows(
             rommPaired = true, kitchenRunning = true, saveSyncEnabled = true,

@@ -130,6 +130,8 @@ internal fun SystemDialogs(
                             pluralStringResource(dev.cannoli.ui.R.plurals.quick_menu_conflicts, conflictCount, conflictCount)
                         row == dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.ERRORS && dialogState.syncErrorCount > 0 ->
                             pluralStringResource(dev.cannoli.ui.R.plurals.quick_menu_sync_errors, dialogState.syncErrorCount, dialogState.syncErrorCount)
+                        row == dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.UNSYNCED_UNLOCKS && dialogState.pendingUnlockCount > 0 ->
+                            pluralStringResource(dev.cannoli.ui.R.plurals.quick_menu_unsynced_unlocks, dialogState.pendingUnlockCount, dialogState.pendingUnlockCount)
                         else -> quickMenuLabel(row)
                     }
                     PillRowText(
@@ -299,6 +301,9 @@ private fun quickMenuLabel(row: dev.cannoli.scorza.ui.quickmenu.QuickMenuRow): S
     dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.SYNC_HISTORY -> stringResource(R.string.quick_menu_sync_history)
     dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.CONFLICTS -> stringResource(dev.cannoli.ui.R.string.conflicts_title)
     dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.ERRORS -> stringResource(dev.cannoli.ui.R.string.sync_errors_title)
+    // Only ever drawn with a count, since the row is absent when the queue is empty.
+    dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.UNSYNCED_UNLOCKS ->
+        pluralStringResource(dev.cannoli.ui.R.plurals.quick_menu_unsynced_unlocks, 1, 1)
     dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.KITCHEN -> stringResource(R.string.quick_menu_kitchen)
     dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.RESCAN -> stringResource(R.string.quick_menu_rescan)
     dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.INFO -> stringResource(R.string.quick_menu_info)

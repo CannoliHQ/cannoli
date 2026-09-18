@@ -314,6 +314,7 @@ sealed interface DialogState {
         override val selectedIndex: Int = 0,
         val conflictCount: Int = 0,
         val syncErrorCount: Int = 0,
+        val pendingUnlockCount: Int = 0,
     ) : ListDialog {
         override fun withSelectedIndex(index: Int) = copy(selectedIndex = index)
     }
