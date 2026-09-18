@@ -187,6 +187,38 @@ class SaveSyncServicePreLaunchTest {
         assertEquals(null, store.get("SNES/Mario.sfc", "autosave"))
     }
 
+    /**
+     * The server short-circuits to no_op when the hash we send matches its own copy, so the hash
+     * has to be the save this device holds now. Sending the last uploaded one instead means every
+     * save changed since that upload is reported as the content already on the server, answered
+     * no_op, and never pushed.
+     */
+    @Test fun `negotiate reports the save on disk, not the last uploaded hash`() = runTest {
+        writeSave()
+        store.upsert(
+            SaveSyncRow(
+                gameKey = "SNES/Mario.sfc",
+                slot = "autosave",
+                rommRomId = 42,
+                rommSaveId = 100,
+                lastSyncedAt = "2026-09-01T10:00:00Z",
+                lastUploadedHash = "0000000000000000000000000000dead",
+                localContentHash = "0000000000000000000000000000dead",
+                serverUpdatedAt = "2026-09-01T10:00:00Z",
+                updatedAt = System.currentTimeMillis(),
+            )
+        )
+        val payload = slot<SyncNegotiatePayload>()
+        every { client.negotiateSync(capture(payload)) } returns SyncNegotiateResponse(sessionId = 1, totalNoOp = 1)
+
+        service.syncBeforeLaunch("SNES", "Mario", "SNES/Mario.sfc", "snes9x")
+
+        assertEquals(
+            SaveHasher.md5Hex("LOCAL".toByteArray()),
+            payload.captured.saves.single().contentHash,
+        )
+    }
+
     @Test fun conflict_op_returns_conflict() = runTest {
         writeSave()
         every { client.negotiateSync(any()) } returns SyncNegotiateResponse(

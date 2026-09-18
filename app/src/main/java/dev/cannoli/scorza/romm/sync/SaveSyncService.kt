@@ -78,7 +78,7 @@ class SaveSyncService(
         return matcher.rommIdFor(tag, fileName)
     }
 
-    private fun negotiate(romId: Int, slot: String, emulator: String?, local: LocalSave, anchor: SaveSyncRow?, deviceId: String): SyncNegotiateResponse? = try {
+    private fun negotiate(romId: Int, slot: String, emulator: String?, local: LocalSave, deviceId: String): SyncNegotiateResponse? = try {
         client.negotiateSync(
             SyncNegotiatePayload(
                 deviceId = deviceId,
@@ -89,7 +89,10 @@ class SaveSyncService(
                         fileName = local.uploadFileName,
                         slot = slot,
                         emulator = emulator,
-                        contentHash = anchor?.lastUploadedHash,
+                        // What this device holds right now. The server compares it against its own
+                        // copy, so sending the last uploaded hash instead answers no_op for every
+                        // save changed since that upload and it is never pushed.
+                        contentHash = local.contentHash,
                         updatedAt = isoOf(local.modifiedMillis),
                         fileSizeBytes = local.sizeBytes,
                     )
@@ -216,7 +219,7 @@ class SaveSyncService(
                     PreLaunchOutcome.Proceed
                 }
             }
-            val response = negotiate(romId, slot, emulator, local, anchor, deviceId)
+            val response = negotiate(romId, slot, emulator, local, deviceId)
                 ?: return@withContext PreLaunchOutcome.Proceed
             val op = response.operations.firstOrNull { (it.slot ?: DEFAULT_SLOT) == slot }
             dev.cannoli.scorza.util.RommLog.write("launch [$base]: negotiate slot=$slot op=${op?.action ?: "none"} serverHash=${op?.serverContentHash?.take(8)} anchorHash=${anchor?.lastUploadedHash?.take(8)}")
@@ -652,7 +655,7 @@ class SaveSyncService(
                         fileName = s.local!!.uploadFileName,
                         slot = s.slot,
                         emulator = s.emulator,
-                        contentHash = s.anchor?.lastUploadedHash,
+                        contentHash = s.local.contentHash,
                         updatedAt = isoOf(s.local.modifiedMillis),
                         fileSizeBytes = s.local.sizeBytes,
                     )

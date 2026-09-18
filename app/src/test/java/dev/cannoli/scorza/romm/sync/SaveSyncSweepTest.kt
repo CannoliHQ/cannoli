@@ -202,6 +202,25 @@ class SaveSyncSweepTest {
      * is this one, and without the same rule it pulls back the save the user told this device to
      * leave alone.
      */
+    /**
+     * Same mistake as the launch path had, and worse here: the sweep runs unattended. Reporting the
+     * last uploaded hash for a save the user has since played matches the server's unchanged copy,
+     * answers no_op, and the newer save is never pushed.
+     */
+    @Test fun `the sweep reports the save on disk, not the last uploaded hash`() = runBlocking {
+        writeSave("PLAYED SINCE UPLOAD")
+        seedAnchor(lastUploadedHash = "stale-upload-hash", localContentHash = "stale-upload-hash")
+        val payload = slot<SyncNegotiatePayload>()
+        every { client.negotiateSync(capture(payload)) } returns SyncNegotiateResponse(sessionId = 1, operations = emptyList())
+
+        service.sweep(resolveGame = { Triple("SNES", "Zelda", "snes9x") })
+
+        assertEquals(
+            SaveHasher.md5Hex("PLAYED SINCE UPLOAD".toByteArray()),
+            payload.captured.saves.single().contentHash,
+        )
+    }
+
     @Test fun `an untracked server save is never pulled down`() = runBlocking {
         every { client.getSaves(42, "dev-1", any()) } returns listOf(
             RommSaveDto(
