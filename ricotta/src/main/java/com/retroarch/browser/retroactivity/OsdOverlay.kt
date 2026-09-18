@@ -8,6 +8,7 @@ import android.os.SystemClock
 import android.view.WindowManager
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
@@ -348,10 +349,14 @@ class OsdOverlay(
                     portrait = portrait,
                     density = density,
                 )
+                // The status pill and debug panel sit at the top corners, exactly where a display
+                // cutout sits, so this is guarded the same way the launcher's own root is: once,
+                // here, rather than on each pill.
                 Box(
                     Modifier
                         .fillMaxSize()
                         .onSizeChanged { surfaceSize.value = it }
+                        .displayCutoutPadding()
                         .padding(regionPadding)
                 ) {
                     OsdHost(controller)

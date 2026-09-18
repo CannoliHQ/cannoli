@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
-import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -218,7 +217,9 @@ fun AppNavGraph(
         && settingsState.activeCategory == SettingsCategory.DISPLAY
         && settingsState.items.getOrNull(settingsState.selectedIndex)?.key == SettingsKey.PORTRAIT_MARGIN.id
     Box(modifier = Modifier.fillMaxSize()) {
-    BoxWithConstraints(modifier = Modifier.fillMaxSize().displayCutoutPadding().padding(effectiveViewportPadding())) {
+    // The display cutout is handled once, above this graph, on the Surface in MainActivity that
+    // every boot state (including this one) renders under; padding for it again here would double it.
+    BoxWithConstraints(modifier = Modifier.fillMaxSize().padding(effectiveViewportPadding())) {
     // Solved once here so the title spacer, the row spacing and the footer reservation all come from
     // the same division of the screen; every list screen lays out inside these same bounds.
     val insets = screenInsets()
