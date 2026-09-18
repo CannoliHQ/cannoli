@@ -263,11 +263,19 @@ class MainActivity : ComponentActivity(), ActivityActions {
                 val backfill = sigilBackfill.get()
                 backfill.setActive(true)
                 // An unlock earned offline should reach the server while the player is still on the
-                // game list, so this runs when the launcher comes forward rather than on a timer.
+                // game list, so this runs when the launcher comes forward rather than on a timer,
+                // and the listener below covers the rest of that visit: coming back from a game is
+                // a foreground transition, turning wifi on while sitting here is not.
                 ioScope.launch { runCatching { raPendingDrainer.get().drain() } }
+                val reconnectDrain = dev.cannoli.scorza.achievements.RaReconnectDrain(
+                    context = this@MainActivity,
+                    scope = ioScope,
+                ) { runCatching { raPendingDrainer.get().drain() } }
+                reconnectDrain.start()
                 try {
                     awaitCancellation()
                 } finally {
+                    reconnectDrain.stop()
                     backfill.setActive(false)
                 }
             }
