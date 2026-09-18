@@ -1,5 +1,5 @@
 diff --git a/tasks/task_save.c b/tasks/task_save.c
-index 161fce6462..8aa2d020a3 100644
+index 161fce6462..6efb5bc3bf 100644
 --- a/tasks/task_save.c
 +++ b/tasks/task_save.c
 @@ -794,6 +794,21 @@ static void task_save_handler(retro_task_t *task)
@@ -53,7 +53,23 @@ index 161fce6462..8aa2d020a3 100644
  
        task_load_handler_finished(task, state);
     }
-@@ -1481,13 +1504,38 @@ static void save_state_cb(retro_task_t *task,
+@@ -1211,6 +1234,15 @@ static bool content_load_rastate1(unsigned char* input, size_t len)
+       {
+          if (rcheevos_set_serialized_data((void*)input))
+             seen_cheevos = true;
++#ifdef HAVE_RICOTTA_CHEEVOS
++         else
++         {
++            /* Refused because the set has not loaded yet, which is what a resumed launch always
++             * looks like. cheevos.c holds it and applies it when the game finishes loading. */
++            extern void ricotta_cheevos_stash_progress(const void* buffer, size_t size);
++            ricotta_cheevos_stash_progress(input, block_size);
++         }
++#endif
+       }
+ #endif
+ #ifdef HAVE_BSV_MOVIE
+@@ -1481,13 +1513,38 @@ static void save_state_cb(retro_task_t *task,
     {
        char               *path   = strdup(state->path);
        if (state->flags & SAVE_TASK_FLAG_THUMBNAIL_ENABLE)
@@ -94,7 +110,7 @@ index 161fce6462..8aa2d020a3 100644
     free(state);
  }
  
-@@ -1554,6 +1602,10 @@ static void task_push_save_state(const char *path, void *data, size_t len, bool
+@@ -1554,6 +1611,10 @@ static void task_push_save_state(const char *path, void *data, size_t len, bool
        free(task);
        free(state);
     }
