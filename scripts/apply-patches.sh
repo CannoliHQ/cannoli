@@ -18,8 +18,20 @@ for patch in "$PATCH_DIR"/*.patch; do
     if git apply --check "$patch" 2>/dev/null; then
         git apply "$patch"
         echo "  ✓ $name"
-    else
+    elif git apply --reverse --check "$patch" 2>/dev/null; then
+        # Reverses cleanly, so it is in the tree already.
         echo "  - $name (already applied)"
+    else
+        # Neither applies nor reverses: the submodule has moved under it, or it is half applied.
+        # This used to be indistinguishable from "already applied", so a bump could drop a patch
+        # and still report success. Losing runloop.patch that way builds and runs, and the command
+        # pump simply never executes.
+        echo "  ✗ $name" >&2
+        echo "" >&2
+        echo "This patch does not apply and is not already applied. The submodule has moved" >&2
+        echo "under it, or it is applied in part. Resolve it by hand in retroarch/, then run" >&2
+        echo "scripts/regenerate-patches.sh. Do not build from this tree." >&2
+        exit 1
     fi
 done
 

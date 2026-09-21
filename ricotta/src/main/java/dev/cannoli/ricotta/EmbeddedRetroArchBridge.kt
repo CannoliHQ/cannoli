@@ -12,6 +12,9 @@ import dev.cannoli.core.shader.ShaderEntry
 import dev.cannoli.core.shader.ShaderIndex
 import dev.cannoli.core.shader.ShaderPreset
 import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import dev.cannoli.igm.AchievementInfo
 import dev.cannoli.igm.ButtonRemap
 import dev.cannoli.igm.RemapButton
@@ -47,6 +50,7 @@ class EmbeddedRetroArchBridge(
         // keyed by these. Set before the IGM is interactive so no save can precede it.
         nativeSetCannoliContext(cannoliRoot, platformTag, romBaseName, coreId)
         applyStoredShader()
+        watchForRunloop()
     }
 
     fun destroy() {
@@ -93,11 +97,42 @@ class EmbeddedRetroArchBridge(
 
     @Suppress("unused")
     fun onRunloopReady() {
+        runloopReached = true
         mainHandler.post {
             applyStoredPortDevices(afterReset = false)
             applyRemap(storedRemap())
             onRunloopReady?.invoke()
         }
+    }
+
+    @Volatile
+    private var runloopReached = false
+
+    /**
+     * Says so on the card if RetroArch's loop never reports in.
+     *
+     * This arrives from the command pump, which RetroArch calls once per iteration through
+     * runloop.patch. Lose that patch and nothing fails loudly: the pump is still compiled, simply
+     * never called, so the build runs, the game plays, and every write the in-game menu makes
+     * waits out its timeout against a queue nobody drains. The patch roster has dropped a file
+     * before, so the one signal that would catch it is worth writing down.
+     *
+     * A core that never finishes loading looks the same from here, which is also worth knowing.
+     */
+    private fun watchForRunloop() {
+        if (cannoliRoot.isEmpty()) return
+        mainHandler.postDelayed({
+            if (runloopReached) return@postDelayed
+            runCatching {
+                val out = File(cannoliRoot, "Logs/runloop.log")
+                out.parentFile?.mkdirs()
+                out.appendText(
+                    "${SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date())} " +
+                        "no runloop after ${RUNLOOP_GRACE_MS}ms: the command pump never ran, so " +
+                        "nothing the menu writes can apply. Check runloop.patch is applied.\n"
+                )
+            }
+        }, RUNLOOP_GRACE_MS)
     }
 
     /** A key belonging to some shortcut chord went down or up during play. */
@@ -719,8 +754,11 @@ class EmbeddedRetroArchBridge(
     override fun raScreenRows(label: String): List<RaScreenRow> =
         nativeRaScreenRows(label).orEmpty().mapNotNull { encoded ->
             val f = encoded.split('\u001f')
-            if (f.size < 3 || f[0].isEmpty()) null
-            else RaScreenRow(key = f[0], label = f[1], isMenu = f[2] == "1")
+            // Trimmed because a key is an identity and RetroArch does not always treat it as one:
+            // it builds the audio mixer rows as "audio_mixer_stream_%d\n" (menu_displaylist.c),
+            // and a key carrying whitespace matches nothing for the rest of its life.
+            if (f.size < 3 || f[0].isBlank()) null
+            else RaScreenRow(key = f[0].trim(), label = f[1].trim(), isMenu = f[2] == "1")
         }
 
     // Spelled out rather than taken from the enum ordinal, so reordering the enum cannot silently
@@ -1265,6 +1303,13 @@ class EmbeddedRetroArchBridge(
          * enough that a core which has stopped turning does not read as a frozen menu.
          */
         private const val APPLY_TIMEOUT_MS = 500
+
+        /**
+         * How long RetroArch gets to reach its loop before that is worth writing down. Long
+         * enough for a slow core on a cold card, short enough to still be in the log when
+         * somebody goes looking for why the menu does nothing.
+         */
+        private const val RUNLOOP_GRACE_MS = 20_000L
 
         const val KEY_OVERLAY = OverrideTiers.KEY_OVERLAY
         const val KEY_SHADER = OverrideTiers.KEY_SHADER

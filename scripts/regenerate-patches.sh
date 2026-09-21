@@ -39,14 +39,40 @@ gfx_widgets:gfx/gfx_widgets.c
 gl2:gfx/drivers/gl2.c
 netplay_frontend:network/netplay/netplay_frontend.c
 retroarch:retroarch.c
+runloop:runloop.c
 task_autodetect:tasks/task_autodetect.c
 task_save:tasks/task_save.c
 task_screenshot:tasks/task_screenshot.c
+video_driver:gfx/video_driver.c
 "
 
 # The strings file is created by its patch rather than modified, so it needs an intent-to-add for
 # the `new file mode` header to survive.
 NEW_FILE="pkg/android/phoenix/res/values/strings_cannoli.xml"
+
+# Every file that differs from upstream has to be claimed by an entry above, or its edits are
+# dropped silently the next time this runs and nobody is told. Derived from the tree rather than
+# trusted, because the roster is written by hand and has been wrong twice: cheevos_client.c once,
+# then runloop.c and gfx/video_driver.c, the first of which carries the command pump the whole
+# in-game menu writes through.
+claimed="$(mktemp)"
+trap 'rm -f "$claimed"' EXIT
+{
+    printf '%s\n' "$ROSTER" | sed -n 's/^[^:]*://p' | tr ' ' '\n'
+    # Managed by apply-patches.sh rather than by a patch: edited in place, deleted, and created.
+    echo "pkg/android/phoenix-common/jni/Android.mk"
+    echo "pkg/android/phoenix/src/com/retroarch/browser/retroactivity/RetroActivityFuture.java"
+    echo "$NEW_FILE"
+} | sed '/^$/d' | sort -u > "$claimed"
+
+unclaimed="$(git diff --name-only HEAD | grep -vxFf "$claimed" || true)"
+if [ -n "$unclaimed" ]; then
+    echo "No ROSTER entry claims these changed files:" >&2
+    echo "$unclaimed" | sed 's/^/  /' >&2
+    echo "" >&2
+    echo "Their changes would be dropped. Add them to ROSTER and run this again." >&2
+    exit 1
+fi
 
 written=0
 # Iterate lines, not words: an entry can name more than one path.
