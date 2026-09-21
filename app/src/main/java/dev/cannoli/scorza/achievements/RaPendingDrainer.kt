@@ -13,7 +13,10 @@ import kotlinx.coroutines.withContext
  * there, which is success arriving by another route.
  */
 class RaPendingDrainer(
-    private val pending: RaPendingUnlocks,
+    // A supplier rather than the queue itself: this is built during Hilt's field injection in
+    // MainActivity.onCreate, which on a clean install runs before first run has chosen a Cannoli
+    // root. Resolving the directory there took the launcher down before it could ask for one.
+    private val queue: () -> RaPendingUnlocks,
     private val client: RaConnectClient,
     // What to do about a game whose queue is now empty. Defaulted so a test can watch the drain
     // alone, and wired at the call site to re-preload the set so the cache converges on the unlock
@@ -34,6 +37,7 @@ class RaPendingDrainer(
     )
 
     suspend fun drain(): Result = withContext(Dispatchers.IO) {
+        val pending = queue()
         val queued = pending.list()
         if (queued.isEmpty()) return@withContext Result(0, 0)
         var submitted = 0

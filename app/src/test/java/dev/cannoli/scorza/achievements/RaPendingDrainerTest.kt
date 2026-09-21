@@ -34,7 +34,7 @@ class RaPendingDrainerTest {
             RaConnectClient.RawResponse(200, """{"Success":true}"""),
             RaConnectClient.RawResponse(200, """{"Success":true}"""),
         ))
-        val result = RaPendingDrainer(q, client).drain()
+        val result = RaPendingDrainer({ q }, client).drain()
         assertEquals(2, result.submitted)
         assertEquals(0, result.left)
         assertTrue(q.list().isEmpty())
@@ -47,7 +47,7 @@ class RaPendingDrainerTest {
             RaConnectClient.RawResponse(200, """{"Success":false,"Error":"User already has this achievement awarded."}"""),
             RaConnectClient.RawResponse(200, """{"Success":true}"""),
         ))
-        val result = RaPendingDrainer(q, client).drain()
+        val result = RaPendingDrainer({ q }, client).drain()
         assertEquals(2, result.submitted)
         assertTrue(q.list().isEmpty())
     }
@@ -55,7 +55,7 @@ class RaPendingDrainerTest {
     @Test fun `an unreachable server keeps everything and stops trying`() = runBlocking {
         val q = queue()
         val client = FakeClient(mutableListOf(RaConnectClient.RawResponse(-1, "")))
-        val result = RaPendingDrainer(q, client).drain()
+        val result = RaPendingDrainer({ q }, client).drain()
         assertEquals(0, result.submitted)
         assertEquals(2, result.left)
         // What the OSD reads to say the server was never asked rather than that it took none.
@@ -70,7 +70,7 @@ class RaPendingDrainerTest {
             RaConnectClient.RawResponse(200, """{"Success":false,"Error":"Invalid token"}"""),
             RaConnectClient.RawResponse(200, """{"Success":true}"""),
         ))
-        val result = RaPendingDrainer(q, client).drain()
+        val result = RaPendingDrainer({ q }, client).drain()
         assertEquals(1, result.submitted)
         assertEquals(1, result.left)
         // The server answered and refused one, which is not the same as being unreachable.
@@ -81,11 +81,18 @@ class RaPendingDrainerTest {
     @Test fun `an empty queue reaches nobody and reports no failure`() = runBlocking {
         val q = RaPendingUnlocks(File(tmp.root, "Pending"))
         val client = FakeClient(mutableListOf())
-        val result = RaPendingDrainer(q, client).drain()
+        val result = RaPendingDrainer({ q }, client).drain()
         assertEquals(0, result.submitted)
         assertEquals(0, result.left)
         assertTrue(result.reached)
         assertTrue(client.sent.isEmpty())
+    }
+
+    // Hilt builds this while injecting MainActivity, which on a clean install is before first run
+    // has chosen a Cannoli root. Resolving the queue's directory there threw, and the launcher
+    // could not start far enough to ask for one.
+    @Test fun `constructing it never asks where the queue lives`() {
+        RaPendingDrainer({ error("the queue was resolved at construction") }, FakeClient(mutableListOf()))
     }
 
     @Test fun `refreshed reports only the game whose queue emptied`() = runBlocking {
@@ -96,7 +103,7 @@ class RaPendingDrainerTest {
             RaConnectClient.RawResponse(200, """{"Success":true}"""),
             RaConnectClient.RawResponse(200, """{"Success":false,"Error":"Invalid token"}"""),
         ))
-        val result = RaPendingDrainer(q, client).drain()
+        val result = RaPendingDrainer({ q }, client).drain()
         assertEquals(setOf(42), result.refreshed)
         assertEquals(listOf(99), q.list().map { it.gameId })
     }

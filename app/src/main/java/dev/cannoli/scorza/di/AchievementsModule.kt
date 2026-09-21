@@ -30,9 +30,8 @@ object AchievementsModule {
         settings: SettingsRepository,
         client: RaConnectClient,
     ): RaPendingDrainer {
-        val root = CannoliPaths(paths.root).configRetroAchievements
         return RaPendingDrainer(
-            pending = RaPendingUnlocks(File(root, "Pending")),
+            queue = { RaPendingUnlocks(File(CannoliPaths(paths.root).configRetroAchievements, "Pending")) },
             client = client,
             // Built fresh per call rather than injected as a singleton, so a re-login mid-session
             // is not stuck refreshing under the account that was current when this was first
