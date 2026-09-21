@@ -87,6 +87,47 @@ class RaSettingsSweepTest {
         assertEquals(RaSettingsSweep.Outcome.RESTORE_FAILED, row.outcome)
     }
 
+    // Stepping a float and formatting it back produces a different string for the same number.
+    // Called a clamp, it is the sweep reporting a lie of exactly the kind it exists to catch.
+    @Test fun `a float that only changed spelling is not a clamp`() {
+        // Asked for 55.5 and told "55.500000": the same number, and on a device the same thing
+        // happened the other way round, asking 54.599998 and being told 54.6.
+        val host = SweepHost(
+            mapOf("f" to "54.5"),
+            type = mapOf("f" to RaSettingType.FLOAT),
+            clampTo = mapOf("f" to "55.500000"),
+        )
+        assertEquals(RaSettingsSweep.Outcome.STUCK, sweep(host).run(listOf("f")).rows.single().outcome)
+    }
+
+    @Test fun `a float RetroArch really did clamp is still reported`() {
+        val host = SweepHost(
+            mapOf("f" to "54.5"),
+            type = mapOf("f" to RaSettingType.FLOAT),
+            clampTo = mapOf("f" to "50.0"),
+        )
+        assertEquals(RaSettingsSweep.Outcome.CLAMPED, sweep(host).run(listOf("f")).rows.single().outcome)
+    }
+
+    // The menu refuses these rows, so a sweep that tests them is not testing what a player can
+    // reach. Sixteen audio mixer streams were reported as missing settings on that basis.
+    @Test fun `a hidden screen and a hidden key are never walked`() {
+        val hiddenScreen = HIDDEN_SCREENS.first()
+        val hiddenKey = HIDDEN_KEYS.first()
+        val host = SweepHost(
+            mapOf("a" to "false"),
+            screens = mapOf(
+                "" to listOf(
+                    RaScreenRow(hiddenScreen, "Hidden", isMenu = true),
+                    RaScreenRow(hiddenKey, "Hidden Key", isMenu = false),
+                    RaScreenRow("a", "A", isMenu = false),
+                ),
+                hiddenScreen to listOf(RaScreenRow("buried", "Buried", isMenu = false)),
+            ),
+        )
+        assertEquals(listOf("a"), RaSettingsSweep.discoverKeys(host))
+    }
+
     @Test fun `a read-only setting is skipped rather than counted as a failure`() {
         val host = SweepHost(mapOf("p" to "/roms"), type = mapOf("p" to RaSettingType.STRING_RO))
         assertEquals(RaSettingsSweep.Outcome.SKIPPED_UNCHANGEABLE, sweep(host).run(listOf("p")).rows.single().outcome)
