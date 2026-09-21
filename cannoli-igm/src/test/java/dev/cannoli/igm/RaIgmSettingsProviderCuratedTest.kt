@@ -20,12 +20,12 @@ private class CuratedFakeHost : RaSettingsHost {
     val screens = mutableMapOf<String, List<RaScreenRow>>()
     override fun raScreenRows(label: String): List<RaScreenRow> = screens[label].orEmpty()
     override fun raGetSetting(key: String): RaSetting? = settings[key]
-    override fun raApply(key: String, value: MachineValue): MachineValue? {
+    override fun raApply(key: String, value: MachineValue, watch: Collection<String>): RaApplyResult? {
         setCalls.add(key to value.raw)
         val current = settings[key] ?: return null
-        if (refuseWrites) return current.machineValue
+        if (refuseWrites) return RaApplyResult(current.machineValue)
         settings[key] = current.copy(machineValue = value, displayValue = value.raw)
-        return value
+        return RaApplyResult(value)
     }
     override fun raSaveOverride(scope: RaOverrideScope, keys: Set<String>) { savedKeys.add(keys) }
     override fun shadowedSettings(): Map<String, String> = shadow

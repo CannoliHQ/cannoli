@@ -16,10 +16,23 @@ private class DiscardHost : RaSettingsHost {
 
     override fun raGetSetting(key: String): RaSetting? = settings[key]
     override fun raScreenRows(label: String): List<RaScreenRow> = screens[label].orEmpty()
-    override fun raApply(key: String, value: MachineValue): MachineValue? {
+    /**
+     * RetroArch runs the written setting's change handler, and a handler moves other settings.
+     * Keyed on what was written, so restoring the setting it moved does not move it straight back.
+     */
+    var changeHandler: ((String) -> Unit)? = null
+
+    fun force(key: String, value: String) {
+        settings[key] = settings[key]?.copy(machineValue = MachineValue(value), displayValue = value)
+            ?: return
+    }
+
+    override fun raApply(key: String, value: MachineValue, watch: Collection<String>): RaApplyResult? {
         setCalls.add(key to value.raw)
+        val before = watch.associateWith { settings[it]?.machineValue }
         settings[key] = settings[key]?.copy(machineValue = value, displayValue = value.raw) ?: return null
-        return value
+        changeHandler?.invoke(key)
+        return RaApplyResult(value, watch.filterTo(mutableSetOf()) { settings[it]?.machineValue != before[it] })
     }
     override fun raSaveOverride(scope: RaOverrideScope, keys: Set<String>) { savedKeys.add(keys) }
     val cannoliSaves = mutableListOf<Pair<RaOverrideScope, Set<String>>>()
@@ -103,7 +116,7 @@ class RaIgmSettingsDiscardTest {
         p.screen(listOf(SCREEN))
 
         p.markChangedExternally(setOf("input_overlay_enable"))
-        host.raApply("input_overlay_enable", MachineValue("true"))
+        host.raApply("input_overlay_enable", MachineValue("true"), emptyList())
 
         discard(p)
 
@@ -125,6 +138,43 @@ class RaIgmSettingsDiscardTest {
         assertEquals(RaOverrideScope.SYSTEM, scope)
         assertEquals(setOf("k"), changed)
         assertFalse(changed.contains("cannoli_overlay"))
+    }
+
+    // Found on a device: turning on black frame insertion made RetroArch rewrite the swap
+    // interval from its change handler, Discard put back only the key the user had touched, and
+    // the game was left running with a setting nobody chose and nobody could see they had changed.
+    @Test fun `discard puts back what a change handler moved, not just what was cycled`() {
+        val host = DiscardHost().apply {
+            put("bfi", "0", listOf(RaOption(MachineValue("0"), "OFF"), RaOption(MachineValue("1"), "ON")))
+            put("swap_interval", "1", listOf(RaOption(MachineValue("1"), "1"), RaOption(MachineValue("0"), "Auto")))
+        }
+        host.changeHandler = { if (it == "bfi") host.force("swap_interval", "0") }
+        val p = provider(host)
+        p.screen(listOf(SCREEN))
+        p.cycle("bfi", 1)
+        assertEquals("the handler moved it", "0", host.settings["swap_interval"]?.machineValue?.raw)
+
+        discard(p)
+
+        assertEquals("1", host.settings["swap_interval"]?.machineValue?.raw)
+        assertEquals("0", host.settings["bfi"]?.machineValue?.raw)
+    }
+
+    // A value RetroArch moved on its own is not a choice the player made, so saving must not
+    // record it as one.
+    @Test fun `a value a handler moved is not written into the override`() {
+        val host = DiscardHost().apply {
+            put("bfi", "0", listOf(RaOption(MachineValue("0"), "OFF"), RaOption(MachineValue("1"), "ON")))
+            put("swap_interval", "1", listOf(RaOption(MachineValue("1"), "1"), RaOption(MachineValue("0"), "Auto")))
+        }
+        host.changeHandler = { if (it == "bfi") host.force("swap_interval", "0") }
+        val p = provider(host)
+        p.screen(listOf(SCREEN))
+        p.cycle("bfi", 1)
+
+        (p.exitPrompt() as IgmSettingsExit.Prompt).choose(SaveAnswer.platform)
+
+        assertEquals(setOf("bfi"), host.savedKeys.single())
     }
 
     @Test fun `nothing changed means no prompt and nothing written`() {

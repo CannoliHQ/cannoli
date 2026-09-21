@@ -18,9 +18,9 @@ private class PortHost : RaSettingsHost {
     }
     override fun players(): List<PlayerSlot> = slots
     override fun raGetSetting(key: String): RaSetting? = null
-    override fun raApply(key: String, value: MachineValue): MachineValue {
+    override fun raApply(key: String, value: MachineValue, watch: Collection<String>): RaApplyResult {
         rawWrites += key
-        return value
+        return RaApplyResult(value)
     }
     override fun raSaveOverride(scope: RaOverrideScope, keys: Set<String>) { savedKeys += keys }
 }

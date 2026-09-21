@@ -18,6 +18,7 @@ import dev.cannoli.igm.RemapButton
 import dev.cannoli.igm.RetroArchBridge
 import dev.cannoli.igm.RaOverrideScope
 import dev.cannoli.igm.MachineValue
+import dev.cannoli.igm.RaApplyResult
 import dev.cannoli.igm.RaOption
 import dev.cannoli.igm.RaSetting
 import dev.cannoli.igm.RaSettingType
@@ -603,7 +604,31 @@ class EmbeddedRetroArchBridge(
         return names
     }
 
+    /**
+     * What a setting is, as opposed to what it holds.
+     *
+     * Kept because building one is the expensive half: a combobox's labels come from walking its
+     * whole range and asking RetroArch to render each candidate. What it holds is then a cheap
+     * read, so a screen can be re-read on every render instead of remembered.
+     *
+     * Thrown away whenever a value lands, because RetroArch decides some ranges from other
+     * settings: black frame insertion's maximum follows the refresh rate. Writes happen on a
+     * keypress and reads happen on every render, so paying for a rebuild per write is the right
+     * way round.
+     */
+    private val described = java.util.concurrent.ConcurrentHashMap<String, RaSetting>()
+
     override fun raGetSetting(key: String): RaSetting? {
+        val shape = described[key] ?: describe(key)?.also { described[key] = it } ?: return null
+        val now = nativeRaValue(key)?.split('') ?: return null
+        val machine = now.firstOrNull() ?: return null
+        return shape.copy(
+            machineValue = MachineValue(machine),
+            displayValue = now.getOrNull(1)?.takeIf { it.isNotEmpty() } ?: machine,
+        )
+    }
+
+    private fun describe(key: String): RaSetting? {
         val fields = nativeRaGetSetting(key)?.asFields() ?: return null
         val machine = fields["machine"] ?: return null
         val type = when (fields["type"]) {
@@ -654,9 +679,25 @@ class EmbeddedRetroArchBridge(
      */
     private val applyLock = Any()
 
-    override fun raApply(key: String, value: MachineValue): MachineValue? =
-        synchronized(applyLock) { nativeRaApply(key, value.raw, APPLY_TIMEOUT_MS) }
-            ?.let(::MachineValue)
+    /**
+     * The moved set is worked out here rather than in the native, by reading the watched keys on
+     * both sides of the apply. That is only affordable because a value read is now cheap, and it
+     * keeps a list of keys out of the command queue for an answer two loops over a map can give.
+     */
+    override fun raApply(
+        key: String,
+        value: MachineValue,
+        watch: Collection<String>,
+    ): RaApplyResult? {
+        val before = watch.filterNot { it == key }.associateWith { rawValue(it) }
+        val applied = synchronized(applyLock) { nativeRaApply(key, value.raw, APPLY_TIMEOUT_MS) }
+        described.clear()
+        if (applied == null) return null
+        val moved = before.keys.filterTo(mutableSetOf()) { rawValue(it) != before[it] }
+        return RaApplyResult(MachineValue(applied), moved)
+    }
+
+    private fun rawValue(key: String): String? = nativeRaValue(key)?.substringBefore('')
 
     override fun coreGeometry(): IntArray? = nativeCoreGeometry()
 
@@ -1119,6 +1160,9 @@ class EmbeddedRetroArchBridge(
 
     @Suppress("unused")
     fun onRaSettingApplied(key: String, value: String) {
+        // Anything that writes reaches here, including the viewport controller's own writes, so
+        // this is where a description built against the old value stops being trusted.
+        described.clear()
         mainHandler.post { onRaApplied?.invoke(key, value) }
     }
 
@@ -1190,6 +1234,7 @@ class EmbeddedRetroArchBridge(
     private external fun nativeCheatApply()
     private external fun nativeCheatHardcoreActive(): Boolean
     private external fun nativeRaGetSetting(key: String): Array<String>?
+    private external fun nativeRaValue(key: String): String?
     private external fun nativeRaSetSetting(key: String, value: String): Boolean
     private external fun nativeRaApply(key: String, value: String, timeoutMs: Int): String?
     private external fun nativeSetShaderPreset(path: String)

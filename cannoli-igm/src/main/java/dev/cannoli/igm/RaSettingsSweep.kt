@@ -84,7 +84,7 @@ class RaSettingsSweep(private val host: RaSettingsHost) {
         val asked = RaValueCycler.next(before, 1)?.takeIf { it != from }
             ?: return Row(key, Outcome.SKIPPED_UNCHANGEABLE)
 
-        val got = host.raApply(key, asked)
+        val got = host.raApply(key, asked)?.value
             ?: return Row(key, Outcome.UNANSWERED, from.raw, asked.raw, null)
 
         val outcome = when (got) {
@@ -94,7 +94,7 @@ class RaSettingsSweep(private val host: RaSettingsHost) {
         }
         if (outcome == Outcome.REFUSED) return Row(key, outcome, from.raw, asked.raw, got.raw)
 
-        val restored = host.raApply(key, from)
+        val restored = host.raApply(key, from)?.value
         if (restored != from) return Row(key, Outcome.RESTORE_FAILED, from.raw, asked.raw, restored?.raw)
         return Row(key, outcome, from.raw, asked.raw, got.raw)
     }

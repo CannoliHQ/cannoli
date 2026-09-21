@@ -31,16 +31,16 @@ private class SweepHost(
         )
     }
 
-    override fun raApply(key: String, value: MachineValue): MachineValue? {
+    override fun raApply(key: String, value: MachineValue, watch: Collection<String>): RaApplyResult? {
         writes += key to value.raw
         val held = values[key] ?: return null
-        if (key in refuse) return MachineValue(held)
+        if (key in refuse) return RaApplyResult(MachineValue(held))
         // A restore is the write that puts the original back, and a host that clamps an
         // out-of-range value does not clamp the value it already held.
         val restoring = value.raw == original[key]
-        if (restoring && key in refuseRestore) return MachineValue(held)
+        if (restoring && key in refuseRestore) return RaApplyResult(MachineValue(held))
         values[key] = if (restoring) value.raw else clampTo[key] ?: value.raw
-        return MachineValue(values.getValue(key))
+        return RaApplyResult(MachineValue(values.getValue(key)))
     }
 
     override fun raSaveOverride(scope: RaOverrideScope, keys: Set<String>) {}
@@ -100,7 +100,7 @@ class RaSettingsSweepTest {
     // and reporting that as a lying row would be the sweep itself lying.
     @Test fun `a write the host never answers is its own outcome`() {
         val host = object : RaSettingsHost by SweepHost(mapOf("a" to "false")) {
-            override fun raApply(key: String, value: MachineValue): MachineValue? = null
+            override fun raApply(key: String, value: MachineValue, watch: Collection<String>): RaApplyResult? = null
         }
         assertEquals(RaSettingsSweep.Outcome.UNANSWERED, sweep(host).run(listOf("a")).rows.single().outcome)
     }

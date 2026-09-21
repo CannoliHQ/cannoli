@@ -2617,6 +2617,55 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeIsPaused(
    return (flags & RUNLOOP_FLAG_PAUSED) ? JNI_TRUE : JNI_FALSE;
 }
 
+/* What a setting holds right now, and nothing else: the machine value and the text RetroArch
+ * renders for it, tab separated.
+ *
+ * Describing a setting is what costs: building a combobox's labels walks its whole range, writing
+ * the live value once per candidate so RetroArch's own repr can render each one. That is fine once
+ * per key, and ruinous on every render of every row. None of it is needed to answer what the value
+ * is now, so this reads and never writes, which also means the runloop cannot sample a candidate
+ * value that was only ever meant to produce a label. */
+JNIEXPORT jstring JNICALL
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeRaValue(
+      JNIEnv *env, jobject obj, jstring jkey)
+{
+   const char *key;
+   rarch_setting_t *s;
+   char raw[512];
+   char shown[512];
+   char joined[1040];
+
+   (void)obj;
+
+   key = (*env)->GetStringUTFChars(env, jkey, NULL);
+   if (!key)
+      return NULL;
+
+   if (!strncmp(key, RICOTTA_CORE_OPT_PREFIX, strlen(RICOTTA_CORE_OPT_PREFIX)))
+   {
+      const char *v = ricotta_core_opt_value(key + strlen(RICOTTA_CORE_OPT_PREFIX));
+      (*env)->ReleaseStringUTFChars(env, jkey, key);
+      if (!v)
+         return NULL;
+      /* A core option's machine value is its own label, the same as describe reports. */
+      snprintf(joined, sizeof(joined), "%s\x1f%s", v, v);
+      return (*env)->NewStringUTF(env, joined);
+   }
+
+   s = ricotta_ra_find(key);
+   (*env)->ReleaseStringUTFChars(env, jkey, key);
+   if (!s)
+      return NULL;
+   if (s->actions->read)
+      s->actions->read(s);
+   if (!ricotta_ra_format_raw_value(s, raw, sizeof(raw)))
+      return NULL;
+   if (!ricotta_ra_format_value(s, shown, sizeof(shown)))
+      strlcpy(shown, raw, sizeof(shown));
+   snprintf(joined, sizeof(joined), "%s\x1f%s", raw, shown);
+   return (*env)->NewStringUTF(env, joined);
+}
+
 JNIEXPORT jobjectArray JNICALL
 Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeRaGetSetting(
       JNIEnv *env, jobject obj, jstring jkey)

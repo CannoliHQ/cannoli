@@ -17,6 +17,16 @@ value class MachineValue(val raw: String)
 data class RaOption(val machine: MachineValue, val display: String)
 
 /**
+ * What RetroArch did with a write: the value it settled on, and the other keys it moved on its own.
+ *
+ * [moved] is how the menu learns about collateral. Enabling black frame insertion rewrites the swap
+ * interval from its change handler, and nobody asked for that, so nobody would think to put it back
+ * either. It is reported rather than inferred because only a read on both sides of the apply can
+ * tell a value RetroArch changed from one that was always that way.
+ */
+data class RaApplyResult(val value: MachineValue, val moved: Set<String> = emptySet())
+
+/**
  * [machineValue] is authoritative and [displayValue] is for rendering only.
  *
  * They differ for anything RetroArch renders through get_string_representation: aspect_ratio_index

@@ -25,10 +25,17 @@ interface RaSettingsHost {
      * setting's neighbours from its change handlers. The value it chose is the only one worth
      * rendering, and a caller that waits for it never has to predict one.
      *
+     * [watch] are keys to report back in [RaApplyResult.moved] if the write moved them as well.
+     * Pass what is on screen: the answer is only as complete as the question.
+     *
      * Null when the key resolves to nothing, or when the emulator did not answer in time. Neither
      * is a value, and a row with nothing to show reads through [raGetSetting] like any other.
      */
-    fun raApply(key: String, value: MachineValue): MachineValue?
+    fun raApply(
+        key: String,
+        value: MachineValue,
+        watch: Collection<String> = emptyList(),
+    ): RaApplyResult?
 
     fun raSaveOverride(scope: RaOverrideScope, keys: Set<String>)
 

@@ -113,15 +113,10 @@ class RaIgmSettingsProvider(
     /** What Discard puts back, so it is the machine value and cannot be anything else. */
     private val priorValues = mutableMapOf<String, MachineValue>()
 
-    // The rows of the screen being shown, read from the host when the screen is entered and again
-    // after every write. Nothing here is predicted: a value the host was never asked for cannot
-    // reach a row, which is what the whole read-write-read shape buys.
-    //
-    // They are held rather than re-read on every render because a read is expensive: RetroArch
-    // renders a combobox's labels by setting the live value to each candidate in turn, so reading
-    // a screen of them on every D-pad press would walk the running game's settings hundreds of
-    // times a second.
-    private var currentCategory: String? = null
+    // The rows of the screen being shown, read from the host on every render rather than
+    // remembered. Nothing here is predicted or kept: a value the host was never asked for cannot
+    // reach a row, and a value something else changed cannot go unnoticed. Held between renders
+    // only so cycle() has the rich RaSetting that the row it is given does not carry.
     private var currentSettings: List<RaSetting> = emptyList()
 
     override fun setOnChanged(callback: () -> Unit) { onChanged = callback }
@@ -523,6 +518,14 @@ class RaIgmSettingsProvider(
 
     private fun curatedTitle(key: String) = strings.curatedCategoryTitles[key] ?: key
 
+    // Every key the rows beside this one own, so a preset that moves one of them is noticed. The
+    // rest of the category rather than the whole menu: a curated screen is what is on screen.
+    private fun curatedScreenKeys(row: CuratedCatalog.Row): Set<String> =
+        CuratedCatalog.categories
+            .firstOrNull { cat -> cat.rows.any { it.key == row.key } }
+            ?.let { cat -> reachableRows(cat).flatMapTo(mutableSetOf()) { it.settingKeys } }
+            ?: row.settingKeys
+
     // A shadowed key holds the value Cannoli overwrote it with rather than the user's choice, so
     // it is read from the shadow instead of the live host.
     private fun valuesFor(row: CuratedCatalog.Row): Map<String, String> {
@@ -534,13 +537,17 @@ class RaIgmSettingsProvider(
 
     private fun cycleCurated(row: CuratedCatalog.Row, direction: Int) {
         val preset = CuratedCatalog.nextPreset(row, valuesFor(row), direction)
+        val onScreen = curatedScreenKeys(row).associateWith { key ->
+            host.raGetSetting(key)?.machineValue ?: MachineValue("")
+        }
         var wrote = false
         // A key RetroArch does not expose answers with nothing, which is the same skip the
         // reachability rule that let this row exist without it already performs.
         for ((key, value) in preset.values) {
             snapshot(key)
-            if (host.raApply(key, MachineValue(value)) == null) continue
+            val applied = host.raApply(key, MachineValue(value), onScreen.keys) ?: continue
             changedKeys.add(key)
+            rememberCollateral(applied.moved - preset.values.keys, onScreen)
             wrote = true
         }
         if (wrote) {
@@ -562,18 +569,13 @@ class RaIgmSettingsProvider(
             )
         }
         val wanted = if (categoryKey == null) options else options.filter { it.categoryKey == categoryKey }
-        // Reload only on a change of screen. screen() runs on every render, and a write is queued
-        // onto the emulator thread, so reloading each time read the old value straight back over
-        // the row the user had just changed.
-        val cacheKey = if (categoryKey == null) EMULATOR_CATEGORY else "$EMULATOR_CATEGORY/$categoryKey"
-        if (cacheKey != currentCategory) loadCoreOptions(wanted, cacheKey)
+        loadCoreOptions(wanted)
         val title = cats.firstOrNull { it.categoryKey == categoryKey }?.categoryLabel
             ?: strings.emulator
         return GenericIgmSettingsScreen(title, currentSettings.map(::rowFor))
     }
 
-    private fun loadCoreOptions(refs: List<CoreOptionRef>, cacheKey: String) {
-        currentCategory = cacheKey
+    private fun loadCoreOptions(refs: List<CoreOptionRef>) {
         currentSettings = refs.mapNotNull { host.raGetSetting(it.key)?.let(::withRestartHint) }
     }
 
@@ -623,7 +625,7 @@ class RaIgmSettingsProvider(
             .filterNot { it.key in HIDDEN_SCREENS || it.key in HIDDEN_KEYS }
         rows.filter { it.isMenu }.forEach { screenTitles[it.key] = it.label }
         val promoted = PROMOTED_KEYS[label].orEmpty()
-        loadKeys(rows.filterNot { it.isMenu }.map { it.key } + promoted, "ra/$label")
+        loadKeys(rows.filterNot { it.isMenu }.map { it.key } + promoted)
         // Walked in RetroArch's order rather than settings-then-submenus, because the order is part
         // of what we are deferring to it.
         return rows.mapNotNull { row ->
@@ -632,21 +634,12 @@ class RaIgmSettingsProvider(
         } + promoted.mapNotNull { key -> currentSettings.firstOrNull { it.key == key }?.let(::rowFor) }
     }
 
-    // Cache key is the RetroArch screen, so a parent and a child never share a slot and moving
-    // between them reloads rather than showing the other's rows.
-    //
-    // The key list is part of the cache identity, not just the screen: RetroArch's rows are
-    // conditional, so setting aspect_ratio_index to Config reveals video_aspect_ratio on a screen
-    // we are already standing on. Keying only on the screen left those rows out of currentSettings
-    // and mapNotNull then dropped them, so a row RetroArch had just revealed never appeared.
-    private fun loadKeys(keys: List<String>, cacheKey: String) {
-        if (cacheKey == currentCategory && keys == currentKeys) return
-        currentCategory = cacheKey
-        currentKeys = keys
+    // Read every time. A read costs one value lookup now that the host keeps the descriptions, so
+    // the rows are a projection of what RetroArch holds rather than a copy of it, and a value
+    // something else changed shows up without anyone having to know it happened.
+    private fun loadKeys(keys: List<String>) {
         currentSettings = keys.mapNotNull { key -> host.raGetSetting(key)?.let(::withRestartHint) }
     }
-
-    private var currentKeys: List<String> = emptyList()
 
     private fun rowFor(s: RaSetting) = GenericIgmSettingsItem.Choice(
         key = s.key,
@@ -666,17 +659,36 @@ class RaIgmSettingsProvider(
         CuratedCatalog.rowFor(itemKey)?.let { return cycleCurated(it, direction) }
         // Before the RetroArch lookup: this screen never populates currentSettings.
         if (!curated && cyclePipeline(itemKey, direction)) return
-        val s = currentSettings.firstOrNull { it.key == itemKey } ?: return
+        // The held row says the key is on this screen; the value to step from is read now. Two
+        // presses arriving without a render between them would otherwise both step from the same
+        // value, and the second would write what the first already did.
+        val onRow = currentSettings.firstOrNull { it.key == itemKey } ?: return
+        val s = host.raGetSetting(onRow.key)?.let(::withRestartHint) ?: return
         val newValue = RaValueCycler.next(s, direction) ?: return
         if (newValue == s.machineValue) return
         snapshot(s.key)
+        val onScreen = currentSettings.associate { it.key to it.machineValue }
         // Null is a key RetroArch does not have, or one it did not answer for. Neither is a
         // change, and neither is something to put in the save prompt.
-        if (host.raApply(s.key, newValue) == null) return
+        val applied = host.raApply(s.key, newValue, onScreen.keys) ?: return
         dirty = true
         changedKeys.add(s.key)
-        refreshRows()
+        rememberCollateral(applied.moved, onScreen)
         onChanged?.invoke()
+    }
+
+    /**
+     * Records what a change handler moved, so Discard can put those back too.
+     *
+     * Only into [priorValues], never into the changed set: Discard owes the player the game they
+     * came in with, while a save owes them the choices they made, and a value RetroArch moved on
+     * its own is neither of those. Writing it into an override would save a decision nobody took.
+     */
+    private fun rememberCollateral(moved: Set<String>, before: Map<String, MachineValue>) {
+        for (key in moved) {
+            val was = before[key] ?: continue
+            if (!priorValues.containsKey(key)) priorValues[key] = was
+        }
     }
 
     // One row per player holding a pad, or one row for Player 1 with at most one pad. Read on every
@@ -707,16 +719,6 @@ class RaIgmSettingsProvider(
         dirty = true
         changedKeys.add(key)
         onChanged?.invoke()
-    }
-
-    // Every row, not just the one that was written: a change handler moves its neighbours, so
-    // setting sub frame shaders zeroes black frame insertion and the swap interval. A row
-    // RetroArch has stopped exposing keeps what it last held until the next render drops it,
-    // which is where the screen's list of rows is decided.
-    private fun refreshRows() {
-        currentSettings = currentSettings.map { row ->
-            host.raGetSetting(row.key)?.let(::withRestartHint) ?: row
-        }
     }
 
     /** Whether the chain has been edited since it was last compiled. */
@@ -902,7 +904,6 @@ class RaIgmSettingsProvider(
             }
             host.raApply(key, value)
         }
-        refreshRows()
         onChanged?.invoke()
     }
 
