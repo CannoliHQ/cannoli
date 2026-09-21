@@ -1,6 +1,10 @@
 #ifndef RICOTTA_OSD_H
 #define RICOTTA_OSD_H
 
+/* This lands before anything else in every translation unit, so it can assume nothing is
+ * declared yet. stddef.h is freestanding and safe to include from both C and C++. */
+#include <stddef.h>
+
 /* Force-included into every RetroArch translation unit by Android.mk, which includes the C++ ones
  * such as griffin_cpp.cpp. Without this the declaration would get C++ linkage there and fail to
  * link against the C definition in ricotta_bridge.c. */
@@ -40,6 +44,19 @@ void ricotta_osd_event(int type, int slot);
 /* How a game's achievements settled, reported as facts for Cannoli to word.
  * outcome: 0 loaded, 1 unrecognised, 2 no achievements published, 3 could not be fetched. */
 void ricotta_osd_cheevos_load(int outcome, int unlocked, int total);
+
+/* An achievement was just earned. Cannoli draws the pill RetroArch would have drawn. */
+void ricotta_osd_achievement(const char *title);
+
+/* Achievement progress carried by a save state, held until the set it belongs to arrives.
+ *
+ * Three call sites in three files: tasks/task_save.c stashes the block rc_client refused,
+ * cheevos/cheevos.c applies it once the game load finishes and forgets it on unload. Declared
+ * here rather than in each patch, so a signature that drifted between them fails to build
+ * instead of linking and misbehaving. */
+void ricotta_cheevos_stash_progress(const void *buffer, size_t size);
+void ricotta_cheevos_apply_pending_progress(void);
+void ricotta_cheevos_forget_progress(void);
 
 /* The save notification is deferred until the thumbnail it names exists on disk. task_save latches
  * it before queueing the screenshot; the screenshot task raises it once the PNG is written. That

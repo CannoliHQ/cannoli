@@ -3253,6 +3253,86 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeCheatHardcoreActive(
 #endif
 }
 
+/* Achievement progress carried by a save state, held until the set it belongs to arrives.
+ *
+ * A state applied before the set has arrived is every resumed launch: the load is local and the
+ * set is a network round trip, so rc_client refuses the block and nothing revisits it, silently
+ * restarting whatever the save had accumulated. cheevos.c hands it here on the refusal and asks
+ * for it back once the game load finishes.
+ *
+ * Here rather than in cheevos.c so the lock can be a plain static mutex, the way everything else
+ * in this file is, and so the patch on the file upstream churns most is two calls instead of
+ * eighty lines. The state load that stashes and the game load that applies are different threads
+ * and either can free the buffer, so taking it has to be indivisible. */
+static uint8_t        *g_pending_progress      = NULL;
+static size_t          g_pending_progress_size = 0;
+static pthread_mutex_t g_progress_mutex        = PTHREAD_MUTEX_INITIALIZER;
+
+/* Caller holds g_progress_mutex. */
+static void ricotta_drop_progress_locked(void)
+{
+   free(g_pending_progress);
+   g_pending_progress      = NULL;
+   g_pending_progress_size = 0;
+}
+
+void ricotta_cheevos_forget_progress(void)
+{
+   pthread_mutex_lock(&g_progress_mutex);
+   ricotta_drop_progress_locked();
+   pthread_mutex_unlock(&g_progress_mutex);
+}
+
+void ricotta_cheevos_stash_progress(const void *buffer, size_t size)
+{
+   /* cheevos.c asks rc_client the same question through a static wrapper of its own. Asked
+    * directly here so this does not need a function that file keeps to itself. */
+   rcheevos_locals_t *locals = get_rcheevos_locals();
+   const int game_loaded     = locals && rc_client_is_game_loaded(locals->client);
+   uint8_t *copy             = NULL;
+
+   /* Refused with a game already loaded is a real deserialize failure rather than an ordering
+    * problem, and holding that for later would answer a question nobody asked. */
+   if (!game_loaded && buffer && size > 0)
+   {
+      /* Copied outside the lock: a savestate block's malloc and memcpy have no business running
+       * with the apply side waiting behind them. */
+      if ((copy = (uint8_t*)malloc(size)))
+         memcpy(copy, buffer, size);
+   }
+
+   pthread_mutex_lock(&g_progress_mutex);
+   ricotta_drop_progress_locked();
+   g_pending_progress      = copy;
+   g_pending_progress_size = copy ? size : 0;
+   pthread_mutex_unlock(&g_progress_mutex);
+}
+
+void ricotta_cheevos_apply_pending_progress(void)
+{
+   rcheevos_locals_t *locals;
+   uint8_t           *progress;
+   size_t             size;
+
+   /* Taken under the lock, so exactly one caller leaves holding the buffer and owns freeing it. */
+   pthread_mutex_lock(&g_progress_mutex);
+   progress                = g_pending_progress;
+   size                    = g_pending_progress_size;
+   g_pending_progress      = NULL;
+   g_pending_progress_size = 0;
+   pthread_mutex_unlock(&g_progress_mutex);
+
+   if (!progress)
+      return;
+
+   /* Softcore only. Hardcore's relationship with save states is RetroArch's own. */
+   locals = get_rcheevos_locals();
+   if (locals && locals->client && !rcheevos_hardcore_active())
+      rc_client_deserialize_progress_sized(locals->client, progress, size);
+
+   free(progress);
+}
+
 /* Called from RetroArch source sites (HAVE_RICOTTA_OSD) when Cannoli owns an
  * event, with structured data. type: 0 save, 1 load, 4 undo-save. slot: RetroArch
  * state_slot (< 0 = auto). */
