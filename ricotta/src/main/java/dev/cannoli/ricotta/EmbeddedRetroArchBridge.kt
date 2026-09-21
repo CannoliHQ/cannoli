@@ -643,9 +643,20 @@ class EmbeddedRetroArchBridge(
     }
 
     // False means the key resolves to nothing, so the write was never queued. The apply itself is
-    // asynchronous and its outcome arrives later through the applied echo.
-    override fun raSetSetting(key: String, value: MachineValue): Boolean =
+    // asynchronous: this is the bridge's own fire-and-forget write, for the handful of settings it
+    // owns rather than shows. Anything the menu writes goes through raApply and waits.
+    private fun raSetSetting(key: String, value: MachineValue): Boolean =
         nativeRaSetSetting(key, value.raw)
+
+    /**
+     * Serialises the waits: the native holds one result slot, and a second caller landing in it
+     * while the first is parked would hand one of them the other's answer.
+     */
+    private val applyLock = Any()
+
+    override fun raApply(key: String, value: MachineValue): MachineValue? =
+        synchronized(applyLock) { nativeRaApply(key, value.raw, APPLY_TIMEOUT_MS) }
+            ?.let(::MachineValue)
 
     override fun coreGeometry(): IntArray? = nativeCoreGeometry()
 
@@ -1093,30 +1104,22 @@ class EmbeddedRetroArchBridge(
         nativeRaSaveOverride(encoded, encodeOverrideKeys(keys))
     }
 
-    private var onRaAppliedCallback: ((String, String) -> Unit)? = null
-
-    override fun setOnRaSettingApplied(callback: (key: String, value: String) -> Unit) {
-        onRaAppliedCallback = callback
-    }
-
     /**
-     * A second listener for the same echo, owned by this process rather than by the in-game menu.
-     * setOnRaSettingApplied is a single slot the IGM's settings provider claims, and the viewport
-     * needs the same signal for a different reason, so it gets its own rather than the two
-     * contending for one.
+     * Told that a setting changed, with RetroArch's display text for it.
+     *
+     * One listener, and the viewport controller is it. The menu used to claim the same slot to
+     * learn when its own writes landed, which made correctness a question of who registered last;
+     * it waits on [raApply] instead and no longer listens at all.
      */
-    private var onRaAppliedLocal: ((String, String) -> Unit)? = null
+    private var onRaApplied: ((String, String) -> Unit)? = null
 
-    fun setOnRaSettingAppliedLocal(callback: ((key: String, value: String) -> Unit)?) {
-        onRaAppliedLocal = callback
+    fun setOnRaSettingApplied(callback: ((key: String, value: String) -> Unit)?) {
+        onRaApplied = callback
     }
 
     @Suppress("unused")
     fun onRaSettingApplied(key: String, value: String) {
-        mainHandler.post {
-            onRaAppliedCallback?.invoke(key, value)
-            onRaAppliedLocal?.invoke(key, value)
-        }
+        mainHandler.post { onRaApplied?.invoke(key, value) }
     }
 
     private var onCheatsLoadedCallback: ((List<RetroArchBridge.CheatRow>) -> Unit)? = null
@@ -1188,6 +1191,7 @@ class EmbeddedRetroArchBridge(
     private external fun nativeCheatHardcoreActive(): Boolean
     private external fun nativeRaGetSetting(key: String): Array<String>?
     private external fun nativeRaSetSetting(key: String, value: String): Boolean
+    private external fun nativeRaApply(key: String, value: String, timeoutMs: Int): String?
     private external fun nativeSetShaderPreset(path: String)
 
     private external fun nativeRaSaveOverride(scope: Int, keys: String)
@@ -1207,6 +1211,15 @@ class EmbeddedRetroArchBridge(
          * offer the working copy of the thing you are currently editing as something to load.
          */
         private const val WORKING_CHAIN = ".cannoli_chain"
+
+        /**
+         * How long a write waits for the runloop before the menu carries on without it.
+         *
+         * A write lands on the next runloop iteration, so the wait is normally under a frame. The
+         * budget is long enough to cover a change handler that reinitialises a driver and short
+         * enough that a core which has stopped turning does not read as a frozen menu.
+         */
+        private const val APPLY_TIMEOUT_MS = 500
 
         const val KEY_OVERLAY = OverrideTiers.KEY_OVERLAY
         const val KEY_SHADER = OverrideTiers.KEY_SHADER

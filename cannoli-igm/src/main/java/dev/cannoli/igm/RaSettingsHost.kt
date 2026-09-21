@@ -17,7 +17,19 @@ interface RaSettingsHost {
     fun players(): List<PlayerSlot> = emptyList()
 
     fun raGetSetting(key: String): RaSetting?
-    fun raSetSetting(key: String, value: MachineValue): Boolean
+
+    /**
+     * Writes [value] and returns once RetroArch has, answering with what it holds afterwards.
+     *
+     * Not always what was asked for: RetroArch clamps values, refuses them, and rewrites a
+     * setting's neighbours from its change handlers. The value it chose is the only one worth
+     * rendering, and a caller that waits for it never has to predict one.
+     *
+     * Null when the key resolves to nothing, or when the emulator did not answer in time. Neither
+     * is a value, and a row with nothing to show reads through [raGetSetting] like any other.
+     */
+    fun raApply(key: String, value: MachineValue): MachineValue?
+
     fun raSaveOverride(scope: RaOverrideScope, keys: Set<String>)
 
     /**
@@ -133,5 +145,4 @@ interface RaSettingsHost {
 
     /** One RetroArch settings screen. An empty label is the root. */
     fun raScreenRows(label: String): List<RaScreenRow> = emptyList()
-    fun setOnRaSettingApplied(callback: (key: String, value: String) -> Unit)
 }

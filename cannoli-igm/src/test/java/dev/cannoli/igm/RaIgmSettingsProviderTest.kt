@@ -11,32 +11,31 @@ private class FakeRaHost : RaSettingsHost {
     val setCalls = mutableListOf<Pair<String, String>>()
     val savedScopes = mutableListOf<RaOverrideScope>()
     val savedKeys = mutableListOf<Set<String>>()
-    private var appliedCb: ((String, String) -> Unit)? = null
     val screens = mutableMapOf<String, List<RaScreenRow>>()
 
     override fun raGetSetting(key: String): RaSetting? = settings[key]
     override fun raScreenRows(label: String): List<RaScreenRow> = screens[label].orEmpty()
-    // Mirrors the native contract: false means the key resolves to nothing, so nothing was queued.
+    // Mirrors the native contract: null means the key resolves to nothing, so nothing was written.
     var setSucceeds = true
-    override fun raSetSetting(key: String, value: MachineValue): Boolean {
+
+    /** RetroArch runs a setting's change handler on the write, and handlers move other settings. */
+    var changeHandler: ((String) -> Unit)? = null
+
+    override fun raApply(key: String, value: MachineValue): MachineValue? {
         setCalls.add(key to value.raw)
-        if (!setSucceeds) return false
-        // A write that succeeds changes what a read returns, which is what makes the applied echo
-        // meaningful: it says something changed, and the value is read back rather than carried.
-        settings[key]?.let {
-            settings[key] = it.copy(
-                machineValue = value,
-                displayValue = it.options?.firstOrNull { o -> o.machine == value }?.display ?: value.raw,
-            )
-        }
-        return true
+        if (!setSucceeds) return null
+        val current = settings[key] ?: return null
+        settings[key] = current.copy(
+            machineValue = value,
+            displayValue = current.options?.firstOrNull { o -> o.machine == value }?.display ?: value.raw,
+        )
+        changeHandler?.invoke(key)
+        return settings[key]?.machineValue
     }
     override fun raSaveOverride(scope: RaOverrideScope, keys: Set<String>) {
         savedScopes.add(scope)
         savedKeys.add(keys)
     }
-    override fun setOnRaSettingApplied(callback: (String, String) -> Unit) { appliedCb = callback }
-    fun fireApplied(key: String, value: String) { appliedCb?.invoke(key, value) }
 
     /** Presets the browser can hand back, by the path the provider will ask for. */
     val presetFiles = mutableMapOf<String, String>()
@@ -173,8 +172,8 @@ class RaIgmSettingsProviderTest {
         )
     }
 
-    // A reload must not re-read a key that was just cycled: raSetSetting is asynchronous, so the
-    // host still reports the old value and the row would flick back.
+    // A revealed row makes the screen re-read every key on it, and the value just written has to
+    // survive that. It does because the write already landed: nothing here is waiting on a queue.
     @Test
     fun `revealing a row keeps the value just set on its neighbour`() {
         val h = host()
@@ -195,37 +194,52 @@ class RaIgmSettingsProviderTest {
         assertEquals(listOf("run_ahead_hide_warnings", "run_ahead_frames"), rows.map { it.key })
     }
 
+    // Something moved it behind the menu's back. Reading every row on every render would cost a
+    // walk of the running game's settings per keypress, so the screen picks it up on the way in.
     @Test
-    fun `an external apply echo updates the displayed value`() {
+    fun `a value that moved behind the menu shows on the next visit to the screen`() {
         val h = host()
         val p = provider(h)
         p.screen(listOf(LATENCY))
-        // Something outside the menu moved it. The echo is the signal; the value is read back.
         h.settings["run_ahead_frames"] = h.settings["run_ahead_frames"]!!
             .copy(machineValue = MachineValue("3"), displayValue = "3")
-        h.fireApplied("run_ahead_frames", "3")
+
+        p.screen(emptyList())
         assertEquals("3",
             p.screen(listOf(LATENCY)).items.filterIsInstance<GenericIgmSettingsItem.Choice>()
                 .first { it.key == "run_ahead_frames" }.value)
     }
 
+    // The row is what RetroArch says it is afterwards, never the value the menu asked for. They
+    // differ for everything RetroArch renders through its own repr.
     @Test
-    fun `our own apply echo does not write the value back or restage it`() {
+    fun `a cycle shows the text RetroArch renders, not the value it was asked for`() {
         val h = host()
+        h.settings["aspect_ratio_index"] = RaSetting(
+            key = "aspect_ratio_index",
+            label = "Aspect Ratio",
+            type = RaSettingType.ENUM,
+            machineValue = MachineValue("21"),
+            displayValue = "16:9",
+            options = listOf(
+                RaOption(MachineValue("21"), "16:9"),
+                RaOption(MachineValue("22"), "Core Provided"),
+            ),
+        )
+        h.screens[LATENCY] = listOf(RaScreenRow("aspect_ratio_index", "Aspect Ratio", isMenu = false))
         val p = provider(h)
         p.screen(listOf(LATENCY))
-        p.cycle("run_ahead_frames", 1)
-        val row = p.screen(listOf(LATENCY)).items.first { it.key == "run_ahead_frames" }
 
-        h.fireApplied("run_ahead_frames", "2")
+        p.cycle("aspect_ratio_index", 1)
 
-        // The echo carries the display value, which is translated label text for some rows, so it
-        // must never be stored. It may re-render: RetroArch decides the row list from the value.
-        assertEquals(row, p.screen(listOf(LATENCY)).items.first { it.key == "run_ahead_frames" })
+        val row = p.screen(listOf(LATENCY)).items.filterIsInstance<GenericIgmSettingsItem.Choice>()
+            .first { it.key == "aspect_ratio_index" }
+        assertEquals("Core Provided", row.value)
+        assertEquals(listOf("aspect_ratio_index" to "22"), h.setCalls)
     }
 
-    // A write the native side could not queue must not be recorded as a change, or exiting prompts
-    // to save something that never happened and the override comes out without it.
+    // A write that reached no setting must not be recorded as a change, or exiting prompts to save
+    // something that never happened and the override comes out without it.
     @Test
     fun `a write that never queued leaves the menu clean`() {
         val h = host()
@@ -430,12 +444,12 @@ class RaIgmSettingsProviderTest {
     // The enable flag is not a row: turning shaders off is what an empty chain means, and a second
     // way to say it is a second thing to disagree with the first.
     /**
-     * RetroArch decides which rows a screen has from the values on it, so a setting landing has to
-     * re-render even when its value is exactly what cycling predicted. Black frame insertion and
-     * sub-frame shaders both reveal rows, and without this they arrive a keypress late.
+     * RetroArch decides which rows a screen has from the values on it, so a write has to re-render
+     * even when it landed on exactly the value asked for. Black frame insertion and sub-frame
+     * shaders both reveal rows, and without this they arrive a keypress late.
      */
     @Test
-    fun `a setting landing re-renders even when its value was predicted`() {
+    fun `a write re-renders even when it landed on the value asked for`() {
         val h = host()
         val p = provider(h)
         var renders = 0
@@ -443,10 +457,8 @@ class RaIgmSettingsProviderTest {
         p.screen(listOf(LATENCY))
 
         p.cycle("run_ahead_frames", 1)
-        val afterCycle = renders
-        h.fireApplied("run_ahead_frames", h.settings["run_ahead_frames"]!!.machineValue.raw)
 
-        assertTrue("the echo must trigger a render", renders > afterCycle)
+        assertTrue("the write must trigger a render", renders > 0)
     }
 
     /**
@@ -455,19 +467,22 @@ class RaIgmSettingsProviderTest {
      * showing what they held before, until the screen was left and re-entered.
      */
     @Test
-    fun `an echo refreshes the neighbours a handler moved`() {
+    fun `a write refreshes the neighbours its change handler moved`() {
         val h = host()
         h.settings["run_ahead_hide_warnings"] =
             h.settings["run_ahead_hide_warnings"]!!.copy(machineValue = MachineValue("false"))
+        h.changeHandler = { key ->
+            if (key == "run_ahead_frames") {
+                h.settings["run_ahead_hide_warnings"] =
+                    h.settings["run_ahead_hide_warnings"]!!.copy(
+                        machineValue = MachineValue("true"), displayValue = "true",
+                    )
+            }
+        }
         val p = provider(h)
         p.screen(listOf(LATENCY))
 
-        // Something else on the screen moved without being written to.
-        h.settings["run_ahead_hide_warnings"] =
-            h.settings["run_ahead_hide_warnings"]!!.copy(
-                machineValue = MachineValue("true"), displayValue = "true",
-            )
-        h.fireApplied("run_ahead_frames", "1")
+        p.cycle("run_ahead_frames", 1)
 
         val row = p.screen(listOf(LATENCY)).items
             .filterIsInstance<GenericIgmSettingsItem.Choice>()

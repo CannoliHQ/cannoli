@@ -18,12 +18,11 @@ private class PortHost : RaSettingsHost {
     }
     override fun players(): List<PlayerSlot> = slots
     override fun raGetSetting(key: String): RaSetting? = null
-    override fun raSetSetting(key: String, value: MachineValue): Boolean {
+    override fun raApply(key: String, value: MachineValue): MachineValue {
         rawWrites += key
-        return true
+        return value
     }
     override fun raSaveOverride(scope: RaOverrideScope, keys: Set<String>) { savedKeys += keys }
-    override fun setOnRaSettingApplied(callback: (String, String) -> Unit) {}
 }
 
 class RaIgmSettingsControllerTypeTest {

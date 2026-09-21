@@ -11,30 +11,24 @@ private class CuratedFakeHost : RaSettingsHost {
     var coreOptions: List<CoreOptionRef> = emptyList()
     var systemInfo: List<Pair<String, String>> = emptyList()
     var shadow: Map<String, String> = emptyMap()
-    // False models RetroArch's real behaviour: the write is queued and the value is not readable
-    // back until the run loop applies it.
-    var applyWrites: Boolean = true
+    // RetroArch refuses writes it does not like and answers with the value it kept instead, which
+    // is the case a menu that renders what it asked for gets wrong.
+    var refuseWrites: Boolean = false
 
     override fun coreOptions(): List<CoreOptionRef> = coreOptions
     override fun systemInfo(): List<Pair<String, String>> = systemInfo
     val screens = mutableMapOf<String, List<RaScreenRow>>()
     override fun raScreenRows(label: String): List<RaScreenRow> = screens[label].orEmpty()
     override fun raGetSetting(key: String): RaSetting? = settings[key]
-    override fun raSetSetting(key: String, value: MachineValue): Boolean {
+    override fun raApply(key: String, value: MachineValue): MachineValue? {
         setCalls.add(key to value.raw)
-        if (applyWrites) {
-            settings[key] = (settings[key] ?: RaSetting(key, key, RaSettingType.STRING_RO, value, value.raw))
-                .copy(machineValue = value, displayValue = value.raw)
-        }
-        return true
+        val current = settings[key] ?: return null
+        if (refuseWrites) return current.machineValue
+        settings[key] = current.copy(machineValue = value, displayValue = value.raw)
+        return value
     }
     override fun raSaveOverride(scope: RaOverrideScope, keys: Set<String>) { savedKeys.add(keys) }
     override fun shadowedSettings(): Map<String, String> = shadow
-    private var appliedCb: ((String, String) -> Unit)? = null
-    override fun setOnRaSettingApplied(callback: (String, String) -> Unit) { appliedCb = callback }
-
-    /** RetroArch echoes the DISPLAY value, which for a combobox is translated label text. */
-    fun echoApplied(key: String, displayValue: String) { appliedCb?.invoke(key, displayValue) }
 }
 
 class RaIgmSettingsProviderCuratedTest {
@@ -105,27 +99,27 @@ class RaIgmSettingsProviderCuratedTest {
         assertEquals("Sharp", r.value)
     }
 
-    // Curated mode drives RetroArch rather than reporting on it, so a state the menu cannot express
-    // is replaced by one it can, instead of being surfaced as Custom.
+    // A row used to take the first preset when the live values matched none, so that it always had
+    // something to show. Custom is the honest answer, and it means opening a menu never changes the
+    // running game.
     @Test
-    fun `a row whose live values match no preset adopts the first one`() {
+    fun `a row whose live values match no preset shows Custom`() {
         val h = CuratedFakeHost()
         h.settings["video_smooth"] =
             RaSetting("video_smooth", "video_smooth", RaSettingType.BOOL, machineValue = MachineValue("?"), displayValue = "?")
         val r = choices(provider(h), listOf("video")).first { it.key == "curated_screen_sharpness" }
-        assertEquals("Sharp", r.value)
-        assertEquals(listOf("video_smooth" to "false"), h.setCalls)
+        assertEquals(RaOptionStrings().custom, r.value)
+        assertTrue(h.setCalls.isEmpty())
     }
 
-    // Adopting is normalization, not an edit. Marking it dirty would raise a save prompt on the way
-    // out of a menu the user only looked at.
     @Test
-    fun `adopting a preset does not make the session look edited`() {
+    fun `opening a category writes nothing and does not look like an edit`() {
         val h = CuratedFakeHost()
         h.settings["video_smooth"] =
             RaSetting("video_smooth", "video_smooth", RaSettingType.BOOL, machineValue = MachineValue("?"), displayValue = "?")
         val p = provider(h)
         p.screen(listOf("video"))
+        assertTrue(h.setCalls.isEmpty())
         assertTrue(p.exitPrompt() is IgmSettingsExit.Close)
     }
 
@@ -154,9 +148,9 @@ class RaIgmSettingsProviderCuratedTest {
     }
 
     // The defect this shadow exists for: a live viewport forces aspect_ratio_index to 23
-    // (ASPECT_RATIO_CUSTOM), a value no scaling preset expresses. Without the shadow, resolve()
-    // finds no match and adoptFirstPresetIfUnmatched overwrites RetroArch's index with the first
-    // preset the moment this screen opens, evicting the viewport for the rest of the session.
+    // (ASPECT_RATIO_CUSTOM), a value no scaling preset expresses. Reading the live value there
+    // would show the viewport's takeover rather than the mode the user picked, and every visit to
+    // this screen would report their choice as Custom.
     @Test
     fun `a shadowed aspect index resolves against the user's choice, not Cannoli's takeover value`() {
         val h = CuratedFakeHost()
@@ -198,7 +192,7 @@ class RaIgmSettingsProviderCuratedTest {
     }
 
     @Test
-    fun `cycling updates the row shown without needing a reload`() {
+    fun `cycling updates the row shown without leaving the screen`() {
         val h = CuratedFakeHost()
         h.seed(row("video", "curated_screen_sharpness"), 0)
         val p = provider(h)
@@ -229,51 +223,41 @@ class RaIgmSettingsProviderCuratedTest {
         assertTrue(choices(provider(h), listOf("video")).none { it.key == "curated_screen_scaling" })
     }
 
+    // The write is attempted and answered with nothing, which is what the native does for a key
+    // that resolves to no setting. What matters is that it never reaches an override.
     @Test
-    fun `cycling does not write a key RetroArch does not expose`() {
+    fun `a key RetroArch does not expose is never saved`() {
         val h = CuratedFakeHost()
         h.seed(row("video", "curated_screen_scaling"), 0)
         h.settings.remove("video_scale_integer_overscale")
         val p = provider(h)
         p.screen(listOf("video"))
         p.cycle("curated_screen_scaling", 1)
-        assertTrue(h.setCalls.none { it.first == "video_scale_integer_overscale" })
+        (p.exitPrompt() as IgmSettingsExit.Prompt).choose(SaveAnswer.platform)
+        assertTrue(h.savedKeys.single().none { it == "video_scale_integer_overscale" })
     }
 
-    // raSetSetting is queued onto RetroArch's run loop, so a host that has not applied the write yet
-    // still reports the old value. The row must show the new one immediately regardless.
+    // A refused write is the case the menu used to get wrong: it rendered what it asked for, and
+    // only a trip out of the category and back showed that nothing had happened.
     @Test
-    fun `the row updates before RetroArch has applied the write`() {
+    fun `a write RetroArch refuses leaves the row showing what RetroArch kept`() {
         val h = CuratedFakeHost()
         h.seed(row("video", "curated_screen_sharpness"), 0)
-        h.applyWrites = false
+        h.refuseWrites = true
         val p = provider(h)
         p.screen(listOf("video"))
         p.cycle("curated_screen_sharpness", 1)
-        val r = choices(p, listOf("video")).first { it.key == "curated_screen_sharpness" }
-        assertEquals("Soft", r.value)
-    }
-
-    // The optimistic cache would otherwise keep showing a value RetroArch refused to apply, which
-    // is exactly what a rejected combobox write looks like from here.
-    @Test
-    fun `a write RetroArch never applied is not remembered after leaving the category`() {
-        val h = CuratedFakeHost()
-        h.seed(row("video", "curated_screen_sharpness"), 0)
-        h.applyWrites = false
-        val p = provider(h)
-        p.screen(listOf("video"))
-        p.cycle("curated_screen_sharpness", 1)
-        assertEquals("Soft", choices(p, listOf("video")).first().value)
+        assertEquals("Sharp", choices(p, listOf("video")).first().value)
 
         p.screen(emptyList())
         assertEquals("Sharp", choices(p, listOf("video")).first().value)
     }
 
-    // The echo carries display text, so trusting its payload wrote "Core Provided" into a cache of
-    // raw values and made every keypress resolve to Custom.
+    // Display text and machine value differ for anything RetroArch renders through its own repr,
+    // and only the machine value may reach a comparison. Trusting the display text made every
+    // keypress on this row resolve to Custom.
     @Test
-    fun `an applied echo carrying display text does not poison the cache`() {
+    fun `a row whose display text differs from its value still resolves after a cycle`() {
         val h = CuratedFakeHost()
         val scaling = row("video", "curated_screen_scaling")
         for ((k, v) in scaling.presets[0].values) {
@@ -284,22 +268,7 @@ class RaIgmSettingsProviderCuratedTest {
         p.screen(listOf("video"))
         assertEquals("Core Reported", choices(p, listOf("video")).first { it.key == scaling.key }.value)
 
-        h.echoApplied("aspect_ratio_index", "Core Provided")
-        assertEquals("Core Reported", choices(p, listOf("video")).first { it.key == scaling.key }.value)
-    }
-
-    @Test
-    fun `cycling then receiving the echo keeps the new preset`() {
-        val h = CuratedFakeHost()
-        val scaling = row("video", "curated_screen_scaling")
-        for ((k, v) in scaling.presets[0].values) {
-            h.settings[k] = RaSetting(k, k, RaSettingType.ENUM, machineValue = MachineValue(v), displayValue = v)
-        }
-        val p = provider(h)
-        p.screen(listOf("video"))
         p.cycle(scaling.key, 1)
-        // RetroArch applies the write, then echoes the display value for each key it changed.
-        h.echoApplied("video_scale_integer", "OFF")
         assertEquals("Integer", choices(p, listOf("video")).first { it.key == scaling.key }.value)
     }
 

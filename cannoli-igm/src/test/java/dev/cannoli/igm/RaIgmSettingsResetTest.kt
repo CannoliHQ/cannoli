@@ -12,13 +12,12 @@ private class ResetHost : RaSettingsHost {
     val savedKeys = mutableListOf<Set<String>>()
 
     override fun raGetSetting(key: String): RaSetting? = settings[key]
-    override fun raSetSetting(key: String, value: MachineValue): Boolean {
+    override fun raApply(key: String, value: MachineValue): MachineValue {
         settings[key] = (settings[key] ?: RaSetting(key, key, RaSettingType.STRING_RO, value, value.raw))
             .copy(machineValue = value, displayValue = value.raw)
-        return true
+        return value
     }
     override fun raSaveOverride(scope: RaOverrideScope, keys: Set<String>) { savedKeys.add(keys) }
-    override fun setOnRaSettingApplied(callback: (String, String) -> Unit) {}
 
     override fun hasOverrides(scope: RaOverrideScope): Boolean = scope in stored
     override fun resetOverrides(scope: RaOverrideScope) {

@@ -16,17 +16,16 @@ private class DiscardHost : RaSettingsHost {
 
     override fun raGetSetting(key: String): RaSetting? = settings[key]
     override fun raScreenRows(label: String): List<RaScreenRow> = screens[label].orEmpty()
-    override fun raSetSetting(key: String, value: MachineValue): Boolean {
+    override fun raApply(key: String, value: MachineValue): MachineValue? {
         setCalls.add(key to value.raw)
-        settings[key] = settings[key]?.copy(machineValue = value, displayValue = value.raw) ?: return false
-        return true
+        settings[key] = settings[key]?.copy(machineValue = value, displayValue = value.raw) ?: return null
+        return value
     }
     override fun raSaveOverride(scope: RaOverrideScope, keys: Set<String>) { savedKeys.add(keys) }
     val cannoliSaves = mutableListOf<Pair<RaOverrideScope, Set<String>>>()
     override fun saveCannoliOverride(scope: RaOverrideScope, changed: Set<String>) {
         cannoliSaves.add(scope to changed)
     }
-    override fun setOnRaSettingApplied(callback: (String, String) -> Unit) {}
 
     fun put(key: String, value: String, options: List<RaOption>) {
         screens[SCREEN] = screens[SCREEN].orEmpty() + RaScreenRow(key, key, isMenu = false)
@@ -104,7 +103,7 @@ class RaIgmSettingsDiscardTest {
         p.screen(listOf(SCREEN))
 
         p.markChangedExternally(setOf("input_overlay_enable"))
-        host.raSetSetting("input_overlay_enable", MachineValue("true"))
+        host.raApply("input_overlay_enable", MachineValue("true"))
 
         discard(p)
 

@@ -157,7 +157,7 @@ class RetroActivityFuture : RetroActivityCamera() {
             // and that remembered mode wins on every later refresh, so the wrong choice sticks.
             // The applied echo arrives after RetroArch has taken the write, which is the only
             // moment the index actually reflects what the user picked.
-            bridge.setOnRaSettingAppliedLocal { key, _ ->
+            bridge.setOnRaSettingApplied { key, _ ->
                 if (key == dev.cannoli.igm.RaKeys.ASPECT_RATIO_INDEX ||
                     key == dev.cannoli.igm.RaKeys.VIDEO_SCALE_INTEGER) refreshViewport()
                 // The curated Show FPS row writes RetroArch's key; the pill that actually draws it
@@ -253,6 +253,9 @@ class RetroActivityFuture : RetroActivityCamera() {
             bridge.onRunloopReady = {
                 bridge.syncShowFps()
                 bridge.syncShowDebug()
+                // Same reason the two above wait for this: a setting cannot be read, let alone
+                // written, until RetroArch's own loop has started.
+                dev.cannoli.ricotta.RaSweepRunner.runIfRequested(cannoliRoot, bridge)
             }
         } catch (e: Exception) {
             Log.e("RicottaArch", "Failed to initialize IGM overlay", e)
@@ -399,7 +402,7 @@ class RetroActivityFuture : RetroActivityCamera() {
     }
 
     override fun onDestroy() {
-        raBridge?.setOnRaSettingAppliedLocal(null)
+        raBridge?.setOnRaSettingApplied(null)
         raBridge = null
         osdOverlay?.detach()
         igmOverlay?.onDestroy()
