@@ -150,6 +150,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
     // swallowed rather than starting a second run or advancing twice.
     private var welcomeAdvancePending = false
     private val welcomeHatSync = dev.cannoli.scorza.input.HatKeySync()
+    private val magicXKeyInjection = dev.cannoli.scorza.input.runtime.MagicXKeyInjection()
 
     private val isReady: Boolean get() = bootSequencer.state.value is BootState.Ready
 
@@ -576,6 +577,9 @@ class MainActivity : ComponentActivity(), ActivityActions {
     @Suppress("DEPRECATION")
     override fun onResume() {
         super.onResume()
+        // Before the dispatcher is wired: on a MagicX the pad reports one press as two keycodes
+        // until this is written, and the first thing the player does is press a button.
+        magicXKeyInjection.suppress()
         // Re-wire the dispatcher to launcher dispatch shape on each resume, so returning from an
         // emulator always lands on the launcher's wiring.
         router.wire(inputDispatcher)
