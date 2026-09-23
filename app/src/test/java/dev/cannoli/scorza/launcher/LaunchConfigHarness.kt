@@ -52,7 +52,6 @@ abstract class LaunchConfigHarness {
             delfinoLauncher = mockk(relaxed = true),
             launchState = mockk(relaxed = true),
             activeMappingHolder = activeMappingHolder,
-            portRouter = dev.cannoli.scorza.input.runtime.PortRouter(),
             installedCoreService = null,
             gameOverrides = gameOverrides,
         )

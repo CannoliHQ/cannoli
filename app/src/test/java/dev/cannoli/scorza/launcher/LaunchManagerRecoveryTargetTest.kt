@@ -51,7 +51,6 @@ class LaunchManagerRecoveryTargetTest {
             delfinoLauncher = mockk(relaxed = true),
             launchState = mockk(relaxed = true),
             activeMappingHolder = activeMappingHolder,
-            portRouter = dev.cannoli.scorza.input.runtime.PortRouter(),
             installedCoreService = installedCoreService,
             gameOverrides = gameOverrides,
         )
