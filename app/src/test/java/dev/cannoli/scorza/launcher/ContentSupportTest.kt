@@ -49,9 +49,9 @@ class ContentSupportTest {
     private fun check(file: File, core: String) =
         ContentSupport.unsupported(file, repo.getExtensionsFor(core))
 
-    @Test fun `the case this exists for, a romset handed to a neo format core`() {
-        val d = dir("cs-geolith")
-        assertEquals("zip", check(zip(d, "lbowling.zip", "lbowling/202-c1.c1"), "geolith_libretro"))
+    @Test fun `a romset handed to a disc only core`() {
+        val d = dir("cs-pcfx")
+        assertEquals("zip", check(zip(d, "lbowling.zip", "lbowling/202-c1.c1"), "mednafen_pcfx_libretro"))
     }
 
     @Test fun `the same file on FinalBurn Neo is fine`() {
@@ -104,13 +104,13 @@ class ContentSupportTest {
     // The third line on the screen comes from this, so the order has to be the core's own: it
     // leads with the format the core is actually for.
     @Test fun `declared formats keep the order the info gives them`() {
-        assertEquals(listOf("neo", "cue", "chd"), repo.getExtensionsFor("geolith_libretro"))
+        assertEquals(listOf("cue", "ccd", "toc", "chd"), repo.getExtensionsFor("mednafen_pcfx_libretro"))
         assertEquals(listOf("zip", "7z", "cue", "ccd"), repo.getExtensionsFor("fbneo_libretro"))
     }
 
     // puae ends its list with a trailing pipe. An empty entry would render as a bare dot.
     @Test fun `a trailing separator does not become an empty format`() {
-        for (core in listOf("puae_libretro", "puae2021_libretro", "dosbox_pure_libretro")) {
+        for (core in listOf("puae_libretro", "dosbox_pure_libretro")) {
             val exts = repo.getExtensionsFor(core)
             assertEquals("$core has a blank format", emptyList<String>(), exts.filter { it.isBlank() })
         }
@@ -124,7 +124,7 @@ class ContentSupportTest {
     // Never block on a guess: an unreadable or empty archive is let through to fail honestly.
     @Test fun `an unreadable archive is let through`() {
         val d = dir("cs-corrupt")
-        assertNull(check(rom(d, "broken.zip"), "geolith_libretro"))
+        assertNull(check(rom(d, "broken.zip"), "mednafen_pcfx_libretro"))
     }
 
     @Test fun `an extensionless file is let through`() {

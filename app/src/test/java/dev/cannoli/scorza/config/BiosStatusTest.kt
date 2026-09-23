@@ -95,7 +95,7 @@ class BiosStatusTest {
     // The correction only ever tightens: a platform with no rule keeps whatever the core declared,
     // so nothing here can invent a requirement for a core that named none.
     @Test fun `a platform with no rule has no anyOf groups`() {
-        val reqs = config().getFirmwareStatus("ATARI5200", "a5200_libretro", biosDir("a5200"))
+        val reqs = config().getFirmwareStatus("ATARI5200", "atari800_libretro", biosDir("atari800"))
         assertTrue(reqs.none { it is FirmwareRequirement.AnyOf })
     }
 }

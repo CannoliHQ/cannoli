@@ -60,7 +60,7 @@ class GameConfigSaveDirTest : LaunchConfigHarness() {
     @Test fun `a different core for the same game is a different directory`() {
         val root = tmp.newFolder()
         val default = launchedConfig(root, rom(root, "Roms/GBA/Game.gba", "GBA"))
-        launchCore = "vbam_libretro"
+        launchCore = "gpsp_libretro"
         val other = launchedConfig(root, rom(root, "Roms/GBA/Game.gba", "GBA"))
         assertNotEquals(default["savestate_directory"], other["savestate_directory"])
     }

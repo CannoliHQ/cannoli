@@ -33,14 +33,14 @@ class PlatformConfigSourcesTest {
         coreInfo.load()
         val pc = PlatformConfig(File(ctx.cacheDir, "fw-root").apply { mkdirs() }, ctx.assets, coreInfo)
 
-        val coreId = "a5200_libretro"
+        val coreId = "atari800_libretro"
         val expected = coreInfo.getFirmwareFor(coreId)
-        assertTrue("a5200 core_info should declare firmware", expected.isNotEmpty())
+        assertTrue("atari800 core_info should declare firmware", expected.isNotEmpty())
 
         val biosDir = File(ctx.cacheDir, "fw-bios").apply { mkdirs() }
         val missing = pc.getFirmwareStatus("ATARI5200", coreId, biosDir)
         assertTrue(missing.isNotEmpty())
-        // Presence, not satisfaction: a5200's entries are optional, so an absent one is satisfied
+        // Presence, not satisfaction: atari800's entries are optional, so an absent one is satisfied
         // while still being absent, and asking the wrong question passed an empty BIOS folder.
         assertTrue(
             "no firmware files present yet",

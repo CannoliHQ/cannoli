@@ -9,9 +9,9 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * These three cores stay in the catalogue because another platform keeps them, so the only place
- * they can be cut is here. Their primary system is not the one they are excluded from, and that
- * platform already keeps a better answer.
+ * This core stays in the catalogue because another platform keeps it, so the only place it can be
+ * cut is here. Its primary system is not the one it is excluded from, and that platform already
+ * keeps a better answer.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
@@ -24,18 +24,6 @@ class CoreExclusionsTest {
     }
 
     private fun idsFor(tag: String) = repo().getCoresForTag(tag).map { it.id }
-
-    @Test fun `Mesen-S is offered for SNES but not for Game Boy`() {
-        assertTrue("mesen-s_libretro" in idsFor("SNES"))
-        assertFalse("mesen-s_libretro" in idsFor("GB"))
-        assertFalse("mesen-s_libretro" in idsFor("GBC"))
-    }
-
-    @Test fun `VBA-M is offered for GBA but not for Game Boy`() {
-        assertTrue("vbam_libretro" in idsFor("GBA"))
-        assertFalse("vbam_libretro" in idsFor("GB"))
-        assertFalse("vbam_libretro" in idsFor("GBC"))
-    }
 
     // blueMSX is the default on ColecoVision and one of four on SG-1000, where Genesis Plus GX is
     // the default. Cutting it there leaves it serving a single platform, so its system files have

@@ -83,31 +83,7 @@
   },
   {
     "tag": "PCECD",
-    "core": "mednafen_pce_libretro",
-    "anyOf": [
-      [
-        "syscard3.pce",
-        "syscard2.pce",
-        "syscard1.pce",
-        "gexpress.pce"
-      ]
-    ]
-  },
-  {
-    "tag": "PCECD",
     "core": "mednafen_supergrafx_libretro",
-    "anyOf": [
-      [
-        "syscard3.pce",
-        "syscard2.pce",
-        "syscard1.pce",
-        "gexpress.pce"
-      ]
-    ]
-  },
-  {
-    "tag": "PCECD",
-    "core": "geargrafx_libretro",
     "anyOf": [
       [
         "syscard3.pce",

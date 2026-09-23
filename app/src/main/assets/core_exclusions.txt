@@ -6,8 +6,4 @@
 # better answer.
 #
 # <TAG> <core id>
-GB mesen-s_libretro
-GBC mesen-s_libretro
-GB vbam_libretro
-GBC vbam_libretro
 SG1000 bluemsx_libretro
