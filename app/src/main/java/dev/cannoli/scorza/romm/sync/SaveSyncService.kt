@@ -545,6 +545,7 @@ class SaveSyncService(
                 romId, emulator, slot, deviceId, overwrite, file, sessionId,
                 // Only the bucket that rewrites itself. A named slot the user made is never pruned.
                 pruneHistory = slot == DEFAULT_SLOT,
+                fileName = local.uploadFileName,
             )
         } finally {
             if (local.isBundle) file.delete()

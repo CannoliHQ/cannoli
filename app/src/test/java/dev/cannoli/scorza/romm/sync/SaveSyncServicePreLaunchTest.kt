@@ -96,7 +96,7 @@ class SaveSyncServicePreLaunchTest {
         val outcome = service.syncBeforeLaunch("SNES", "Mario", "SNES/Mario.sfc", "snes9x")
 
         assertTrue("expected a conflict, got $outcome", outcome is PreLaunchOutcome.Conflict)
-        verify(exactly = 0) { client.uploadSave(any(), any(), any(), any(), any(), any(), any(), any()) }
+        verify(exactly = 0) { client.uploadSave(any(), any(), any(), any(), any(), any(), any(), any(), any()) }
     }
 
     /** Nothing on the server to lose, so a first upload still goes through. */
@@ -117,7 +117,7 @@ class SaveSyncServicePreLaunchTest {
         val outcome = service.syncBeforeLaunch("SNES", "Mario", "SNES/Mario.sfc", "snes9x")
 
         assertTrue(outcome is PreLaunchOutcome.Proceed)
-        verify { client.uploadSave(any(), any(), any(), any(), any(), any(), any(), any()) }
+        verify { client.uploadSave(any(), any(), any(), any(), any(), any(), any(), any(), any()) }
     }
 
     /**
@@ -137,7 +137,7 @@ class SaveSyncServicePreLaunchTest {
             ),
             totalDownload = 0,
         )
-        every { client.uploadSave(any(), any(), any(), any(), any(), any(), any(), any()) } throws
+        every { client.uploadSave(any(), any(), any(), any(), any(), any(), any(), any(), any()) } throws
             dev.cannoli.scorza.romm.RommException(409, "HTTP 409 Conflict")
 
         val outcome = service.syncBeforeLaunch("SNES", "Mario", "SNES/Mario.sfc", "snes9x")

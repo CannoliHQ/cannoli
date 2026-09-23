@@ -71,6 +71,17 @@ class SaveSyncClientTest {
         assertTrue(path, !path.contains("autocleanup"))
     }
 
+    /** A folder save is zipped into a temp file, and RomM stores whatever name the part carries. */
+    @Test fun upload_names_the_part_as_asked_rather_than_after_the_file_on_disk() {
+        server.enqueue(MockResponse().setBody("""{"id":100,"slot":"autosave"}"""))
+        val f = tmp.newFile("romm-up123.zip").apply { writeBytes("S".toByteArray()) }
+
+        client.uploadSave(42, "ppsspp", "autosave", "dev-1", false, f, fileName = "God of War [UCUS98653].zip")
+
+        val body = server.takeRequest().body.readUtf8()
+        assertTrue(body, body.contains("filename=\"God of War [UCUS98653].zip\""))
+    }
+
     /** The server counts what a session actually did, but only if the upload names the session. */
     @Test fun upload_names_the_sync_session_when_it_has_one() {
         server.enqueue(MockResponse().setBody("""{"id":100,"slot":"autosave"}"""))

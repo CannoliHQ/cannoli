@@ -63,7 +63,7 @@ class LocalSaveResolver(
         val root = File(savesDir(tag), subdir)
         if (!root.isDirectory) return null
         val owned = root.listFiles().orEmpty().filter { it.isDirectory && ownsFolder(it.name, key, id.usage) }
-        return SaveUnit(root, owned.flatMap { filesUnder(it) }, entryPrefix = null, uploadName = "$key.zip")
+        return SaveUnit(root, owned.flatMap { filesUnder(it) }, entryPrefix = null, uploadName = "$base [$key].zip")
     }
 
     /** A prefix usage means the game owns every folder starting with its id, not only one. */

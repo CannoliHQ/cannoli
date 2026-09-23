@@ -273,7 +273,7 @@ class LocalSaveResolverTest {
 
         assertEquals(2, save.files.size)
         assertTrue(save.files.none { it.readText() == "ANOTHER GAME" })
-        assertEquals("UCUS98653.zip", save.uploadFileName)
+        assertEquals("God of War [UCUS98653].zip", save.uploadFileName)
     }
 
     /** Argosy roots each matched folder at its own name, and reads the same shape back. */

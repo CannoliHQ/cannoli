@@ -289,6 +289,7 @@ class RommClient(
         file: File,
         sessionId: Int? = null,
         pruneHistory: Boolean = false,
+        fileName: String = file.name,
     ): RommSaveDto {
         val url = endpoint("/api/saves").newBuilder()
             .addQueryParameter("rom_id", romId.toString())
@@ -310,7 +311,7 @@ class RommClient(
             .apply { if (sessionId != null) addQueryParameter("session_id", sessionId.toString()) }
             .build()
         val multipart = MultipartBody.Builder().setType(MultipartBody.FORM)
-            .addFormDataPart("saveFile", file.name, file.asRequestBody("application/octet-stream".toMediaType()))
+            .addFormDataPart("saveFile", fileName, file.asRequestBody("application/octet-stream".toMediaType()))
             .build()
         val request = Request.Builder().url(url).post(multipart).build()
         return execute(request, RommSaveDto.serializer())
