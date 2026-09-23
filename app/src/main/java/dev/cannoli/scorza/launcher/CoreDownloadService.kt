@@ -36,16 +36,6 @@ class CoreDownloadService @Inject constructor(
     /** What an update pass actually did, so the OSD can say it rather than guess. */
     data class UpdateSummary(val checked: Int, val updated: Int, val failed: Int)
 
-    suspend fun downloadCore(coreId: String, forceInfoRefresh: Boolean = false): Result =
-        withContext(Dispatchers.IO) {
-            val result = EmbeddedCoreDownloader.download(context, coreId, forceInfoRefresh)
-            if (result.ok) {
-                val paths = CannoliPaths(File(settings.sdCardRoot))
-                EmbeddedCoreDownloader.installRemoteSystemFiles(context, coreId) { paths.biosFor(it) }
-            }
-            result
-        }
-
     /**
      * What a run is doing, for the overlay to render. The bar tracks the whole run rather than the
      * current core: weighted by size, because a count-based bar would treat a 68 MB core and a

@@ -1,6 +1,8 @@
 package dev.cannoli.scorza.launcher
 
 import android.content.Context
+import dev.cannoli.scorza.config.CannoliPaths
+import dev.cannoli.scorza.di.CannoliPathsProvider
 import dev.cannoli.scorza.download.DownloadCancelled
 import dev.cannoli.scorza.download.DownloadHandler
 import dev.cannoli.scorza.download.DownloadItem
@@ -14,7 +16,17 @@ import dev.cannoli.scorza.download.DownloadKind
  * a slow one looked stuck. The queue already tracks bytes, order and cancellation for RomM, so a
  * core is another kind rather than another mechanism.
  */
-class CoreDownloadHandler(private val context: Context) : DownloadHandler {
+class CoreDownloadHandler(
+    private val fetchCore: (coreId: String, onBytes: (Long, Long) -> Unit) -> CoreDownloadService.Result,
+    private val fetchSystemFiles: (coreId: String) -> Unit,
+) : DownloadHandler {
+
+    constructor(context: Context, paths: CannoliPathsProvider) : this(
+        fetchCore = { id, onBytes -> EmbeddedCoreDownloader.download(context = context, coreName = id, onBytes = onBytes) },
+        fetchSystemFiles = { id ->
+            EmbeddedCoreDownloader.installRemoteSystemFiles(context, id) { CannoliPaths(paths.root).biosFor(it) }
+        },
+    )
 
     override val kind = DownloadKind.CORE
 
@@ -24,17 +36,14 @@ class CoreDownloadHandler(private val context: Context) : DownloadHandler {
         isCancelled: () -> Boolean,
     ) {
         val coreId = item.payload as? String ?: throw Exception("not a core item")
-        val result = EmbeddedCoreDownloader.download(
-            context = context,
-            coreName = coreId,
-            onBytes = { read, total ->
-                // Polled here rather than inside the fetch: the transfer has no cancellation hook
-                // of its own, so this is the first point that can notice and stop.
-                if (isCancelled()) throw DownloadCancelled()
-                onProgress(read, total)
-            },
-        )
+        val result = fetchCore(coreId) { read, total ->
+            // Polled here rather than inside the fetch: the transfer has no cancellation hook
+            // of its own, so this is the first point that can notice and stop.
+            if (isCancelled()) throw DownloadCancelled()
+            onProgress(read, total)
+        }
         if (!result.ok) throw Exception(result.error ?: "download failed")
+        fetchSystemFiles(coreId)
     }
 
     companion object {

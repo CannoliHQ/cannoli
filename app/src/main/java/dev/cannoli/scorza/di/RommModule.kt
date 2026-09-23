@@ -286,7 +286,7 @@ object RommModule {
                 romm(DownloadKind.ROM),
                 romm(DownloadKind.MANUAL),
                 romm(DownloadKind.FIRMWARE),
-                dev.cannoli.scorza.launcher.CoreDownloadHandler(context),
+                dev.cannoli.scorza.launcher.CoreDownloadHandler(context, paths),
                 dev.cannoli.scorza.launcher.ShaderDownloadHandler(settings),
             ),
             lanes = listOf(
