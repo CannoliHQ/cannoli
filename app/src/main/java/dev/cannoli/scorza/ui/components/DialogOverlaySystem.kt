@@ -117,6 +117,11 @@ internal fun SystemDialogs(
                 title = stringResource(R.string.quick_menu_title),
                 listFontSize = listFontSize,
                 listLineHeight = listLineHeight,
+                leftBottomItems = buildList {
+                    if (dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.SYNC_HISTORY in dialogState.rows) {
+                        add(buttonStyle.north to stringResource(dev.cannoli.ui.R.string.label_sync_saves))
+                    }
+                },
                 rightBottomItems = listOf(buttonStyle.confirm to stringResource(R.string.label_select)),
                 buttonStyle = buttonStyle
             ) {

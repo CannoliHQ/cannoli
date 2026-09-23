@@ -584,6 +584,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
         // emulator always lands on the launcher's wiring.
         router.wire(inputDispatcher)
         registerControllerOsd()
+        dialogHandler.onSyncSavesNow = { syncScheduler.syncNow() }
         // Reopened at the last question rather than restarted, so back carries on being back and
         // the user walks backwards to whichever answer was wrong.
         dialogHandler.onRestartControllerWizard = { deviceId ->

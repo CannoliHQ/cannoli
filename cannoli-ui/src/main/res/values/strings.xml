@@ -797,8 +797,6 @@
     <string name="osd_event_save_undone">Save Undone</string>
     <!-- OSD pill confirming a screenshot was written to disk. -->
     <string name="osd_event_screenshot">Screenshot Saved</string>
-    <!-- OSD pill naming which player port a controller took. %1$d = player number, counting from 1. -->
-    <string name="osd_event_controller_port">Controller P%1$d</string>
     <!-- OSD pill: hardcore achievements refused a save state load. Hardcore is the RetroAchievements mode that bans save states. -->
     <string name="osd_event_hardcore_load_blocked">Hardcore: Load Blocked</string>
     <!-- OSD pill: hardcore achievements switched off for the rest of this session. -->
@@ -1129,6 +1127,8 @@
     <string name="label_refresh">REFRESH</string>
     <!-- Footer action on the offline sets screen: send queued unlocks to RetroAchievements now -->
     <string name="label_sync_now">SYNC NOW</string>
+    <!-- Footer action on the launcher quick menu: sync every game's saves with RomM now -->
+    <string name="label_sync_saves">SYNC SAVES</string>
 
     <!-- Save Slots screen -->
     <!-- Screen title. %1$s = game name. -->
