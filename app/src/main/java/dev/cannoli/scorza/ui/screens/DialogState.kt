@@ -250,6 +250,7 @@ sealed interface DialogState {
     data class RAPreloadProgress(val gameName: String) : DialogState
     data class RAPreloadResult(val success: Boolean, val message: String) : DialogState
     data object RetroAchievementsLogoutConfirm : DialogState
+    data class ControllerResetConfirm(val mappingId: String) : DialogState
     data class RommPairing(
         val host: String = "",
         val message: String = "",

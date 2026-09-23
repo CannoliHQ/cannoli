@@ -164,7 +164,8 @@
     <string name="controllers_glyph_style">Glyph Style</string>
     <!-- Controller toggle: ignore this controller during gameplay (e.g. a media remote). -->
     <string name="controllers_exclude_from_gameplay">Exclude From Gameplay</string>
-    <string name="controllers_reset_defaults">Reset Defaults</string>
+    <!-- Confirmation before a controller mapping is reset: every edit to it is lost -->
+    <string name="controllers_reset_confirm">Reset this controller to its defaults?</string>
     <!-- Shown when a button has no assigned binding. -->
     <string name="controllers_not_bound">Not bound</string>
 

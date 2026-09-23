@@ -117,7 +117,6 @@
     <string name="controllers_glyph_style">按键图标风格</string>
     <!-- Controller toggle: ignore this controller during gameplay (e.g. a media remote). -->
     <string name="controllers_exclude_from_gameplay">从游戏中排除</string>
-    <string name="controllers_reset_defaults">重置默认值</string>
     <!-- Shown when a button has no assigned binding. -->
     <string name="controllers_not_bound">未绑定</string>
     <!-- Confirm button values -->

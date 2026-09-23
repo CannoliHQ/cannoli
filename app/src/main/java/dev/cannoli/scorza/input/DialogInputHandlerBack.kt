@@ -197,6 +197,9 @@ internal fun DialogInputHandler.backDialog(): Boolean {
         is DialogState.RetroAchievementsLogoutConfirm -> {
             nav.dialogState.value = DialogState.None
         }
+        is DialogState.ControllerResetConfirm -> {
+            nav.dialogState.value = DialogState.None
+        }
         is DialogState.SaveSyncConflict -> {
             nav.dialogState.value = DialogState.None
             launcherActions.cancelPendingLaunch()

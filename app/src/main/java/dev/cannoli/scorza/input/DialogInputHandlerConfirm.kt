@@ -252,6 +252,10 @@ internal fun DialogInputHandler.confirmDialog(): Boolean {
             nav.dialogState.value = DialogState.None
             onRetroAchievementsLogout?.invoke()
         }
+        is DialogState.ControllerResetConfirm -> {
+            nav.dialogState.value = DialogState.None
+            onControllerReset?.invoke(ds.mappingId)
+        }
         is DialogState.ConflictsMenu -> {}
         is DialogState.SaveSyncConflict -> onSaveConflictConfirm(ds)
         is DialogState.SaveSyncStaleBlock -> onSaveStaleConfirm(ds)

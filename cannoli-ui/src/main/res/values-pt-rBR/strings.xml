@@ -117,7 +117,6 @@
     <string name="controllers_glyph_style">Estilo Glyph:</string>
     <!-- Controller toggle: ignore this controller during gameplay (e.g. a media remote). -->
     <string name="controllers_exclude_from_gameplay">Excluir do Gameplay</string>
-    <string name="controllers_reset_defaults">Redefinir padrões</string>
     <!-- Shown when a button has no assigned binding. -->
     <string name="controllers_not_bound">Não vinculado</string>
     <!-- Confirm button values -->

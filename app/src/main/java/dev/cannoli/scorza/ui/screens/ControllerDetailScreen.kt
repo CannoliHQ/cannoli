@@ -25,21 +25,18 @@ import dev.cannoli.ui.DPAD_HORIZONTAL
 import dev.cannoli.ui.components.BottomBar
 import dev.cannoli.ui.components.List
 import dev.cannoli.ui.components.PillRowKeyValue
-import dev.cannoli.ui.components.PillRowText
 import dev.cannoli.ui.components.ScreenBackground
 import dev.cannoli.ui.components.ScreenTitle
 import dev.cannoli.ui.components.footerReservation
 import dev.cannoli.ui.components.listTitleSpacing
 import dev.cannoli.ui.components.pillItemHeight
 import dev.cannoli.ui.components.screenInsets
-import dev.cannoli.ui.theme.ErrorText
 import dev.cannoli.ui.theme.LocalCannoliColors
 
 private sealed interface ControllerDetailEntry {
     data class KeyValue(val label: String, val value: String) : ControllerDetailEntry
     data class Editable(val label: String, val value: String) : ControllerDetailEntry
     data class Chevron(val label: String) : ControllerDetailEntry
-    data class Destructive(val label: String) : ControllerDetailEntry
 }
 
 @Composable
@@ -125,9 +122,6 @@ fun ControllerDetailScreen(
                         value = mapping.displayName
                     )
                 )
-                if (mapping.userEdited) {
-                    add(ControllerDetailEntry.Destructive(stringResource(R.string.controllers_reset_defaults)))
-                }
             }
 
             Column(
@@ -171,14 +165,6 @@ fun ControllerDetailScreen(
                             lineHeight = listLineHeight,
                             verticalPadding = listVerticalPadding,
                         )
-                        is ControllerDetailEntry.Destructive -> PillRowText(
-                            label = entry.label,
-                            isSelected = isSelected,
-                            fontSize = listFontSize,
-                            lineHeight = listLineHeight,
-                            verticalPadding = listVerticalPadding,
-                            labelColor = ErrorText,
-                        )
                     }
                 }
             }
@@ -190,6 +176,7 @@ fun ControllerDetailScreen(
             val confirmLabel = if (isEditableRow) R.string.label_rename else R.string.label_select
             val leftItems = buildList {
                 add(buttonStyle.back to stringResource(R.string.label_back))
+                if (mapping.userEdited) add(buttonStyle.west to stringResource(R.string.label_reset))
                 if (isCycleRow) add(DPAD_HORIZONTAL to stringResource(R.string.label_change))
             }
             val rightItems = listOf(buttonStyle.confirm to stringResource(confirmLabel))

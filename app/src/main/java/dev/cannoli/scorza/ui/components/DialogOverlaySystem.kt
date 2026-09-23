@@ -248,6 +248,12 @@ internal fun SystemDialogs(
             confirmLabel = stringResource(R.string.label_logout),
         )
 
+        is DialogState.ControllerResetConfirm -> ConfirmOverlay(
+            message = stringResource(R.string.controllers_reset_confirm),
+            buttonStyle = buttonStyle,
+            confirmLabel = stringResource(R.string.label_reset),
+        )
+
         is DialogState.PlatformResetConfirm -> ConfirmOverlay(
             message = stringResource(R.string.dialog_reset_platform_confirm, dialogState.platformName),
             buttonStyle = buttonStyle,

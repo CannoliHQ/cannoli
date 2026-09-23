@@ -117,7 +117,6 @@
     <string name="controllers_glyph_style">Stile Glifo</string>
     <!-- Controller toggle: ignore this controller during gameplay (e.g. a media remote). -->
     <string name="controllers_exclude_from_gameplay">Escludi Dal Gioco</string>
-    <string name="controllers_reset_defaults">Ripristina Predefiniti</string>
     <!-- Shown when a button has no assigned binding. -->
     <string name="controllers_not_bound">Non vincolato</string>
     <!-- Confirm button values -->

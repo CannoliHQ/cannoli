@@ -117,7 +117,6 @@
     <string name="controllers_glyph_style">グリフスタイル</string>
     <!-- Controller toggle: ignore this controller during gameplay (e.g. a media remote). -->
     <string name="controllers_exclude_from_gameplay">ゲームプレイから除外</string>
-    <string name="controllers_reset_defaults">デフォルトをリセット</string>
     <!-- Shown when a button has no assigned binding. -->
     <string name="controllers_not_bound">拘束されていません</string>
     <!-- Confirm button values -->

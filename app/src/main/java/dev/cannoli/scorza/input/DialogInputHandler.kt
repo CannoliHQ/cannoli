@@ -193,6 +193,7 @@ class DialogInputHandler @Inject constructor(
     // The RetroAchievements screen owns the credential-clearing and its own pop, so the confirm
     // dialog delegates back to it rather than duplicating that navigation here.
     var onRetroAchievementsLogout: (() -> Unit)? = null
+    var onControllerReset: ((String) -> Unit)? = null
 
     internal val gameContextOptions = listOf(MENU_MANAGE_COLLECTIONS, MENU_EMULATOR_OVERRIDE, MENU_ACHIEVEMENTS, MENU_RENAME, MENU_DELETE_GAME)
 

@@ -28,9 +28,9 @@ class ControllerDetailInputHandler @Inject constructor(
 
     private fun rowCount(): Int {
         val screen = current() ?: return 0
-        val mapping = resolveMapping(screen) ?: return 0
-        // 0 edit buttons, 1 confirm, 2 glyph, 3 exclude, 4 name, 5 reset (when userEdited)
-        return if (mapping.userEdited) 6 else 5
+        resolveMapping(screen) ?: return 0
+        // 0 edit buttons, 1 confirm, 2 glyph, 3 exclude, 4 name
+        return 5
     }
 
     override fun onUp() {
@@ -57,11 +57,20 @@ class ControllerDetailInputHandler @Inject constructor(
                 titleRes = dev.cannoli.ui.R.string.keyboard_title_rename_controller,
                 keyboard = KeyboardState(text = mapping.displayName, cursorPos = mapping.displayName.length),
             )
-            5 -> if (mapping.userEdited) {
-                viewModel.resetMapping(mapping)
-                nav.pop()
-            }
         }
+    }
+
+    override fun onWest() {
+        val screen = current() ?: return
+        val mapping = resolveMapping(screen) ?: return
+        if (mapping.userEdited) nav.dialogState.value = DialogState.ControllerResetConfirm(mapping.id)
+    }
+
+    fun resetConfirmed(mappingId: String) {
+        val screen = current()?.takeIf { it.mappingId == mappingId } ?: return
+        val mapping = resolveMapping(screen) ?: return
+        viewModel.resetMapping(mapping)
+        nav.pop()
     }
 
     override fun onLeft() = cycleSelected(direction = -1)
