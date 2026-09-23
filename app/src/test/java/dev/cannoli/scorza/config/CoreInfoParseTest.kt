@@ -27,7 +27,9 @@ class CoreInfoParseTest {
         assets.list("core_info").orEmpty().filter { it.endsWith(".info") }.map { it.removeSuffix(".info") }
 
     @Test fun `every shipped core is offered on at least one platform`() {
-        val repo = repo()
+        // Pinned to arm64-v8a: an arm64-only core is legitimately unreachable on the 32-bit ABI
+        // Robolectric defaults to, and that is a separate, dedicated test's concern, not this one's.
+        val repo = CoreInfoRepository(assets, abi = { "arm64-v8a" }).also { it.load() }
         val tags = PlatformConfig(
             java.io.File(
                 ApplicationProvider.getApplicationContext<android.content.Context>().cacheDir,

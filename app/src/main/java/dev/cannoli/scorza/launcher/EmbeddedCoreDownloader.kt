@@ -1,7 +1,6 @@
 package dev.cannoli.scorza.launcher
 
 import android.content.Context
-import android.os.Build
 import android.util.Log
 import java.io.File
 import java.net.HttpURLConnection
@@ -292,9 +291,7 @@ object EmbeddedCoreDownloader {
 
     private fun encode(name: String): String = name.replace(" ", "%20")
 
-    private fun pickAbi(): String =
-        Build.SUPPORTED_ABIS?.firstOrNull { it == "arm64-v8a" || it == "armeabi-v7a" }
-            ?: "arm64-v8a"
+    private fun pickAbi(): String = DeviceAbi.primary()
 
     /** [modified] false means the server answered 304 and [out] was not written. */
     data class Fetched(val modified: Boolean, val etag: String?, val built: String = "")

@@ -1,6 +1,7 @@
 package dev.cannoli.scorza.config
 
 import androidx.test.core.app.ApplicationProvider
+import dev.cannoli.scorza.launcher.SystemFiles
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -8,7 +9,11 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.io.File
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 
 /**
  * Two things a core's `.info` cannot state correctly, both hit on Neo Geo.
@@ -97,5 +102,30 @@ class BiosStatusTest {
     @Test fun `a platform with no rule has no anyOf groups`() {
         val reqs = config().getFirmwareStatus("ATARI5200", "atari800_libretro", biosDir("atari800"))
         assertTrue(reqs.none { it is FirmwareRequirement.AnyOf })
+    }
+
+    private fun resourcesZip(): ByteArray {
+        val out = ByteArrayOutputStream()
+        ZipOutputStream(out).use { zos ->
+            zos.putNextEntry(ZipEntry("pcsx2/resources/GameIndex.yaml"))
+            zos.write("y".toByteArray())
+            zos.closeEntry()
+        }
+        return out.toByteArray()
+    }
+
+    // ARMSX2's system files are a separate remote download from its BIOS dump: installing the
+    // former must not make the gate think the latter arrived too.
+    @Test fun `a missing PS2 BIOS is still reported after the resources download lands`() {
+        val dir = biosDir("ps2")
+        SystemFiles.install(ByteArrayInputStream(resourcesZip()), dir)
+
+        val statuses = config().getFirmwareStatus("PS2", "armsx2_libretro", dir)
+            .filterIsInstance<FirmwareRequirement.Single>()
+        val bios = statuses.first { File(it.entry.path).name == "bios" }
+        val resources = statuses.first { File(it.entry.path).name == "resources" }
+        assertFalse("bios dump was never downloaded", bios.present)
+        assertTrue("resources folder was just installed", resources.present)
+        assertFalse("required per the core's own info file", bios.entry.optional)
     }
 }

@@ -12,14 +12,17 @@
 DoubleCherryGB_libretro 64,32
 a5200_libretro 64,32
 amiarcadia_libretro 64,32
+amiberry_libretro 64
 anarch_libretro 64,32
-applewin_libretro 64
+applewin_libretro 64,32
 ardens_libretro 64,32
 arduous_libretro 64,32
+armsx2_libretro 64
 atari800_libretro 64,32
 b2_libretro 64,32
 bbkemu_libretro 64,32
 bk_libretro 64,32
+blastem_libretro 64,32
 bluemsx_libretro 64,32
 boom3_libretro 64,32
 bsnes-jg_libretro 64,32
@@ -36,6 +39,7 @@ cannonball_libretro 64,32
 cap32_libretro 64,32
 cemu_libretro 64
 chailove_libretro 64,32
+citra2018_libretro 64
 citra_libretro 64
 clownmdemu_libretro 64,32
 craft_libretro 64,32
@@ -49,11 +53,13 @@ dinothawr_libretro 64,32
 dirksimple_libretro 64,32
 dolphin_libretro 64,32
 dosbox_core_libretro 64,32
+dosbox_libretro 64,32
 dosbox_pure_libretro 64,32
 dosbox_svn_libretro 64,32
 doukutsu_rs_libretro 64,32
 easyrpg_libretro 64,32
 ecwolf_libretro 64,32
+emuscv_libretro 64,32
 ep128emu_core_libretro 64,32
 fbalpha2012_cps1_libretro 64,32
 fbalpha2012_cps2_libretro 64,32
@@ -64,6 +70,8 @@ fbalpha_libretro 64,32
 fbneo_libretro 64,32
 fceumm_libretro 64,32
 ffmpeg_libretro 64,32
+fixgb_libretro 64,32
+fixnes_libretro 64,32
 flycast_libretro 64,32
 fmsx_libretro 64,32
 freechaf_libretro 64,32
@@ -86,8 +94,10 @@ gong_libretro 64,32
 gpsp_libretro 64,32
 gw_libretro 64,32
 handy_libretro 64,32
+hatari2014_libretro 64,32
 hatari_libretro 64,32
-hbmame_libretro 64
+hatarib_libretro 64,32
+hbmame_libretro 64,32
 holani_libretro 64,32
 irogb_libretro 64
 jaxe_libretro 64,32
@@ -101,6 +111,8 @@ mame2003_libretro 64,32
 mame2003_midway_libretro 64,32
 mame2003_plus_libretro 64,32
 mame2010_libretro 64,32
+mame2015_libretro 64,32
+mame2016_libretro 64,32
 mamearcade_libretro 64,32
 mamemess_libretro 64
 mcsoftserve_libretro 64,32
@@ -121,6 +133,7 @@ mednafen_wswan_libretro 64,32
 melonds_libretro 64,32
 melondsds_libretro 64,32
 mesen-s_libretro 64,32
+mesen2_libretro 64,32
 mesen_libretro 64,32
 meteor_libretro 64,32
 mgba_libretro 64,32
@@ -138,6 +151,7 @@ nestopia_libretro 64,32
 nicaiemu_libretro 64,32
 noods_libretro 64,32
 np2kai_libretro 64,32
+nuance_libretro 64
 numero_libretro 64,32
 nxengine_libretro 64,32
 o2em_libretro 64,32
@@ -147,6 +161,7 @@ opera_libretro 64,32
 panda3ds_libretro 64
 parallel_n64_libretro 64,32
 pcee2_libretro 64
+pcsx2_libretro 64
 pcsx_rearmed_libretro 64,32
 pd777_libretro 64,32
 picodrive_libretro 64,32
@@ -165,6 +180,7 @@ qemu_libretro 64,32
 quasi88_libretro 64,32
 quicknes_libretro 64,32
 race_libretro 64,32
+radio_libretro 64,32
 reminiscence_libretro 64,32
 retro8_libretro 64,32
 romcleaner_libretro 64,32
@@ -220,6 +236,7 @@ vitaquake2-xatrix_libretro 64,32
 vitaquake2-zaero_libretro 64,32
 vitaquake2_libretro 64,32
 wasm4_libretro 64,32
+wqxemu_libretro 64,32
 x1_libretro 64,32
 xrick_libretro 64,32
 yabasanshiro_libretro 64,32

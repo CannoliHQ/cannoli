@@ -1,7 +1,6 @@
 package dev.cannoli.scorza.launcher
 
 import android.content.res.AssetManager
-import android.os.Build
 
 /**
  * What each core in the APK was when it was bundled, written by `scripts/record_bundled_core.py`
@@ -28,8 +27,7 @@ object BundledCoreManifest {
 
     @Volatile private var cached: Map<String, Entry>? = null
 
-    private fun abi(): String =
-        Build.SUPPORTED_ABIS?.firstOrNull { it == "arm64-v8a" || it == "armeabi-v7a" } ?: "arm64-v8a"
+    private fun abi(): String = DeviceAbi.primary()
 
     /**
      * Keyed by core id, for the ABI this device runs. Entries for the other ABI describe a

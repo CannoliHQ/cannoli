@@ -1,6 +1,7 @@
 package dev.cannoli.scorza.config
 
 import android.content.res.AssetManager
+import dev.cannoli.scorza.launcher.DeviceAbi
 import java.io.File
 
 data class CoreInfo(
@@ -41,7 +42,12 @@ sealed interface FirmwareRequirement {
     }
 }
 
-class CoreInfoRepository(private val assets: AssetManager, private val cacheDir: File? = null, private val apkLastModified: Long = 0L) {
+class CoreInfoRepository(
+    private val assets: AssetManager,
+    private val cacheDir: File? = null,
+    private val apkLastModified: Long = 0L,
+    private val abi: () -> String = DeviceAbi::primary,
+) {
 
     @Volatile private var cores = listOf<CoreInfo>()
     @Volatile private var coreById = mapOf<String, CoreInfo>()
@@ -64,6 +70,7 @@ class CoreInfoRepository(private val assets: AssetManager, private val cacheDir:
         "SATURN" to listOf("Sega - Saturn"),
         "PS" to listOf("Sony - PlayStation"),
         "PSP" to listOf("Sony - PlayStation Portable"),
+        "PS2" to listOf("Sony - PlayStation 2"),
         "DC" to listOf("Sega - Dreamcast"),
         "LYNX" to listOf("Atari - Lynx"),
         "JAGUAR" to listOf("Atari - Jaguar"),
@@ -241,13 +248,17 @@ class CoreInfoRepository(private val assets: AssetManager, private val cacheDir:
      *
      * A core the user already chose is re-synthesised by the picker rather than read from here, so
      * neither filter can strand anyone on a choice they already made.
+     *
+     * Arm64OnlyCores is filtered here too, on a 32-bit device, for the same reason: offering a core
+     * with no armeabi-v7a build would trade one unrunnable option for another.
      */
     fun getCoresForTag(tag: String): List<CoreInfo> {
         val upper = tag.uppercase()
         val dbs = tagToDatabases[upper] ?: return emptyList()
         val excluded = exclusions[upper].orEmpty()
+        val arm64Only = if (abi() == "arm64-v8a") emptySet() else Arm64OnlyCores.IDS
         return cores
-            .filter { core -> core.databases.any { it in dbs } && core.id !in excluded }
+            .filter { core -> core.databases.any { it in dbs } && core.id !in excluded && core.id !in arm64Only }
             .sortedBy { it.displayName }
     }
 

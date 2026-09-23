@@ -64,10 +64,10 @@ class SystemFilesTest {
     }
 
     @Test
-    fun `the two heavy sets stay remote`() {
+    fun `the heavy sets stay remote`() {
         val remote = SystemFiles.manifest(assets).filter { !it.bundled }
         assertEquals(
-            setOf("blueMSX.zip", "ScummVM.zip"),
+            setOf("blueMSX.zip", "ScummVM.zip", "LRPS2.zip"),
             remote.map { it.archive }.toSet()
         )
     }
@@ -171,6 +171,7 @@ class SystemFilesTest {
             mapOf(
                 "blueMSX.zip" to listOf("Databases", "Machines"),
                 "ScummVM.zip" to listOf("scummvm"),
+                "LRPS2.zip" to listOf("pcsx2/resources"),
             ),
             folders,
         )
@@ -215,5 +216,41 @@ class SystemFilesTest {
         val dest = tempDir("sysfiles-none")
         SystemFiles.ensureBundled(assets, "SCUMMVM", dest, "build-1")
         assertFalse(File(dest, ".cannoli_system").exists())
+    }
+
+    @Test
+    fun `armsx2 names a nested folder for PS2`() {
+        val entries = SystemFiles.remoteFor(assets, "armsx2_libretro")
+        assertEquals(listOf("PS2"), entries.map { it.tag })
+        assertEquals(listOf(listOf("pcsx2/resources")), entries.map { it.folders })
+    }
+
+    @Test
+    fun `a nested folder check is not satisfied by its own parent`() {
+        val dest = tempDir("sysfiles-nested")
+        // The user's own BIOS folder, with no resources installed yet.
+        File(dest, "pcsx2/bios").mkdirs()
+        val entry = SystemFiles.remoteFor(assets, "armsx2_libretro").single()
+        assertFalse(entry.foldersPresent(dest))
+
+        File(dest, "pcsx2/resources").mkdirs()
+        assertTrue(entry.foldersPresent(dest))
+    }
+
+    @Test
+    fun `installing the nested folder does not disturb an existing bios dump`() {
+        val dest = tempDir("sysfiles-merge")
+        val bios = File(dest, "pcsx2/bios/scph39001.bin").apply { parentFile?.mkdirs(); writeText("dump") }
+
+        // LRPS2.zip's real shape: an empty bios/ directory entry plus a resources file.
+        SystemFiles.install(
+            ByteArrayInputStream(
+                zip("pcsx2/bios/" to "", "pcsx2/resources/GameIndex.yaml" to "y")
+            ),
+            dest,
+        )
+
+        assertTrue(File(dest, "pcsx2/resources/GameIndex.yaml").exists())
+        assertEquals("dump", bios.readText())
     }
 }

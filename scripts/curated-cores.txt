@@ -5,6 +5,7 @@
 # Every entry must have a build for both arm64-v8a and armeabi-v7a: CuratedCatalogueTest enforces
 # that, so a core with only one ABI fails the build rather than vanishing on half the devices.
 81_libretro
+armsx2_libretro
 atari800_libretro
 bluemsx_libretro
 bsnes_hd_beta_libretro
