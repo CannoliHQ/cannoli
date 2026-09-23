@@ -1,8 +1,20 @@
 diff --git a/retroarch.c b/retroarch.c
-index 370d58ecf8..7bc9b6f187 100644
+index 370d58ecf8..7bac3d73a3 100644
 --- a/retroarch.c
 +++ b/retroarch.c
-@@ -3735,9 +3735,17 @@ bool command_event(enum event_command cmd, void *data)
+@@ -3345,6 +3345,11 @@ bool command_event(enum event_command cmd, void *data)
+    settings_t *settings            = config_get_ptr();
+    recording_state_t *rec_st       = recording_state_get_ptr();
+ 
++#ifdef HAVE_RICOTTA_OSD
++   if (ricotta_hold_command((int)cmd, data))
++      return true;
++#endif
++
+    switch (cmd)
+    {
+       case CMD_EVENT_LOAD_FILES:
+@@ -3735,9 +3740,17 @@ bool command_event(enum event_command cmd, void *data)
  #ifdef HAVE_CHEEVOS
              if (rcheevos_hardcore_active())
              {
@@ -20,7 +32,7 @@ index 370d58ecf8..7bc9b6f187 100644
                 return false;
              }
  #endif
-@@ -3806,8 +3814,15 @@ bool command_event(enum event_command cmd, void *data)
+@@ -3806,8 +3819,15 @@ bool command_event(enum event_command cmd, void *data)
           {
              const char *_msg = msg_hash_to_str(MSG_RESET);
              RARCH_LOG("[Core] %s.\n", _msg);

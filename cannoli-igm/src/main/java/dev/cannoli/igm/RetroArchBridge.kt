@@ -12,6 +12,9 @@ interface RetroArchBridge {
     fun reset()
     fun quit()
 
+    /** Drops whatever a menu write is holding, unrun, rather than running it as the game resumes. */
+    fun dropHeldCommands() {}
+
     /** Queues a write of the slot. It has not happened when this returns. */
     fun saveState(slot: Int)
     fun loadState(slot: Int)

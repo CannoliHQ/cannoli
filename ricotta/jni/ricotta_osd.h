@@ -36,8 +36,7 @@ enum ricotta_osd_type
 
 /* slot carries RetroArch's state_slot for the state events (< 0 is the auto slot),
  * 1 or 0 for RICOTTA_OSD_FASTFORWARD, meaning on or off,
- * the disk index for RICOTTA_OSD_DISK_CHANGED, the port for
- * RICOTTA_OSD_CONTROLLER_PORT, and 1 when the stored login must be re-entered
+ * the disk index for RICOTTA_OSD_DISK_CHANGED, and 1 when the stored login must be re-entered
  * (0 otherwise) on RICOTTA_OSD_CHEEVOS_LOGIN_FAILED. It is unused elsewhere. */
 void ricotta_osd_event(int type, int slot);
 
@@ -71,11 +70,6 @@ void ricotta_save_begin(void);
 void ricotta_save_end(void);
 int  ricotta_save_is_active(void);
 
-/* True when the launcher marked this 0-based port's pad as built in. RetroArch announces every
- * configured pad; a handheld's own controls are not news. Ports come from the launch intent, so
- * a pad that connects after launch is never suppressed. */
-int  ricotta_port_is_builtin(int port);
-
 /* The input hooks RetroArch's android_input.c calls. Declared here because this header is
  * force-included everywhere, which keeps the patch down to the two call sites: an extern in the
  * patch itself would be a third hunk to rebase, anchored on whatever happened to sit above it. */
@@ -100,6 +94,9 @@ int  ricotta_ff_held(void);
 
 /* Rewind while held, fed to RetroArch's own rewind hotkey by the runloop patch. */
 int  ricotta_rewind_held(void);
+
+/* Asked at the top of command_event. Returns 1 when Cannoli held the command to run later. */
+int  ricotta_hold_command(int cmd, void *data);
 
 #ifdef __cplusplus
 }

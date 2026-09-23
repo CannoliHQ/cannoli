@@ -159,4 +159,26 @@ class IGMControllerSlotActionsTest {
 
         assertEquals(1, closed)
     }
+
+    // dropHeldCommands must land before onClose, since onClose resolves to hide(), which
+    // unpauses and would otherwise flush the very hold the Quit row is trying to discard.
+    @Test fun `quitGame drops held commands before closing and quitting`() {
+        val bridge = FakeRetroArchBridge()
+        val c = testController(bridge, slots = store())
+        c.onClose = { bridge.callOrder += "onClose" }
+
+        c.quitGame()
+
+        assertEquals(listOf("dropHeldCommands", "onClose", "quit"), bridge.callOrder)
+    }
+
+    @Test fun `saveAndQuit drops held commands before closing and quitting`() {
+        val bridge = FakeRetroArchBridge()
+        val c = testController(bridge, slots = store())
+        c.onClose = { bridge.callOrder += "onClose" }
+
+        c.saveAndQuit()
+
+        assertEquals(listOf("dropHeldCommands", "onClose", "quit"), bridge.callOrder)
+    }
 }

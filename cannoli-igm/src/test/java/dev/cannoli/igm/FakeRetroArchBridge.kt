@@ -22,8 +22,13 @@ fun testController(
 const val NO_SAVES = "/nonexistent/cannoli-test/Game.state"
 
 open class FakeRetroArchBridge : RetroArchBridge {
+    /** Records the order [quit] and [dropHeldCommands] land relative to each other and to
+     * [IGMController.onClose], which the test wires into the same list. */
+    val callOrder = mutableListOf<String>()
+
     override fun reset() {}
-    override fun quit() {}
+    override fun quit() { callOrder += "quit" }
+    override fun dropHeldCommands() { callOrder += "dropHeldCommands" }
 
     var savedSlots = mutableListOf<Int>()
     var loadedSlots = mutableListOf<Int>()

@@ -1,20 +1,16 @@
 diff --git a/tasks/task_autodetect.c b/tasks/task_autodetect.c
-index 89d88a6f76..660d79e0a0 100644
+index 89d88a6f76..ac90cbecac 100644
 --- a/tasks/task_autodetect.c
 +++ b/tasks/task_autodetect.c
-@@ -1408,10 +1408,22 @@ static void input_autoconfigure_connect_handler(retro_task_t *task)
+@@ -1408,10 +1408,18 @@ static void input_autoconfigure_connect_handler(retro_task_t *task)
        {
           /* A valid autoconfig was applied */
           if (!(autoconfig_handle->flags & AUTOCONF_FLAG_SUPPRESS_NOTIFICATIONS))
 +#ifdef HAVE_RICOTTA_OSD
-+            /* Cannoli owns the controller-connected notification (type 9;
-+             * slot = 1-based port). Leave task_title empty so the task
-+             * framework does not also show the native message. A port the
-+             * launcher marked built in stays quiet: a handheld announcing its
-+             * own controls on every launch is noise, not news. */
++            /* Silent in game: task_title stays empty so the task framework
++             * shows nothing, and the launcher announces pads on its own
++             * screens. */
 +            {
-+               if (!ricotta_port_is_builtin((int)autoconfig_handle->port))
-+                  ricotta_osd_event(RICOTTA_OSD_CONTROLLER_PORT, (int)autoconfig_handle->port + 1);
 +            }
 +#else
              snprintf(task_title, sizeof(task_title),

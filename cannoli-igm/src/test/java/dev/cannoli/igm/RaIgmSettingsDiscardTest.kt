@@ -27,13 +27,26 @@ private class DiscardHost : RaSettingsHost {
             ?: return
     }
 
-    override fun raApply(key: String, value: MachineValue, watch: Collection<String>): RaApplyResult? {
+    fun applyNow(key: String, value: MachineValue, watch: Collection<String>): RaApplyResult? {
         setCalls.add(key to value.raw)
         val before = watch.associateWith { settings[it]?.machineValue }
         settings[key] = settings[key]?.copy(machineValue = value, displayValue = value.raw) ?: return null
         changeHandler?.invoke(key)
-        return RaApplyResult(value, watch.filterTo(mutableSetOf()) { settings[it]?.machineValue != before[it] })
+        return RaApplyResult(
+            value,
+            watch.filter { settings[it]?.machineValue != before[it] }
+                .mapNotNull { k -> before[k]?.let { k to it } }
+                .toMap(),
+        )
     }
+
+    override fun raApply(
+        key: String,
+        value: MachineValue,
+        watch: Collection<String>,
+        onDone: (RaApplyResult?) -> Unit,
+    ): Boolean = answerNow(onDone) { applyNow(key, value, watch) }
+
     override fun raSaveOverride(scope: RaOverrideScope, keys: Set<String>) { savedKeys.add(keys) }
     val cannoliSaves = mutableListOf<Pair<RaOverrideScope, Set<String>>>()
     override fun saveCannoliOverride(scope: RaOverrideScope, changed: Set<String>) {
@@ -116,7 +129,7 @@ class RaIgmSettingsDiscardTest {
         p.screen(listOf(SCREEN))
 
         p.markChangedExternally(setOf("input_overlay_enable"))
-        host.raApply("input_overlay_enable", MachineValue("true"), emptyList())
+        host.applyNow("input_overlay_enable", MachineValue("true"), emptyList())
 
         discard(p)
 

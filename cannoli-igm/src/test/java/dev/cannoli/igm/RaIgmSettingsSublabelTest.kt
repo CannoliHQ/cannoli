@@ -9,8 +9,16 @@ private class SublabelHost : RaSettingsHost {
     val screens = mutableMapOf<String, List<RaScreenRow>>()
     override fun raScreenRows(label: String): List<RaScreenRow> = screens[label].orEmpty()
     override fun raGetSetting(key: String): RaSetting? = settings[key]
-    override fun raApply(key: String, value: MachineValue, watch: Collection<String>) =
+    fun applyNow(key: String, value: MachineValue, watch: Collection<String>) =
         if (key in settings) RaApplyResult(value) else null
+
+    override fun raApply(
+        key: String,
+        value: MachineValue,
+        watch: Collection<String>,
+        onDone: (RaApplyResult?) -> Unit,
+    ): Boolean = answerNow(onDone) { applyNow(key, value, watch) }
+
     override fun raSaveOverride(scope: RaOverrideScope, keys: Set<String>) {}
 }
 

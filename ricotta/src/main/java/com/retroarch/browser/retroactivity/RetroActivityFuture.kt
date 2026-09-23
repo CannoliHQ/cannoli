@@ -166,7 +166,6 @@ class RetroActivityFuture : RetroActivityCamera() {
                 if (key == KEY_STATISTICS_SHOW) bridge.syncShowDebug()
             }
             params?.let { bridge.setIgmTriggerKeycodes(it.igmTriggerKeycodes.toIntArray()) }
-            params?.let { bridge.setBuiltinPorts(it.builtinPorts.toIntArray()) }
             params?.let { wireShortcuts(bridge, it.shortcuts, it.igmTriggerKeycodes.toSet()) }
             bridge.curatedSettings = params?.curatedSettings ?: true
             igmOverlay?.controller?.setInputMapping(params?.inputMapping)
@@ -541,8 +540,6 @@ class RetroActivityFuture : RetroActivityCamera() {
             RicottaOsdEvent.UNDO_SAVE_STATE -> osdContext.getString(R.string.osd_event_save_undone)
             RicottaOsdEvent.DISK_CHANGED -> osdContext.getString(R.string.igm_disc_number, slot + 1)
             RicottaOsdEvent.SCREENSHOT -> osdContext.getString(R.string.osd_event_screenshot)
-            RicottaOsdEvent.CONTROLLER_PORT ->
-                osdContext.getString(R.string.osd_event_controller_port, slot)
             RicottaOsdEvent.LOAD_REFUSED ->
                 osdContext.getString(R.string.osd_event_hardcore_load_blocked)
             RicottaOsdEvent.HARDCORE_PAUSED ->

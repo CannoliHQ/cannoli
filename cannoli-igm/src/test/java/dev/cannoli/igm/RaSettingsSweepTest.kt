@@ -19,6 +19,7 @@ private class SweepHost(
     private val values = initial.toMutableMap()
     private val original = initial.toMap()
     val writes = mutableListOf<Pair<String, String>>()
+    var flushes = 0
 
     override fun raGetSetting(key: String): RaSetting? {
         val v = values[key] ?: return null
@@ -31,7 +32,7 @@ private class SweepHost(
         )
     }
 
-    override fun raApply(key: String, value: MachineValue, watch: Collection<String>): RaApplyResult? {
+    fun applyNow(key: String, value: MachineValue, watch: Collection<String>): RaApplyResult? {
         writes += key to value.raw
         val held = values[key] ?: return null
         if (key in refuse) return RaApplyResult(MachineValue(held))
@@ -43,8 +44,16 @@ private class SweepHost(
         return RaApplyResult(MachineValue(values.getValue(key)))
     }
 
+    override fun raApply(
+        key: String,
+        value: MachineValue,
+        watch: Collection<String>,
+        onDone: (RaApplyResult?) -> Unit,
+    ): Boolean = answerNow(onDone) { applyNow(key, value, watch) }
+
     override fun raSaveOverride(scope: RaOverrideScope, keys: Set<String>) {}
     override fun raScreenRows(label: String): List<RaScreenRow> = screens[label].orEmpty()
+    override fun flushHeldCommands() { flushes++ }
 }
 
 class RaSettingsSweepTest {
@@ -141,9 +150,23 @@ class RaSettingsSweepTest {
     // and reporting that as a lying row would be the sweep itself lying.
     @Test fun `a write the host never answers is its own outcome`() {
         val host = object : RaSettingsHost by SweepHost(mapOf("a" to "false")) {
-            override fun raApply(key: String, value: MachineValue, watch: Collection<String>): RaApplyResult? = null
+            override fun raApply(
+                key: String,
+                value: MachineValue,
+                watch: Collection<String>,
+                onDone: (RaApplyResult?) -> Unit,
+            ): Boolean = true
         }
-        assertEquals(RaSettingsSweep.Outcome.UNANSWERED, sweep(host).run(listOf("a")).rows.single().outcome)
+        assertEquals(
+            RaSettingsSweep.Outcome.UNANSWERED,
+            RaSettingsSweep(host, answerTimeoutMs = 50).run(listOf("a")).rows.single().outcome,
+        )
+    }
+
+    @Test fun `the sweep runs what RetroArch held, once, at the end`() {
+        val host = SweepHost(mapOf("a" to "false", "b" to "false"))
+        sweep(host).run(listOf("a", "b"))
+        assertEquals(1, host.flushes)
     }
 
     // Writing a driver mid-session would take the video or audio away and never give it back, so

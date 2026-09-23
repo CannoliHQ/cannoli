@@ -113,6 +113,17 @@ class RaIgmSettingsProvider(
     /** What Discard puts back, so it is the machine value and cannot be anything else. */
     private val priorValues = mutableMapOf<String, MachineValue>()
 
+    private class InFlight(val value: MachineValue, val seq: Int)
+
+    // A write the run loop has not answered yet, one per key and gone with its answer. The only
+    // value here RetroArch has not confirmed, and it lives for one loop iteration.
+    private val inFlight = mutableMapOf<String, InFlight>()
+    private var writeSeq = 0
+
+    // Bumped when a save or discard ends the visit, so an answer arriving after it cannot record
+    // collateral against edits that no longer exist.
+    private var visit = 0
+
     // The rows of the screen being shown, read from the host on every render rather than
     // remembered. Nothing here is predicted or kept: a value the host was never asked for cannot
     // reach a row, and a value something else changed cannot go unnoticed. Held between renders
@@ -531,23 +542,18 @@ class RaIgmSettingsProvider(
     private fun valuesFor(row: CuratedCatalog.Row): Map<String, String> {
         val shadow = host.shadowedSettings()
         return row.settingKeys.mapNotNull { key ->
-            (shadow[key] ?: host.raGetSetting(key)?.machineValue?.raw)?.let { key to it }
+            (shadow[key] ?: read(key)?.machineValue?.raw)?.let { key to it }
         }.toMap()
     }
 
     private fun cycleCurated(row: CuratedCatalog.Row, direction: Int) {
         val preset = CuratedCatalog.nextPreset(row, valuesFor(row), direction)
-        val onScreen = curatedScreenKeys(row).associateWith { key ->
-            host.raGetSetting(key)?.machineValue ?: MachineValue("")
-        }
+        val watch = curatedScreenKeys(row)
         var wrote = false
-        // A key RetroArch does not expose answers with nothing, which is the same skip the
-        // reachability rule that let this row exist without it already performs.
         for ((key, value) in preset.values) {
             snapshot(key)
-            val applied = host.raApply(key, MachineValue(value), onScreen.keys) ?: continue
+            if (!write(key, MachineValue(value), watch, notCollateral = preset.values.keys)) continue
             changedKeys.add(key)
-            rememberCollateral(applied.moved - preset.values.keys, onScreen)
             wrote = true
         }
         if (wrote) {
@@ -576,7 +582,7 @@ class RaIgmSettingsProvider(
     }
 
     private fun loadCoreOptions(refs: List<CoreOptionRef>) {
-        currentSettings = refs.mapNotNull { host.raGetSetting(it.key)?.let(::withRestartHint) }
+        currentSettings = refs.mapNotNull { read(it.key)?.let(::withRestartHint) }
     }
 
     private fun root(): GenericIgmSettingsScreen {
@@ -638,7 +644,37 @@ class RaIgmSettingsProvider(
     // the rows are a projection of what RetroArch holds rather than a copy of it, and a value
     // something else changed shows up without anyone having to know it happened.
     private fun loadKeys(keys: List<String>) {
-        currentSettings = keys.mapNotNull { key -> host.raGetSetting(key)?.let(::withRestartHint) }
+        currentSettings = keys.mapNotNull { key -> read(key)?.let(::withRestartHint) }
+    }
+
+    private fun read(key: String): RaSetting? {
+        val live = host.raGetSetting(key) ?: return null
+        val pending = inFlight[key]?.value ?: return live
+        return live.copy(
+            machineValue = pending,
+            displayValue = live.options?.firstOrNull { it.machine == pending }?.display ?: pending.raw,
+        )
+    }
+
+    private fun write(
+        key: String,
+        value: MachineValue,
+        watch: Collection<String>,
+        notCollateral: Set<String> = emptySet(),
+        recordMoved: Boolean = true,
+    ): Boolean {
+        val seq = ++writeSeq
+        val asOf = visit
+        inFlight[key] = InFlight(value, seq)
+        val queued = host.raApply(key, value, watch) { result ->
+            if (inFlight[key]?.seq == seq) inFlight.remove(key)
+            if (result != null && recordMoved && asOf == visit) {
+                rememberCollateral(result.moved - notCollateral)
+            }
+            onChanged?.invoke()
+        }
+        if (!queued && inFlight[key]?.seq == seq) inFlight.remove(key)
+        return queued
     }
 
     private fun rowFor(s: RaSetting) = GenericIgmSettingsItem.Choice(
@@ -663,17 +699,13 @@ class RaIgmSettingsProvider(
         // presses arriving without a render between them would otherwise both step from the same
         // value, and the second would write what the first already did.
         val onRow = currentSettings.firstOrNull { it.key == itemKey } ?: return
-        val s = host.raGetSetting(onRow.key)?.let(::withRestartHint) ?: return
+        val s = read(onRow.key)?.let(::withRestartHint) ?: return
         val newValue = RaValueCycler.next(s, direction) ?: return
         if (newValue == s.machineValue) return
         snapshot(s.key)
-        val onScreen = currentSettings.associate { it.key to it.machineValue }
-        // Null is a key RetroArch does not have, or one it did not answer for. Neither is a
-        // change, and neither is something to put in the save prompt.
-        val applied = host.raApply(s.key, newValue, onScreen.keys) ?: return
+        if (!write(s.key, newValue, currentSettings.map { it.key })) return
         dirty = true
         changedKeys.add(s.key)
-        rememberCollateral(applied.moved, onScreen)
         onChanged?.invoke()
     }
 
@@ -684,11 +716,8 @@ class RaIgmSettingsProvider(
      * came in with, while a save owes them the choices they made, and a value RetroArch moved on
      * its own is neither of those. Writing it into an override would save a decision nobody took.
      */
-    private fun rememberCollateral(moved: Set<String>, before: Map<String, MachineValue>) {
-        for (key in moved) {
-            val was = before[key] ?: continue
-            if (!priorValues.containsKey(key)) priorValues[key] = was
-        }
+    private fun rememberCollateral(moved: Map<String, MachineValue>) {
+        for ((key, was) in moved) if (!priorValues.containsKey(key)) priorValues[key] = was
     }
 
     // One row per player holding a pad, or one row for Player 1 with at most one pad. Read on every
@@ -902,12 +931,13 @@ class RaIgmSettingsProvider(
                 value.raw.toIntOrNull()?.let { host.setPortDevice(port, it) }
                 continue
             }
-            host.raApply(key, value)
+            write(key, value, emptyList(), recordMoved = false)
         }
         onChanged?.invoke()
     }
 
     private fun clearDirty() {
+        visit++
         dirty = false
         changedKeys.clear()
         priorValues.clear()

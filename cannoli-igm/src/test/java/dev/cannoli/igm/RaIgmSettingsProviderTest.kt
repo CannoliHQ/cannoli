@@ -21,7 +21,7 @@ private class FakeRaHost : RaSettingsHost {
     /** RetroArch runs a setting's change handler on the write, and handlers move other settings. */
     var changeHandler: ((String) -> Unit)? = null
 
-    override fun raApply(key: String, value: MachineValue, watch: Collection<String>): RaApplyResult? {
+    fun applyNow(key: String, value: MachineValue, watch: Collection<String>): RaApplyResult? {
         setCalls.add(key to value.raw)
         if (!setSucceeds) return null
         val current = settings[key] ?: return null
@@ -32,8 +32,21 @@ private class FakeRaHost : RaSettingsHost {
         )
         changeHandler?.invoke(key)
         val applied = settings[key]?.machineValue ?: return null
-        return RaApplyResult(applied, watch.filterTo(mutableSetOf()) { settings[it]?.machineValue != before[it] })
+        return RaApplyResult(
+            applied,
+            watch.filter { settings[it]?.machineValue != before[it] }
+                .mapNotNull { k -> before[k]?.let { k to it } }
+                .toMap(),
+        )
     }
+
+    override fun raApply(
+        key: String,
+        value: MachineValue,
+        watch: Collection<String>,
+        onDone: (RaApplyResult?) -> Unit,
+    ): Boolean = answerNow(onDone) { applyNow(key, value, watch) }
+
     override fun raSaveOverride(scope: RaOverrideScope, keys: Set<String>) {
         savedScopes.add(scope)
         savedKeys.add(keys)

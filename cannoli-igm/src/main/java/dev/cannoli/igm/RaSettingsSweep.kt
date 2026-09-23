@@ -1,6 +1,8 @@
 package dev.cannoli.igm
 
 import dev.cannoli.core.CheevosSessionKeys
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 /**
  * Writes every setting the menu can reach and puts it back as it was, counting what RetroArch did
@@ -15,7 +17,10 @@ import dev.cannoli.core.CheevosSessionKeys
  * It changes the running game while it runs, one setting at a time, and puts each back before
  * moving on. A value it cannot put back is the worst outcome here and is reported as such.
  */
-class RaSettingsSweep(private val host: RaSettingsHost) {
+class RaSettingsSweep(
+    private val host: RaSettingsHost,
+    private val answerTimeoutMs: Long = ANSWER_TIMEOUT_MS,
+) {
     enum class Outcome {
         /** Written, read back as asked, and put back. What every row should be. */
         STUCK,
@@ -75,7 +80,20 @@ class RaSettingsSweep(private val host: RaSettingsHost) {
         }
     }
 
-    fun run(keys: List<String>): Report = Report(keys.map(::probe))
+    fun run(keys: List<String>): Report = Report(keys.map(::probe)).also { host.flushHeldCommands() }
+
+    // The sweep runs on its own thread and the answer arrives on the main one, so it can wait. The
+    // menu never does.
+    private fun apply(key: String, value: MachineValue): MachineValue? {
+        val answered = CountDownLatch(1)
+        var answer: RaApplyResult? = null
+        val queued = host.raApply(key, value) {
+            answer = it
+            answered.countDown()
+        }
+        if (!queued || !answered.await(answerTimeoutMs, TimeUnit.MILLISECONDS)) return null
+        return answer?.value
+    }
 
     private fun probe(key: String): Row {
         if (unsafe(key)) return Row(key, Outcome.SKIPPED_UNSAFE)
@@ -84,7 +102,7 @@ class RaSettingsSweep(private val host: RaSettingsHost) {
         val asked = RaValueCycler.next(before, 1)?.takeIf { it != from }
             ?: return Row(key, Outcome.SKIPPED_UNCHANGEABLE)
 
-        val got = host.raApply(key, asked)?.value
+        val got = apply(key, asked)
             ?: return Row(key, Outcome.UNANSWERED, from.raw, asked.raw, null)
 
         val outcome = when {
@@ -94,7 +112,7 @@ class RaSettingsSweep(private val host: RaSettingsHost) {
         }
         if (outcome == Outcome.REFUSED) return Row(key, outcome, from.raw, asked.raw, got.raw)
 
-        val restored = host.raApply(key, from)?.value
+        val restored = apply(key, from)
         if (!same(before.type, restored, from)) {
             return Row(key, Outcome.RESTORE_FAILED, from.raw, asked.raw, restored?.raw)
         }
@@ -126,6 +144,8 @@ class RaSettingsSweep(private val host: RaSettingsHost) {
         key.endsWith("_driver") || key in CheevosSessionKeys.ALL
 
     companion object {
+        private const val ANSWER_TIMEOUT_MS = 10_000L
+
         /**
          * Every key the menu can reach, walked the way All Settings walks it, so the sweep covers
          * what v2 actually exposes rather than a list somebody kept up to date by hand.

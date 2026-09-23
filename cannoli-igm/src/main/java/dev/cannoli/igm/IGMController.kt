@@ -665,6 +665,7 @@ class IGMController(
         // Same archive, same reason to keep it off the main thread as [saveAndQuit].
         scope.launch {
             if (bridge.savesOnQuit) withContext(io) { slots.rotateAutoIntoHistory() }
+            bridge.dropHeldCommands()
             onClose?.invoke()
             bridge.quit()
         }
@@ -685,6 +686,7 @@ class IGMController(
             // RetroArch is about to write the auto slot, so the state it replaces is archived first.
             withContext(io) { slots.rotateAutoIntoHistory() }
             if (!bridge.savesOnQuit) bridge.forceSaveOnQuit()
+            bridge.dropHeldCommands()
             onClose?.invoke()
             bridge.quit()
         }

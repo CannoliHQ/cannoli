@@ -24,10 +24,17 @@ private class CoreOptionHost(private val keys: List<String>) : RaSettingsHost {
         )
     }
 
-    override fun raApply(key: String, value: MachineValue, watch: Collection<String>): RaApplyResult {
+    fun applyNow(key: String, value: MachineValue, watch: Collection<String>): RaApplyResult {
         written += key to value.raw
         return RaApplyResult(value)
     }
+
+    override fun raApply(
+        key: String,
+        value: MachineValue,
+        watch: Collection<String>,
+        onDone: (RaApplyResult?) -> Unit,
+    ): Boolean = answerNow(onDone) { applyNow(key, value, watch) }
 
     override fun raSaveOverride(scope: RaOverrideScope, keys: Set<String>) {}
 }
@@ -79,7 +86,15 @@ private class CategorisedHost(private val refs: List<CoreOptionRef>) : RaSetting
         displayValue = "A",
         options = listOf(RaOption(MachineValue("a"), "a"), RaOption(MachineValue("b"), "b")),
     )
-    override fun raApply(key: String, value: MachineValue, watch: Collection<String>) = RaApplyResult(value)
+    fun applyNow(key: String, value: MachineValue, watch: Collection<String>) = RaApplyResult(value)
+
+    override fun raApply(
+        key: String,
+        value: MachineValue,
+        watch: Collection<String>,
+        onDone: (RaApplyResult?) -> Unit,
+    ): Boolean = answerNow(onDone) { applyNow(key, value, watch) }
+
     override fun raSaveOverride(scope: RaOverrideScope, keys: Set<String>) {}
 }
 

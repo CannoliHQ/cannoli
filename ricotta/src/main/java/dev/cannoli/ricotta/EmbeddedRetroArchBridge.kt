@@ -114,8 +114,9 @@ class EmbeddedRetroArchBridge(
      * This arrives from the command pump, which RetroArch calls once per iteration through
      * runloop.patch. Lose that patch and nothing fails loudly: the pump is still compiled, simply
      * never called, so the build runs, the game plays, and every write the in-game menu makes
-     * waits out its timeout against a queue nobody drains. The patch roster has dropped a file
-     * before, so the one signal that would catch it is worth writing down.
+     * stays queued forever while its row keeps showing the value it predicted, which RetroArch
+     * never took. The patch roster has dropped a file before, so the one signal that would catch
+     * it is worth writing down.
      *
      * A core that never finishes loading looks the same from here, which is also worth knowing.
      */
@@ -259,8 +260,6 @@ class EmbeddedRetroArchBridge(
             .associate { it.action to it.chord }
             .filterValues { it.isNotEmpty() }
 
-    fun setBuiltinPorts(ports: IntArray) = nativeSetBuiltinPorts(ports)
-
     fun setIGMVisible(visible: Boolean) {
         nativeSetIGMVisible(visible)
     }
@@ -271,8 +270,11 @@ class EmbeddedRetroArchBridge(
 
     override fun quit() = nativeQuit()
 
+    override fun dropHeldCommands() = nativeDropHeld()
+
     fun pause() = nativePause()
     fun unpause() = nativeUnpause()
+    override fun flushHeldCommands() = nativeFlushHeld()
 
     override val savesOnQuit: Boolean
         get() = raGetSetting("savestate_auto_save")?.machineValue?.raw == "true"
@@ -704,35 +706,34 @@ class EmbeddedRetroArchBridge(
 
     // False means the key resolves to nothing, so the write was never queued. The apply itself is
     // asynchronous: this is the bridge's own fire-and-forget write, for the handful of settings it
-    // owns rather than shows. Anything the menu writes goes through raApply and waits.
+    // owns rather than shows. Anything the menu writes goes through raApply, which answers later
+    // instead of waiting.
     private fun raSetSetting(key: String, value: MachineValue): Boolean =
         nativeRaSetSetting(key, value.raw)
 
-    /**
-     * Serialises the waits: the native holds one result slot, and a second caller landing in it
-     * while the first is parked would hand one of them the other's answer.
-     */
-    private val applyLock = Any()
+    private val applyTokens = java.util.concurrent.atomic.AtomicInteger()
+    private val pendingApplies = java.util.concurrent.ConcurrentHashMap<Int, (RaApplyResult?) -> Unit>()
 
-    /**
-     * The moved set is worked out here rather than in the native, by reading the watched keys on
-     * both sides of the apply. That is only affordable because a value read is now cheap, and it
-     * keeps a list of keys out of the command queue for an answer two loops over a map can give.
-     */
     override fun raApply(
         key: String,
         value: MachineValue,
         watch: Collection<String>,
-    ): RaApplyResult? {
-        val before = watch.filterNot { it == key }.associateWith { rawValue(it) }
-        val applied = synchronized(applyLock) { nativeRaApply(key, value.raw, APPLY_TIMEOUT_MS) }
-        described.clear()
-        if (applied == null) return null
-        val moved = before.keys.filterTo(mutableSetOf()) { rawValue(it) != before[it] }
-        return RaApplyResult(MachineValue(applied), moved)
+        onDone: (RaApplyResult?) -> Unit,
+    ): Boolean {
+        val token = applyTokens.incrementAndGet()
+        pendingApplies[token] = onDone
+        val queued = nativeRaApply(token, key, value.raw, watch.filterNot { it == key }.toTypedArray())
+        if (!queued) pendingApplies.remove(token)
+        return queued
     }
 
-    private fun rawValue(key: String): String? = nativeRaValue(key)?.substringBefore('')
+    @Suppress("unused")
+    fun onRaApplyDone(token: Int, value: String?, moved: Array<String>) {
+        described.clear()
+        val done = pendingApplies.remove(token) ?: return
+        val result = value?.let { RaApplyResult(MachineValue(it), decodeMoved(moved)) }
+        mainHandler.post { done(result) }
+    }
 
     override fun coreGeometry(): IntArray? = nativeCoreGeometry()
 
@@ -1188,7 +1189,7 @@ class EmbeddedRetroArchBridge(
      *
      * One listener, and the viewport controller is it. The menu used to claim the same slot to
      * learn when its own writes landed, which made correctness a question of who registered last;
-     * it waits on [raApply] instead and no longer listens at all.
+     * it is told through [raApply]'s callback instead and no longer listens at all.
      */
     private var onRaApplied: ((String, String) -> Unit)? = null
 
@@ -1240,10 +1241,12 @@ class EmbeddedRetroArchBridge(
     private external fun nativeUndoLoadState()
     private external fun nativeReset()
     private external fun nativeQuit()
+    private external fun nativeDropHeld()
     private external fun nativePause()
     private external fun nativeUnpause()
     private external fun nativeIsPaused(): Boolean
     private external fun nativeMenuToggle()
+    private external fun nativeFlushHeld()
     private external fun nativeCoreOptionKeys(): Array<String>?
     private external fun nativeSystemInfo(): Array<String>?
     private external fun nativeDiskCount(): Int
@@ -1265,7 +1268,6 @@ class EmbeddedRetroArchBridge(
     private external fun nativeSetRewindHeld(held: Boolean)
     private external fun nativeResetRewindBuffer()
 
-    private external fun nativeSetBuiltinPorts(ports: IntArray)
     private external fun nativeGetAchievementData(): String
     private external fun nativeCheatLoadFile(path: String)
     private external fun nativeCheatToggle(index: Int)
@@ -1274,7 +1276,7 @@ class EmbeddedRetroArchBridge(
     private external fun nativeRaGetSetting(key: String): Array<String>?
     private external fun nativeRaValue(key: String): String?
     private external fun nativeRaSetSetting(key: String, value: String): Boolean
-    private external fun nativeRaApply(key: String, value: String, timeoutMs: Int): String?
+    private external fun nativeRaApply(token: Int, key: String, value: String, watch: Array<String>): Boolean
     private external fun nativeSetShaderPreset(path: String)
 
     private external fun nativeRaSaveOverride(scope: Int, keys: String)
@@ -1294,15 +1296,6 @@ class EmbeddedRetroArchBridge(
          * offer the working copy of the thing you are currently editing as something to load.
          */
         private const val WORKING_CHAIN = ".cannoli_chain"
-
-        /**
-         * How long a write waits for the runloop before the menu carries on without it.
-         *
-         * A write lands on the next runloop iteration, so the wait is normally under a frame. The
-         * budget is long enough to cover a change handler that reinitialises a driver and short
-         * enough that a core which has stopped turning does not read as a frozen menu.
-         */
-        private const val APPLY_TIMEOUT_MS = 500
 
         /**
          * How long RetroArch gets to reach its loop before that is worth writing down. Long

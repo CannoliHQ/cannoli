@@ -19,23 +19,25 @@ interface RaSettingsHost {
     fun raGetSetting(key: String): RaSetting?
 
     /**
-     * Writes [value] and returns once RetroArch has, answering with what it holds afterwards.
+     * Queues [value] for RetroArch and returns whether it was queued. When it was, [onDone] is
+     * called once on the main thread with what RetroArch holds afterwards, which is not always what
+     * was asked for: it clamps, refuses, and rewrites neighbours from change handlers.
      *
-     * Not always what was asked for: RetroArch clamps values, refuses them, and rewrites a
-     * setting's neighbours from its change handlers. The value it chose is the only one worth
-     * rendering, and a caller that waits for it never has to predict one.
+     * [watch] are keys to report in [RaApplyResult.moved] if the write moved them, each with the
+     * value it held before. Pass what is on screen.
      *
-     * [watch] are keys to report back in [RaApplyResult.moved] if the write moved them as well.
-     * Pass what is on screen: the answer is only as complete as the question.
-     *
-     * Null when the key resolves to nothing, or when the emulator did not answer in time. Neither
-     * is a value, and a row with nothing to show reads through [raGetSetting] like any other.
+     * Nothing times out. The run loop answers every write it takes, and a write it could not take
+     * returns false here.
      */
     fun raApply(
         key: String,
         value: MachineValue,
         watch: Collection<String> = emptyList(),
-    ): RaApplyResult?
+        onDone: (RaApplyResult?) -> Unit = {},
+    ): Boolean
+
+    /** Runs the commands RetroArch fired during menu writes and has been holding. */
+    fun flushHeldCommands() {}
 
     fun raSaveOverride(scope: RaOverrideScope, keys: Set<String>)
 

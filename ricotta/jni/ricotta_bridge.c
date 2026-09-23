@@ -150,11 +150,6 @@ static volatile int g_menu_modifier_held = 0;
 static volatile int g_swallowed[RICOTTA_MAX_SHORTCUT_KEYS];
 static volatile int g_swallowed_count = 0;
 
-/* Ports whose pad the launcher's input DB marks built in, from the launch intent. RetroArch has
- * no notion of built in, so it announces the handheld's own controls on every launch. */
-#define RICOTTA_MAX_PORTS 16
-static volatile int g_builtin_ports[RICOTTA_MAX_PORTS];
-static volatile int g_builtin_port_count = 0;
 static jmethodID g_on_igm_trigger_mid = NULL;
 static jmethodID g_on_shortcut_key_mid = NULL;
 static jmethodID g_on_shortcut_action_mid = NULL;
@@ -168,6 +163,7 @@ static jmethodID g_on_cheevos_load_mid = NULL;
  * and was never drawn, which a toast alone cannot tell you. */
 static volatile int g_cheevos_outcome = -1;
 static jmethodID g_on_ra_applied_mid = NULL;
+static jmethodID g_on_ra_apply_done_mid = NULL;
 static jmethodID g_on_cheats_loaded_mid = NULL;
 static jmethodID g_on_cheevos_request_mid = NULL;
 static jmethodID g_on_cheevos_response_mid = NULL;
@@ -207,6 +203,9 @@ static volatile int g_menu_poll_active = 0;
  * thread while retro_run executes on the runloop thread, so the JNI methods enqueue
  * commands here and ricotta_bridge_poll_commands() runs them on the runloop thread. */
 #define RICOTTA_CMD_QUEUE_SIZE 32
+/* Menu writes need room the run loop can drain into once the menu closes: without a reserve, a
+ * stalled run loop can fill the queue with writes and starve the flush/unpause that unsticks it. */
+#define RICOTTA_CMD_RESERVE 8
 /* A setting crosses as a flat name/value array rather than a fixed positional one. Adding a field
  * cannot shift another, and the two describers cannot drift apart by allocating different counts,
  * which is how core options ended up with no machine value. */
@@ -254,6 +253,8 @@ static jobjectArray ricotta_fields_to_array(JNIEnv *env, const ricotta_field *f,
 #define RICOTTA_QCMD_PORT_DEVICE_SET  -13
 #define RICOTTA_QCMD_PLAYERS_SWAP     -14
 #define RICOTTA_QCMD_REMAP_SET        -15
+#define RICOTTA_QCMD_HELD_FLUSH       -16
+#define RICOTTA_QCMD_HELD_DROP        -17
 /* Matches PortDevices.PLAYER_ROWS in cannoli-igm. */
 #define RICOTTA_PLAYER_ROWS           4
 /* RetroPad's sixteen digital buttons, matching RemapButton in cannoli-igm. */
@@ -276,68 +277,40 @@ typedef struct
    int   port_b;
    int   remap_value;
    int   ra_wait;
+   char *ra_watch;
 } ricotta_cmd_entry;
 static ricotta_cmd_entry g_cmd_queue[RICOTTA_CMD_QUEUE_SIZE];
 static int g_cmd_head = 0;
 static int g_cmd_tail = 0;
 static pthread_mutex_t g_cmd_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-/* A caller that waits for its write to land, so the menu can show what RetroArch chose rather than
- * what it was asked for. One at a time: the menu writes from a single thread and blocks on each. */
-static pthread_mutex_t g_apply_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t  g_apply_cond  = PTHREAD_COND_INITIALIZER;
-/* Names the wait a queued write belongs to. A write that timed out is still in the queue and still
- * answers when the runloop reaches it, and without this that answer would be handed to whoever is
- * waiting by then, which is a different setting. */
-static int  g_apply_token   = 0;
-static int  g_apply_waiting = 0;
-static int  g_apply_done    = 0;
-static int  g_apply_found   = 0;
-static char g_apply_value[512];
-
-/* Hands the waiting caller the value the setting now holds, or nothing when there was none to
- * read. Called on the runloop thread once the write and its change handlers are through. */
-static void ricotta_apply_finish(int token, const char *raw)
+static int ricotta_enqueue_entry(ricotta_cmd_entry entry)
 {
-   if (!token)
-      return;
-   pthread_mutex_lock(&g_apply_mutex);
-   if (g_apply_waiting && !g_apply_done && token == g_apply_token)
-   {
-      if (raw)
-         strlcpy(g_apply_value, raw, sizeof(g_apply_value));
-      g_apply_found = raw ? 1 : 0;
-      g_apply_done  = 1;
-      pthread_cond_signal(&g_apply_cond);
-   }
-   pthread_mutex_unlock(&g_apply_mutex);
-}
-
-static void ricotta_enqueue_entry(ricotta_cmd_entry entry)
-{
-   int dropped = 0;
+   int queued = 0;
    pthread_mutex_lock(&g_cmd_mutex);
    {
-      int next = (g_cmd_tail + 1) % RICOTTA_CMD_QUEUE_SIZE;
-      if (next != g_cmd_head) /* drop if full rather than overwrite */
+      int next  = (g_cmd_tail + 1) % RICOTTA_CMD_QUEUE_SIZE;
+      int depth = (g_cmd_tail - g_cmd_head + RICOTTA_CMD_QUEUE_SIZE) % RICOTTA_CMD_QUEUE_SIZE;
+      int free_slots  = RICOTTA_CMD_QUEUE_SIZE - 1 - depth;
+      int menu_write  = entry.cmd == RICOTTA_QCMD_RA_SET && entry.ra_wait != 0;
+      if (next != g_cmd_head && !(menu_write && free_slots < RICOTTA_CMD_RESERVE)) /* drop if full, or a menu write below the reserve, rather than overwrite */
       {
          g_cmd_queue[g_cmd_tail] = entry;
          g_cmd_tail = next;
-      }
-      else
-      {
-         /* A dropped cheat load emits no snapshot: the upcall only runs on the runloop thread, so
-          * nothing can report the drop from here. The screen keeps its old list and reloads on the
-          * next entry. */
-         free(entry.ra_key);
-         free(entry.ra_value);
-         dropped = 1;
+         queued = 1;
       }
    }
    pthread_mutex_unlock(&g_cmd_mutex);
-   /* A dropped write is answered rather than left to time out: the runloop will never reach it. */
-   if (dropped)
-      ricotta_apply_finish(entry.ra_wait, NULL);
+   /* A dropped cheat load emits no snapshot: the upcall only runs on the runloop thread, so
+    * nothing can report the drop from here. The screen keeps its old list and reloads on the
+    * next entry. */
+   if (!queued)
+   {
+      free(entry.ra_key);
+      free(entry.ra_value);
+      free(entry.ra_watch);
+   }
+   return queued;
 }
 
 static void ricotta_enqueue_command(int cmd, int slot, int has_slot)
@@ -347,6 +320,95 @@ static void ricotta_enqueue_command(int cmd, int slot, int has_slot)
    entry.slot     = slot;
    entry.has_slot = has_slot;
    ricotta_enqueue_entry(entry);
+}
+
+#define RICOTTA_HELD_MAX 32
+
+/* Set on the runloop thread for the length of one menu write, so only that write's commands are
+ * held and a command from any other thread or path runs as it always did. */
+static __thread int g_hold_active = 0;
+static int g_held_cmds[RICOTTA_HELD_MAX];
+static int g_held_cmd_count = 0;
+
+static int ricotta_deferrable(int cmd)
+{
+   switch (cmd)
+   {
+      case CMD_EVENT_REINIT:
+      case CMD_EVENT_REINIT_FROM_TOGGLE:
+      case CMD_EVENT_AUDIO_REINIT:
+      case CMD_EVENT_AUDIO_START:
+      case CMD_EVENT_AUDIO_STOP:
+#ifdef HAVE_MICROPHONE
+      case CMD_EVENT_MICROPHONE_REINIT:
+#endif
+      case CMD_EVENT_VIDEO_APPLY_STATE_CHANGES:
+      case CMD_EVENT_VIDEO_SET_ASPECT_RATIO:
+      case CMD_EVENT_VIDEO_SET_BLOCKING_STATE:
+      case CMD_EVENT_OVERLAY_INIT:
+      case CMD_EVENT_OVERLAY_UNLOAD:
+      case CMD_EVENT_OVERLAY_SET_SCALE_FACTOR:
+      case CMD_EVENT_OVERLAY_SET_ALPHA_MOD:
+      case CMD_EVENT_OVERLAY_SET_EIGHTWAY_DIAGONAL_SENSITIVITY:
+      case CMD_EVENT_CONTROLLER_INIT:
+      case CMD_EVENT_PREEMPT_UPDATE:
+#if defined(HAVE_RUNAHEAD) && (defined(HAVE_DYNAMIC) || defined(HAVE_DYLIB))
+      case CMD_EVENT_LOAD_SECOND_CORE:
+#endif
+      case CMD_EVENT_CHEATS_APPLY:
+      case CMD_EVENT_OSD_NOTIFICATION_TOGGLE:
+      case CMD_EVENT_HISTORY_INIT:
+      case CMD_EVENT_CORE_INFO_INIT:
+         return 1;
+      default:
+         return 0;
+   }
+}
+
+/* The command a held one cancels out, so the later press wins instead of both running in
+ * whichever order they were first held. CMD_EVENT_NONE when cmd has no opposite. */
+static int ricotta_opposite(int cmd)
+{
+   switch (cmd)
+   {
+      case CMD_EVENT_AUDIO_START: return CMD_EVENT_AUDIO_STOP;
+      case CMD_EVENT_AUDIO_STOP:  return CMD_EVENT_AUDIO_START;
+      default:                    return CMD_EVENT_NONE;
+   }
+}
+
+int ricotta_hold_command(int cmd, void *data)
+{
+   int i, opposite;
+   if (!g_hold_active || data || !ricotta_deferrable(cmd))
+      return 0;
+   for (i = 0; i < g_held_cmd_count; i++)
+      if (g_held_cmds[i] == cmd)
+         return 1;
+   opposite = ricotta_opposite(cmd);
+   if (opposite != CMD_EVENT_NONE)
+      for (i = 0; i < g_held_cmd_count; i++)
+         if (g_held_cmds[i] == opposite)
+         {
+            memmove(&g_held_cmds[i], &g_held_cmds[i + 1],
+                  sizeof(g_held_cmds[0]) * (size_t)(g_held_cmd_count - i - 1));
+            g_held_cmd_count--;
+            break;
+         }
+   if (g_held_cmd_count == RICOTTA_HELD_MAX)
+      return 0;
+   g_held_cmds[g_held_cmd_count++] = cmd;
+   return 1;
+}
+
+static void ricotta_held_flush(void)
+{
+   int cmds[RICOTTA_HELD_MAX];
+   int i, n = g_held_cmd_count;
+   memcpy(cmds, g_held_cmds, sizeof(cmds[0]) * (size_t)n);
+   g_held_cmd_count = 0;
+   for (i = 0; i < n; i++)
+      command_event((enum event_command)cmds[i], NULL);
 }
 
 /* The name RetroArch's own menu shows for a controller type: the core's description, else generic. */
@@ -506,7 +568,7 @@ static void ricotta_sb_escaped(ricotta_strbuf *sb, const char *s)
    }
 }
 
-static void ricotta_ra_apply(const char *key, const char *value, int wait);
+static void ricotta_ra_apply(const char *key, const char *value, int token, const char *watch);
 static void ricotta_ra_save_override(int scope, const char *keys);
 static JNIEnv *ricotta_runloop_env(void);
 
@@ -730,11 +792,20 @@ void ricotta_bridge_poll_commands(void)
       if (entry.cmd == RICOTTA_QCMD_RA_SET)
       {
          if (entry.ra_key && entry.ra_value)
-            ricotta_ra_apply(entry.ra_key, entry.ra_value, entry.ra_wait);
-         else
-            ricotta_apply_finish(entry.ra_wait, NULL);
+            ricotta_ra_apply(entry.ra_key, entry.ra_value, entry.ra_wait, entry.ra_watch);
          free(entry.ra_key);
          free(entry.ra_value);
+         free(entry.ra_watch);
+         continue;
+      }
+      if (entry.cmd == RICOTTA_QCMD_HELD_FLUSH)
+      {
+         ricotta_held_flush();
+         continue;
+      }
+      if (entry.cmd == RICOTTA_QCMD_HELD_DROP)
+      {
+         g_held_cmd_count = 0;
          continue;
       }
       if (entry.cmd == RICOTTA_QCMD_PORT_DEVICE_SET)
@@ -1336,7 +1407,114 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeCoreOptionKeys(
    return out;
 }
 
-static void ricotta_ra_apply(const char *key, const char *value, int wait)
+/* The machine value a key holds now, RetroArch setting or core option alike. */
+static int ricotta_raw_value_of(const char *key, char *buf, size_t len)
+{
+   size_t plen = strlen(RICOTTA_CORE_OPT_PREFIX);
+   rarch_setting_t *s;
+   if (!strncmp(key, RICOTTA_CORE_OPT_PREFIX, plen))
+   {
+      const char *v = ricotta_core_opt_value(key + plen);
+      if (!v)
+         return 0;
+      strlcpy(buf, v, len);
+      return 1;
+   }
+   if (!(s = ricotta_ra_find(key)))
+      return 0;
+   if (s->actions->read)
+      s->actions->read(s);
+   return ricotta_ra_format_raw_value(s, buf, len);
+}
+
+typedef struct
+{
+   char *key;
+   char  before[512];
+   int   known;
+} ricotta_watched;
+
+static ricotta_watched *ricotta_watch_read(const char *watch, int *count)
+{
+   ricotta_watched *out;
+   char *copy, *tok, *save = NULL;
+   int n = 1, i = 0;
+   const char *p;
+   *count = 0;
+   if (!watch || !*watch)
+      return NULL;
+   for (p = watch; *p; p++)
+      if (*p == '\x1f')
+         n++;
+   out  = (ricotta_watched *)calloc((size_t)n, sizeof(*out));
+   copy = strdup(watch);
+   if (!out || !copy)
+   {
+      free(out);
+      free(copy);
+      return NULL;
+   }
+   for (tok = strtok_r(copy, "\x1f", &save); tok && i < n; tok = strtok_r(NULL, "\x1f", &save))
+   {
+      out[i].key   = strdup(tok);
+      out[i].known = ricotta_raw_value_of(tok, out[i].before, sizeof(out[i].before));
+      i++;
+   }
+   free(copy);
+   *count = i;
+   return out;
+}
+
+/* Answers the menu's write on the runloop thread: the value the setting holds now, and each
+ * watched key the write moved with the value it held before. */
+static void ricotta_apply_done(int token, const char *raw, ricotta_watched *w, int n)
+{
+   JNIEnv *env = ricotta_runloop_env();
+   jclass str_cls;
+   jobjectArray moved;
+   jstring jraw = NULL;
+   char now[512];
+   int i, pairs = 0;
+   if (!token || !env || !g_bridge_obj || !g_on_ra_apply_done_mid)
+      return;
+   for (i = 0; i < n; i++)
+      if (w[i].known && ricotta_raw_value_of(w[i].key, now, sizeof(now)) && strcmp(now, w[i].before))
+         pairs++;
+   str_cls = (*env)->FindClass(env, "java/lang/String");
+   moved   = (*env)->NewObjectArray(env, (jsize)(pairs * 2), str_cls, NULL);
+   pairs   = 0;
+   for (i = 0; i < n; i++)
+   {
+      jstring jk, jb;
+      if (!w[i].known || !ricotta_raw_value_of(w[i].key, now, sizeof(now)) || !strcmp(now, w[i].before))
+         continue;
+      jk = (*env)->NewStringUTF(env, w[i].key);
+      jb = (*env)->NewStringUTF(env, w[i].before);
+      (*env)->SetObjectArrayElement(env, moved, (jsize)(pairs * 2), jk);
+      (*env)->SetObjectArrayElement(env, moved, (jsize)(pairs * 2 + 1), jb);
+      (*env)->DeleteLocalRef(env, jk);
+      (*env)->DeleteLocalRef(env, jb);
+      pairs++;
+   }
+   if (raw)
+      jraw = (*env)->NewStringUTF(env, raw);
+   (*env)->CallVoidMethod(env, g_bridge_obj, g_on_ra_apply_done_mid, (jint)token, jraw, moved);
+   ricotta_jni_check(env, "onRaApplyDone");
+   if (jraw)
+      (*env)->DeleteLocalRef(env, jraw);
+   (*env)->DeleteLocalRef(env, moved);
+   (*env)->DeleteLocalRef(env, str_cls);
+}
+
+static void ricotta_watch_free(ricotta_watched *w, int n)
+{
+   int i;
+   for (i = 0; i < n; i++)
+      free(w[i].key);
+   free(w);
+}
+
+static int ricotta_ra_write(const char *key, const char *value, char *raw, size_t raw_len)
 {
    settings_t *settings;
    rarch_setting_t *s;
@@ -1345,18 +1523,12 @@ static void ricotta_ra_apply(const char *key, const char *value, int wait)
    {
       const char *bare = key + strlen(RICOTTA_CORE_OPT_PREFIX);
       ricotta_core_opt_apply(bare, value);
-      /* Core options have no echo of their own, and a caller waiting on one would sit through its
-       * whole timeout on every keypress. */
-      ricotta_apply_finish(wait, ricotta_core_opt_value(bare));
-      return;
+      return ricotta_raw_value_of(key, raw, raw_len);
    }
 
    s = ricotta_ra_find(key);
    if (!s)
-   {
-      ricotta_apply_finish(wait, NULL);
-      return;
-   }
+      return 0;
    /* Every path below reaches the echo, including the ones that change nothing. A write RetroArch
     * refuses or clamps has to be reported, or the menu keeps showing the value it predicted and
     * only finds out it never took by being left and re-entered. */
@@ -1415,12 +1587,10 @@ echo:
    /* Confirm with the authoritative value; handlers may clamp or rewrite it. */
    {
       char buf[512];
-      char raw[512];
+      int found;
       if (s->actions->read)
          s->actions->read(s);
-      /* The waiter first: the echo below is an upcall onto a thread that may be the one waiting. */
-      ricotta_apply_finish(wait,
-            ricotta_ra_format_raw_value(s, raw, sizeof(raw)) ? raw : NULL);
+      found = ricotta_ra_format_raw_value(s, raw, raw_len);
       if (ricotta_ra_format_value(s, buf, sizeof(buf)))
       {
          JNIEnv *env = ricotta_runloop_env();
@@ -1434,7 +1604,20 @@ echo:
             (*env)->DeleteLocalRef(env, jv);
          }
       }
+      return found;
    }
+}
+
+static void ricotta_ra_apply(const char *key, const char *value, int token, const char *watch)
+{
+   char raw[512];
+   int n = 0, found;
+   ricotta_watched *w = token ? ricotta_watch_read(watch, &n) : NULL;
+   g_hold_active = token != 0;
+   found = ricotta_ra_write(key, value, raw, sizeof(raw));
+   g_hold_active = 0;
+   ricotta_apply_done(token, found ? raw : NULL, w, n);
+   ricotta_watch_free(w, n);
 }
 
 /* A setting is looked up by its menu name, but config_file reads and writes its config key, and for
@@ -2186,46 +2369,6 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSetShortcutChords(
    g_chord_count       = chords;
 }
 
-JNIEXPORT void JNICALL
-Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSetBuiltinPorts(
-      JNIEnv *env, jobject obj, jintArray ports)
-{
-   jsize n;
-   jint *elems;
-   jsize i;
-
-   (void)obj;
-
-   g_builtin_port_count = 0;
-   if (!ports)
-      return;
-
-   n = (*env)->GetArrayLength(env, ports);
-   if (n > RICOTTA_MAX_PORTS)
-      n = RICOTTA_MAX_PORTS;
-
-   elems = (*env)->GetIntArrayElements(env, ports, NULL);
-   if (!elems)
-      return;
-
-   for (i = 0; i < n; i++)
-      g_builtin_ports[i] = (int)elems[i];
-
-   (*env)->ReleaseIntArrayElements(env, ports, elems, JNI_ABORT);
-   g_builtin_port_count = (int)n; /* set count last so the reader never sees partial state */
-}
-
-int ricotta_port_is_builtin(int port)
-{
-   int i;
-   int n = g_builtin_port_count;
-
-   for (i = 0; i < n; i++)
-      if (g_builtin_ports[i] == port)
-         return 1;
-   return 0;
-}
-
 /* One RetroArch settings screen, as "key\x1fname\x1fisMenu" per row. An empty label is the root.
  * A row is a submenu when its key names another screen in the generated table. */
 JNIEXPORT jobjectArray JNICALL
@@ -2317,6 +2460,8 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeInit(
    g_on_runloop_ready_mid = (*env)->GetMethodID(env, cls, "onRunloopReady", "()V");
    g_on_ra_applied_mid = (*env)->GetMethodID(env, cls, "onRaSettingApplied",
          "(Ljava/lang/String;Ljava/lang/String;)V");
+   g_on_ra_apply_done_mid = (*env)->GetMethodID(env, cls, "onRaApplyDone",
+         "(ILjava/lang/String;[Ljava/lang/String;)V");
    g_on_osd_event_mid = (*env)->GetMethodID(env, cls, "onOsdEvent", "(II)V");
    g_on_osd_achievement_mid = (*env)->GetMethodID(env, cls, "onOsdAchievement", "(Ljava/lang/String;)V");
    g_on_cheevos_load_mid = (*env)->GetMethodID(env, cls, "onCheevosLoad", "(Ljava/lang/String;)V");
@@ -2388,6 +2533,7 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeReset(
 {
    (void)env;
    (void)obj;
+   ricotta_enqueue_command(RICOTTA_QCMD_HELD_FLUSH, 0, 0);
    ricotta_enqueue_command(CMD_EVENT_RESET, 0, 0);
 }
 
@@ -2397,6 +2543,7 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeQuit(
 {
    (void)env;
    (void)obj;
+   ricotta_enqueue_command(RICOTTA_QCMD_HELD_DROP, 0, 0);
    ricotta_enqueue_command(CMD_EVENT_QUIT, 0, 0);
 }
 
@@ -2415,7 +2562,26 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeUnpause(
 {
    (void)env;
    (void)obj;
+   ricotta_enqueue_command(RICOTTA_QCMD_HELD_FLUSH, 0, 0);
    ricotta_enqueue_command(CMD_EVENT_UNPAUSE, 0, 0);
+}
+
+JNIEXPORT void JNICALL
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeFlushHeld(
+      JNIEnv *env, jobject obj)
+{
+   (void)env;
+   (void)obj;
+   ricotta_enqueue_command(RICOTTA_QCMD_HELD_FLUSH, 0, 0);
+}
+
+JNIEXPORT void JNICALL
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeDropHeld(
+      JNIEnv *env, jobject obj)
+{
+   (void)env;
+   (void)obj;
+   ricotta_enqueue_command(RICOTTA_QCMD_HELD_DROP, 0, 0);
 }
 
 JNIEXPORT void JNICALL
@@ -2425,6 +2591,7 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeMenuToggle(
    (void)env;
    (void)obj;
 
+   ricotta_enqueue_command(RICOTTA_QCMD_HELD_FLUSH, 0, 0);
    ricotta_enqueue_command(CMD_EVENT_MENU_TOGGLE, 0, 0);
 
    /* Start polling for menu close */
@@ -2929,23 +3096,53 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeRaSetSetting(
    return JNI_TRUE;
 }
 
-/* Writes and waits for the runloop to have written, answering with the value the setting holds
- * afterwards. That value is the point: RetroArch clamps, refuses, and rewrites neighbours from
- * change handlers, so a menu that renders what it asked for renders something that never happened.
- *
- * Returns null when the key resolves to nothing, when the queue was full, or when the timeout
- * passed. A runloop that is not turning must not hang the menu, and nothing here can tell a stalled
- * core from a slow one. */
-JNIEXPORT jstring JNICALL
+static char *ricotta_join_watch(JNIEnv *env, jobjectArray jwatch)
+{
+   jsize i, n = jwatch ? (*env)->GetArrayLength(env, jwatch) : 0;
+   size_t len = 1;
+   char *out;
+   for (i = 0; i < n; i++)
+   {
+      jstring s = (jstring)(*env)->GetObjectArrayElement(env, jwatch, i);
+      const char *c = s ? (*env)->GetStringUTFChars(env, s, NULL) : NULL;
+      if (c)
+      {
+         len += strlen(c) + 1;
+         (*env)->ReleaseStringUTFChars(env, s, c);
+      }
+      if (s)
+         (*env)->DeleteLocalRef(env, s);
+   }
+   if (!(out = (char *)calloc(len, 1)))
+      return NULL;
+   for (i = 0; i < n; i++)
+   {
+      jstring s = (jstring)(*env)->GetObjectArrayElement(env, jwatch, i);
+      const char *c = s ? (*env)->GetStringUTFChars(env, s, NULL) : NULL;
+      if (c)
+      {
+         if (*out)
+            strlcat(out, "\x1f", len);
+         strlcat(out, c, len);
+         (*env)->ReleaseStringUTFChars(env, s, c);
+      }
+      if (s)
+         (*env)->DeleteLocalRef(env, s);
+   }
+   return out;
+}
+
+/* Queues a menu write and answers through onRaApplyDone once the runloop has made it. False when
+ * the key resolves to nothing or the queue was full, and then nothing will answer. */
+JNIEXPORT jboolean JNICALL
 Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeRaApply(
-      JNIEnv *env, jobject obj, jstring jkey, jstring jvalue, jint timeout_ms)
+      JNIEnv *env, jobject obj, jint token, jstring jkey, jstring jvalue, jobjectArray jwatch)
 {
    ricotta_cmd_entry entry = {0};
    const char *key   = (*env)->GetStringUTFChars(env, jkey, NULL);
    const char *value = (*env)->GetStringUTFChars(env, jvalue, NULL);
    size_t plen       = strlen(RICOTTA_CORE_OPT_PREFIX);
    int known         = 0;
-   jstring out       = NULL;
 
    (void)obj;
 
@@ -2954,55 +3151,21 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeRaApply(
             ? ricotta_core_opt_index(key + plen) >= 0
             : ricotta_ra_find(key) != NULL;
 
-   if (!known)
+   if (known)
    {
-      if (key)
-         (*env)->ReleaseStringUTFChars(env, jkey, key);
-      if (value)
-         (*env)->ReleaseStringUTFChars(env, jvalue, value);
-      return NULL;
+      entry.cmd      = RICOTTA_QCMD_RA_SET;
+      entry.ra_key   = strdup(key);
+      entry.ra_value = value ? strdup(value) : NULL;
+      entry.ra_wait  = token;
+      entry.ra_watch = ricotta_join_watch(env, jwatch);
    }
-
-   entry.cmd      = RICOTTA_QCMD_RA_SET;
-   entry.ra_key   = key ? strdup(key) : NULL;
-   entry.ra_value = value ? strdup(value) : NULL;
-
    if (key)
       (*env)->ReleaseStringUTFChars(env, jkey, key);
    if (value)
       (*env)->ReleaseStringUTFChars(env, jvalue, value);
-
-   pthread_mutex_lock(&g_apply_mutex);
-   entry.ra_wait     = ++g_apply_token;
-   g_apply_waiting   = 1;
-   g_apply_done      = 0;
-   g_apply_found     = 0;
-   g_apply_value[0]  = '\0';
-   pthread_mutex_unlock(&g_apply_mutex);
-
-   ricotta_enqueue_entry(entry);
-
-   pthread_mutex_lock(&g_apply_mutex);
-   {
-      struct timespec deadline;
-      clock_gettime(CLOCK_REALTIME, &deadline);
-      deadline.tv_sec  += timeout_ms / 1000;
-      deadline.tv_nsec += (long)(timeout_ms % 1000) * 1000000L;
-      if (deadline.tv_nsec >= 1000000000L)
-      {
-         deadline.tv_sec  += 1;
-         deadline.tv_nsec -= 1000000000L;
-      }
-      while (!g_apply_done)
-         if (pthread_cond_timedwait(&g_apply_cond, &g_apply_mutex, &deadline) != 0)
-            break;
-      if (g_apply_done && g_apply_found)
-         out = (*env)->NewStringUTF(env, g_apply_value);
-      g_apply_waiting = 0;
-   }
-   pthread_mutex_unlock(&g_apply_mutex);
-
-   return out;
+   if (!known)
+      return JNI_FALSE;
+   return ricotta_enqueue_entry(entry) ? JNI_TRUE : JNI_FALSE;
 }
 
 JNIEXPORT jboolean JNICALL
@@ -3397,10 +3560,6 @@ void ricotta_osd_event(int type, int slot)
                break;
             case RICOTTA_OSD_SCREENSHOT:
                if (!settings->bools.notification_show_screenshot)
-                  return;
-               break;
-            case RICOTTA_OSD_CONTROLLER_PORT:
-               if (!settings->bools.notification_show_autoconfig)
                   return;
                break;
             default:
