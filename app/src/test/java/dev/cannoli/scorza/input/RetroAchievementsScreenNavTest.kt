@@ -126,11 +126,11 @@ class RetroAchievementsScreenNavTest {
         return r
     }
 
-    @Test fun `confirming on the account row opens the logout confirmation`() {
+    @Test fun `west opens the logout confirmation`() {
         val s = settings()
         val r = onAccountScreen(s)
 
-        r.currentHandler().onConfirm()
+        r.currentHandler().onWest()
 
         assertTrue(nav.dialogState.value is DialogState.RetroAchievementsLogoutConfirm)
         assertEquals("bob", s.raUsername)
@@ -142,7 +142,7 @@ class RetroAchievementsScreenNavTest {
         val s = settings()
         val r = onAccountScreen(s)
 
-        r.currentHandler().onConfirm()
+        r.currentHandler().onWest()
         dialogHandler.onConfirm()
 
         assertEquals("", s.raUsername)
@@ -158,7 +158,7 @@ class RetroAchievementsScreenNavTest {
         val s = settings()
         val r = onAccountScreen(s)
 
-        r.currentHandler().onConfirm()
+        r.currentHandler().onWest()
         dialogHandler.onBack()
 
         assertEquals(DialogState.None, nav.dialogState.value)
@@ -167,14 +167,14 @@ class RetroAchievementsScreenNavTest {
         assertTrue(nav.currentScreen is LauncherScreen.RetroAchievements)
     }
 
-    @Test fun `the west button no longer logs out`() {
+    @Test fun `confirming on the account row does not log out`() {
         val s = settings()
         val r = onAccountScreen(s)
 
-        r.currentHandler().onWest()
+        r.currentHandler().onConfirm()
 
+        assertEquals(DialogState.None, nav.dialogState.value)
         assertEquals("bob", s.raUsername)
-        assertEquals("abc123", s.raToken)
         assertTrue(nav.currentScreen is LauncherScreen.RetroAchievements)
     }
 

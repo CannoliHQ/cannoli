@@ -110,12 +110,12 @@ internal fun AppScreens(
                 listLineHeight = listLineHeight,
                 fullWidth = true,
                 leftBottomItems = buildList {
+                    add(labels.west to stringResource(R.string.label_logout))
                     if (rows[selIdx].isCycle) add(dev.cannoli.ui.DPAD_HORIZONTAL to stringResource(R.string.label_change))
                 },
                 rightBottomItems = buildList {
                     when (rows[selIdx]) {
-                        dev.cannoli.scorza.ui.components.RaAccountRow.ACCOUNT ->
-                            add(labels.confirm to stringResource(R.string.label_logout))
+                        dev.cannoli.scorza.ui.components.RaAccountRow.ACCOUNT -> {}
                         dev.cannoli.scorza.ui.components.RaAccountRow.OFFLINE_SETS ->
                             add(labels.confirm to stringResource(R.string.label_select))
                         dev.cannoli.scorza.ui.components.RaAccountRow.HARDCORE -> {}
