@@ -1,5 +1,5 @@
 diff --git a/input/drivers/android_input.c b/input/drivers/android_input.c
-index e555e11b8e..de297670c0 100644
+index e555e11b8e..00b40c3930 100644
 --- a/input/drivers/android_input.c
 +++ b/input/drivers/android_input.c
 @@ -1588,6 +1588,28 @@ static INLINE void android_input_poll_event_type_key(
@@ -31,3 +31,20 @@ index e555e11b8e..de297670c0 100644
     uint8_t *buf;
     int action           = AKeyEvent_getAction(event);
     int keysym           = keycode;
+@@ -2481,6 +2503,16 @@ static void android_input_poll_user(android_input_t *android)
+          }
+       }
+    }
++   else
++   {
++      /* Losing focus disables the sensors with readings still queued, and
++       * ALooper keeps reporting the queue readable until they are read. Left
++       * in place, every pollOnce returns LOOPER_ID_USER and the input poll
++       * never returns to the runloop. */
++      ASensorEvent event;
++      while (ASensorEventQueue_getEvents(
++            android_app->sensorEventQueue, &event, 1) > 0);
++   }
+ }
+ 
+ static void android_input_reinit(void)
