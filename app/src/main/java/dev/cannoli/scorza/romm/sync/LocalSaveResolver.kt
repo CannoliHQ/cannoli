@@ -181,7 +181,7 @@ class LocalSaveResolver(
         val retired = File(platformDir, ".old_$token")
         try {
             staging.mkdirs()
-            if (isZip(downloaded)) {
+            if (SaveHasher.isZip(downloaded)) {
                 ZipFile(downloaded).use { zf ->
                     for (entry in zf.entries()) {
                         if (entry.isDirectory) continue
@@ -221,7 +221,7 @@ class LocalSaveResolver(
         val retired = File(platformDir, ".old_$token")
         try {
             staging.mkdirs()
-            if (!isZip(downloaded)) return
+            if (!SaveHasher.isZip(downloaded)) return
             ZipFile(downloaded).use { zf ->
                 for (entry in zf.entries()) {
                     if (entry.isDirectory) continue
@@ -274,10 +274,5 @@ class LocalSaveResolver(
         val dest = File(staging, relative)
         val root = staging.canonicalFile.path + File.separator
         return dest.takeIf { it.canonicalFile.path.startsWith(root) }
-    }
-
-    private fun isZip(file: File): Boolean = file.inputStream().use { ins ->
-        val sig = ByteArray(4)
-        ins.read(sig) == 4 && sig[0] == 0x50.toByte() && sig[1] == 0x4B.toByte()
     }
 }

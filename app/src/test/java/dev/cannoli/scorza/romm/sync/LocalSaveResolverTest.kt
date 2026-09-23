@@ -113,6 +113,27 @@ class LocalSaveResolverTest {
         assertEquals("RTC", File(game("GBA", "Pokemon"), "Pokemon.rtc").readText())
     }
 
+    /** A download is verified against the hash negotiation reported, so the zip must hash like the folder. */
+    @Test fun a_bundle_zip_hashes_to_the_bundle_content_hash() {
+        File(saves("GBA"), "Pokemon.srm").writeBytes("SAVE".toByteArray())
+        File(saves("GBA"), "Pokemon.rtc").writeBytes("RTC".toByteArray())
+        val resolver = LocalSaveResolver(tmp.root)
+
+        val zip = resolver.bundleToZip("GBA", "Pokemon", tmp.newFile("Pokemon.zip"))
+
+        assertEquals(resolver.resolve("GBA", "Pokemon")!!.contentHash, SaveHasher.hashZipContents(zip))
+    }
+
+    @Test fun a_shared_root_zip_hashes_to_its_content_hash() {
+        savedata("UCUS98653")
+        savedata("UCUS98653DATA00", body = "PROFILE")
+        val resolver = pspResolver()
+
+        val zip = resolver.bundleToZip("PSP", "God of War", tmp.newFile("gow.zip"))
+
+        assertEquals(resolver.resolve("PSP", "God of War")!!.contentHash, SaveHasher.hashZipContents(zip))
+    }
+
     /** Argosy roots a save at the folder it lives in, which for PSP is the save id, not the game. */
     @Test fun a_foreign_root_is_kept_because_the_emulator_reads_it() {
         val zip = tmp.newFile("argosy.zip")
