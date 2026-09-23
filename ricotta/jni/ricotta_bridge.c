@@ -53,6 +53,9 @@ static long long get_time_ms(void)
 #include "../../../../dynamic.h"
 #include "../../../../input/input_driver.h"
 #include "../../../../menu/menu_cbs.h"
+#include "../../../../content.h"
+#include "../../../../verbosity.h"
+#include <queues/task_queue.h>
 
 /* Cached JVM and bridge object refs for callbacks */
 static JavaVM *g_jvm           = NULL;
@@ -710,6 +713,147 @@ float ricotta_fps(void)
    return g_fps;
 }
 
+/* A resume a core refused because it was still booting, tried again until it takes.
+ *
+ * RetroArch queues the auto-load at content load and applies it a few frames later, and a core
+ * that boots its machine asynchronously after retro_load_game (ARMSX2) refuses it at that point.
+ * The same file loads fine once the game is running. Only a refused deserialize of an auto-load
+ * starts this: hardcore and a missing or unreadable file fail before task_save reports anything. */
+#define RICOTTA_RESUME_RETRY_US     500000LL
+#define RICOTTA_RESUME_WINDOW_US    5000000LL
+static char          g_resume_path[PATH_MAX_LENGTH];
+static int           g_resume_active    = 0;
+static int           g_resume_attempts  = 0;
+static int           g_resume_scheduled = 0;
+static volatile int  g_resume_in_flight = 0;
+/* Set once the retry is abandoned. An attempt still out when that happens reports later, and its
+ * refusal must not open a fresh window over a reset or a given-up resume. */
+static int           g_resume_spent     = 0;
+static long long     g_resume_first_us  = 0;
+static long long     g_resume_next_us   = 0;
+
+static void ricotta_resume_clear(void)
+{
+   g_resume_active    = 0;
+   g_resume_attempts  = 0;
+   g_resume_scheduled = 0;
+   g_resume_in_flight = 0;
+}
+
+static void ricotta_resume_abandon(void)
+{
+   ricotta_resume_clear();
+   g_resume_spent = 1;
+}
+
+static void ricotta_resume_give_up(void)
+{
+   RARCH_LOG("[State] Resume gave up after %d attempts.\n", g_resume_attempts);
+   ricotta_resume_abandon();
+}
+
+void ricotta_state_loaded(const char *path, int autoload, int ok)
+{
+   long long now = ricotta_now_us();
+
+   g_resume_in_flight = 0;
+
+   if (!autoload)
+   {
+      ricotta_resume_clear();
+      return;
+   }
+
+   if (ok)
+   {
+      if (g_resume_active)
+      {
+         RARCH_LOG("[State] Resume loaded on attempt %d.\n", g_resume_attempts + 1);
+         /* The read that raised the load notification for this attempt had it muted, so the rewind
+          * reset that notification would have triggered is asked for here. */
+         ricotta_enqueue_command(RICOTTA_QCMD_REWIND_RESET, 0, 0);
+      }
+      ricotta_resume_clear();
+      return;
+   }
+
+   if (!g_resume_active)
+   {
+      if (!path || g_resume_spent)
+         return;
+      strlcpy(g_resume_path, path, sizeof(g_resume_path));
+      g_resume_active   = 1;
+      g_resume_first_us = now;
+   }
+   g_resume_attempts++;
+
+   if (now - g_resume_first_us >= RICOTTA_RESUME_WINDOW_US)
+   {
+      ricotta_resume_give_up();
+      return;
+   }
+
+   g_resume_next_us   = now + RICOTTA_RESUME_RETRY_US;
+   g_resume_scheduled = 1;
+}
+
+static bool ricotta_task_is_blocking(retro_task_t *task, void *userdata)
+{
+   (void)userdata;
+   return task->type == TASK_TYPE_BLOCKING;
+}
+
+static void ricotta_resume_tick(void)
+{
+   long long now;
+   task_finder_data_t blocking;
+
+   if (!g_resume_active)
+      return;
+
+   now = ricotta_now_us();
+
+   /* An attempt that ends without reaching the deserialize reports nothing, so it is presumed over
+    * one interval past the window rather than muting load notifications any longer. */
+   if (g_resume_in_flight)
+   {
+      if (now - g_resume_first_us >= RICOTTA_RESUME_WINDOW_US + RICOTTA_RESUME_RETRY_US)
+         ricotta_resume_give_up();
+      return;
+   }
+
+   if (!g_resume_scheduled || now < g_resume_next_us)
+      return;
+
+   if (now - g_resume_first_us >= RICOTTA_RESUME_WINDOW_US)
+   {
+      ricotta_resume_give_up();
+      return;
+   }
+
+   if (rcheevos_hardcore_active())
+   {
+      ricotta_resume_abandon();
+      return;
+   }
+
+   /* task_queue_push drops a blocking task while another runs, and content_load_state does not
+    * say so: the attempt would vanish with it still marked in flight. A user's load, save or
+    * screenshot holds the slot, so wait it out. */
+   blocking.func     = ricotta_task_is_blocking;
+   blocking.userdata = NULL;
+   if (task_queue_find(&blocking))
+   {
+      g_resume_next_us = now + RICOTTA_RESUME_RETRY_US;
+      return;
+   }
+
+   g_resume_scheduled = 0;
+   g_resume_in_flight = 1;
+   if (!content_load_state(g_resume_path, false, true))
+      ricotta_resume_clear();
+}
+
 void ricotta_bridge_poll_commands(void)
 {
    if (!g_runloop_ready)
@@ -730,6 +874,7 @@ void ricotta_bridge_poll_commands(void)
    }
 
    ricotta_fps_tick();
+   ricotta_resume_tick();
 
    /* A held chord produces no further key events, so the deadline can only be noticed here. */
    if (g_hold_chord >= 0 && ricotta_now_us() >= g_hold_deadline_us)
@@ -1033,6 +1178,9 @@ void ricotta_bridge_poll_commands(void)
          if (settings)
             settings->ints.state_slot = entry.slot;
       }
+      /* A resume landing after these would undo the reset, or load into a game on its way out. */
+      if (entry.cmd == CMD_EVENT_RESET || entry.cmd == CMD_EVENT_QUIT)
+         ricotta_resume_abandon();
       command_event(entry.cmd, NULL);
    }
 }
@@ -3540,6 +3688,9 @@ void ricotta_osd_event(int type, int slot)
     * retro_run on a core's own coroutine stack, and a JNI call is unsafe from either. The pump
     * raises it from the runloop thread. */
    if (!g_jvm || !g_bridge_obj || !g_on_osd_event_mid)
+      return;
+   /* The resume's first attempt already raised this, and each retry would raise it again. */
+   if (type == RICOTTA_OSD_LOAD_STATE && g_resume_in_flight)
       return;
    /* RA-key-backed OSD toggles gate here against the live setting the IGM writes,
     * so a muted event costs no JNI call. Reset and the save events gate on the

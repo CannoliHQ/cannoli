@@ -57,6 +57,10 @@ void ricotta_cheevos_stash_progress(const void *buffer, size_t size);
 void ricotta_cheevos_apply_pending_progress(void);
 void ricotta_cheevos_forget_progress(void);
 
+/* Every state task_save deserialized, and whether the core took it. A refused auto-load is the
+ * resume arriving while the core is still booting, and the bridge tries it again from its pump. */
+void ricotta_state_loaded(const char *path, int autoload, int ok);
+
 /* The save notification is deferred until the thumbnail it names exists on disk. task_save latches
  * it before queueing the screenshot; the screenshot task raises it once the PNG is written. That
  * ordering used to be bought by encoding the PNG on the runloop thread, which stalled the frame. */
