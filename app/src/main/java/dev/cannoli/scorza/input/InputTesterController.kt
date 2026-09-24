@@ -69,6 +69,8 @@ class InputTesterController(
         val navButton = mappingNav ?: AndroidGamepadKeyNames.DEFAULT_KEY_MAP[event.keyCode]
         val unbound = mappingNav == null && navButton != null
 
+        val lights = testerLightsDiagram(event.keyCode, portRouter.mappingForPort(port).labelSet(ButtonLabelSet.PLUMBER))
+
         if (down) {
             val isRepeat = event.repeatCount > 0
             if (navButton == CanonicalButton.BTN_SELECT && !selectHeld) {
@@ -83,7 +85,7 @@ class InputTesterController(
                 viewModel.toggleAxisDump()
             }
             pressedKeycodes[event.keyCode] = navButton
-            viewModel.onKeyDown(port, event.keyCode, keyName, deviceId, name, navButton, unbound = unbound)
+            viewModel.onKeyDown(port, event.keyCode, keyName, deviceId, name, navButton, unbound = unbound, lightsDiagram = lights)
             if (!isRepeat) {
                 viewModel.setActivePort(port)
                 portRouter.mappingForPort(port)?.let { activeMappingHolder.set(it) }
@@ -99,7 +101,7 @@ class InputTesterController(
                 updateExitCountdown()
             }
             val resolved = pressedKeycodes.remove(event.keyCode)
-            viewModel.onKeyUp(port, event.keyCode, keyName, deviceId, name, resolved, unbound = unbound)
+            viewModel.onKeyUp(port, event.keyCode, keyName, deviceId, name, resolved, unbound = unbound, lightsDiagram = lights)
         }
         refreshPorts()
         return true
@@ -313,3 +315,8 @@ internal fun rawHatButtons(hatX: Float, hatY: Float): Set<CanonicalButton> = bui
     if (hatY < -0.5f) add(CanonicalButton.BTN_UP)
     if (hatY > 0.5f) add(CanonicalButton.BTN_DOWN)
 }
+
+private val C_Z_KEYCODES = setOf(KeyEvent.KEYCODE_BUTTON_C, KeyEvent.KEYCODE_BUTTON_Z)
+
+internal fun testerLightsDiagram(keyCode: Int, labelSet: ButtonLabelSet): Boolean =
+    labelSet == ButtonLabelSet.HEDGEHOG_6 || keyCode !in C_Z_KEYCODES

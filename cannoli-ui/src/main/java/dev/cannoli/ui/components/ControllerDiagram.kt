@@ -19,7 +19,37 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
 import dev.cannoli.ui.theme.LocalCannoliColors
 
-data class FaceLabels(val top: String, val bottom: String, val left: String, val right: String)
+data class FaceLabels(
+    val top: String,
+    val bottom: String,
+    val left: String,
+    val right: String,
+    val c: String? = null,
+    val z: String? = null,
+) {
+    val sixButton: Boolean get() = c != null && z != null
+}
+
+data class FaceSlot(val name: String, val label: String, val dx: Float, val dy: Float)
+
+fun faceButtonSlots(labels: FaceLabels): List<FaceSlot> =
+    if (labels.sixButton) {
+        listOf(
+            FaceSlot("btn_north", labels.top, -6.5f, -3.6f),
+            FaceSlot("btn_west", labels.left, 0f, -3.6f),
+            FaceSlot("btn_r3", labels.z!!, 6.5f, -3.6f),
+            FaceSlot("btn_east", labels.right, -6.5f, 3.6f),
+            FaceSlot("btn_south", labels.bottom, 0f, 3.6f),
+            FaceSlot("btn_l3", labels.c!!, 6.5f, 3.6f),
+        )
+    } else {
+        listOf(
+            FaceSlot("btn_north", labels.top, 0f, -5f),
+            FaceSlot("btn_south", labels.bottom, 0f, 5f),
+            FaceSlot("btn_west", labels.left, -5f, 0f),
+            FaceSlot("btn_east", labels.right, 5f, 0f),
+        )
+    }
 
 data class DiagramInput(
     val pressed: Set<String>,
@@ -107,8 +137,8 @@ private fun DrawScope.drawDiagram(
     drawCenterPill(p(46f, 22f), unit, "MENU", fill("btn_menu"), outline, label("btn_menu"), textMeasurer)
     drawCenterPill(p(57f, 22f), unit, "START", fill("btn_start"), outline, label("btn_start"), textMeasurer)
 
-    drawStick(p(36f, 44f), unit, input.leftStick, pressed("btn_l3"), idle, highlight, outline)
-    drawStick(p(64f, 44f), unit, input.rightStick, pressed("btn_r3"), idle, highlight, outline)
+    drawStick(p(36f, 44f), unit, input.leftStick, pressed("btn_l3") && !labels.sixButton, idle, highlight, outline)
+    drawStick(p(64f, 44f), unit, input.rightStick, pressed("btn_r3") && !labels.sixButton, idle, highlight, outline)
 }
 
 private fun DrawScope.drawShoulderPill(
@@ -220,8 +250,7 @@ private fun DrawScope.drawFaceButtons(
     idle: Color, highlight: Color, outline: Color,
     textColor: Color, pressedTextColor: Color, tm: TextMeasurer,
 ) {
-    val r = 3f * unit
-    val offset = 5f * unit
+    val r = if (labels.sixButton) 2.8f * unit else 3f * unit
     fun face(name: String, label: String, dx: Float, dy: Float) {
         val pressed = name in input.pressed
         val c = Offset(center.x + dx, center.y + dy)
@@ -230,10 +259,7 @@ private fun DrawScope.drawFaceButtons(
         drawCircle(color = outline, radius = r, center = c, style = Stroke(width = unit * 0.3f))
         drawFaceLabel(label, c, unit, labelColor, tm)
     }
-    face("btn_north", labels.top,    0f, -offset)
-    face("btn_south", labels.bottom, 0f,  offset)
-    face("btn_west",  labels.left,  -offset, 0f)
-    face("btn_east",  labels.right,  offset, 0f)
+    faceButtonSlots(labels).forEach { face(it.name, it.label, it.dx * unit, it.dy * unit) }
 }
 
 private fun DrawScope.drawFaceLabel(

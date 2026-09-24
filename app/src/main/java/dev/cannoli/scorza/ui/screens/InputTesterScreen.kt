@@ -58,7 +58,7 @@ fun InputTesterScreen(
 
     val faceLabels = remember(buttonStyle.labelSet) {
         val ls = buttonStyle.labelSet
-        FaceLabels(top = ls.north, bottom = ls.south, left = ls.west, right = ls.east)
+        FaceLabels(top = ls.north, bottom = ls.south, left = ls.west, right = ls.east, c = ls.l3, z = ls.r3)
     }
 
     val activePortState = uiState.portStates[uiState.activePort]

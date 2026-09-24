@@ -44,6 +44,20 @@ class InputTesterViewModelTest {
     }
 
     @Test
+    fun keyDown_withLightsDiagramFalse_logsButLeavesPressedButtonsEmpty() {
+        val vm = vm()
+        vm.onKeyDown(0, 98, "BUTTON_C", 10, "Test Pad", CanonicalButton.BTN_L3, lightsDiagram = false)
+        val state = vm.state.value
+        assertEquals(1, state.eventLog.size)
+        assertEquals(CanonicalButton.BTN_L3, state.eventLog.first().resolvedButton)
+        assertTrue((state.portStates[0]?.pressedButtons ?: emptySet()).isEmpty())
+
+        vm.onKeyUp(0, 98, "BUTTON_C", 10, "Test Pad", CanonicalButton.BTN_L3, lightsDiagram = false)
+        assertEquals(2, vm.state.value.eventLog.size)
+        assertFalse(vm.state.value.eventLog.first().isDown)
+    }
+
+    @Test
     fun keyUp_removesButton() {
         val vm = vm()
         vm.onKeyDown(0, 96, "BUTTON_A", 10, "Test Pad", CanonicalButton.BTN_SOUTH)

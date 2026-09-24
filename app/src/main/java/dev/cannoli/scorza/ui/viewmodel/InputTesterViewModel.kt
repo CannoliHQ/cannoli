@@ -93,12 +93,13 @@ class InputTesterViewModel @Inject constructor() {
         deviceName: String,
         resolvedButton: CanonicalButton?,
         unbound: Boolean = false,
+        lightsDiagram: Boolean = true,
     ) {
         val isFreshPress = heldKeyCodes.add(keyCode)
         val ts = now()
         _state.update { current ->
             val prev = current.portStates[port] ?: InputTesterState()
-            val pressed = if (resolvedButton != null) prev.pressedButtons + resolvedButton.diagramKey else prev.pressedButtons
+            val pressed = if (resolvedButton != null && lightsDiagram) prev.pressedButtons + resolvedButton.diagramKey else prev.pressedButtons
             val updatedPort = prev.copy(pressedButtons = pressed)
             val entry = EventLogEntry(keyCode, keyName, deviceId, deviceName, resolvedButton, ts, isDown = true, unbound = unbound)
             current.copy(
@@ -117,13 +118,14 @@ class InputTesterViewModel @Inject constructor() {
         deviceName: String,
         resolvedButton: CanonicalButton?,
         unbound: Boolean = false,
+        lightsDiagram: Boolean = true,
     ) {
         val wasHeld = heldKeyCodes.remove(keyCode)
         if (!wasHeld) return
         val ts = now()
         _state.update { current ->
             val prev = current.portStates[port] ?: InputTesterState()
-            val pressed = if (resolvedButton != null) prev.pressedButtons - resolvedButton.diagramKey else prev.pressedButtons
+            val pressed = if (resolvedButton != null && lightsDiagram) prev.pressedButtons - resolvedButton.diagramKey else prev.pressedButtons
             val updatedPort = prev.copy(pressedButtons = pressed)
             val entry = EventLogEntry(keyCode, keyName, deviceId, deviceName, resolvedButton, ts, isDown = false, unbound = unbound)
             current.copy(
