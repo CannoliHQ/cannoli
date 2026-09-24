@@ -1,7 +1,6 @@
 package dev.cannoli.scorza.launcher
 
 import android.app.ActivityOptions
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -11,6 +10,7 @@ import dev.cannoli.igm.IgmColors
 import dev.cannoli.igm.IgmDisplaySettings
 import dev.cannoli.igm.IgmInputMapping
 import dev.cannoli.igm.RicottaLaunchParams
+import dev.cannoli.ricotta.RicottaLaunchTranslator
 import dev.cannoli.scorza.i18n.LocaleOverride
 import java.io.File
 
@@ -63,9 +63,7 @@ class RetroArchLauncher(private val context: Context) {
             shortcuts = igm.shortcuts,
         )
 
-        val intent = Intent().apply {
-            component = ComponentName(context, "dev.cannoli.ricotta.RicottaLaunchActivity")
-            params.writeToIntent(this)
+        val intent = RicottaLaunchTranslator.toRetroIntent(context, params).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
 

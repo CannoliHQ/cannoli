@@ -18,14 +18,6 @@
             tools:node="remove"/>
 
         <activity
-            android:name="dev.cannoli.ricotta.RicottaLaunchActivity"
-            android:exported="false"
-            android:process=":retroarch"
-            android:theme="@style/Theme.Ricotta.Launch"
-            android:excludeFromRecents="true"
-            android:noHistory="true" />
-
-        <activity
             android:name="com.retroarch.browser.retroactivity.RetroActivityFuture"
             android:exported="false"
             android:process=":retroarch"

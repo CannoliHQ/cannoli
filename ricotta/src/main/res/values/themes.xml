@@ -7,15 +7,12 @@
       the window animation of RetroArch's own theme, and when RetroArch ends by calling
       System.exit(0) there is no callback left to override it from.
 
-      Parents match what phoenix declares, so nothing else about either window changes.
+      The parent matches what phoenix declares, so nothing else about the window changes.
     -->
 
     <style name="Theme.Ricotta.Game" parent="@android:style/Theme.NoTitleBar.Fullscreen">
         <item name="android:windowAnimationStyle">@style/Animation.Cannoli.None</item>
-    </style>
-
-    <style name="Theme.Ricotta.Launch" parent="@android:style/Theme.Translucent.NoTitleBar">
-        <item name="android:windowAnimationStyle">@style/Animation.Cannoli.None</item>
+        <item name="android:windowBackground">@android:color/black</item>
     </style>
 
 </resources>
