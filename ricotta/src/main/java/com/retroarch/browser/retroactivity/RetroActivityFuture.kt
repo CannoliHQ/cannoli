@@ -420,7 +420,8 @@ class RetroActivityFuture : RetroActivityCamera() {
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        sendUiMessage(HANDLER_WHAT_TOGGLE_IMMERSIVE, hasFocus)
+        // Focus lost to the IGM panel must not drop immersive, or the nav bar flashes.
+        if (hasFocus) sendUiMessage(HANDLER_WHAT_TOGGLE_IMMERSIVE, true)
 
         if (autoMouseGrab) inputGrabMouse(hasFocus)
     }
