@@ -202,6 +202,8 @@
     <string name="glyph_plumber_east" translatable="false">A</string>
     <string name="glyph_plumber_west" translatable="false">Y</string>
     <string name="glyph_plumber_north" translatable="false">X</string>
+    <string name="glyph_hedgehog_c" translatable="false">C</string>
+    <string name="glyph_hedgehog_z" translatable="false">Z</string>
     <string name="glyph_redmond_south" translatable="false">A</string>
     <string name="glyph_redmond_east" translatable="false">B</string>
     <string name="glyph_redmond_west" translatable="false">X</string>
@@ -676,6 +678,7 @@
     <string name="glyph_style_redmond" translatable="false">Xbox</string>
     <string name="glyph_style_plumber" translatable="false">Nintendo</string>
     <string name="glyph_style_shapes" translatable="false">PlayStation</string>
+    <string name="glyph_style_hedgehog_6" translatable="false">Sega 6-Button</string>
     <string name="controller_wizard_skip">Press Start to skip a button your controller does not have</string>
 
     <!-- Boot error screen -->

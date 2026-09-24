@@ -30,5 +30,6 @@ fun DeviceMapping?.labelSet(fallback: dev.cannoli.ui.ButtonLabelSet): dev.cannol
         dev.cannoli.scorza.input.GlyphStyle.PLUMBER -> dev.cannoli.ui.ButtonLabelSet.PLUMBER
         dev.cannoli.scorza.input.GlyphStyle.REDMOND -> dev.cannoli.ui.ButtonLabelSet.REDMOND
         dev.cannoli.scorza.input.GlyphStyle.SHAPES -> dev.cannoli.ui.ButtonLabelSet.SHAPES
+        dev.cannoli.scorza.input.GlyphStyle.HEDGEHOG_6 -> dev.cannoli.ui.ButtonLabelSet.HEDGEHOG_6
         null -> fallback
     }

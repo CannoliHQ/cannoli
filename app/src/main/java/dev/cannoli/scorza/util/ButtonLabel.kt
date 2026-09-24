@@ -13,6 +13,7 @@ fun glyphStyleName(context: Context, style: GlyphStyle): String = context.getStr
         GlyphStyle.REDMOND -> R.string.glyph_style_redmond
         GlyphStyle.PLUMBER -> R.string.glyph_style_plumber
         GlyphStyle.SHAPES -> R.string.glyph_style_shapes
+        GlyphStyle.HEDGEHOG_6 -> R.string.glyph_style_hedgehog_6
     }
 )
 
@@ -22,22 +23,22 @@ fun faceGlyph(context: Context, button: CanonicalButton, style: GlyphStyle): Str
 
 private fun faceRes(button: CanonicalButton, style: GlyphStyle): Pair<Int, Int>? = when (button) {
     CanonicalButton.BTN_SOUTH -> R.string.canonical_south to when (style) {
-        GlyphStyle.PLUMBER -> R.string.glyph_plumber_south
+        GlyphStyle.PLUMBER, GlyphStyle.HEDGEHOG_6 -> R.string.glyph_plumber_south
         GlyphStyle.REDMOND -> R.string.glyph_redmond_south
         GlyphStyle.SHAPES -> R.string.glyph_shapes_south
     }
     CanonicalButton.BTN_EAST -> R.string.canonical_east to when (style) {
-        GlyphStyle.PLUMBER -> R.string.glyph_plumber_east
+        GlyphStyle.PLUMBER, GlyphStyle.HEDGEHOG_6 -> R.string.glyph_plumber_east
         GlyphStyle.REDMOND -> R.string.glyph_redmond_east
         GlyphStyle.SHAPES -> R.string.glyph_shapes_east
     }
     CanonicalButton.BTN_WEST -> R.string.canonical_west to when (style) {
-        GlyphStyle.PLUMBER -> R.string.glyph_plumber_west
+        GlyphStyle.PLUMBER, GlyphStyle.HEDGEHOG_6 -> R.string.glyph_plumber_west
         GlyphStyle.REDMOND -> R.string.glyph_redmond_west
         GlyphStyle.SHAPES -> R.string.glyph_shapes_west
     }
     CanonicalButton.BTN_NORTH -> R.string.canonical_north to when (style) {
-        GlyphStyle.PLUMBER -> R.string.glyph_plumber_north
+        GlyphStyle.PLUMBER, GlyphStyle.HEDGEHOG_6 -> R.string.glyph_plumber_north
         GlyphStyle.REDMOND -> R.string.glyph_redmond_north
         GlyphStyle.SHAPES -> R.string.glyph_shapes_north
     }
@@ -53,6 +54,13 @@ fun canonicalLabel(context: Context, button: CanonicalButton, style: GlyphStyle)
             context.getString(cardinalRes),
             context.getString(glyphRes),
         )
+    }
+    if (style == GlyphStyle.HEDGEHOG_6) {
+        when (button) {
+            CanonicalButton.BTN_L3 -> return context.getString(R.string.glyph_hedgehog_c)
+            CanonicalButton.BTN_R3 -> return context.getString(R.string.glyph_hedgehog_z)
+            else -> {}
+        }
     }
     val res = when (button) {
         CanonicalButton.BTN_UP -> R.string.canonical_dpad_up

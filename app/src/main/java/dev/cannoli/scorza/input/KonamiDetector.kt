@@ -22,7 +22,7 @@ private val PREFIX = listOf(
  */
 internal fun konamiSequence(labelSet: ButtonLabelSet): List<CanonicalButton> = PREFIX + when (labelSet) {
     ButtonLabelSet.REDMOND -> listOf(CanonicalButton.BTN_EAST, CanonicalButton.BTN_SOUTH)
-    ButtonLabelSet.PLUMBER, ButtonLabelSet.SHAPES -> listOf(CanonicalButton.BTN_SOUTH, CanonicalButton.BTN_EAST)
+    ButtonLabelSet.PLUMBER, ButtonLabelSet.SHAPES, ButtonLabelSet.HEDGEHOG_6 -> listOf(CanonicalButton.BTN_SOUTH, CanonicalButton.BTN_EAST)
 } + CanonicalButton.BTN_START
 
 /**

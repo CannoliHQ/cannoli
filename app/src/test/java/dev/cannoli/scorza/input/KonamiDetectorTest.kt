@@ -102,4 +102,9 @@ class KonamiDetectorTest {
         assertTrue(enter(code(ButtonLabelSet.PLUMBER)))
         assertTrue(enter(code(ButtonLabelSet.PLUMBER)))
     }
+
+    @Test
+    fun `a Sega pad keys B then A on the buttons printed B and A`() {
+        assertTrue(konamiSequence(ButtonLabelSet.HEDGEHOG_6) == konamiSequence(ButtonLabelSet.PLUMBER))
+    }
 }
