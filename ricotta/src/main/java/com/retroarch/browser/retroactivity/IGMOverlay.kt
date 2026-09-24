@@ -477,6 +477,8 @@ class IGMOverlay(
     private fun showOverlayLayer() {
         if (showing) return
         composeView?.let { v ->
+            // A GONE panel stalls the launch transition 5s on Android 14.
+            if (!attached && controller.overlayPicker.activeImage.value == null) return@let
             if (!attachIfNeeded(v, focusable = false)) return@let
             v.visibility = if (controller.overlayPicker.activeImage.value != null) View.VISIBLE else View.GONE
         }
