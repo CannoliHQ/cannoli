@@ -64,6 +64,18 @@ open class FakeRetroArchBridge : RetroArchBridge {
         remapSets += button.id to target
     }
 
+    var remapBase: Map<Int, Int> = ButtonRemap.identity()
+    var remapResets = 0
+
+    override fun buttonRemapBase(): Map<Int, Int> = remapBase
+    override fun resetButtonRemap() {
+        remap.clear()
+        remapResets++
+    }
+
+    var descriptors: Map<Int, String> = emptyMap()
+    override fun buttonDescriptors(): Map<Int, String> = descriptors
+
     var nativeMenuOpened = 0
     private var menuClosedCallback: (() -> Unit)? = null
 

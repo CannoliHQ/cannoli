@@ -123,6 +123,7 @@ class RetroActivityFuture : RetroActivityCamera() {
             val bridge = EmbeddedRetroArchBridge(
                 params?.hardcoreInEffect ?: false, cannoliRoot, platformTag, romBaseName,
                 params?.coreId ?: "",
+                ds?.buttonLabelSet ?: dev.cannoli.ui.ButtonLabelSet.PLUMBER,
             )
             raBridge = bridge
             viewportController = ViewportController(

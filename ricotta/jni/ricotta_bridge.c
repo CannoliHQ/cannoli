@@ -2837,6 +2837,32 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativePortDeviceTypes(
    return ricotta_fields_to_array(env, fields, count + 1);
 }
 
+JNIEXPORT jobjectArray JNICALL
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeButtonDescriptors(
+      JNIEnv *env, jobject obj)
+{
+   char ids[16][4];
+   ricotta_field fields[16];
+   unsigned i, count = 0;
+   rarch_system_info_t *sys_info;
+   (void)obj;
+
+   if (!g_runloop_ready)
+      return NULL;
+   sys_info = &runloop_state_get_ptr()->system;
+   for (i = 0; i < 16; i++)
+   {
+      const char *desc = sys_info->input_desc_btn[0][i];
+      if (!desc || !*desc)
+         continue;
+      snprintf(ids[count], sizeof(ids[count]), "%u", i);
+      fields[count].name  = ids[count];
+      fields[count].value = desc;
+      count++;
+   }
+   return ricotta_fields_to_array(env, fields, count);
+}
+
 JNIEXPORT void JNICALL
 Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSetPortDevice(
       JNIEnv *env, jobject obj, jint port, jint id)

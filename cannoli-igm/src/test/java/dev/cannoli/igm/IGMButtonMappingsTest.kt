@@ -109,11 +109,12 @@ class IGMButtonMappingsTest {
         assertEquals(1, bridge.remapSets.size)
     }
 
-    @Test fun `west puts every row back to its own button`() {
+    @Test fun `west puts every row back to its default`() {
         val bridge = FakeRetroArchBridge()
         bridge.remap[RemapButton.UP.id] = RemapButton.DOWN.id
         val c = open(bridge)
         c.handleKeyDown(KEY_WEST)
+        assertEquals(1, bridge.remapResets)
         assertTrue(ButtonRemap.isDefault(bridge.remap))
     }
 
@@ -122,6 +123,40 @@ class IGMButtonMappingsTest {
         val c = open(bridge)
         c.handleKeyDown(KEY_WEST)
         assertTrue(bridge.remapSets.isEmpty())
+    }
+
+    @Test fun `west is not offered when every row is on its routed default`() {
+        val bridge = FakeRetroArchBridge()
+        bridge.remapBase = ButtonRemap.identity() + (RemapButton.EAST.id to RemapButton.WEST.id)
+        bridge.remap[RemapButton.EAST.id] = RemapButton.WEST.id
+        val c = open(bridge)
+        c.handleKeyDown(KEY_WEST)
+        assertEquals(0, bridge.remapResets)
+    }
+
+    @Test fun `west resets a row that moved off its routed default`() {
+        val bridge = FakeRetroArchBridge()
+        bridge.remapBase = ButtonRemap.identity() + (RemapButton.EAST.id to RemapButton.WEST.id)
+        bridge.remap[RemapButton.EAST.id] = RemapButton.NORTH.id
+        val c = open(bridge)
+        c.handleKeyDown(KEY_WEST)
+        assertEquals(1, bridge.remapResets)
+    }
+
+    @Test fun `binding to a routed key stages what it sends, not the slot it sits on`() {
+        val bridge = FakeRetroArchBridge()
+        bridge.remapBase = ButtonRemap.identity() + (RemapButton.EAST.id to RemapButton.WEST.id)
+        val c = open(bridge)
+        c.handleKeyDown(KEY_SOUTH)
+        c.handleKeyDown(KEY_EAST)
+        assertEquals(RemapButton.WEST.id, bridge.remap[RemapButton.UP.id])
+    }
+
+    @Test fun `opening the screen reads the core's button names`() {
+        val bridge = FakeRetroArchBridge()
+        bridge.descriptors = mapOf(RemapButton.EAST.id to "C")
+        val c = open(bridge)
+        assertEquals("C", c.remapNames.value[RemapButton.EAST.id])
     }
 
     @Test fun `back leaves the screen`() {

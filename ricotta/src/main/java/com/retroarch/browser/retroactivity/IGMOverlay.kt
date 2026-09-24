@@ -588,6 +588,8 @@ class IGMOverlay(
                         ?.let { controller.shortcutRows.value }.orEmpty(),
                     remapRows = (controller.currentScreen as? dev.cannoli.igm.IGMScreen.ButtonMappings)
                         ?.let { controller.remapRows.value }.orEmpty(),
+                    remapBase = controller.remapBase.value,
+                    remapNames = controller.remapNames.value,
                     players = controller.players.value,
                     previewTitle = controller.overlayPicker.title.value,
                     previewItems = controller.overlayPicker.items.value,

@@ -75,6 +75,8 @@ fun CannoliIGM(
     settingsItems: List<IGMSettingsItem>,
     shortcutRows: List<RetroArchBridge.ShortcutBinding> = emptyList(),
     remapRows: Map<Int, Int> = emptyMap(),
+    remapBase: Map<Int, Int> = ButtonRemap.identity(),
+    remapNames: Map<Int, String> = emptyMap(),
     players: List<PlayerSlot> = emptyList(),
     previewTitle: String = "",
     previewItems: List<String> = emptyList(),
@@ -622,14 +624,15 @@ fun CannoliIGM(
                         val target = ButtonRemap.target(remapRows, button)
                         IGMSettingsItem(
                             label = remapLabel(button, labels),
-                            value = when {
-                                screen.listening && i == screen.selectedIndex -> listening
-                                target == ButtonRemap.UNBOUND -> unbound
-                                // A row sending its own button says nothing, so the remapped rows
-                                // are the only ones carrying a word.
-                                target == button.id -> ""
-                                else -> RemapButton.forId(target)?.let { remapLabel(it, labels) }.orEmpty()
-                            },
+                            value = remapValueText(
+                                listening = screen.listening && i == screen.selectedIndex,
+                                target = target,
+                                buttonId = button.id,
+                                names = remapNames,
+                                unboundText = unbound,
+                                listeningText = listening,
+                                fallbackLabel = RemapButton.forId(target)?.let { remapLabel(it, labels) }.orEmpty(),
+                            ),
                         )
                     }
                     IGMSettingsScreen(
@@ -638,7 +641,7 @@ fun CannoliIGM(
                         selectedIndex = screen.selectedIndex,
                         bottomBarLeft = if (screen.listening) emptyList() else buildList {
                             add(labels.back to stringResource(dev.cannoli.ui.R.string.label_back))
-                            if (!ButtonRemap.isDefault(remapRows)) {
+                            if (!ButtonRemap.isDefault(remapRows, remapBase)) {
                                 add(labels.west to stringResource(dev.cannoli.ui.R.string.label_reset_all))
                             }
                         },
@@ -719,5 +722,29 @@ private fun remapLabel(button: RemapButton, labels: ButtonStyle): String =
         CanonicalButton.BTN_EAST -> labels.east
         CanonicalButton.BTN_WEST -> labels.west
         CanonicalButton.BTN_NORTH -> labels.north
-        else -> button.labelRes?.let { stringResource(it) } ?: button.raKey
+        CanonicalButton.BTN_L3 -> labels.labelSet.l3 ?: fixedRemapLabel(button)
+        CanonicalButton.BTN_R3 -> labels.labelSet.r3 ?: fixedRemapLabel(button)
+        else -> fixedRemapLabel(button)
     }
+
+@Composable
+private fun fixedRemapLabel(button: RemapButton): String =
+    button.labelRes?.let { stringResource(it) } ?: button.raKey
+
+internal fun remapValueText(
+    listening: Boolean,
+    target: Int,
+    buttonId: Int,
+    names: Map<Int, String>,
+    unboundText: String,
+    listeningText: String,
+    fallbackLabel: String,
+): String = when {
+    listening -> listeningText
+    target == ButtonRemap.UNBOUND -> unboundText
+    // A row sending its own button says nothing, so the remapped rows
+    // are the only ones carrying a word.
+    target == buttonId -> ""
+    names[target] != null -> names.getValue(target)
+    else -> fallbackLabel
+}

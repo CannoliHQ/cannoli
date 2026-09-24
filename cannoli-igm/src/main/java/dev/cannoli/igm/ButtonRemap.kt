@@ -55,6 +55,9 @@ object ButtonRemap {
     /** Port argument meaning every port rather than one, for the native that applies a change. */
     const val ALL_PORTS = -1
 
+    /** Staged-only: drop this scope's key on save rather than write a target. Never a tier value. */
+    const val INHERIT = -2
+
     private const val KEY_PREFIX = "cannoli_remap_"
 
     fun keyFor(button: RemapButton): String = KEY_PREFIX + button.raKey
@@ -80,6 +83,9 @@ object ButtonRemap {
 
     fun isDefault(map: Map<Int, Int>): Boolean =
         RemapButton.entries.all { target(map, it) == it.id }
+
+    fun isDefault(map: Map<Int, Int>, base: Map<Int, Int>): Boolean =
+        RemapButton.entries.all { target(map, it) == (base[it.id] ?: it.id) }
 
     fun identity(): Map<Int, Int> = RemapButton.entries.associate { it.id to it.id }
 }

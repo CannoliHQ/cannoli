@@ -219,6 +219,8 @@ class IGMController(
     }
 
     val remapRows = androidx.compose.runtime.mutableStateOf<Map<Int, Int>>(emptyMap())
+    val remapBase = androidx.compose.runtime.mutableStateOf<Map<Int, Int>>(ButtonRemap.identity())
+    val remapNames = androidx.compose.runtime.mutableStateOf<Map<Int, String>>(emptyMap())
 
     fun openButtonMappings() {
         heldPastCapture.clear()
@@ -228,6 +230,8 @@ class IGMController(
 
     private fun refreshRemapRows() {
         remapRows.value = bridge.buttonRemap()
+        remapBase.value = bridge.buttonRemapBase()
+        remapNames.value = bridge.buttonDescriptors()
     }
 
     /** Tells the settings tree a binding moved, the same way a staged shortcut does. */
@@ -257,8 +261,9 @@ class IGMController(
             }
             return
         }
-        if (ButtonRemap.target(remapRows.value, row) != target.id) {
-            stagedRemap(setOf(ButtonRemap.keyFor(row))) { bridge.setButtonRemap(row, target.id) }
+        val sends = remapBase.value[target.id]?.takeIf { it != ButtonRemap.UNBOUND } ?: target.id
+        if (ButtonRemap.target(remapRows.value, row) != sends) {
+            stagedRemap(setOf(ButtonRemap.keyFor(row))) { bridge.setButtonRemap(row, sends) }
         }
         // The rest of this hold arrives as navigation otherwise, so binding the confirm button
         // would open the next row for binding on its own repeat.
@@ -285,9 +290,9 @@ class IGMController(
                 }
             }
             MenuAction.WEST -> {
-                if (!ButtonRemap.isDefault(remapRows.value)) {
+                if (!ButtonRemap.isDefault(remapRows.value, remapBase.value)) {
                     stagedRemap(RemapButton.entries.map(ButtonRemap::keyFor).toSet()) {
-                        RemapButton.entries.forEach { bridge.setButtonRemap(it, it.id) }
+                        bridge.resetButtonRemap()
                     }
                 }
             }

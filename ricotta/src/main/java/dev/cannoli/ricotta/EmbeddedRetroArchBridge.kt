@@ -30,6 +30,8 @@ import dev.cannoli.igm.RaSettingsHost
 import dev.cannoli.igm.PlayerSlot
 import dev.cannoli.igm.PortDeviceType
 import dev.cannoli.igm.PortDevices
+import dev.cannoli.igm.SegaPadLayouts
+import dev.cannoli.ui.ButtonLabelSet
 
 class EmbeddedRetroArchBridge(
     private val hardcoreInEffect: Boolean,
@@ -37,6 +39,7 @@ class EmbeddedRetroArchBridge(
     private val platformTag: String,
     private val romBaseName: String,
     private val coreId: String,
+    private val buttonLabelSet: ButtonLabelSet = ButtonLabelSet.PLUMBER,
 ) : RetroArchBridge, RaSettingsHost {
 
     override val supportsAchievements = true
@@ -826,7 +829,18 @@ class EmbeddedRetroArchBridge(
     /** What RetroArch was last told, so a reapply queues only the buttons that moved. */
     private var appliedRemap: Map<Int, Int> = ButtonRemap.identity()
 
-    override fun buttonRemap(): Map<Int, Int> = storedRemap() + pendingRemap
+    private val routedRemap: Map<Int, Int> by lazy { SegaPadLayouts.routed(coreId, buttonLabelSet) }
+
+    override fun buttonRemapBase(): Map<Int, Int> = ButtonRemap.identity() + routedRemap
+
+    override fun resetButtonRemap() {
+        pendingRemap.putAll(resetRemapStaging(routedRemap))
+        applyRemap(buttonRemap())
+    }
+
+    override fun buttonRemap(): Map<Int, Int> = storedRemap() + pendingRemap.mapValues { (id, target) ->
+        if (target == ButtonRemap.INHERIT) routedRemap[id] ?: id else target
+    }
 
     override fun setButtonRemap(button: RemapButton, target: Int) {
         pendingRemap[button.id] = target
@@ -836,6 +850,7 @@ class EmbeddedRetroArchBridge(
     private fun storedRemap(): Map<Int, Int> = remapFromTiers(
         game = gameTier()?.let(::readTier).orEmpty(),
         system = systemTier()?.let(::readTier).orEmpty(),
+        base = routedRemap,
     )
 
     private fun applyRemap(next: Map<Int, Int>) {
@@ -845,10 +860,9 @@ class EmbeddedRetroArchBridge(
         appliedRemap = next
     }
 
-    private fun stagedRemapValues(): Map<String, TierValue> =
-        pendingRemap.entries.mapNotNull { (id, target) ->
-            RemapButton.forId(id)?.let { ButtonRemap.keyFor(it) to TierValue.Set(target.toString()) }
-        }.toMap()
+    private fun stagedRemapValues(): Map<String, TierValue> = stagedRemapTierValues(pendingRemap)
+
+    override fun buttonDescriptors(): Map<Int, String> = decodeDescriptors(nativeButtonDescriptors())
 
     /** The global table from the launch parcel, which the tiers layer over. */
     var globalShortcuts: Map<dev.cannoli.igm.ShortcutAction, Set<Int>> = emptyMap()
@@ -912,6 +926,8 @@ class EmbeddedRetroArchBridge(
             }
         }
         writeTier(target, values)
+
+        if (writesRemap(values)) applyRemap(storedRemap())
 
         // Dropping the game's override and saving a value are independent answers to different
         // questions, so both are honoured: asking a game to stop overriding stays true even when
@@ -1254,6 +1270,7 @@ class EmbeddedRetroArchBridge(
     private external fun nativeDiskLabel(index: Int): String?
     private external fun nativeSetDiskIndex(index: Int)
     private external fun nativePortDeviceTypes(port: Int): Array<String>?
+    private external fun nativeButtonDescriptors(): Array<String>?
     private external fun nativeSetPortDevice(port: Int, id: Int)
     private external fun nativeSetButtonRemap(port: Int, source: Int, target: Int)
     private external fun nativePlayers(): Array<String>?
@@ -1357,6 +1374,13 @@ class EmbeddedRetroArchBridge(
             return PortDevices(current, types)
         }
 
+        internal fun decodeDescriptors(fields: Array<String>?): Map<Int, String> =
+            fields.orEmpty().toList().chunked(2).mapNotNull { pair ->
+                val id = pair.getOrNull(0)?.toIntOrNull() ?: return@mapNotNull null
+                val name = pair.getOrNull(1)?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                id to name
+            }.toMap()
+
         internal fun decodePlayers(fields: Array<String>?): List<PlayerSlot> {
             if (fields == null) return emptyList()
             return fields.toList().chunked(6).mapIndexedNotNull { player, row ->
@@ -1395,17 +1419,34 @@ class EmbeddedRetroArchBridge(
         internal fun remapFromTiers(
             game: Map<String, String>,
             system: Map<String, String>,
+            base: Map<Int, Int> = emptyMap(),
         ): Map<Int, Int> = RemapButton.entries.associate { button ->
             val key = ButtonRemap.keyFor(button)
             val value = ButtonRemap.valueOf(game[key])
                 ?: ButtonRemap.valueOf(system[key])
+                ?: base[button.id]
                 ?: button.id
             button.id to value
         }
 
+        internal fun stagedRemapTierValues(pending: Map<Int, Int>): Map<String, TierValue> =
+            pending.entries.mapNotNull { (id, target) ->
+                RemapButton.forId(id)?.let {
+                    ButtonRemap.keyFor(it) to
+                        if (target == ButtonRemap.INHERIT) TierValue.Inherit else TierValue.Set(target.toString())
+                }
+            }.toMap()
+
+        internal fun writesRemap(values: Map<String, TierValue>): Boolean =
+            values.keys.any { ButtonRemap.buttonForKey(it) != null }
+
         /** Only what moved, because the command queue holds 32 entries and drains once a frame. */
         internal fun remapChanges(applied: Map<Int, Int>, next: Map<Int, Int>): Map<Int, Int> =
             next.filter { (id, target) -> applied[id] != target }
+
+        /** What a reset stages per button: inherit for a routed slot, its own id for the rest. */
+        internal fun resetRemapStaging(routed: Map<Int, Int>): Map<Int, Int> =
+            RemapButton.entries.associate { it.id to if (routed.containsKey(it.id)) ButtonRemap.INHERIT else it.id }
 
         internal fun storedInt(files: List<File>, key: String): Int? = files.firstNotNullOfOrNull { file ->
             val raw = try {
