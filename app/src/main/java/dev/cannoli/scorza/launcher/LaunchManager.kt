@@ -374,18 +374,21 @@ class LaunchManager(
             emptyMap()
         }
 
-    // Weakest to strongest: platform on this core, then this game on this core. Written out whole
-    // every launch, so a key removed from a tier stops applying instead of lingering in the file
-    // RetroArch flushed last time.
+    // Weakest to strongest: what Cannoli ships for this pad, then platform on this core, then this game
+    // on this core. Written out whole every launch, so a key removed from a tier stops applying instead
+    // of lingering in the file RetroArch flushed last time.
     private fun composeCoreOptions(
         paths: CannoliPaths,
         tag: String,
         romName: String,
         core: String,
     ): String {
-        val merged = LinkedHashMap<String, String>()
-        merged.putAll(readOverrideLayer(paths.systemOverrideOpt(tag, core)))
-        merged.putAll(readOverrideLayer(paths.gameOverrideOpt(tag, romName, core)))
+        val merged = ShippedCoreOptions.compose(
+            core = core,
+            glyphStyle = activeMappingHolder.active.value?.glyphStyle,
+            platform = readOverrideLayer(paths.systemOverrideOpt(tag, core)),
+            game = readOverrideLayer(paths.gameOverrideOpt(tag, romName, core)),
+        )
         val target = paths.coreOptionsLaunchOpt
         try {
             target.parentFile?.mkdirs()
