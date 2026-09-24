@@ -376,7 +376,7 @@ class RetroActivityFuture : RetroActivityCamera() {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         startActivity(restartIntent)
-        System.exit(0)
+        EmbeddedRetroArchBridge.nativeExitProcess()
     }
 
     override fun onResume() {
@@ -415,7 +415,7 @@ class RetroActivityFuture : RetroActivityCamera() {
         //
         // Quitting from the in-game menu does not depend on this: it enqueues CMD_EVENT_QUIT and
         // RetroArch exits on its own.
-        if (quitfocus && isFinishing) System.exit(0)
+        if (quitfocus && isFinishing) EmbeddedRetroArchBridge.nativeExitProcess()
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {

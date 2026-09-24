@@ -1504,5 +1504,7 @@ class EmbeddedRetroArchBridge(
             out.add(field.toString())
             return out
         }
+
+        @JvmStatic external fun nativeExitProcess()
     }
 }

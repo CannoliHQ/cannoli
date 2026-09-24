@@ -2696,6 +2696,15 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeQuit(
 }
 
 JNIEXPORT void JNICALL
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeExitProcess(
+      JNIEnv *env, jclass clazz)
+{
+   (void)env;
+   (void)clazz;
+   _exit(0);
+}
+
+JNIEXPORT void JNICALL
 Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativePause(
       JNIEnv *env, jobject obj)
 {
