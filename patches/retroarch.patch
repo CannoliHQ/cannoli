@@ -1,5 +1,5 @@
 diff --git a/retroarch.c b/retroarch.c
-index 370d58ecf8..7bac3d73a3 100644
+index 370d58ecf8..ce48a385c4 100644
 --- a/retroarch.c
 +++ b/retroarch.c
 @@ -3345,6 +3345,11 @@ bool command_event(enum event_command cmd, void *data)
@@ -48,3 +48,14 @@ index 370d58ecf8..7bac3d73a3 100644
  
              core_reset();
  #ifdef HAVE_CHEEVOS
+@@ -6393,6 +6413,10 @@ void main_exit(void *args)
+    /* Do not want menu context to live any more. */
+    if (menu_st)
+       menu_st->flags &= ~MENU_ST_FLAG_DATA_OWN;
++#endif
++#if defined(ANDROID) && defined(HAVE_DYNAMIC)
++   /* dlclose runs core destructors under threads the core never joined. */
++   runloop_st->lib_handle = NULL;
+ #endif
+    retroarch_ctl(RARCH_CTL_MAIN_DEINIT, NULL);
+ 
