@@ -946,6 +946,7 @@ class LaunchManager(
             // carries the controller type and the analog D-pad mode, which other features own.
             appendLine("auto_remaps_enable = \"false\"")
             appendLine("video_font_enable = \"false\"")
+            appendLine("menu_driver = \"rgui\"")
             appendLine("assets_directory = \"$rootPath/Config/Assets\"")
             // RetroArch appends the joypad driver name to this, so it scans Autoconfig/android,
             // which is where the seeder writes the cfgs Cannoli and RetroArch now share.
