@@ -1,7 +1,8 @@
 diff --git a/frontend/drivers/platform_unix.c b/frontend/drivers/platform_unix.c
+index 4adfae8ac5..a741a3873a 100644
 --- a/frontend/drivers/platform_unix.c
 +++ b/frontend/drivers/platform_unix.c
-@@ -1297,8 +1297,8 @@
+@@ -1297,8 +1297,8 @@ bool test_permissions_android(const char *path)
  static void frontend_android_shutdown(bool unused)
  {
     (void)unused;
@@ -10,5 +11,5 @@ diff --git a/frontend/drivers/platform_unix.c b/frontend/drivers/platform_unix.c
 +   /* exit() crashes the framework's live UI threads. */
 +   _exit(0);
  }
-
+ 
  #ifdef HAVE_SAF

@@ -38,6 +38,7 @@ disk_control_interface:disk_control_interface.c
 gfx_widgets:gfx/gfx_widgets.c
 gl2:gfx/drivers/gl2.c
 netplay_frontend:network/netplay/netplay_frontend.c
+platform_unix:frontend/drivers/platform_unix.c
 retroarch:retroarch.c
 runloop:runloop.c
 task_autodetect:tasks/task_autodetect.c
