@@ -27,6 +27,7 @@ class RetroActivityFuture : RetroActivityCamera() {
     private lateinit var mDecorView: View
     private var igmOverlay: IGMOverlay? = null
     private var osdOverlay: OsdOverlay? = null
+    private var resumed = false
     private var viewportController: ViewportController? = null
     // Held so the echo listener can be released: the native side keeps a global ref to the
     // bridge, so it outlives the local scope it is built in.
@@ -142,120 +143,128 @@ class RetroActivityFuture : RetroActivityCamera() {
                 ),
             )
             bridge.shadowedSettingsProvider = { viewportController?.shadowedSettings() ?: emptyMap() }
-            igmOverlay = IGMOverlay(
-                this, bridge, stateBasePath, gameTitle, hostConfig, cannoliRoot, platformTag, platformName,
-                colors?.highlight, colors?.text, colors?.highlightText,
-                colors?.accent, colors?.title, localeTag, romBaseName,
-            )
-            igmOverlay?.onCreate(savedInstanceState)
-            // The scaling row owns aspect_ratio_index, so writing a new preset pulls RetroArch out
-            // of the custom viewport Cannoli applied; once the whole menu closes and play resumes,
-            // claim it back for whatever the user picked.
-            igmOverlay?.onHidden = { refreshViewport() }
-            // The menu writes the scaling row through a queued command while the viewport reads
-            // settings synchronously, so a refresh fired on dismissal can read the value from
-            // before the change and remember it. Once a viewport is live the index reads as custom
-            // and that remembered mode wins on every later refresh, so the wrong choice sticks.
-            // The applied echo arrives after RetroArch has taken the write, which is the only
-            // moment the index actually reflects what the user picked.
-            bridge.setOnRaSettingApplied { key, _ ->
-                if (key == dev.cannoli.igm.RaKeys.ASPECT_RATIO_INDEX ||
-                    key == dev.cannoli.igm.RaKeys.VIDEO_SCALE_INTEGER) refreshViewport()
-                // The curated Show FPS row writes RetroArch's key; the pill that actually draws it
-                // is Cannoli's, so it follows the echo rather than the row.
-                if (key == KEY_FPS_SHOW) bridge.syncShowFps()
-                if (key == KEY_STATISTICS_SHOW) bridge.syncShowDebug()
-            }
-            params?.let { bridge.setIgmTriggerKeycodes(it.igmTriggerKeycodes.toIntArray()) }
-            params?.let { wireShortcuts(bridge, it.shortcuts, it.igmTriggerKeycodes.toSet()) }
-            bridge.curatedSettings = params?.curatedSettings ?: true
-            igmOverlay?.controller?.setInputMapping(params?.inputMapping)
+            mDecorView.post {
+                if (isFinishing || isDestroyed) return@post
+                try {
+                    igmOverlay = IGMOverlay(
+                        this, bridge, stateBasePath, gameTitle, hostConfig, cannoliRoot, platformTag, platformName,
+                        colors?.highlight, colors?.text, colors?.highlightText,
+                        colors?.accent, colors?.title, localeTag, romBaseName,
+                    )
+                    igmOverlay?.onCreate(savedInstanceState)
+                    // The scaling row owns aspect_ratio_index, so writing a new preset pulls RetroArch out
+                    // of the custom viewport Cannoli applied; once the whole menu closes and play resumes,
+                    // claim it back for whatever the user picked.
+                    igmOverlay?.onHidden = { refreshViewport() }
+                    // The menu writes the scaling row through a queued command while the viewport reads
+                    // settings synchronously, so a refresh fired on dismissal can read the value from
+                    // before the change and remember it. Once a viewport is live the index reads as custom
+                    // and that remembered mode wins on every later refresh, so the wrong choice sticks.
+                    // The applied echo arrives after RetroArch has taken the write, which is the only
+                    // moment the index actually reflects what the user picked.
+                    bridge.setOnRaSettingApplied { key, _ ->
+                        if (key == dev.cannoli.igm.RaKeys.ASPECT_RATIO_INDEX ||
+                            key == dev.cannoli.igm.RaKeys.VIDEO_SCALE_INTEGER) refreshViewport()
+                        // The curated Show FPS row writes RetroArch's key; the pill that actually draws it
+                        // is Cannoli's, so it follows the echo rather than the row.
+                        if (key == KEY_FPS_SHOW) bridge.syncShowFps()
+                        if (key == KEY_STATISTICS_SHOW) bridge.syncShowDebug()
+                    }
+                    params?.let { bridge.setIgmTriggerKeycodes(it.igmTriggerKeycodes.toIntArray()) }
+                    params?.let { wireShortcuts(bridge, it.shortcuts, it.igmTriggerKeycodes.toSet()) }
+                    bridge.curatedSettings = params?.curatedSettings ?: true
+                    igmOverlay?.controller?.setInputMapping(params?.inputMapping)
 
-            val osdFont = runCatching {
-                val tf = android.graphics.Typeface.createFromAsset(assets, "fonts/MPlus-1c-NerdFont-Bold.ttf")
-                androidx.compose.ui.text.font.FontFamily(androidx.compose.ui.text.font.Typeface(tf))
-            }.getOrDefault(androidx.compose.ui.text.font.FontFamily.Default)
-            val osd = OsdOverlay(
-                this, osdFont,
-                colors?.highlight, colors?.text, colors?.highlightText,
-                colors?.accent, colors?.title,
-                portraitMarginPx = ds?.portraitMarginPx ?: 0,
-                geometryWidthPct = ds?.geometryWidthPct ?: 100,
-                geometryHeightPct = ds?.geometryHeightPct ?: 100,
-                geometryXPct = ds?.geometryXPct ?: 0,
-                geometryYPct = ds?.geometryYPct ?: 0,
-            )
-            osd.attach(savedInstanceState)
-            osdOverlay = osd
-            igmOverlay?.onOsdMessage = { message -> osd.showMessage(message) }
-            igmOverlay?.onWindowAttached = { osd.raise() }
-            igmOverlay?.onVisibilityChanged = { open -> osd.setIgmOpen(open) }
-            bridge.onOsdEvent = { type, slot ->
-                // Fast forward is the one event that reports a state rather than something that
-                // happened, so it holds a pill for as long as it lasts instead of flashing a toast
-                // the game then outlives.
-                if (type == RicottaOsdEvent.FASTFORWARD) osd.setFastForward(slot != 0)
-                // Raised on every frame the buffer stays exhausted, so it sets a state rather than
-                // queueing a toast per frame. Cleared when the rewind chord is let go.
-                else if (type == RicottaOsdEvent.REWIND_END) osd.setRewindAtEnd()
-                else osd.showMessage(osdEventText(type, slot))
-                refreshViewport()
-                // The game has jumped to a point the recorded frames do not lead back to, so
-                // what is behind it now is a different timeline. Resume is the case that showed
-                // it: rewinding walked past the resumed state and into the game's boot.
-                if (type == RicottaOsdEvent.LOAD_STATE) bridge.resetRewindBuffer()
-                // A save is queued, not written, when the IGM asks for it. The slot on disk only
-                // changes once RetroArch reports back, so the polaroid is stale until then.
-                if (type == RicottaOsdEvent.SAVE_STATE ||
-                    type == RicottaOsdEvent.UNDO_SAVE_STATE
-                ) {
-                    igmOverlay?.controller?.onStateWritten()
+                    val osdFont = runCatching {
+                        val tf = android.graphics.Typeface.createFromAsset(assets, "fonts/MPlus-1c-NerdFont-Bold.ttf")
+                        androidx.compose.ui.text.font.FontFamily(androidx.compose.ui.text.font.Typeface(tf))
+                    }.getOrDefault(androidx.compose.ui.text.font.FontFamily.Default)
+                    val osd = OsdOverlay(
+                        this, osdFont,
+                        colors?.highlight, colors?.text, colors?.highlightText,
+                        colors?.accent, colors?.title,
+                        portraitMarginPx = ds?.portraitMarginPx ?: 0,
+                        geometryWidthPct = ds?.geometryWidthPct ?: 100,
+                        geometryHeightPct = ds?.geometryHeightPct ?: 100,
+                        geometryXPct = ds?.geometryXPct ?: 0,
+                        geometryYPct = ds?.geometryYPct ?: 0,
+                    )
+                    osd.attach(savedInstanceState)
+                    osdOverlay = osd
+                    igmOverlay?.onOsdMessage = { message -> osd.showMessage(message) }
+                    igmOverlay?.onWindowAttached = { osd.raise() }
+                    igmOverlay?.onVisibilityChanged = { open -> osd.setIgmOpen(open) }
+                    bridge.onOsdEvent = { type, slot ->
+                        // Fast forward is the one event that reports a state rather than something that
+                        // happened, so it holds a pill for as long as it lasts instead of flashing a toast
+                        // the game then outlives.
+                        if (type == RicottaOsdEvent.FASTFORWARD) osd.setFastForward(slot != 0)
+                        // Raised on every frame the buffer stays exhausted, so it sets a state rather than
+                        // queueing a toast per frame. Cleared when the rewind chord is let go.
+                        else if (type == RicottaOsdEvent.REWIND_END) osd.setRewindAtEnd()
+                        else osd.showMessage(osdEventText(type, slot))
+                        refreshViewport()
+                        // The game has jumped to a point the recorded frames do not lead back to, so
+                        // what is behind it now is a different timeline. Resume is the case that showed
+                        // it: rewinding walked past the resumed state and into the game's boot.
+                        if (type == RicottaOsdEvent.LOAD_STATE) bridge.resetRewindBuffer()
+                        // A save is queued, not written, when the IGM asks for it. The slot on disk only
+                        // changes once RetroArch reports back, so the polaroid is stale until then.
+                        if (type == RicottaOsdEvent.SAVE_STATE ||
+                            type == RicottaOsdEvent.UNDO_SAVE_STATE
+                        ) {
+                            igmOverlay?.controller?.onStateWritten()
+                        }
+                    }
+                    bridge.onOsdAchievement = { title -> osd.showAchievement(title) }
+                    bridge.onCheevosLoad = { it ->
+                        when (it.outcome) {
+                            dev.cannoli.ricotta.CheevosLoad.Outcome.LOADED -> osd.showMessage(
+                                osdContext.getString(
+                                    R.string.achievos_load_success,
+                                    it.who,
+                                    osdContext.getString(
+                                        if (it.hardcore) R.string.achievos_mode_hardcore else R.string.achievos_mode_softcore
+                                    ),
+                                    it.unlocked,
+                                    it.total,
+                                ),
+                                dev.cannoli.ui.components.OsdPosition.TopStart,
+                            )
+                            dev.cannoli.ricotta.CheevosLoad.Outcome.UNRECOGNISED -> osd.showMessage(
+                                osdContext.getString(R.string.achievos_load_not_recognized),
+                                dev.cannoli.ui.components.OsdPosition.TopStart,
+                            )
+                            dev.cannoli.ricotta.CheevosLoad.Outcome.NO_ACHIEVEMENTS -> osd.showMessage(
+                                osdContext.getString(R.string.achievos_load_no_achievements),
+                                dev.cannoli.ui.components.OsdPosition.TopStart,
+                            )
+                            dev.cannoli.ricotta.CheevosLoad.Outcome.UNAVAILABLE -> osd.showMessage(
+                                osdContext.getString(R.string.achievos_load_unavailable),
+                                dev.cannoli.ui.components.OsdPosition.TopStart,
+                            )
+                        }
+                    }
+                    osd.fpsProvider = { bridge.fps() }
+                    bridge.onShowFpsChanged = { on -> osd.setShowFps(on) }
+                    bridge.onShowDebugChanged = { on -> osd.setShowDebug(on) }
+                    // Native reports stable keys; the words are this side's, so they translate.
+                    osd.debugStatsProvider = {
+                        bridge.debugStats().map { (key, value) -> debugLabel(key) to value }
+                    }
+                    // Not here: onCreate runs before RetroArch exists, and reading a setting from it
+                    // crashed inside menu_setting_new. The first pump of RetroArch's own loop says when.
+                    bridge.onRunloopReady = {
+                        bridge.syncShowFps()
+                        bridge.syncShowDebug()
+                        // Same reason the two above wait for this: a setting cannot be read, let alone
+                        // written, until RetroArch's own loop has started.
+                        dev.cannoli.ricotta.RaSweepRunner.runIfRequested(cannoliRoot, bridge)
+                    }
+                    if (resumed) igmOverlay?.onResume()
+                } catch (e: Exception) {
+                    Log.e("RicottaArch", "Failed to initialize IGM overlay", e)
                 }
-            }
-            bridge.onOsdAchievement = { title -> osd.showAchievement(title) }
-            bridge.onCheevosLoad = { it ->
-                when (it.outcome) {
-                    dev.cannoli.ricotta.CheevosLoad.Outcome.LOADED -> osd.showMessage(
-                        osdContext.getString(
-                            R.string.achievos_load_success,
-                            it.who,
-                            osdContext.getString(
-                                if (it.hardcore) R.string.achievos_mode_hardcore else R.string.achievos_mode_softcore
-                            ),
-                            it.unlocked,
-                            it.total,
-                        ),
-                        dev.cannoli.ui.components.OsdPosition.TopStart,
-                    )
-                    dev.cannoli.ricotta.CheevosLoad.Outcome.UNRECOGNISED -> osd.showMessage(
-                        osdContext.getString(R.string.achievos_load_not_recognized),
-                        dev.cannoli.ui.components.OsdPosition.TopStart,
-                    )
-                    dev.cannoli.ricotta.CheevosLoad.Outcome.NO_ACHIEVEMENTS -> osd.showMessage(
-                        osdContext.getString(R.string.achievos_load_no_achievements),
-                        dev.cannoli.ui.components.OsdPosition.TopStart,
-                    )
-                    dev.cannoli.ricotta.CheevosLoad.Outcome.UNAVAILABLE -> osd.showMessage(
-                        osdContext.getString(R.string.achievos_load_unavailable),
-                        dev.cannoli.ui.components.OsdPosition.TopStart,
-                    )
-                }
-            }
-            osd.fpsProvider = { bridge.fps() }
-            bridge.onShowFpsChanged = { on -> osd.setShowFps(on) }
-            bridge.onShowDebugChanged = { on -> osd.setShowDebug(on) }
-            // Native reports stable keys; the words are this side's, so they translate.
-            osd.debugStatsProvider = {
-                bridge.debugStats().map { (key, value) -> debugLabel(key) to value }
-            }
-            // Not here: onCreate runs before RetroArch exists, and reading a setting from it
-            // crashed inside menu_setting_new. The first pump of RetroArch's own loop says when.
-            bridge.onRunloopReady = {
-                bridge.syncShowFps()
-                bridge.syncShowDebug()
-                // Same reason the two above wait for this: a setting cannot be read, let alone
-                // written, until RetroArch's own loop has started.
-                dev.cannoli.ricotta.RaSweepRunner.runIfRequested(cannoliRoot, bridge)
             }
         } catch (e: Exception) {
             Log.e("RicottaArch", "Failed to initialize IGM overlay", e)
@@ -381,6 +390,7 @@ class RetroActivityFuture : RetroActivityCamera() {
 
     override fun onResume() {
         super.onResume()
+        resumed = true
         igmOverlay?.onResume()
         setSustainedPerformanceMode(sustainedPerformanceMode)
 
@@ -397,6 +407,7 @@ class RetroActivityFuture : RetroActivityCamera() {
     }
 
     override fun onPause() {
+        resumed = false
         igmOverlay?.onPause()
         super.onPause()
     }
