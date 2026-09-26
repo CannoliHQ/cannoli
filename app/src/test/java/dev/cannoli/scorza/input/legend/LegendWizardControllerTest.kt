@@ -1,6 +1,7 @@
 package dev.cannoli.scorza.input.legend
 
 import dev.cannoli.igm.CanonicalButton
+import dev.cannoli.igm.ShortcutAction
 import dev.cannoli.scorza.input.ConnectedDevice
 import dev.cannoli.scorza.input.DeviceMapping
 import dev.cannoli.scorza.input.DeviceMatchRule
@@ -10,6 +11,7 @@ import dev.cannoli.scorza.input.MappingSource
 import dev.cannoli.scorza.input.autoconfig.AutoconfigRepository
 import dev.cannoli.scorza.input.resolver.RetroArchAutoconfigImporter
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -58,6 +60,8 @@ class LegendWizardControllerTest {
         onKeyCaptured(back)
         onKeyCaptured(back)
         onKeyCaptured(start)
+        onButtonCaptured(listOf(InputBinding.Button(109)))
+        listOf(19, 20, 21, 22).forEach { onButtonCaptured(listOf(InputBinding.Button(it))) }
         onKeyCaptured(menu)
     }
 
@@ -89,12 +93,16 @@ class LegendWizardControllerTest {
         c.onKeyCaptured(97)
         assertEquals(WizardStep.PressStart, c.step)
         c.onKeyCaptured(108)
-        assertEquals(WizardStep.PressMenu, c.step)
-        c.onKeyCaptured(316)
-        // Phase one no longer ends the wizard: it runs on into the D-pad, which is what makes the
-        // appearance list operable and the pad navigable if everything after it is skipped.
+        assertEquals(CanonicalButton.BTN_SELECT, c.state.value.capturing)
+        c.onButtonCaptured(listOf(InputBinding.Button(109)))
+        // Then the D-pad, which is what makes the lists operable and the pad navigable if
+        // everything after it is skipped.
         assertEquals(WizardStep.Capture, c.step)
         assertEquals(CanonicalButton.BTN_UP, c.state.value.capturing)
+        listOf(19, 20, 21, 22).forEach { c.onButtonCaptured(listOf(InputBinding.Button(it))) }
+        assertEquals(WizardStep.PressMenu, c.step)
+        c.onKeyCaptured(316)
+        assertEquals(WizardStep.Appearance, c.step)
     }
 
     @Test fun `presses after done are ignored`() {
@@ -167,6 +175,8 @@ class LegendWizardControllerTest {
         c.onKeyCaptured(99)
         assertEquals(WizardStep.PressStart, c.step)
         c.onKeyCaptured(316)
+        c.skip()
+        c.dpadKeys()
         c.onKeyCaptured(108)
         val mapping = c.buildMapping(baseMapping())
         assertEquals(99, mapping.keyCodeOf(CanonicalButton.BTN_WEST))
@@ -319,13 +329,15 @@ class LegendWizardControllerTest {
         assertEquals(96, reloaded.keyCodeOf(CanonicalButton.BTN_SOUTH))
     }
 
+    // Everything before the D-pad, select as the key 109. The menu question follows the D-pad,
+    // answered with 82 below.
     private fun LegendWizardController.completeRequiredActions(
-        confirm: Int = 96, back: Int = 97, menu: Int = 82, startBtn: Int = 108,
+        confirm: Int = 96, back: Int = 97, startBtn: Int = 108,
     ) {
         start(confirm)
         onKeyCaptured(back); onKeyCaptured(back)
         onKeyCaptured(startBtn)
-        onKeyCaptured(menu)
+        onButtonCaptured(listOf(InputBinding.Button(109)))
     }
 
     @Test
@@ -341,6 +353,7 @@ class LegendWizardControllerTest {
         val c = LegendWizardController()
         c.completeRequiredActions()
         repeat(4) { c.onButtonCaptured(listOf(InputBinding.Button(19 + it))) }
+        c.onKeyCaptured(82)
         assertEquals(WizardStep.Appearance, c.state.value.step)
         c.onAppearanceChosen(GlyphStyle.SHAPES)
         // Confirm took south and back took east, so the two left are north and west.
@@ -352,6 +365,7 @@ class LegendWizardControllerTest {
         val c = LegendWizardController()
         c.completeRequiredActions()
         repeat(4) { c.onButtonCaptured(listOf(InputBinding.Button(19 + it))) }
+        c.onKeyCaptured(82)
         c.onAppearanceChosen(GlyphStyle.REDMOND)
         c.skip()
         val built = c.buildMapping(baseMapping())
@@ -364,6 +378,7 @@ class LegendWizardControllerTest {
         c.completeRequiredActions(startBtn = 108, back = 97)
         // The D-pad is required, so walk past it before skip means anything.
         repeat(4) { c.onButtonCaptured(listOf(InputBinding.Button(19 + it))) }
+        c.onKeyCaptured(82)
         c.onAppearanceChosen(GlyphStyle.REDMOND)
         val firstFace = c.state.value.capturing
         assertTrue(c.consumeControlPress(108))
@@ -385,17 +400,69 @@ class LegendWizardControllerTest {
         c.onButtonCaptured(listOf(InputBinding.Button(22)))
         c.onButtonCaptured(listOf(InputBinding.Button(23)))
         c.onButtonCaptured(listOf(InputBinding.Button(24)))
+        c.onKeyCaptured(82)
         c.onAppearanceChosen(GlyphStyle.REDMOND)
         val built = c.buildMapping(baseMapping())
         assertEquals(listOf(InputBinding.Button(21)), built.bindings[CanonicalButton.BTN_UP])
     }
 
     @Test
-    fun `undo at the first question returns to menu, the last action asked before it`() {
+    fun `undo at the first D-pad question returns to select, and then to start`() {
         val c = LegendWizardController()
         c.completeRequiredActions()
         c.undo()
-        assertEquals(WizardStep.PressMenu, c.state.value.step)
+        assertEquals(CanonicalButton.BTN_SELECT, c.state.value.capturing)
+        c.undo()
+        assertEquals(WizardStep.PressStart, c.state.value.step)
+    }
+
+    @Test
+    fun `select is asked straight after start, and start skips it`() {
+        val c = LegendWizardController()
+        c.start(96)
+        c.onKeyCaptured(97); c.onKeyCaptured(97)
+        c.onKeyCaptured(108)
+        assertEquals(CanonicalButton.BTN_SELECT, c.state.value.capturing)
+        assertTrue(c.state.value.canSkip)
+        assertEquals(WizardSkipLine.Generic, c.state.value.skipLine)
+        assertTrue(c.consumeControlPress(108))
+        assertEquals(CanonicalButton.BTN_UP, c.state.value.capturing)
+        assertTrue(c.buildMapping(baseMapping()).bindings[CanonicalButton.BTN_SELECT].isNullOrEmpty())
+    }
+
+    @Test
+    fun `select is not asked again later`() {
+        val c = started().answer()
+        val asked = mutableListOf<CanonicalButton?>()
+        var guard = 0
+        while (c.step != WizardStep.Done && guard++ < 64) {
+            asked += c.state.value.capturing
+            if (c.step == WizardStep.Appearance) c.onAppearanceChosen(GlyphStyle.REDMOND) else c.skip()
+        }
+        assertFalse(CanonicalButton.BTN_SELECT in asked)
+        assertEquals(109, c.buildMapping(baseMapping()).keyCodeOf(CanonicalButton.BTN_SELECT))
+    }
+
+    @Test
+    fun `back on the menu question returns to the last D-pad question`() {
+        val c = LegendWizardController()
+        c.completeRequiredActions(back = 97)
+        repeat(4) { c.onButtonCaptured(listOf(InputBinding.Button(19 + it))) }
+        assertEquals(WizardStep.PressMenu, c.step)
+        c.onKeyCaptured(97)
+        assertEquals(CanonicalButton.BTN_RIGHT, c.state.value.capturing)
+        assertTrue(c.buildMapping(baseMapping()).bindings[CanonicalButton.BTN_RIGHT].isNullOrEmpty())
+    }
+
+    @Test
+    fun `the menu question shows its own skip line in place of the generic one`() {
+        val c = LegendWizardController()
+        c.completeRequiredActions()
+        repeat(4) { c.onButtonCaptured(listOf(InputBinding.Button(19 + it))) }
+        assertEquals(WizardSkipLine.Menu, c.state.value.skipLine)
+        c.onKeyCaptured(82)
+        c.onAppearanceChosen(GlyphStyle.REDMOND)
+        assertEquals(WizardSkipLine.Generic, c.state.value.skipLine)
     }
 
     @Test
@@ -414,6 +481,7 @@ class LegendWizardControllerTest {
         val c = LegendWizardController()
         c.completeRequiredActions()
         repeat(4) { c.onButtonCaptured(listOf(InputBinding.Button(19 + it))) }
+        c.onKeyCaptured(82)
         c.onAppearanceChosen(GlyphStyle.SHAPES)
         assertEquals(GlyphStyle.SHAPES, c.buildMapping(baseMapping()).glyphStyle)
     }
@@ -426,6 +494,7 @@ class LegendWizardControllerTest {
         c.onButtonCaptured(listOf(InputBinding.Button(20)))
         c.onButtonCaptured(listOf(InputBinding.Button(21)))
         c.onButtonCaptured(listOf(InputBinding.Button(22)))
+        c.onKeyCaptured(82)
         assertEquals(0, c.state.value.appearanceIndex)
         c.onKeyCaptured(20)
         assertEquals(1, c.state.value.appearanceIndex)
@@ -464,6 +533,7 @@ class LegendWizardControllerTest {
         val c = LegendWizardController()
         c.completeRequiredActions(startBtn = 108)
         repeat(4) { c.onKeyCaptured(19 + it); Thread.sleep(dev.cannoli.scorza.input.BindingCapture.CAPTURE_WINDOW_MS + 20); c.tickCapture() }
+        c.onKeyCaptured(82)
         c.onAppearanceChosen(GlyphStyle.REDMOND)
         val face = c.state.value.capturing!!
         c.onKeyCaptured(108)
@@ -478,6 +548,7 @@ class LegendWizardControllerTest {
         val c = LegendWizardController()
         c.completeRequiredActions()
         repeat(4) { c.onKeyCaptured(19 + it); Thread.sleep(dev.cannoli.scorza.input.BindingCapture.CAPTURE_WINDOW_MS + 20); c.tickCapture() }
+        c.onKeyCaptured(82)
         c.onAppearanceChosen(GlyphStyle.REDMOND)
         var guard = 0
         while (c.state.value.capturing != CanonicalButton.BTN_LSTICK_X && guard++ < 20) c.skip()
@@ -502,6 +573,7 @@ class LegendWizardControllerTest {
             Thread.sleep(dev.cannoli.scorza.input.BindingCapture.WIZARD_SETTLE_MS + 20)
             c.tickCapture()
         }
+        c.onKeyCaptured(82)
         c.onAppearanceChosen(GlyphStyle.REDMOND)
         var guard = 0
         while (c.state.value.capturing != CanonicalButton.BTN_L2 && guard++ < 24) c.skip()
@@ -541,6 +613,7 @@ class LegendWizardControllerTest {
             Thread.sleep(dev.cannoli.scorza.input.BindingCapture.WIZARD_SETTLE_MS + 20)
             tickCapture()
         }
+        onKeyCaptured(82)
     }
 
     @Test
@@ -622,5 +695,398 @@ class LegendWizardControllerTest {
         assertTrue(c.state.value.capturing != last)
         c.undo()
         assertEquals(WizardStep.Capture, c.state.value.step)
+    }
+
+    private class FakeShortcutStore(
+        var stored: Map<ShortcutAction, Set<Int>>? = emptyMap(),
+    ) : WizardShortcutStore {
+        val saves = mutableListOf<Map<ShortcutAction, Set<Int>>>()
+        override fun read(): Map<ShortcutAction, Set<Int>>? = stored
+        override fun save(shortcuts: Map<ShortcutAction, Set<Int>>) {
+            saves += shortcuts
+            stored = shortcuts
+        }
+    }
+
+    // The D-pad as keycodes, so the menu list can be worked with the same presses.
+    private fun LegendWizardController.dpadKeys() = apply {
+        listOf(19, 20, 21, 22).forEach { onButtonCaptured(listOf(InputBinding.Button(it))) }
+    }
+
+    // Start answers its own question, then skips the menu one. Select is the key 109 unless a
+    // different binding is given, and skipped when null.
+    private fun LegendWizardController.skipMenu(
+        select: InputBinding? = InputBinding.Button(109),
+    ) = apply {
+        confirmRun(96)
+        onKeyCaptured(97)
+        onKeyCaptured(97)
+        onKeyCaptured(108)
+        if (select == null) onKeyCaptured(108) else onButtonCaptured(listOf(select))
+        dpadKeys()
+        onKeyCaptured(108)
+    }
+
+    private fun LegendWizardController.pickSelectStart() = apply {
+        onKeyCaptured(96)
+    }
+
+    private fun LegendWizardController.pickHoldStart() = apply {
+        onKeyCaptured(20)
+        onKeyCaptured(96)
+    }
+
+    private fun LegendWizardController.backTo(step: WizardStep) = apply {
+        var guard = 0
+        while (state.value.step != step && guard++ < 64) undo()
+    }
+
+    private fun wizard(store: FakeShortcutStore? = null) =
+        LegendWizardController(store) { stagingDir() }.apply { start(null) }
+
+    private fun stagingDir() = java.io.File(tmp.root, "shortcuts")
+    private fun stagedChord() = java.io.File(stagingDir(), LegendWizardController.MENU_CHORD_FILE)
+
+    @Test
+    fun `start on the menu question opens the list straight away`() {
+        val c = started()
+        c.confirmRun(96); c.onKeyCaptured(97); c.onKeyCaptured(97); c.onKeyCaptured(108)
+        c.onButtonCaptured(listOf(InputBinding.Button(109)))
+        c.dpadKeys()
+        assertEquals(WizardStep.PressMenu, c.step)
+        assertEquals(WizardSkipLine.Menu, c.state.value.skipLine)
+        assertTrue(c.state.value.canSkip)
+        c.onKeyCaptured(108)
+        assertEquals(WizardStep.MenuChoice, c.step)
+        assertEquals(0, c.state.value.menuChoiceIndex)
+        assertFalse(c.state.value.canSkip)
+    }
+
+    @Test fun `the list offers select and start first, then holding start`() {
+        assertEquals(listOf(MenuChord.SELECT_START, MenuChord.HOLD_START), MENU_CHORD_ORDER)
+    }
+
+    @Test
+    fun `the list is worked with the D-pad just captured`() {
+        val c = started().skipMenu()
+        c.onKeyCaptured(20)
+        assertEquals(1, c.state.value.menuChoiceIndex)
+        c.onKeyCaptured(20)
+        assertEquals(1, c.state.value.menuChoiceIndex)
+        c.onKeyCaptured(19)
+        assertEquals(0, c.state.value.menuChoiceIndex)
+        assertEquals(WizardStep.MenuChoice, c.step)
+    }
+
+    @Test
+    fun `a hat D-pad moves the list too`() {
+        val c = started()
+        c.confirmRun(96); c.onKeyCaptured(97); c.onKeyCaptured(97); c.onKeyCaptured(108)
+        c.onButtonCaptured(listOf(InputBinding.Button(109)))
+        c.onButtonCaptured(listOf(InputBinding.Hat(16, dev.cannoli.scorza.input.HatDirection.UP)))
+        c.onButtonCaptured(listOf(InputBinding.Hat(16, dev.cannoli.scorza.input.HatDirection.DOWN)))
+        c.onButtonCaptured(listOf(InputBinding.Hat(15, dev.cannoli.scorza.input.HatDirection.LEFT)))
+        c.onButtonCaptured(listOf(InputBinding.Hat(15, dev.cannoli.scorza.input.HatDirection.RIGHT)))
+        c.onKeyCaptured(108)
+        assertEquals(WizardStep.MenuChoice, c.step)
+        c.captureRawAxisEvent(mapOf(16 to 1f))
+        assertEquals(1, c.state.value.menuChoiceIndex)
+    }
+
+    @Test
+    fun `back from the list returns to the menu question, and from there to the D-pad`() {
+        val c = started().skipMenu()
+        c.onKeyCaptured(97)
+        assertEquals(WizardStep.PressMenu, c.step)
+        c.onKeyCaptured(97)
+        assertEquals(CanonicalButton.BTN_RIGHT, c.state.value.capturing)
+    }
+
+    @Test
+    fun `answering the menu after going back from the list never shows the list again`() {
+        val store = FakeShortcutStore()
+        val c = wizard(store).skipMenu()
+        c.onKeyCaptured(97)
+        c.onKeyCaptured(316)
+        assertEquals(WizardStep.Appearance, c.step)
+        c.finishRemaining()
+        assertTrue(store.saves.isEmpty())
+        assertEquals(316, c.buildMapping(baseMapping()).keyCodeOf(CanonicalButton.BTN_MENU))
+    }
+
+    @Test
+    fun `a select key offers both rows`() {
+        val c = started().skipMenu()
+        assertEquals(listOf(MenuChord.SELECT_START, MenuChord.HOLD_START), c.state.value.menuChoices)
+    }
+
+    @Test
+    fun `a skipped select sets holding start without the list, and says so`() {
+        val store = FakeShortcutStore()
+        val c = wizard(store).skipMenu(select = null)
+        assertEquals(WizardStep.Appearance, c.step)
+        assertEquals(WizardNotice.MenuIsHoldStart, c.state.value.notice)
+        c.finishRemaining()
+        assertEquals(mapOf(ShortcutAction.OPEN_MENU_HOLD to setOf(108)), store.stored)
+    }
+
+    @Test
+    fun `a select that is an axis or hat sets holding start without the list`() {
+        val hat = InputBinding.Hat(15, dev.cannoli.scorza.input.HatDirection.LEFT)
+        val axis = InputBinding.Axis(axis = 17, restingValue = 0f, activeMin = 0f, activeMax = 1f, digitalThreshold = 0.5f)
+        for (select in listOf(hat, axis)) {
+            val store = FakeShortcutStore()
+            val c = wizard(store).skipMenu(select = select)
+            assertEquals(WizardStep.Appearance, c.step)
+            assertEquals(WizardNotice.MenuIsHoldStart, c.state.value.notice)
+            c.finishRemaining()
+            assertEquals(mapOf(ShortcutAction.OPEN_MENU_HOLD to setOf(108)), store.stored)
+        }
+    }
+
+    @Test
+    fun `a pick from the list says nothing on the next question`() {
+        val c = started().skipMenu().pickHoldStart()
+        assertEquals(WizardStep.Appearance, c.step)
+        assertNull(c.state.value.notice)
+    }
+
+    @Test
+    fun `undo from appearance clears the automatic pick`() {
+        val store = FakeShortcutStore()
+        val c = wizard(store).skipMenu(select = null)
+        c.onKeyCaptured(97)
+        assertEquals(WizardStep.PressMenu, c.step)
+        c.onKeyCaptured(316)
+        assertEquals(WizardStep.Appearance, c.step)
+        assertNull(c.state.value.notice)
+        c.finishRemaining()
+        assertTrue(store.saves.isEmpty())
+        assertEquals(316, c.buildMapping(baseMapping()).keyCodeOf(CanonicalButton.BTN_MENU))
+    }
+
+    @Test
+    fun `picking select and start goes straight on with the select given earlier`() {
+        val c = started().skipMenu().pickSelectStart()
+        assertEquals(WizardStep.Appearance, c.step)
+        c.finishRemaining()
+        val built = c.buildMapping(baseMapping())
+        assertEquals(109, built.keyCodeOf(CanonicalButton.BTN_SELECT))
+        assertTrue(built.bindings[CanonicalButton.BTN_MENU].isNullOrEmpty())
+        assertEquals(108, built.keyCodeOf(CanonicalButton.BTN_START))
+    }
+
+    @Test
+    fun `skipping select after picking select and start leaves only holding start, set automatically`() {
+        val store = FakeShortcutStore()
+        val c = wizard(store).skipMenu().pickSelectStart()
+        c.backTo(WizardStep.MenuChoice)
+        c.onKeyCaptured(97)
+        assertEquals(WizardStep.PressMenu, c.step)
+        var guard = 0
+        while (c.state.value.capturing != CanonicalButton.BTN_SELECT && guard++ < 16) c.onKeyCaptured(97)
+        assertEquals(CanonicalButton.BTN_SELECT, c.state.value.capturing)
+        c.onKeyCaptured(108)
+        c.dpadKeys()
+        c.onKeyCaptured(108)
+        assertEquals(WizardStep.Appearance, c.step)
+        assertEquals(WizardNotice.MenuIsHoldStart, c.state.value.notice)
+        c.finishRemaining()
+        assertEquals(mapOf(ShortcutAction.OPEN_MENU_HOLD to setOf(108)), store.stored)
+    }
+
+    @Test
+    fun `select and start writes open menu`() {
+        val store = FakeShortcutStore(mapOf(ShortcutAction.SAVE_STATE to setOf(1, 2)))
+        wizard(store).skipMenu().pickSelectStart().finishRemaining()
+        assertEquals(
+            mapOf(
+                ShortcutAction.SAVE_STATE to setOf(1, 2),
+                ShortcutAction.OPEN_MENU to setOf(109, 108),
+            ),
+            store.stored,
+        )
+        assertFalse(stagedChord().exists())
+    }
+
+    @Test
+    fun `holding start writes the held menu on start alone`() {
+        val store = FakeShortcutStore(mapOf(ShortcutAction.SAVE_STATE to setOf(1, 2)))
+        wizard(store).skipMenu().pickHoldStart().finishRemaining()
+        assertEquals(
+            mapOf(
+                ShortcutAction.SAVE_STATE to setOf(1, 2),
+                ShortcutAction.OPEN_MENU_HOLD to setOf(108),
+            ),
+            store.stored,
+        )
+    }
+
+    @Test
+    fun `a menu already bound either way is left alone`() {
+        for (bound in listOf(ShortcutAction.OPEN_MENU, ShortcutAction.OPEN_MENU_HOLD)) {
+            for (pick in listOf(MenuChord.SELECT_START, MenuChord.HOLD_START)) {
+                val store = FakeShortcutStore(mapOf(bound to setOf(5)))
+                val c = wizard(store).skipMenu()
+                if (pick == MenuChord.SELECT_START) c.pickSelectStart() else c.pickHoldStart()
+                c.finishRemaining()
+                assertTrue("$bound / $pick", store.saves.isEmpty())
+            }
+        }
+    }
+
+    @Test
+    fun `an empty menu entry counts as unbound`() {
+        val store = FakeShortcutStore(mapOf(ShortcutAction.OPEN_MENU to emptySet()))
+        wizard(store).skipMenu().pickHoldStart().finishRemaining()
+        assertEquals(setOf(108), store.stored?.get(ShortcutAction.OPEN_MENU_HOLD))
+    }
+
+    @Test
+    fun `answering the menu writes nothing and stages nothing`() {
+        val store = FakeShortcutStore()
+        wizard(store).answer().finishRemaining()
+        assertTrue(store.saves.isEmpty())
+        val unstaged = FakeShortcutStore(stored = null)
+        wizard(unstaged).answer().finishRemaining()
+        assertFalse(stagedChord().exists())
+    }
+
+    @Test
+    fun `changing the pick after going back replaces the chord`() {
+        val store = FakeShortcutStore(mapOf(ShortcutAction.SAVE_STATE to setOf(1, 2)))
+        val c = wizard(store).skipMenu().pickSelectStart().finishRemaining()
+        c.resumeAtLastPrompt()
+        c.backTo(WizardStep.MenuChoice)
+        c.pickHoldStart().finishRemaining()
+        assertEquals(setOf(1, 2), store.stored?.get(ShortcutAction.SAVE_STATE))
+        assertTrue(store.stored?.get(ShortcutAction.OPEN_MENU).isNullOrEmpty())
+        assertEquals(setOf(108), store.stored?.get(ShortcutAction.OPEN_MENU_HOLD))
+    }
+
+    @Test
+    fun `answering the menu after all takes back the chord this run wrote`() {
+        val store = FakeShortcutStore()
+        val c = wizard(store).skipMenu().pickHoldStart().finishRemaining()
+        c.resumeAtLastPrompt()
+        c.backTo(WizardStep.PressMenu)
+        c.onKeyCaptured(316)
+        c.finishRemaining()
+        assertTrue(store.stored?.get(ShortcutAction.OPEN_MENU_HOLD).isNullOrEmpty())
+        assertEquals(316, c.buildMapping(baseMapping()).keyCodeOf(CanonicalButton.BTN_MENU))
+    }
+
+    @Test
+    fun `a chord the user bound since is not taken back`() {
+        val store = FakeShortcutStore()
+        val c = wizard(store).skipMenu().pickHoldStart().finishRemaining()
+        store.stored = mapOf(ShortcutAction.OPEN_MENU_HOLD to setOf(42))
+        c.resumeAtLastPrompt()
+        c.backTo(WizardStep.MenuChoice)
+        c.pickSelectStart().finishRemaining()
+        assertEquals(mapOf(ShortcutAction.OPEN_MENU_HOLD to setOf(42)), store.stored)
+    }
+
+    @Test
+    fun `the chord is staged, naming its action, when first run has not chosen a card`() {
+        val store = FakeShortcutStore(stored = null)
+        wizard(store).skipMenu().pickSelectStart().finishRemaining()
+        assertTrue(store.saves.isEmpty())
+        assertEquals("OPEN_MENU=109,108", stagedChord().readText())
+
+        wizard(store).skipMenu().pickHoldStart().finishRemaining()
+        assertEquals("OPEN_MENU_HOLD=108", stagedChord().readText())
+    }
+
+    @Test
+    fun `changing the pick after going back replaces the staged chord`() {
+        val store = FakeShortcutStore(stored = null)
+        val c = wizard(store).skipMenu().pickSelectStart().finishRemaining()
+        c.resumeAtLastPrompt()
+        c.backTo(WizardStep.MenuChoice)
+        c.pickHoldStart().finishRemaining()
+        assertEquals("OPEN_MENU_HOLD=108", stagedChord().readText())
+        c.resumeAtLastPrompt()
+        c.backTo(WizardStep.PressMenu)
+        c.onKeyCaptured(316)
+        c.finishRemaining()
+        assertFalse(stagedChord().exists())
+    }
+
+    @Test
+    fun `a later flush writes the staged chord and drops the staging file`() {
+        val store = FakeShortcutStore(stored = null)
+        val c = wizard(store).skipMenu().pickSelectStart().finishRemaining()
+        store.stored = mapOf(ShortcutAction.SAVE_STATE to setOf(1, 2))
+        c.flushMenuChord()
+        assertEquals(
+            mapOf(
+                ShortcutAction.SAVE_STATE to setOf(1, 2),
+                ShortcutAction.OPEN_MENU to setOf(109, 108),
+            ),
+            store.stored,
+        )
+        assertFalse(stagedChord().exists())
+        c.flushMenuChord()
+        assertEquals(1, store.saves.size)
+    }
+
+    @Test
+    fun `a staged chord survives the process dying before the card is chosen`() {
+        wizard(FakeShortcutStore(stored = null)).skipMenu().pickHoldStart().finishRemaining()
+        val store = FakeShortcutStore()
+        LegendWizardController(store) { stagingDir() }.flushMenuChord()
+        assertEquals(mapOf(ShortcutAction.OPEN_MENU_HOLD to setOf(108)), store.stored)
+        assertFalse(stagedChord().exists())
+    }
+
+    @Test
+    fun `a staged chord does not overwrite a menu bound either way`() {
+        for (bound in listOf(ShortcutAction.OPEN_MENU, ShortcutAction.OPEN_MENU_HOLD)) {
+            wizard(FakeShortcutStore(stored = null)).skipMenu().pickSelectStart().finishRemaining()
+            val store = FakeShortcutStore(mapOf(bound to setOf(5, 6)))
+            LegendWizardController(store) { stagingDir() }.flushMenuChord()
+            assertTrue(store.saves.isEmpty())
+            assertFalse(stagedChord().exists())
+        }
+    }
+
+    @Test
+    fun `a flush with nothing staged does nothing`() {
+        val store = FakeShortcutStore()
+        LegendWizardController(store) { stagingDir() }.flushMenuChord()
+        assertTrue(store.saves.isEmpty())
+    }
+
+    @Test
+    fun `a malformed staging file is dropped without writing`() {
+        val bad = listOf(
+            "", "garbage", "109,108", "OPEN_MENU=109", "OPEN_MENU=109,x", "OPEN_MENU=109,108,4",
+            "OPEN_MENU=108,108", "OPEN_MENU_HOLD=108,109", "OPEN_MENU_HOLD=", "SAVE_STATE=1,2",
+        )
+        for (text in bad) {
+            stagingDir().mkdirs()
+            stagedChord().writeText(text)
+            val store = FakeShortcutStore()
+            LegendWizardController(store) { stagingDir() }.flushMenuChord()
+            assertTrue(text, store.saves.isEmpty())
+            assertFalse(text, stagedChord().exists())
+        }
+    }
+
+    @Test
+    fun `a card already chosen is written directly and nothing is staged`() {
+        val store = FakeShortcutStore()
+        wizard(store).skipMenu().pickSelectStart().finishRemaining()
+        assertEquals(mapOf(ShortcutAction.OPEN_MENU to setOf(109, 108)), store.stored)
+        assertFalse(stagedChord().exists())
+    }
+
+    @Test
+    fun `the list rows read like the appearance rows`() {
+        val strings = java.io.File("../cannoli-ui/src/main/res/values/strings.xml").readText()
+        assertTrue(strings.contains("""<string name="controller_wizard_menu_select_start">Select + Start</string>"""))
+        assertTrue(strings.contains("""<string name="controller_wizard_menu_hold_start">Hold Start</string>"""))
+        assertTrue(strings.contains("""<string name="controller_wizard_menu_is_hold_start">Hold Start to open the menu</string>"""))
     }
 }

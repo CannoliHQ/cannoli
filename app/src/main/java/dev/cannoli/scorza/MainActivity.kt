@@ -79,6 +79,7 @@ import javax.inject.Provider
 class MainActivity : ComponentActivity(), ActivityActions {
 
     @Inject lateinit var settings: SettingsRepository
+    @Inject lateinit var globalOverrides: dev.cannoli.scorza.settings.GlobalOverridesManager
     @Inject lateinit var platformConfig: Provider<PlatformConfig>
     @Inject lateinit var nav: NavigationController
     @Inject lateinit var router: InputRouter
@@ -141,7 +142,15 @@ class MainActivity : ComponentActivity(), ActivityActions {
 
     // Not Hilt-injected: it holds only in-memory wizard progress for the Activity's lifetime,
     // the same shape as EditButtonsController but without that class's repository dependencies.
-    private val legendWizardController = dev.cannoli.scorza.input.legend.LegendWizardController()
+    private val legendWizardController = dev.cannoli.scorza.input.legend.LegendWizardController(
+        object : dev.cannoli.scorza.input.legend.WizardShortcutStore {
+            override fun read() =
+                if (settings.sdCardRootOrNull == null) null else globalOverrides.readShortcuts()
+            override fun save(shortcuts: Map<dev.cannoli.igm.ShortcutAction, Set<Int>>) =
+                globalOverrides.saveShortcuts(shortcuts)
+        },
+        chordStagingDirProvider = { java.io.File(filesDir, "shortcuts") },
+    )
 
     // First run's press run, held for the Activity's lifetime for the same reason.
     private val confirmPressCounter = dev.cannoli.scorza.input.legend.ConfirmPressCounter()
@@ -232,6 +241,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
         loadLoggingPrefs()
 
         startStorageDependentHolder.register { startStorageDependent() }
+        globalOverrides.addShortcutsSavedListener(shortcutsSavedListener)
         onboardingCoordinator.onFinished = { target -> bootSequencer.onFolderChosen(target) }
         onboardingCoordinator.onRequestPermission = { perm ->
             when (perm) {
@@ -292,7 +302,11 @@ class MainActivity : ComponentActivity(), ActivityActions {
                 // that keeps content out of the display cutout; AppNavGraph used to repeat this
                 // for the Ready path alone, which left the boot-time screens unprotected.
                 Surface(modifier = Modifier.fillMaxSize().displayCutoutPadding()) {
+                    val menuGlyphPad by activeMappingHolder.active.collectAsState()
+                    val menuGlyphShortcuts by menuShortcutsState.collectAsState()
                     CompositionLocalProvider(
+                        dev.cannoli.ui.theme.LocalMenuGlyph provides
+                            dev.cannoli.scorza.input.launcherMenuGlyph(menuGlyphPad, menuGlyphShortcuts),
                         LocalViewportInsets provides ViewportInsetsPx(
                             geometryWidthPct = settings.screenGeometryWidth,
                             geometryHeightPct = settings.screenGeometryHeight,
@@ -461,12 +475,28 @@ class MainActivity : ComponentActivity(), ActivityActions {
      * The controller bridge itself is started in onCreate (before permission) so the onboarding
      * wizard is operable. BootSequencer invokes this once, on the edge into Initializing.
      */
+    private val shortcutsSavedListener: () -> Unit = { refreshMenuShortcuts() }
+
+    // Nothing is bound before first run has chosen a card, since there is no shortcuts.ini yet.
+    private fun refreshMenuShortcuts() {
+        val shortcuts = if (settings.sdCardRootOrNull == null) emptyMap()
+        else runCatching { globalOverrides.readShortcuts() }.getOrDefault(emptyMap())
+        inputDispatcher.setMenuShortcuts(shortcuts)
+        menuShortcutsState.value = shortcuts
+    }
+
+    // The same bindings for the legends, which draw how the active pad opens the menu.
+    private val menuShortcutsState =
+        kotlinx.coroutines.flow.MutableStateFlow<Map<dev.cannoli.igm.ShortcutAction, Set<Int>>>(emptyMap())
+
     private fun startStorageDependent() {
         settings.reload()
         settings.sdCardRootOrNull?.let { dev.cannoli.scorza.util.InputLog.init(it) }
         // The chosen path is real from here, so anything the wizard staged during first run moves
         // onto the card, and it has to move before the settle below re-resolves.
         autoconfigRepository.promoteStaging()
+        legendWizardController.flushMenuChord()
+        refreshMenuShortcuts()
         controllerBridge.settleNow()
         refreshRommServerVersion()
     }
@@ -583,6 +613,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
         // Re-wire the dispatcher to launcher dispatch shape on each resume, so returning from an
         // emulator always lands on the launcher's wiring.
         router.wire(inputDispatcher)
+        refreshMenuShortcuts()
         registerControllerOsd()
         dialogHandler.onSyncSavesNow = { syncScheduler.syncNow() }
         // Reopened at the last question rather than restarted, so back carries on being back and
@@ -653,6 +684,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
 
     override fun onDestroy() {
         GuideOverlayService.hide(this)
+        globalOverrides.removeShortcutsSavedListener(shortcutsSavedListener)
         controllerBridge.onDeviceAdded = null
         controllerBridge.onDeviceRemoved = null
         controllerBridge.stop(this)

@@ -27,7 +27,9 @@ import dev.cannoli.scorza.input.legend.GLYPH_ORDER
 import dev.cannoli.ui.components.BottomBar
 import dev.cannoli.ui.components.PillRowText
 import dev.cannoli.scorza.input.legend.LegendWizardState
+import dev.cannoli.scorza.input.legend.MenuChord
 import dev.cannoli.scorza.input.legend.WizardNotice
+import dev.cannoli.scorza.input.legend.WizardSkipLine
 import dev.cannoli.scorza.input.legend.WizardStep
 import dev.cannoli.scorza.onboarding.OnboardingStep
 import dev.cannoli.ui.components.ScreenTitle
@@ -86,8 +88,7 @@ fun LegendWizardScreen(
                     WizardStep.PressMenu -> stringResource(R.string.controller_wizard_press_menu)
                     WizardStep.PressStart -> stringResource(R.string.controller_wizard_press_start)
                     WizardStep.Appearance -> stringResource(R.string.controller_wizard_appearance)
-                    // Named by what is printed on the pad, which is why this question comes after
-                    // the appearance one rather than before it.
+                    WizardStep.MenuChoice -> stringResource(R.string.controller_wizard_menu_choice)
                     WizardStep.Capture -> state.capturing?.let { button ->
                         stringResource(
                             R.string.controller_wizard_press_button,
@@ -108,6 +109,8 @@ fun LegendWizardScreen(
                         stringResource(R.string.controller_wizard_mismatch)
                     WizardNotice.BackMustDifferFromConfirm ->
                         stringResource(R.string.controller_wizard_back_must_differ)
+                    WizardNotice.MenuIsHoldStart ->
+                        stringResource(R.string.controller_wizard_menu_is_hold_start)
                     null -> null
                 }
                 if (notice != null) {
@@ -126,12 +129,34 @@ fun LegendWizardScreen(
                         )
                     }
                 }
+                if (state.step == WizardStep.MenuChoice) {
+                    Spacer(modifier = Modifier.height(Spacing.Lg))
+                    state.menuChoices.forEachIndexed { index, chord ->
+                        PillRowText(
+                            label = stringResource(
+                                when (chord) {
+                                    MenuChord.SELECT_START -> R.string.controller_wizard_menu_select_start
+                                    MenuChord.HOLD_START -> R.string.controller_wizard_menu_hold_start
+                                }
+                            ),
+                            isSelected = index == state.menuChoiceIndex,
+                            fontSize = listFontSize,
+                            lineHeight = listLineHeight,
+                            verticalPadding = listVerticalPadding,
+                        )
+                    }
+                }
                 // Not on the layout question: that one is a pick with three answers, and a hint
                 // about buttons the controller does not have says nothing there.
-                if (state.canSkip && state.step == WizardStep.Capture) {
+                val skipLine = when (state.skipLine) {
+                    WizardSkipLine.Generic -> stringResource(R.string.controller_wizard_skip)
+                    WizardSkipLine.Menu -> stringResource(R.string.controller_wizard_menu_skip)
+                    null -> null
+                }
+                if (skipLine != null) {
                     Spacer(modifier = Modifier.height(Spacing.Md))
                     PromptText(
-                        text = stringResource(R.string.controller_wizard_skip),
+                        text = skipLine,
                         style = typo.labelSmall,
                         color = Color.White,
                     )
