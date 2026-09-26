@@ -20,6 +20,22 @@ class InputDispatcher @Inject constructor(
     /** Overridable for tests; production calls System.currentTimeMillis. */
     internal var clock: () -> Long = { System.currentTimeMillis() }
 
+    // The menu shortcuts bound in shortcuts.ini, so a pad with no menu button still has one here.
+    private val menuShortcuts = dev.cannoli.igm.MenuShortcutGate()
+
+    private val mainHandler by lazy { android.os.Handler(android.os.Looper.getMainLooper()) }
+
+    /** Overridable for tests; production posts to the main looper, as the other held-key timers do. */
+    internal var schedule: (delayMs: Long, block: () -> Unit) -> Unit = { delayMs, block ->
+        mainHandler.postDelayed(block, delayMs)
+    }
+
+    /** What shortcuts.ini binds now. Called at start and again whenever the shortcuts are saved. */
+    fun setMenuShortcuts(shortcuts: Map<dev.cannoli.igm.ShortcutAction, Set<Int>>) {
+        menuShortcuts.setShortcuts(shortcuts)
+        heldBackOn.clear()
+    }
+
     var onUp: () -> Unit = {}
     var onDown: () -> Unit = {}
     var onLeft: () -> Unit = {}
@@ -85,6 +101,9 @@ class InputDispatcher @Inject constructor(
         if (keyCode == KeyEvent.KEYCODE_UNKNOWN) return false
         val evaluator = portRouter.evaluatorFor(deviceId) ?: return false
         val mapping = portRouter.mappingFor(deviceId) ?: return false
+        if (menuShortcuts.isBound) {
+            menuShortcutKey(deviceId, keyCode, action, repeatCount, evaluator, mapping)?.let { return it }
+        }
         return when (action) {
             KeyEvent.ACTION_DOWN, KeyEvent.ACTION_MULTIPLE -> {
                 val isRepeat = action == KeyEvent.ACTION_MULTIPLE || repeatCount > 0
@@ -156,6 +175,90 @@ class InputDispatcher @Inject constructor(
             }
             else -> false
         }
+    }
+
+    /**
+     * The menu shortcuts' say over a key, before it means anything else. Null lets the key through
+     * to its usual handling. A key a shortcut takes still goes through the evaluator, so the pad's
+     * held state stays true to the buttons.
+     */
+    private fun menuShortcutKey(
+        deviceId: Int,
+        keyCode: Int,
+        action: Int,
+        repeatCount: Int,
+        evaluator: PortEvaluator,
+        mapping: DeviceMapping,
+    ): Boolean? {
+        val gate = menuShortcuts
+        when (action) {
+            KeyEvent.ACTION_DOWN, KeyEvent.ACTION_MULTIPLE -> {
+                val isRepeat = action == KeyEvent.ACTION_MULTIPLE || repeatCount > 0
+                val result = gate.onKeyDown(keyCode, clock(), isRepeat)
+                gate.takeReplays().forEach(::replayPress)
+                return when (result) {
+                    dev.cannoli.igm.MenuShortcutGate.Result.PASS -> null
+                    dev.cannoli.igm.MenuShortcutGate.Result.CONSUME -> {
+                        if (!isRepeat) {
+                            evaluator.evaluateKeyDown(keyCode, isAndroidRepeat = false)
+                            heldBackOn[keyCode] = deviceId
+                            gate.nextDeadline()?.let { deadline ->
+                                schedule((deadline - clock()).coerceAtLeast(0L)) { menuShortcutTick() }
+                            }
+                        }
+                        true
+                    }
+                    dev.cannoli.igm.MenuShortcutGate.Result.MENU -> {
+                        evaluator.evaluateKeyDown(keyCode, isAndroidRepeat = false)
+                        maybeActivate(deviceId)
+                        activeMappingHolder.set(mapping)
+                        onMenu()
+                        true
+                    }
+                    // Only ever answers a release.
+                    dev.cannoli.igm.MenuShortcutGate.Result.REPLAY_PRESS -> null
+                }
+            }
+            KeyEvent.ACTION_UP -> {
+                val result = gate.onKeyUp(keyCode)
+                gate.takeReplays().forEach(::replayPress)
+                return when (result) {
+                    dev.cannoli.igm.MenuShortcutGate.Result.PASS -> null
+                    // Its press never reached a screen, so neither does its release.
+                    dev.cannoli.igm.MenuShortcutGate.Result.CONSUME -> {
+                        heldBackOn.remove(keyCode)
+                        evaluator.evaluateKeyUp(keyCode)
+                        true
+                    }
+                    // Let go while held back: the press happens now, and the release goes on as
+                    // usual below.
+                    dev.cannoli.igm.MenuShortcutGate.Result.REPLAY_PRESS -> {
+                        replayPress(keyCode)
+                        null
+                    }
+                    dev.cannoli.igm.MenuShortcutGate.Result.MENU -> null
+                }
+            }
+            else -> return null
+        }
+    }
+
+    // Which pad a held-back key came from, so its press is replayed as that pad's button.
+    private val heldBackOn = mutableMapOf<Int, Int>()
+
+    private fun menuShortcutTick() {
+        val result = menuShortcuts.onTick(clock())
+        menuShortcuts.takeReplays().forEach(::replayPress)
+        if (result == dev.cannoli.igm.MenuShortcutGate.Result.MENU) onMenu()
+    }
+
+    private fun replayPress(keyCode: Int) {
+        val deviceId = heldBackOn.remove(keyCode) ?: return
+        val evaluator = portRouter.evaluatorFor(deviceId) ?: return
+        val mapping = portRouter.mappingFor(deviceId) ?: return
+        maybeActivate(deviceId)
+        activeMappingHolder.set(mapping)
+        for (canonical in evaluator.canonicalsHeldByKeyCode(keyCode)) dispatchPressed(canonical, mapping)
     }
 
     internal fun handleMotionEventForTest(deviceId: Int, axisValues: Map<Int, Float>): Boolean {

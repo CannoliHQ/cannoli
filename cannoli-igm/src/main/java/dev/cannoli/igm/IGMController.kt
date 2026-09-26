@@ -12,6 +12,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -63,10 +64,34 @@ class IGMController(
     /** Supply the active Cannoli device mapping so raw host keycodes are normalized. */
     fun setInputMapping(mapping: IgmInputMapping?) {
         inputTranslator = IgmInputTranslator(mapping)
+        inputMapping = mapping
+        menuGlyph.value = menuGlyphFor(inputMapping, menuShortcutTable)
     }
+
+    private var inputMapping: IgmInputMapping? = null
+    private var menuShortcutTable: Map<ShortcutAction, Set<Int>> = emptyMap()
+
+    /** What the menu's legends draw for the menu button, from the pad and the shortcuts in force. */
+    val menuGlyph = mutableStateOf(dev.cannoli.ui.theme.MenuGlyph.Menu)
 
     /** Whether this raw keycode is the button that opens and closes the menu on this device. */
     fun isMenuKey(rawKeycode: Int): Boolean = inputTranslator.isMenuKey(rawKeycode)
+
+    // The menu shortcuts in force for this game, so a pad with no menu button still has one on
+    // the menu's own screens. Native matches them only while the game has the keys.
+    private val menuShortcuts = MenuShortcutGate()
+
+    internal var clock: () -> Long = { System.currentTimeMillis() }
+
+    internal var scheduleMenuHold: (delayMs: Long, block: () -> Unit) -> Unit = { delayMs, block ->
+        scope.launch { delay(delayMs); block() }
+    }
+
+    fun setMenuShortcuts(shortcuts: Map<ShortcutAction, Set<Int>>) {
+        menuShortcuts.setShortcuts(shortcuts)
+        menuShortcutTable = shortcuts
+        menuGlyph.value = menuGlyphFor(inputMapping, menuShortcutTable)
+    }
 
     // Guide navigation is delegated to the shared GuideController. These pass-through getters
     // preserve the public API that ricotta/IGMOverlay.kt reads (controller.guideFiles.value,
@@ -208,7 +233,7 @@ class IGMController(
 
     /**
      * Leaves an Input category subscreen and steps the settings navigator back out of the category
-     * that opened it. Shared by Shortcuts and Button Mappings, the two screens Input hands off to.
+     * that opened it. Shared by Shortcuts and Button Overrides, the two screens Input hands off to.
      *
      * Entering pushed a level on the provider, so popping only this screen would leave the tree one
      * level deeper than the screen behind it, the same reason the overlay picker unwinds.
@@ -550,6 +575,8 @@ class IGMController(
     }
 
     fun openMenu() {
+        // Releases that went to the game while the menu was closed never reached this side.
+        menuShortcuts.reset()
         refreshDiskInfo()
         requestCheatsIfMissing()
         refreshAchievementCount()
@@ -893,6 +920,14 @@ class IGMController(
         }
         // Released at last, so this key is a press again.
         if (heldPastCapture.remove(keycode)) return
+        val shortcut = menuShortcuts.onKeyUp(keycode)
+        menuShortcuts.takeReplays().forEach(::replayPress)
+        when (shortcut) {
+            MenuShortcutGate.Result.CONSUME -> return
+            // Let go while held back, so it was a press after all.
+            MenuShortcutGate.Result.REPLAY_PRESS -> replayPress(keycode)
+            else -> {}
+        }
         val screen = currentScreen as? IGMScreen.Guide ?: return
         if (screen.help) return
         when (inputTranslator.normalize(keycode)) {
@@ -902,7 +937,7 @@ class IGMController(
         }
     }
 
-    fun handleKeyDown(keycode: Int) {
+    fun handleKeyDown(keycode: Int, isRepeat: Boolean = false) {
         val screen = currentScreen ?: return
         // While a chord is being captured the keys are the binding, so they go to the detector raw:
         // what gets stored has to be the keycode the device actually sends, not what this menu
@@ -919,9 +954,42 @@ class IGMController(
         }
         // The tail of a chord that has already committed, still repeating. Not a press.
         if (keycode in heldPastCapture) return
+        val shortcut = menuShortcuts.onKeyDown(keycode, clock(), isRepeat)
+        menuShortcuts.takeReplays().forEach(::replayPress)
+        when (shortcut) {
+            MenuShortcutGate.Result.MENU -> {
+                currentScreen?.let { dispatchKey(it, MenuAction.MENU, keycode) }
+                return
+            }
+            MenuShortcutGate.Result.CONSUME -> {
+                if (!isRepeat) menuShortcuts.nextDeadline()?.let { deadline ->
+                    scheduleMenuHold((deadline - clock()).coerceAtLeast(0L)) { menuShortcutTick(keycode) }
+                }
+                return
+            }
+            else -> {}
+        }
+        // A replayed press can have moved the menu on, so the screen is read again.
+        val current = currentScreen ?: return
         // Null is a key this pad has no meaning for, which no screen has anything to do with.
         val action = inputTranslator.normalize(keycode) ?: return
+        dispatchKey(current, action, keycode)
+    }
 
+    private fun menuShortcutTick(keycode: Int) {
+        val shortcut = menuShortcuts.onTick(clock())
+        menuShortcuts.takeReplays().forEach(::replayPress)
+        if (shortcut == MenuShortcutGate.Result.MENU) {
+            currentScreen?.let { dispatchKey(it, MenuAction.MENU, keycode) }
+        }
+    }
+
+    private fun replayPress(keycode: Int) {
+        val screen = currentScreen ?: return
+        inputTranslator.normalize(keycode)?.let { dispatchKey(screen, it, keycode) }
+    }
+
+    private fun dispatchKey(screen: IGMScreen, action: MenuAction, keycode: Int) {
         when (screen) {
             is IGMScreen.Menu -> handleMenuKey(screen, action)
             is IGMScreen.GuidePicker -> handleGuidePickerKey(screen, action)

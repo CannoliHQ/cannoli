@@ -629,4 +629,199 @@ class InputDispatcherTest {
         val handled = d.handleKeyEventForTest(deviceId = 7, keyCode = 96, action = android.view.KeyEvent.ACTION_DOWN, repeatCount = 0)
         assertFalse(handled)
     }
+
+    private val down = android.view.KeyEvent.ACTION_DOWN
+    private val hold = dev.cannoli.igm.ShortcutAction.OPEN_MENU_HOLD.holdMs.toLong()
+    private val up = android.view.KeyEvent.ACTION_UP
+
+    private class Recorder(d: InputDispatcher) {
+        val events = mutableListOf<String>()
+        val start get() = events.count { it == "start" }
+        val select get() = events.count { it == "select" }
+        val selectUp get() = events.count { it == "selectUp" }
+        val menu get() = events.count { it == "menu" }
+        init {
+            d.onStart = { events += "start" }
+            d.onSelect = { events += "select" }
+            d.onSelectUp = { events += "selectUp" }
+            d.onMenu = { events += "menu" }
+            d.onConfirm = { events += "confirm" }
+        }
+    }
+
+    private fun shortcutPad() = westernTemplate().copy(
+        bindings = westernTemplate().bindings + (CanonicalButton.BTN_START to listOf(InputBinding.Button(108))),
+    )
+
+    private class FakeTime(var now: Long = 0L) {
+        val pending = mutableListOf<Pair<Long, () -> Unit>>()
+        fun advanceTo(t: Long) {
+            now = t
+            val due = pending.filter { it.first <= t }
+            pending.removeAll(due)
+            due.forEach { it.second() }
+        }
+    }
+
+    private fun InputDispatcher.useTime(time: FakeTime) {
+        clock = { time.now }
+        schedule = { delay, block -> time.pending += (time.now + delay) to block }
+    }
+
+    private fun InputDispatcher.key(code: Int, action: Int) =
+        handleKeyEventForTest(deviceId = 7, keyCode = code, action = action, repeatCount = 0)
+
+    private fun InputDispatcher.bindChord(time: FakeTime) {
+        useTime(time)
+        setMenuShortcuts(mapOf(dev.cannoli.igm.ShortcutAction.OPEN_MENU to setOf(109, 108)))
+    }
+
+    @Test
+    fun select_and_start_opens_the_menu_with_no_select_reaching_the_screen() {
+        val (d, _, _) = setup(shortcutPad())
+        d.bindChord(FakeTime())
+        val r = Recorder(d)
+        d.key(109, down)
+        d.key(108, down)
+        d.key(109, up)
+        d.key(108, up)
+        assertEquals(listOf("menu"), r.events)
+    }
+
+    @Test
+    fun start_then_select_opens_the_menu_too() {
+        val (d, _, _) = setup(shortcutPad())
+        d.bindChord(FakeTime())
+        val r = Recorder(d)
+        d.key(108, down)
+        d.key(109, down)
+        d.key(108, up)
+        d.key(109, up)
+        assertEquals(listOf("menu"), r.events)
+    }
+
+    @Test
+    fun select_then_another_button_replays_select_first() {
+        val (d, _, _) = setup(shortcutPad())
+        d.bindChord(FakeTime())
+        val r = Recorder(d)
+        d.key(109, down)
+        assertTrue(r.events.isEmpty())
+        d.key(97, down)
+        d.key(97, up)
+        d.key(109, up)
+        assertEquals(listOf("select", "confirm", "selectUp"), r.events)
+    }
+
+    @Test
+    fun select_tapped_alone_dispatches_press_then_release() {
+        val (d, _, _) = setup(shortcutPad())
+        d.bindChord(FakeTime())
+        val r = Recorder(d)
+        d.key(109, down)
+        d.key(109, up)
+        assertEquals(listOf("select", "selectUp"), r.events)
+    }
+
+    @Test
+    fun select_held_past_the_wait_presses_at_the_deadline() {
+        val (d, _, _) = setup(shortcutPad())
+        val time = FakeTime()
+        d.bindChord(time)
+        val r = Recorder(d)
+        d.key(109, down)
+        handleRepeat(d, 109)
+        time.advanceTo(299)
+        assertTrue(r.events.isEmpty())
+        time.advanceTo(300)
+        assertEquals(listOf("select"), r.events)
+        d.key(109, up)
+        assertEquals(listOf("select", "selectUp"), r.events)
+    }
+
+    @Test
+    fun repeats_while_held_back_are_consumed() {
+        val (d, _, _) = setup(shortcutPad())
+        d.bindChord(FakeTime())
+        val r = Recorder(d)
+        d.key(109, down)
+        assertTrue(handleRepeat(d, 109))
+        assertTrue(r.events.isEmpty())
+    }
+
+    private fun handleRepeat(d: InputDispatcher, code: Int) =
+        d.handleKeyEventForTest(deviceId = 7, keyCode = code, action = down, repeatCount = 1)
+
+    @Test
+    fun start_alone_and_select_alone_are_unchanged_when_nothing_is_bound() {
+        val (d, _, _) = setup(shortcutPad())
+        val r = Recorder(d)
+        d.key(109, down)
+        assertEquals(listOf("select"), r.events)
+        d.key(108, down)
+        assertEquals(listOf("select", "start"), r.events)
+        d.key(108, up); d.key(109, up)
+        assertEquals(listOf("select", "start", "selectUp"), r.events)
+    }
+
+    @Test
+    fun a_short_start_press_acts_on_release_when_the_hold_is_bound() {
+        val (d, _, _) = setup(shortcutPad())
+        val time = FakeTime()
+        d.useTime(time)
+        d.setMenuShortcuts(mapOf(dev.cannoli.igm.ShortcutAction.OPEN_MENU_HOLD to setOf(108)))
+        val r = Recorder(d)
+        d.key(108, down)
+        assertEquals(0, r.start)
+        time.advanceTo(hold / 2)
+        d.key(108, up)
+        assertEquals(1, r.start)
+        time.advanceTo(hold * 2)
+        assertEquals(0, r.menu)
+    }
+
+    @Test
+    fun holding_start_opens_the_menu_and_its_release_does_nothing() {
+        val (d, _, _) = setup(shortcutPad())
+        val time = FakeTime()
+        d.useTime(time)
+        d.setMenuShortcuts(mapOf(dev.cannoli.igm.ShortcutAction.OPEN_MENU_HOLD to setOf(108)))
+        val r = Recorder(d)
+        d.key(108, down)
+        assertEquals(hold, time.pending.single().first)
+        time.advanceTo(hold - 1)
+        assertEquals(0, r.menu)
+        time.advanceTo(hold)
+        assertEquals(1, r.menu)
+        d.key(108, up)
+        assertEquals(0, r.start)
+        assertEquals(1, r.menu)
+    }
+
+    @Test
+    fun start_fires_on_press_when_nothing_is_bound() {
+        val (d, _, _) = setup(shortcutPad())
+        val r = Recorder(d)
+        d.key(108, down)
+        assertEquals(1, r.start)
+    }
+
+    @Test
+    fun a_binding_saved_mid_session_takes_effect() {
+        val (d, _, _) = setup(shortcutPad())
+        val time = FakeTime()
+        d.useTime(time)
+        val r = Recorder(d)
+        d.key(108, down); d.key(108, up)
+        assertEquals(1, r.start)
+        d.setMenuShortcuts(mapOf(dev.cannoli.igm.ShortcutAction.OPEN_MENU_HOLD to setOf(108)))
+        d.key(108, down)
+        assertEquals(1, r.start)
+        time.advanceTo(hold)
+        assertEquals(1, r.menu)
+        d.key(108, up)
+        d.setMenuShortcuts(emptyMap())
+        d.key(108, down)
+        assertEquals(2, r.start)
+    }
 }

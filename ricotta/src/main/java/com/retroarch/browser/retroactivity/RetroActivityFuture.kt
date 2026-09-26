@@ -301,9 +301,9 @@ class RetroActivityFuture : RetroActivityCamera() {
         // path nor the screen's idea of what it is layering over: it only appeared after a relaunch.
         bridge.globalShortcuts = table
         bridge.onShortcutsStaged = {
-            bridge.setShortcutChords(
-                dev.cannoli.igm.ShortcutTable.encode(bridge.resolveShortcutsStaged(table)),
-            )
+            val staged = bridge.resolveShortcutsStaged(table)
+            bridge.setShortcutChords(dev.cannoli.igm.ShortcutTable.encode(staged))
+            overlay.controller.setMenuShortcuts(staged)
         }
         // What the launcher passed is the global table. This game's and this platform's tiers can
         // add to it or switch a chord off, so the effective table is what native and the menu see.
@@ -318,6 +318,9 @@ class RetroActivityFuture : RetroActivityCamera() {
         )
         shortcuts = controller
         bridge.setShortcutChords(dev.cannoli.igm.ShortcutTable.encode(effective))
+        // The menu's own screens read the same table, so a pad with no menu button can still reach
+        // their help pages once the menu is up and the game no longer has the keys.
+        overlay.controller.setMenuShortcuts(effective)
         controller.onToast = { action ->
             val text = when (action) {
                 dev.cannoli.igm.ShortcutAction.CYCLE_EFFECT -> getString(

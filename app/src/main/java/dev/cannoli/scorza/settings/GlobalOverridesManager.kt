@@ -21,10 +21,22 @@ class GlobalOverridesManager(private val sdCardRoot: () -> String) {
         return map
     }
 
+    private val savedListeners = java.util.concurrent.CopyOnWriteArrayList<() -> Unit>()
+
+    /** Told after every save, so a reader holding the bindings in memory picks the change up. */
+    fun addShortcutsSavedListener(listener: () -> Unit) {
+        savedListeners += listener
+    }
+
+    fun removeShortcutsSavedListener(listener: () -> Unit) {
+        savedListeners -= listener
+    }
+
     fun saveShortcuts(shortcuts: Map<ShortcutAction, Set<Int>>) {
         IniWriter.mergeWrite(
             iniFile(), "shortcuts",
             shortcuts.mapKeys { it.key.name }.mapValues { it.value.joinToString(",") }
         )
+        savedListeners.forEach { it() }
     }
 }
