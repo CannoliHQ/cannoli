@@ -120,6 +120,18 @@ class ShortcutControllerTest {
         assertFalse("the host raises the window, not this", igm.isOpen)
     }
 
+    @Test fun `the held menu opens the menu the same way`() {
+        val bridge = RecordingBridge()
+        val (shortcuts, igm) = build(bridge)
+        shortcuts.onAction(ShortcutAction.OPEN_MENU_HOLD.ordinal, ShortcutTable.Kind.HOLD_ARMED)
+        assertEquals("arming is not firing", 0, menusShown)
+        shortcuts.onAction(ShortcutAction.OPEN_MENU_HOLD.ordinal, ShortcutTable.Kind.HOLD_CANCELLED)
+        assertEquals(0, menusShown)
+        shortcuts.fire(ShortcutAction.OPEN_MENU_HOLD)
+        assertEquals(1, menusShown)
+        assertFalse(igm.isOpen)
+    }
+
     // A game with no guides should not get a menu it never asked for.
     @Test fun `the guide shortcut stays quiet when there is nothing to open`() {
         val bridge = RecordingBridge()

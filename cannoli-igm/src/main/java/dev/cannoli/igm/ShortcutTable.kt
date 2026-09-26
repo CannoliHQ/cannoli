@@ -3,7 +3,7 @@ package dev.cannoli.igm
 /**
  * The wire form of the chord table, as native reads it.
  *
- * Flat `[action ordinal, hold ms, key count, keys...]`, repeated. One array rather than a call per
+ * Flat `[action ordinal, hold ms, pass through, key count, keys...]`, repeated. One array rather than a call per
  * chord, so the table can never be read half written while a game is running.
  */
 object ShortcutTable {
@@ -51,6 +51,7 @@ object ShortcutTable {
             if (chords == MAX_CHORDS) break
             out.add(action.ordinal)
             out.add(action.holdMs)
+            out.add(if (action.passThrough) 1 else 0)
             out.add(chord.size)
             out.addAll(chord)
             chords++

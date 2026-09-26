@@ -97,6 +97,9 @@ typedef struct
    int action;
    /* Milliseconds the chord must stay down before the action runs, 0 to run on the match. */
    int hold_ms;
+   /* A hold chord whose keys stay with the game while it counts, for a chord made of a button the
+    * game needs, such as START on its own. */
+   int pass_through;
    int count;
    int keys[RICOTTA_MAX_CHORD_KEYS];
 } ricotta_chord;
@@ -104,7 +107,8 @@ static ricotta_chord g_chords[RICOTTA_MAX_CHORDS];
 static volatile int g_chord_count = 0;
 
 /* A hold-style chord that is down and counting. Its keys are already taken from the game, so the
- * wait costs the game nothing; letting go before the deadline simply means the action never ran. */
+ * wait costs the game nothing; letting go before the deadline simply means the action never ran.
+ * A pass-through chord's keys are not taken, and the game plays on while it counts. */
 static volatile int g_hold_chord = -1;
 static volatile long long g_hold_deadline_us = 0;
 
@@ -152,6 +156,12 @@ static volatile int g_menu_modifier_held = 0;
  * already been released by then. Otherwise the core is told a button it never saw pressed came up. */
 static volatile int g_swallowed[RICOTTA_MAX_SHORTCUT_KEYS];
 static volatile int g_swallowed_count = 0;
+
+/* Keys of a pass-through chord that fired while still down. The game saw them pressed, so it has to
+ * see them come up even if the menu the chord opened is on screen by then, or RetroArch goes on
+ * believing the button is held. Survives the menu opening, which is exactly when it is needed. */
+static volatile int g_passthrough_up[RICOTTA_MAX_SHORTCUT_KEYS];
+static volatile int g_passthrough_up_count = 0;
 
 static jmethodID g_on_igm_trigger_mid = NULL;
 static jmethodID g_on_shortcut_key_mid = NULL;
@@ -879,7 +889,14 @@ void ricotta_bridge_poll_commands(void)
    /* A held chord produces no further key events, so the deadline can only be noticed here. */
    if (g_hold_chord >= 0 && ricotta_now_us() >= g_hold_deadline_us)
    {
-      ricotta_queue_action(g_chords[g_hold_chord].action, RICOTTA_ACT_FIRED);
+      const ricotta_chord *c = &g_chords[g_hold_chord];
+      if (c->pass_through)
+      {
+         int i;
+         for (i = 0; i < c->count && g_passthrough_up_count < RICOTTA_MAX_SHORTCUT_KEYS; i++)
+            g_passthrough_up[g_passthrough_up_count++] = c->keys[i];
+      }
+      ricotta_queue_action(c->action, RICOTTA_ACT_FIRED);
       g_hold_chord = -1;
    }
 
@@ -2268,6 +2285,21 @@ static int ricotta_is_swallowed(int keycode)
    return 0;
 }
 
+/* Removes and reports, so each release is let through once. */
+static int ricotta_take_passthrough_up(int keycode)
+{
+   int i;
+   for (i = 0; i < g_passthrough_up_count; i++)
+   {
+      if (g_passthrough_up[i] != keycode)
+         continue;
+      g_passthrough_up[i] = g_passthrough_up[g_passthrough_up_count - 1];
+      g_passthrough_up_count--;
+      return 1;
+   }
+   return 0;
+}
+
 /* Removes and reports, so an up is swallowed exactly once. */
 static int ricotta_take_swallowed(int keycode)
 {
@@ -2287,7 +2319,11 @@ int ricotta_bridge_intercept_key(int keycode, int action)
 {
    /* While the IGM is visible, consume all gamepad input (handled by the Dialog). */
    if (g_igm_visible)
+   {
+      if (action == 1 && ricotta_take_passthrough_up(keycode)) /* AKEY_EVENT_ACTION_UP */
+         return 0;
       return 1;
+   }
 
    /* Open the Cannoli IGM on any configured trigger key's down event. */
    {
@@ -2333,6 +2369,26 @@ int ricotta_bridge_intercept_key(int keycode, int action)
          int best;
          ricotta_held_add(keycode);
          best = ricotta_best_chord();
+         /* A longer chord took over from a pass-through one still counting, so that one's action
+          * must not also run when its deadline passes. */
+         if (best >= 0 && g_hold_chord >= 0 && g_hold_chord != best
+               && g_chords[g_hold_chord].pass_through)
+         {
+            ricotta_queue_action(g_chords[g_hold_chord].action, RICOTTA_ACT_HOLD_CANCELLED);
+            g_hold_chord = -1;
+         }
+         if (best >= 0 && best != g_firing_chord
+               && g_chords[best].pass_through && g_chords[best].hold_ms > 0)
+         {
+            /* Nothing is taken from the game: the press is its own until the hold is up, and
+             * letting go first leaves it an ordinary press. */
+            g_firing_chord = best;
+            g_hold_chord = best;
+            g_hold_deadline_us = ricotta_now_us()
+                  + (long long)g_chords[best].hold_ms * 1000LL;
+            ricotta_queue_action(g_chords[best].action, RICOTTA_ACT_HOLD_ARMED);
+            return 0;
+         }
          if (best >= 0 && best != g_firing_chord)
          {
             int i;
@@ -2388,6 +2444,7 @@ int ricotta_bridge_intercept_key(int keycode, int action)
             ricotta_queue_action(g_chords[g_firing_chord].action, RICOTTA_ACT_RELEASED);
          g_firing_chord = -1;
       }
+      ricotta_take_passthrough_up(keycode);
       if (ricotta_take_swallowed(keycode))
          return 1;
    }
@@ -2453,8 +2510,9 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSetIgmTriggerKeycodes(
 }
 
 JNIEXPORT void JNICALL
-/* Flat [action, count, key...] triples, repeated. One array rather than a call per chord, so the
- * table can never be read half written. The union every other check uses is derived here. */
+/* Flat [action, hold_ms, pass_through, count, key...] records, repeated. One array rather than a
+ * call per chord, so the table can never be read half written. The union every other check uses is
+ * derived here. */
 Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSetShortcutChords(
       JNIEnv *env, jobject obj, jintArray table)
 {
@@ -2475,6 +2533,7 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSetShortcutChords(
    g_swallowed_count     = 0;
    g_retract_count       = 0;
    g_hold_chord          = -1;
+   g_passthrough_up_count = 0;
 
    if (!table)
       return;
@@ -2484,11 +2543,12 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSetShortcutChords(
    if (!elems)
       return;
 
-   while (at + 2 < n && chords < RICOTTA_MAX_CHORDS)
+   while (at + 3 < n && chords < RICOTTA_MAX_CHORDS)
    {
-      int action  = (int)elems[at++];
-      int hold_ms = (int)elems[at++];
-      int count   = (int)elems[at++];
+      int action       = (int)elems[at++];
+      int hold_ms      = (int)elems[at++];
+      int pass_through = (int)elems[at++];
+      int count        = (int)elems[at++];
       int i;
 
       if (count <= 0 || count > RICOTTA_MAX_CHORD_KEYS || at + count > n)
@@ -2496,6 +2556,7 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSetShortcutChords(
 
       g_chords[chords].action  = action;
       g_chords[chords].hold_ms = hold_ms;
+      g_chords[chords].pass_through = pass_through != 0;
       g_chords[chords].count   = count;
       for (i = 0; i < count; i++)
       {

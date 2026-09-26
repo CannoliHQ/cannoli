@@ -16,7 +16,16 @@ import dev.cannoli.ui.R
  * through RetroArch's aspect table mostly lands somewhere nobody wants. A stale entry in
  * shortcuts.ini for it is skipped rather than failing the file.
  */
-enum class ShortcutAction(@StringRes val labelRes: Int, val holdMs: Int = 0) {
+enum class ShortcutAction(
+    @StringRes val labelRes: Int,
+    val holdMs: Int = 0,
+    /**
+     * The chord's keys stay with the game while the hold counts, rather than being taken from it on
+     * the match. For a chord of a button the game needs, such as START on its own, where taking it
+     * would cost the game every press.
+     */
+    val passThrough: Boolean = false,
+) {
     SAVE_STATE(R.string.shortcut_action_save_state),
     LOAD_STATE(R.string.shortcut_action_load_state),
     RESET_GAME(R.string.shortcut_action_reset_game),
@@ -28,5 +37,6 @@ enum class ShortcutAction(@StringRes val labelRes: Int, val holdMs: Int = 0) {
     HOLD_FF(R.string.shortcut_action_hold_ff),
     REWIND(R.string.label_rewind),
     OPEN_GUIDE(R.string.shortcut_action_open_guide),
-    OPEN_MENU(R.string.shortcut_action_open_menu)
+    OPEN_MENU(R.string.shortcut_action_menu),
+    OPEN_MENU_HOLD(R.string.shortcut_action_open_menu_hold, holdMs = 750, passThrough = true),
 }

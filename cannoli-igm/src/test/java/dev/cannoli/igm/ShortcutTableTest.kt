@@ -17,9 +17,10 @@ class ShortcutTableTest {
     private fun decode(flat: IntArray): Map<Int, List<Int>> {
         val out = LinkedHashMap<Int, List<Int>>()
         var at = 0
-        while (at + 2 < flat.size) {
+        while (at + 3 < flat.size) {
             val action = flat[at++]
             at++ // hold
+            at++ // pass through
             val count = flat[at++]
             out[action] = (0 until count).map { flat[at + it] }
             at += count
@@ -27,22 +28,25 @@ class ShortcutTableTest {
         return out
     }
 
-    private fun holdOf(flat: IntArray, action: ShortcutAction): Int? {
+    private fun fieldsOf(flat: IntArray, action: ShortcutAction): Pair<Int, Int>? {
         var at = 0
-        while (at + 2 < flat.size) {
+        while (at + 3 < flat.size) {
             val a = flat[at++]
             val hold = flat[at++]
+            val passThrough = flat[at++]
             val count = flat[at++]
-            if (a == action.ordinal) return hold
+            if (a == action.ordinal) return hold to passThrough
             at += count
         }
         return null
     }
 
+    private fun holdOf(flat: IntArray, action: ShortcutAction): Int? = fieldsOf(flat, action)?.first
+
     @Test fun `a chord encodes as its action, its hold, its length and its keys`() {
         val flat = ShortcutTable.encode(mapOf(ShortcutAction.RESET_GAME to setOf(L, R)))
         assertEquals(
-            intArrayOf(ShortcutAction.RESET_GAME.ordinal, 0, 2, L, R).toList(),
+            intArrayOf(ShortcutAction.RESET_GAME.ordinal, 0, 0, 2, L, R).toList(),
             flat.toList(),
         )
     }
@@ -55,6 +59,25 @@ class ShortcutTableTest {
             holdOf(flat, ShortcutAction.SAVE_AND_QUIT_HOLD),
         )
         assertTrue("the hold variant is the one action that waits", ShortcutAction.SAVE_AND_QUIT_HOLD.holdMs > 0)
+    }
+
+    // START alone opens the menu on a pad without a menu button, so the game has to keep START.
+    @Test fun `the held menu carries its wait and its pass through to native`() {
+        val start = 108
+        val flat = ShortcutTable.encode(mapOf(ShortcutAction.OPEN_MENU_HOLD to setOf(start)))
+        assertEquals(
+            intArrayOf(ShortcutAction.OPEN_MENU_HOLD.ordinal, ShortcutAction.OPEN_MENU_HOLD.holdMs, 1, 1, start).toList(),
+            flat.toList(),
+        )
+    }
+
+    @Test fun `no other action passes through`() {
+        val table = ShortcutAction.entries.associateWith { setOf(it.ordinal + 200) }
+        val flat = ShortcutTable.encode(table)
+        for (action in ShortcutAction.entries) {
+            val expected = if (action == ShortcutAction.OPEN_MENU_HOLD) 1 else 0
+            assertEquals(action.name, expected, fieldsOf(flat, action)?.second)
+        }
     }
 
     @Test fun `an ordinary action waits for nothing`() {

@@ -85,7 +85,7 @@ class ShortcutController(
             ShortcutAction.LOAD_STATE -> controller.loadState()
             ShortcutAction.RESET_GAME -> controller.bridge.reset()
             ShortcutAction.SAVE_AND_QUIT, ShortcutAction.SAVE_AND_QUIT_HOLD -> controller.saveAndQuit()
-            ShortcutAction.OPEN_MENU -> showMenu()
+            ShortcutAction.OPEN_MENU, ShortcutAction.OPEN_MENU_HOLD -> showMenu()
             // Menu first, guide second: openMenu clears the stack, so pushing the guide before
             // raising the window would throw it away. Stays down entirely when the game has no
             // guides, rather than opening a menu the user did not ask for.
