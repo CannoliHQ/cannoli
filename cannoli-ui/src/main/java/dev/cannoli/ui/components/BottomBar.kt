@@ -30,6 +30,7 @@ import dev.cannoli.ui.theme.LocalCannoliFont
 import dev.cannoli.ui.theme.LocalCannoliIconFont
 import dev.cannoli.ui.theme.LocalScaleFactor
 import dev.cannoli.ui.theme.Radius
+import dev.cannoli.ui.theme.glyphs
 
 private const val GlyphTextSp = 14f
 private const val GlyphPadVDp = 4f
@@ -93,6 +94,15 @@ fun GlyphPill(content: @Composable () -> Unit) {
 
 @Composable
 fun GlyphPill(button: String) {
+    // The menu glyph means "however this pad opens the menu": on a pad with no menu button that is
+    // the shortcut spelled out in its own pill.
+    if (button == dev.cannoli.ui.MENU_GLYPH) {
+        val glyphs = dev.cannoli.ui.theme.LocalMenuGlyph.current.glyphs()
+        if (glyphs != listOf(button)) {
+            glyphs.forEach { GlyphPill(it) }
+            return
+        }
+    }
     val accent = LocalCannoliColors.current.accent
     val sf = LocalScaleFactor.current
     GlyphPill {

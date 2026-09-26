@@ -50,7 +50,15 @@ class OsdController(
  * after the request's duration via Compose. Place inside a [BoxScope].
  */
 @Composable
-fun BoxScope.OsdHost(controller: OsdController) {
+fun BoxScope.OsdHost(controller: OsdController) =
+    OsdHost(controller) { message -> OsdPillText(message, OsdPillStyle.Text.fontSize) }
+
+/** [OsdHost] with the pill's content laid out by the caller, for a message that is not all text. */
+@Composable
+fun BoxScope.OsdHost(
+    controller: OsdController,
+    content: @Composable androidx.compose.foundation.layout.RowScope.(message: String) -> Unit,
+) {
     val current = controller.request.value
     LaunchedEffect(current) {
         if (current != null) {
@@ -59,5 +67,5 @@ fun BoxScope.OsdHost(controller: OsdController) {
             if (controller.request.value?.nonce == current.nonce) controller.clear()
         }
     }
-    if (current != null) OsdPill(message = current.message, position = current.position)
+    if (current != null) OsdPill(position = current.position) { content(current.message) }
 }

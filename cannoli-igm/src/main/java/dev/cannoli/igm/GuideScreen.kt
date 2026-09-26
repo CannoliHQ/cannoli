@@ -47,6 +47,11 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.ui.MENU_GLYPH
+import androidx.compose.foundation.layout.RowScope
+import dev.cannoli.ui.components.OsdPillStyle
+import dev.cannoli.ui.components.OsdPillText
+import dev.cannoli.ui.theme.LocalMenuGlyph
+import dev.cannoli.ui.theme.glyphs
 import dev.cannoli.ui.components.HelpEntry
 import dev.cannoli.ui.components.HelpGlyph
 import dev.cannoli.ui.components.HelpGroup
@@ -81,6 +86,21 @@ private const val STATE_MS = 1500L
  */
 @Composable
 fun guideHelpHint(): String = "$MENU_GLYPH ${stringResource(dev.cannoli.ui.R.string.label_help)}"
+
+/**
+ * One OSD message on a guide. The help hint leads with the menu glyph, which on a pad with no menu
+ * button is spelled as the shortcut that opens it instead.
+ */
+@Composable
+fun RowScope.GuideOsdText(message: String, helpHint: String?) {
+    val menu = LocalMenuGlyph.current.glyphs().joinToString(" + ")
+    val text = if (message == helpHint && message.startsWith(MENU_GLYPH)) {
+        menu + message.removePrefix(MENU_GLYPH)
+    } else {
+        message
+    }
+    OsdPillText(text, OsdPillStyle.Text.fontSize)
+}
 
 /**
  * What a guide answers to, for [HelpOverlay]. Both hosts bind the same keys, so they list the same
@@ -207,7 +227,7 @@ fun GuideScreen(
             // Nothing here stays on the page. A pill brings its own background, so it reads on
             // white paper or black without a scrim darkening what you came to read, and it leaves
             // once it has said its piece, which is how every other message over a game behaves.
-            OsdHost(osd)
+            OsdHost(osd) { message -> GuideOsdText(message, helpHint) }
         }
     }
 }

@@ -1,6 +1,8 @@
 package dev.cannoli.ui
 
 const val START_GLYPH = "START"
+const val HOLD_START_GLYPH = "HOLD START"
+const val SELECT_START_GLYPH = "SELECT + START"
 const val SELECT_GLYPH = "SELECT"
 const val MENU_GLYPH = "☰"
 const val ELLIPSIS = "..."

@@ -100,6 +100,7 @@ fun CannoliIGM(
     guideInitialScroll: Int,
     guideInitialScrollX: Int,
     onGuideScrollChanged: (y: Int, x: Int) -> Unit = { _, _ -> },
+    menuGlyph: dev.cannoli.ui.theme.MenuGlyph = dev.cannoli.ui.theme.MenuGlyph.Menu,
 ) {
     val isGuideScreen = screen is IGMScreen.Guide
     // The picker judges what is on screen, so nothing of Cannoli's may sit over the game.
@@ -139,6 +140,7 @@ fun CannoliIGM(
         LocalScaleFactor provides igmScaleFactor,
         LocalCannoliTypography provides igmTypography,
         LocalPillScale provides igmPillScale,
+        dev.cannoli.ui.theme.LocalMenuGlyph provides menuGlyph,
     ) {
         Box(
             modifier = Modifier
@@ -636,7 +638,7 @@ fun CannoliIGM(
                         )
                     }
                     IGMSettingsScreen(
-                        title = stringResource(dev.cannoli.ui.R.string.igm_button_mappings),
+                        title = stringResource(dev.cannoli.ui.R.string.igm_button_overrides),
                         items = items,
                         selectedIndex = screen.selectedIndex,
                         bottomBarLeft = if (screen.listening) emptyList() else buildList {

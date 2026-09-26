@@ -190,7 +190,7 @@ class IGMOverlay(
             resetGame = uiContext.getString(R.string.igm_reset_game),
             emulator = uiContext.getString(R.string.igm_emulator),
             shortcuts = uiContext.getString(R.string.igm_shortcuts_title),
-            buttonMappings = uiContext.getString(R.string.igm_button_mappings),
+            buttonOverrides = uiContext.getString(R.string.igm_button_overrides),
             controllerType = uiContext.getString(R.string.igm_controller_type),
             playerController = { uiContext.getString(R.string.igm_player_controller, it) },
             shaderApplied = uiContext.getString(R.string.igm_shader_applied),
@@ -292,7 +292,7 @@ class IGMOverlay(
                         if (controller.isMenuKey(keyCode) && System.currentTimeMillis() - showTimeMs < 500) {
                             // Same press that opened the menu.
                         } else {
-                            controller.handleKeyDown(keyCode)
+                            controller.handleKeyDown(keyCode, event.repeatCount > 0)
                         }
                     }
                     // The guide scrolls for as long as a direction is held, so the release has to
@@ -615,6 +615,7 @@ class IGMOverlay(
                     guideInitialScroll = controller.guideInitialScroll.intValue,
                     guideInitialScrollX = controller.guideInitialScrollX.intValue,
                     onGuideScrollChanged = controller::onGuideScrollChanged,
+                    menuGlyph = controller.menuGlyph.value,
                 )
             }
         }
