@@ -68,7 +68,6 @@
     <string name="shortcut_action_toggle_ff">Attiva/Disattiva Avanti Veloce</string>
     <string name="shortcut_action_hold_ff">Mantieni Avanti Veloce</string>
     <string name="shortcut_action_open_guide">Apri Guida</string>
-    <string name="shortcut_action_open_menu">Apri Menu In-Game</string>
     <string name="shortcut_action_toggle_show_fps">Attiva/Disattiva Schermo FPS</string>
     <string name="settings_title">Impostazioni</string>
     <!-- Settings categories -->

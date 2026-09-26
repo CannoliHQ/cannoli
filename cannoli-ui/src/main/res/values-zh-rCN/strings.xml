@@ -68,7 +68,6 @@
     <string name="shortcut_action_toggle_ff">切换快速模式</string>
     <string name="shortcut_action_hold_ff">按住快进</string>
     <string name="shortcut_action_open_guide">打开游戏指南</string>
-    <string name="shortcut_action_open_menu">打开游戏内菜单</string>
     <string name="shortcut_action_toggle_show_fps">切换 FPS 显示</string>
     <string name="settings_title">设置</string>
     <!-- Settings categories -->

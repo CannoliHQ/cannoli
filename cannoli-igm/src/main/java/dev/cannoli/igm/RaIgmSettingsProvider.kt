@@ -150,7 +150,7 @@ class RaIgmSettingsProvider(
         // live preview picker on seeing this path and never renders what is returned here.
         path.first() == CuratedCatalog.CATEGORY_OVERLAY ->
             GenericIgmSettingsScreen(curatedTitle(CuratedCatalog.CATEGORY_OVERLAY), emptyList())
-        // Controller Type rows, then the rows that hand off to Cannoli's own Button Mappings and
+        // Controller Type rows, then the rows that hand off to Cannoli's own Button Overrides and
         // Shortcuts screens. The category exists so these sit where the rest of a platform's
         // settings sit.
         path.first() == CuratedCatalog.CATEGORY_INPUT && path.size == 1 ->
@@ -158,7 +158,7 @@ class RaIgmSettingsProvider(
                 curatedTitle(CuratedCatalog.CATEGORY_INPUT),
                 controllerTypeRows() + GenericIgmSettingsItem.Category(
                     CuratedCatalog.INPUT_BUTTONS,
-                    strings.buttonMappings,
+                    strings.buttonOverrides,
                 ) + GenericIgmSettingsItem.Category(
                     CuratedCatalog.INPUT_SHORTCUTS,
                     strings.shortcuts,
@@ -166,7 +166,7 @@ class RaIgmSettingsProvider(
             )
         path.first() == CuratedCatalog.CATEGORY_INPUT ->
             GenericIgmSettingsScreen(
-                if (path.getOrNull(1) == CuratedCatalog.INPUT_BUTTONS) strings.buttonMappings
+                if (path.getOrNull(1) == CuratedCatalog.INPUT_BUTTONS) strings.buttonOverrides
                 else strings.shortcuts,
                 emptyList(),
             )

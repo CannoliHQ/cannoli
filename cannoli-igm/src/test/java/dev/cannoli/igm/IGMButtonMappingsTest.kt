@@ -13,7 +13,7 @@ private const val KEY_WEST = 99
 private const val KEY_NORTH = 100
 private const val KEY_MENU = 82
 
-/** An Input category with only a Button Mappings row, for the screen's own provider-nav test. */
+/** An Input category with only a Button Overrides row, for the screen's own provider-nav test. */
 private class InputCategoryProvider : IgmSettingsProvider {
     override fun screen(path: List<String>): GenericIgmSettingsScreen = when (path) {
         emptyList<String>() -> GenericIgmSettingsScreen(
@@ -22,7 +22,7 @@ private class InputCategoryProvider : IgmSettingsProvider {
         )
         listOf(CuratedCatalog.CATEGORY_INPUT) -> GenericIgmSettingsScreen(
             "Input",
-            listOf(GenericIgmSettingsItem.Category(CuratedCatalog.INPUT_BUTTONS, "Button Mappings")),
+            listOf(GenericIgmSettingsItem.Category(CuratedCatalog.INPUT_BUTTONS, "Button Overrides")),
         )
         else -> GenericIgmSettingsScreen("", emptyList())
     }
@@ -208,10 +208,10 @@ class IGMButtonMappingsTest {
         repeat(settingsIndex) { c.handleKeyDown(KEY_DOWN) }
         c.handleKeyDown(KEY_SOUTH) // open Settings
         c.handleKeyDown(KEY_SOUTH) // descend into Input
-        c.handleKeyDown(KEY_SOUTH) // descend into Button Mappings; the controller intercepts this
+        c.handleKeyDown(KEY_SOUTH) // descend into Button Overrides; the controller intercepts this
         assertTrue(c.currentScreen is IGMScreen.ButtonMappings)
 
-        c.handleKeyDown(KEY_EAST) // back out of Button Mappings
+        c.handleKeyDown(KEY_EAST) // back out of Button Overrides
 
         val afterFirstBack = c.currentScreen as IGMScreen.ProviderSettings
         assertEquals(listOf(CuratedCatalog.CATEGORY_INPUT), afterFirstBack.path)

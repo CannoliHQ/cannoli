@@ -68,7 +68,6 @@
     <string name="shortcut_action_toggle_ff">Alternar Avanço Rápido</string>
     <string name="shortcut_action_hold_ff">Manter Avanço Rápido</string>
     <string name="shortcut_action_open_guide">Abrir Guia</string>
-    <string name="shortcut_action_open_menu">Abrir Menu do Jogo</string>
     <string name="shortcut_action_toggle_show_fps">Alternar Visualização de FPS</string>
     <string name="settings_title">Definições</string>
     <!-- Settings categories -->

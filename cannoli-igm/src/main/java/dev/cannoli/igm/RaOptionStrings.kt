@@ -16,7 +16,7 @@ data class RaOptionStrings(
     val custom: String = "Custom",
     /** Cannoli's own screen inside the Input category, so not a curated row label. */
     val shortcuts: String = "Shortcuts",
-    val buttonMappings: String = "Button Mappings",
+    val buttonOverrides: String = "Button Overrides",
     val controllerType: String = "Controller Type",
     /** Formats a Controller Type row when several players have pads. The argument counts from one. */
     val playerController: (Int) -> String = { "Player $it Controller" },

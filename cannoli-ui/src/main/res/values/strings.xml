@@ -108,7 +108,10 @@
     <string name="shortcut_action_toggle_ff">Toggle Fast Forward</string>
     <string name="shortcut_action_hold_ff">Hold Fast Forward</string>
     <string name="shortcut_action_open_guide">Open Guide</string>
-    <string name="shortcut_action_open_menu">Open In-Game Menu</string>
+    <!-- Shortcut action. Opens Cannoli's menu both in the launcher and in game. -->
+    <string name="shortcut_action_menu">Open Menu</string>
+    <!-- Shortcut action. "(Hold)" means it triggers when the shortcut is held down. -->
+    <string name="shortcut_action_open_menu_hold">Open Menu (Hold)</string>
     <string name="shortcut_action_toggle_show_fps">Toggle FPS Display</string>
 
     <string name="settings_title">Settings</string>
@@ -679,7 +682,17 @@
     <string name="glyph_style_plumber" translatable="false">Nintendo</string>
     <string name="glyph_style_shapes" translatable="false">PlayStation</string>
     <string name="glyph_style_hedgehog_6" translatable="false">Sega 6-Button</string>
-    <string name="controller_wizard_skip">Press Start to skip a button your controller does not have</string>
+    <string name="controller_wizard_skip">Press START to skip</string>
+    <!-- Second line of the menu question, for a controller that has no menu button. -->
+    <string name="controller_wizard_menu_skip">No menu button? Press START</string>
+    <!-- Asked when the controller has no menu button: which button combination opens the Cannoli menu instead. -->
+    <string name="controller_wizard_menu_choice">How should the menu open?</string>
+    <!-- Pressing Select and Start together opens the menu. -->
+    <string name="controller_wizard_menu_select_start">Select + Start</string>
+    <!-- Holding Start down opens the menu. -->
+    <string name="controller_wizard_menu_hold_start">Hold Start</string>
+    <!-- Shown after the menu question when holding Start was set for the user, because the controller has no Select key to pair with Start. -->
+    <string name="controller_wizard_menu_is_hold_start">Hold Start to open the menu</string>
 
     <!-- Boot error screen -->
     <string name="boot_error_title">Something went wrong</string>
@@ -866,7 +879,7 @@
     <!-- Title of the IGM shortcut list. -->
     <string name="igm_shortcuts_title">Shortcuts</string>
     <!-- Title of the in-game screen where a player changes what each pad button does in the game -->
-    <string name="igm_button_mappings">Button Mappings</string>
+    <string name="igm_button_overrides">Button Overrides</string>
     <!-- Name of the up direction on the pad -->
     <string name="igm_button_up">Up</string>
     <!-- Name of the down direction on the pad -->

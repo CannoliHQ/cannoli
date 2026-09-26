@@ -68,7 +68,6 @@
     <string name="shortcut_action_toggle_ff">Перемкнути прискорення</string>
     <string name="shortcut_action_hold_ff">Утримувати прискорення</string>
     <string name="shortcut_action_open_guide">Відкрити посібник</string>
-    <string name="shortcut_action_open_menu">Відкрити внутрішньоігрове меню</string>
     <string name="shortcut_action_toggle_show_fps">Перемкнути відображення FPS</string>
     <string name="settings_title">Налаштування</string>
     <!-- Settings categories -->

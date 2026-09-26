@@ -68,7 +68,6 @@
     <string name="shortcut_action_toggle_ff">Εναλλαγή Γρήγορης Προώθησης</string>
     <string name="shortcut_action_hold_ff">Κρατήστε Γρήγορη Μπροστά</string>
     <string name="shortcut_action_open_guide">Άνοιγμα Οδηγού</string>
-    <string name="shortcut_action_open_menu">Άνοιγμα Μενού Σε Παιχνίδι</string>
     <string name="shortcut_action_toggle_show_fps">Εναλλαγή Οθόνης FPS</string>
     <string name="settings_title">Ρυθμίσεις</string>
     <!-- Settings categories -->

@@ -68,7 +68,6 @@
     <string name="shortcut_action_toggle_ff">早送り切り替え</string>
     <string name="shortcut_action_hold_ff">急いで前に進む</string>
     <string name="shortcut_action_open_guide">ガイドを開く</string>
-    <string name="shortcut_action_open_menu">ゲーム内メニューを開く</string>
     <string name="shortcut_action_toggle_show_fps">FPS表示の切り替え</string>
     <string name="settings_title">設定</string>
     <!-- Settings categories -->

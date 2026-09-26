@@ -68,7 +68,6 @@
     <string name="shortcut_action_toggle_ff">Schnelle Weiterleitung umschalten</string>
     <string name="shortcut_action_hold_ff">Schnelle Weiterleitung halten</string>
     <string name="shortcut_action_open_guide">Anleitung öffnen</string>
-    <string name="shortcut_action_open_menu">In-Game Menü öffnen</string>
     <string name="shortcut_action_toggle_show_fps">FPS Anzeige umschalten</string>
     <string name="settings_title">Einstellungen</string>
     <!-- Settings categories -->
