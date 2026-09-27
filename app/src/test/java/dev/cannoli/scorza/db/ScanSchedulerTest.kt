@@ -18,6 +18,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -85,31 +86,34 @@ class ScanSchedulerTest {
     }
 
     @Test
-    fun coalesces_duplicate_enqueues() = runBlocking {
-        val calls = AtomicInteger(0)
+    fun coalesces_duplicate_enqueues() {
+        val nesCalls = AtomicInteger(0)
+        val busyStarted = CountDownLatch(1)
+        val releaseBusy = CountDownLatch(1)
+        val sentinelScanned = CountDownLatch(1)
         val scanner = mockk<RomScanner>()
         every { scanner.scanPlatform(any(), any()) } answers {
-            calls.incrementAndGet()
-            Thread.sleep(50)
-            RomScanner.SyncCounts(1, 0, 0)
+            when (firstArg<String>()) {
+                "SNES" -> { busyStarted.countDown(); releaseBusy.await() }
+                "NES" -> nesCalls.incrementAndGet()
+                "GB" -> sentinelScanned.countDown()
+            }
+            RomScanner.SyncCounts(0, 0, 0)
         }
         every { scanner.consumeLauncherMutation(any()) } returns false
         val scheduler = ScanScheduler(scanner, newPlatformConfig())
 
-        val deferred = GlobalScope.async { scheduler.results.first() }
-        delay(20)
+        // Holding the worker on another platform keeps every NES request queued. Otherwise the
+        // worker can pick up the first one between enqueues, and the rest then correctly ask for
+        // a rerun. GB queues behind NES, so once it scans the NES scan has finished.
+        scheduler.enqueue("SNES")
+        assertTrue(busyStarted.await(2, TimeUnit.SECONDS))
+        repeat(5) { scheduler.enqueue("NES") }
+        scheduler.enqueue("GB")
+        releaseBusy.countDown()
 
-        scheduler.enqueue("NES")
-        scheduler.enqueue("NES")
-        scheduler.enqueue("NES")
-        scheduler.enqueue("NES")
-        scheduler.enqueue("NES")
-
-        val first = withTimeout(2000) { deferred.await() }
-        delay(200)
-
-        assertEquals("NES", first.platformTag)
-        assertEquals(1, calls.get())
+        assertTrue(sentinelScanned.await(2, TimeUnit.SECONDS))
+        assertEquals(1, nesCalls.get())
     }
 
     @Test
