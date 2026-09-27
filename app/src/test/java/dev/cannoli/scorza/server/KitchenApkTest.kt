@@ -10,8 +10,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.io.File
-import java.net.HttpURLConnection
-import java.net.URL
 import java.util.Base64
 
 @RunWith(RobolectricTestRunner::class)
@@ -59,8 +57,8 @@ class KitchenApkTest {
     private fun waitUntilReady() {
         repeat(50) {
             try {
-                URL("http://127.0.0.1:$port/api/auth").openConnection()
-                    .also { (it as HttpURLConnection).connect(); it.disconnect() }
+                openKitchenConnection("http://127.0.0.1:$port/api/auth")
+                    .also { it.connect(); it.disconnect() }
                 return
             } catch (_: Exception) { Thread.sleep(40) }
         }
@@ -72,7 +70,7 @@ class KitchenApkTest {
         body: ByteArray? = null,
         contentType: String? = null,
     ): Pair<Int, String> {
-        val conn = URL("http://127.0.0.1:$port$path").openConnection() as HttpURLConnection
+        val conn = openKitchenConnection("http://127.0.0.1:$port$path")
         conn.requestMethod = method
         val token = Base64.getEncoder().encodeToString("nonna:TESTPIN".toByteArray())
         conn.setRequestProperty("Authorization", "Basic $token")
@@ -138,7 +136,7 @@ class KitchenApkTest {
         val bare = KitchenHttpServer(root, assets, port = 0, pin = "TESTPIN")
         bare.startServer()
         try {
-            val conn = URL("http://127.0.0.1:${bare.listeningPort}/api/apk/1").openConnection() as HttpURLConnection
+            val conn = openKitchenConnection("http://127.0.0.1:${bare.listeningPort}/api/apk/1")
             val token = Base64.getEncoder().encodeToString("nonna:TESTPIN".toByteArray())
             conn.setRequestProperty("Authorization", "Basic $token")
             assertEquals(503, conn.responseCode)
@@ -158,13 +156,13 @@ class KitchenApkTest {
         try {
             repeat(50) {
                 try {
-                    URL("http://127.0.0.1:$port/api/auth").openConnection()
-                        .also { (it as HttpURLConnection).connect(); it.disconnect() }
+                    openKitchenConnection("http://127.0.0.1:$port/api/auth")
+                        .also { it.connect(); it.disconnect() }
                     return@repeat
                 } catch (_: Exception) { Thread.sleep(40) }
             }
             val (bytes, contentType) = multipartBody("tool.apk", "APKDATA".toByteArray())
-            val conn = URL("http://127.0.0.1:$port/api/apk").openConnection() as HttpURLConnection
+            val conn = openKitchenConnection("http://127.0.0.1:$port/api/apk")
             conn.requestMethod = "POST"
             val token = Base64.getEncoder().encodeToString("nonna:TESTPIN".toByteArray())
             conn.setRequestProperty("Authorization", "Basic $token")

@@ -11,8 +11,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.io.File
-import java.net.HttpURLConnection
-import java.net.URL
 import java.util.Base64
 
 @RunWith(RobolectricTestRunner::class)
@@ -49,8 +47,8 @@ class KitchenServerTest {
     private fun waitUntilReady() {
         repeat(50) {
             try {
-                URL("http://127.0.0.1:$port/api/auth").openConnection()
-                    .also { (it as HttpURLConnection).connect(); it.disconnect() }
+                openKitchenConnection("http://127.0.0.1:$port/api/auth")
+                    .also { it.connect(); it.disconnect() }
                 return
             } catch (_: Exception) { Thread.sleep(40) }
         }
@@ -65,7 +63,7 @@ class KitchenServerTest {
         body: ByteArray? = null,
         contentType: String? = null,
     ): Pair<Int, String> {
-        val conn = URL("http://127.0.0.1:$port$path").openConnection() as HttpURLConnection
+        val conn = openKitchenConnection("http://127.0.0.1:$port$path")
         conn.requestMethod = method
         if (auth) {
             val token = Base64.getEncoder().encodeToString("nonna:${pin()}".toByteArray())

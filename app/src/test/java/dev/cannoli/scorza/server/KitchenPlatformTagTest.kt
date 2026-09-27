@@ -14,8 +14,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.io.File
-import java.net.HttpURLConnection
-import java.net.URL
 import java.util.Base64
 
 /** A ROM directory the launcher did not scaffold keeps whatever folder names the user already had,
@@ -70,8 +68,8 @@ class KitchenPlatformTagTest {
         port = s.listeningPort
         repeat(50) {
             try {
-                URL("http://127.0.0.1:$port/api/auth").openConnection()
-                    .also { c -> (c as HttpURLConnection).connect(); c.disconnect() }
+                openKitchenConnection("http://127.0.0.1:$port/api/auth")
+                    .also { c -> c.connect(); c.disconnect() }
                 return@repeat
             } catch (_: Exception) { Thread.sleep(40) }
         }
@@ -79,7 +77,7 @@ class KitchenPlatformTagTest {
     }
 
     private fun get(path: String): Pair<Int, String> {
-        val conn = URL("http://127.0.0.1:$port$path").openConnection() as HttpURLConnection
+        val conn = openKitchenConnection("http://127.0.0.1:$port$path")
         conn.requestMethod = "GET"
         val token = Base64.getEncoder().encodeToString("nonna:$PIN".toByteArray())
         conn.setRequestProperty("Authorization", "Basic $token")

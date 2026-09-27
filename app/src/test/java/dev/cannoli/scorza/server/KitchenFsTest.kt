@@ -15,8 +15,6 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
-import java.net.HttpURLConnection
-import java.net.URL
 import java.util.Base64
 
 @RunWith(RobolectricTestRunner::class)
@@ -70,8 +68,8 @@ class KitchenFsTest {
     private fun waitUntilReady() {
         repeat(50) {
             try {
-                URL("http://127.0.0.1:$port/api/auth").openConnection()
-                    .also { (it as HttpURLConnection).connect(); it.disconnect() }
+                openKitchenConnection("http://127.0.0.1:$port/api/auth")
+                    .also { it.connect(); it.disconnect() }
                 return
             } catch (_: Exception) { Thread.sleep(40) }
         }
@@ -103,7 +101,7 @@ class KitchenFsTest {
             resp.close()
             code to text
         } else {
-            val conn = URL("http://127.0.0.1:$port$path").openConnection() as HttpURLConnection
+            val conn = openKitchenConnection("http://127.0.0.1:$port$path")
             conn.requestMethod = method
             conn.setRequestProperty("Authorization", "Basic $token")
             if (contentType != null) conn.setRequestProperty("Content-Type", contentType)
