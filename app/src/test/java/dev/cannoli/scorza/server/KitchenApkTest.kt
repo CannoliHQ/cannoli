@@ -154,13 +154,6 @@ class KitchenApkTest {
         s.startServer()
         port = s.listeningPort
         try {
-            repeat(50) {
-                try {
-                    openKitchenConnection("http://127.0.0.1:$port/api/auth")
-                        .also { it.connect(); it.disconnect() }
-                    return@repeat
-                } catch (_: Exception) { Thread.sleep(40) }
-            }
             val (bytes, contentType) = multipartBody("tool.apk", "APKDATA".toByteArray())
             val conn = openKitchenConnection("http://127.0.0.1:$port/api/apk")
             conn.requestMethod = "POST"

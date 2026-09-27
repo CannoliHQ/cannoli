@@ -66,13 +66,6 @@ class KitchenPlatformTagTest {
         )
         s.startServer()
         port = s.listeningPort
-        repeat(50) {
-            try {
-                openKitchenConnection("http://127.0.0.1:$port/api/auth")
-                    .also { c -> c.connect(); c.disconnect() }
-                return@repeat
-            } catch (_: Exception) { Thread.sleep(40) }
-        }
         server = s
     }
 
