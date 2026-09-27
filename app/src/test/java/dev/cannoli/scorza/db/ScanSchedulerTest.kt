@@ -3,14 +3,15 @@ package dev.cannoli.scorza.db
 import dev.cannoli.scorza.config.PlatformConfig
 import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.onSubscription
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.toList
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
@@ -30,6 +31,17 @@ class ScanSchedulerTest {
         return cfg
     }
 
+    // SharedFlow drops what it emits before anyone subscribes, so the collector has to be
+    // registered before the first enqueue rather than given a head start.
+    private fun <T> ScanScheduler.subscribe(
+        collect: suspend Flow<ScanScheduler.ScanResult>.() -> T,
+    ): Deferred<T> {
+        val subscribed = CountDownLatch(1)
+        val deferred = GlobalScope.async { results.onSubscription { subscribed.countDown() }.collect() }
+        assertTrue(subscribed.await(2, TimeUnit.SECONDS))
+        return deferred
+    }
+
     @Test
     fun emits_result_when_diff_non_empty() = runBlocking {
         val scanner = mockk<RomScanner>()
@@ -37,8 +49,7 @@ class ScanSchedulerTest {
         every { scanner.consumeLauncherMutation(any()) } returns false
         val scheduler = ScanScheduler(scanner, newPlatformConfig())
 
-        val deferred = GlobalScope.async { scheduler.results.first() }
-        delay(50)
+        val deferred = scheduler.subscribe { first() }
         scheduler.enqueue("NES")
         val result = withTimeout(2000) { deferred.await() }
 
@@ -54,8 +65,7 @@ class ScanSchedulerTest {
         every { scanner.consumeLauncherMutation("NES") } returns true
         val scheduler = ScanScheduler(scanner, newPlatformConfig())
 
-        val deferred = GlobalScope.async { scheduler.results.first() }
-        delay(50)
+        val deferred = scheduler.subscribe { first() }
         scheduler.enqueue("NES")
         val result = withTimeout(2000) { deferred.await() }
 
@@ -64,25 +74,27 @@ class ScanSchedulerTest {
 
     @Test
     fun suppresses_empty_diff() = runBlocking {
-        val calls = AtomicInteger(0)
+        val nesCalls = AtomicInteger(0)
         val scanner = mockk<RomScanner>()
         every { scanner.scanPlatform(any(), any()) } answers {
-            calls.incrementAndGet()
-            RomScanner.SyncCounts(0, 0, 0)
+            if (firstArg<String>() == "NES") {
+                nesCalls.incrementAndGet()
+                RomScanner.SyncCounts(0, 0, 0)
+            } else {
+                RomScanner.SyncCounts(1, 0, 0)
+            }
         }
         every { scanner.consumeLauncherMutation(any()) } returns false
         val scheduler = ScanScheduler(scanner, newPlatformConfig())
-        val collected = mutableListOf<ScanScheduler.ScanResult>()
-        val job = GlobalScope.launch {
-            scheduler.results.collect { collected += it }
-        }
 
+        // GB scans after NES and does emit, so if NES had emitted it would arrive first.
+        val deferred = scheduler.subscribe { first() }
         scheduler.enqueue("NES")
-        delay(200)
-        job.cancel()
+        scheduler.enqueue("GB")
+        val first = withTimeout(2000) { deferred.await() }
 
-        assertEquals(1, calls.get())
-        assertEquals(0, collected.size)
+        assertEquals("GB", first.platformTag)
+        assertEquals(1, nesCalls.get())
     }
 
     @Test
@@ -120,20 +132,22 @@ class ScanSchedulerTest {
     fun reruns_when_enqueued_during_scan() = runBlocking {
         val calls = AtomicInteger(0)
         val scanner = mockk<RomScanner>()
+        val firstScanStarted = CountDownLatch(1)
         val gate = CountDownLatch(1)
         every { scanner.scanPlatform(any(), any()) } answers {
             val n = calls.incrementAndGet()
-            if (n == 1) gate.await()
+            if (n == 1) {
+                firstScanStarted.countDown()
+                gate.await()
+            }
             RomScanner.SyncCounts(1, 0, 0)
         }
         every { scanner.consumeLauncherMutation(any()) } returns false
         val scheduler = ScanScheduler(scanner, newPlatformConfig())
 
-        val deferred = GlobalScope.async { scheduler.results.take(2).toList() }
-        delay(50)
-
+        val deferred = scheduler.subscribe { take(2).toList() }
         scheduler.enqueue("NES")
-        delay(50)
+        assertTrue(firstScanStarted.await(2, TimeUnit.SECONDS))
         scheduler.enqueue("NES")
         gate.countDown()
 
