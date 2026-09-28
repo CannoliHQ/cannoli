@@ -23,11 +23,12 @@ class RommLinkRepository(
 
     fun allRelativePaths(): List<String> = db.queryAll("SELECT relative_path FROM romm_links") { it.getText(0) }
 
+    fun allLinks(): List<Pair<Int, String>> =
+        db.queryAll("SELECT romm_id, relative_path FROM romm_links") { it.getInt(0) to it.getText(1) }
+
     fun presentRommIds(): Set<Int> {
         val romDir = romDirProvider()
-        return db.queryAll("SELECT romm_id, relative_path FROM romm_links") {
-            it.getInt(0) to it.getText(1)
-        }.filter { (_, rel) -> File(romDir, rel).exists() }
+        return allLinks().filter { (_, rel) -> File(romDir, rel).exists() }
             .map { it.first }
             .toSet()
     }

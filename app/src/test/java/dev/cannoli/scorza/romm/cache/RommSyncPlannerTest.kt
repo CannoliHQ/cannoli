@@ -38,4 +38,10 @@ class RommSyncPlannerTest {
     @Test fun `staleIds are cached ids not seen in the re-pull`() {
         assertEquals(setOf(2, 4), RommSyncPlanner.staleIds(cached = setOf(1, 2, 3, 4), seen = setOf(1, 3)))
     }
+
+    @Test fun `staleLinks keeps live ids and links under tags the cache lacks`() {
+        val links = listOf(10 to "NES/Tecmo.nes", 20 to "NES/Kept.nes", 30 to "SNES/Other.sfc", 40 to "nes/lower.nes")
+        val stale = RommSyncPlanner.staleLinks(links, serverIds = setOf(11, 20), cachedTags = setOf("NES"))
+        assertEquals(listOf(10 to "NES/Tecmo.nes", 40 to "nes/lower.nes"), stale)
+    }
 }

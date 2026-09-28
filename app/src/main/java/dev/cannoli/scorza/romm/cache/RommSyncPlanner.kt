@@ -15,4 +15,9 @@ object RommSyncPlanner {
             .sorted()
 
     fun staleIds(cached: Set<Int>, seen: Set<Int>): Set<Int> = cached - seen
+
+    fun staleLinks(links: List<Pair<Int, String>>, serverIds: Set<Int>, cachedTags: Set<String>): List<Pair<Int, String>> {
+        val tags = cachedTags.map { it.uppercase() }.toSet()
+        return links.filter { (id, path) -> id !in serverIds && path.substringBefore('/').uppercase() in tags }
+    }
 }

@@ -1,5 +1,6 @@
 package dev.cannoli.scorza.romm.cache
 
+import dev.cannoli.scorza.db.RommLinkRepository
 import dev.cannoli.scorza.romm.PlatformMap
 import dev.cannoli.scorza.romm.RommClient
 import dev.cannoli.scorza.romm.RommCollection
@@ -20,6 +21,8 @@ class RommSyncCoordinator(
     private val db: RommDatabase,
     private val enabledGroups: () -> Set<RommCollectionGroup> = { setOf(RommCollectionGroup.USER) },
     private val collectionsLabel: () -> String = { "Collections" },
+    private val links: RommLinkRepository? = null,
+    private val onCacheChanged: () -> Unit = {},
 ) {
     enum class SyncStatus { IDLE, SYNCING, ERROR }
 
@@ -101,11 +104,13 @@ class RommSyncCoordinator(
                     val stale = db.allPlatformIds() - validPlatformIds
                     if (stale.isNotEmpty()) db.deletePlatforms(stale)
                 }.onFailure { RommLog.write("romm purge deleted platforms failed: ${it.message}") }
-                runCatching {
+                val serverRomIds = runCatching {
                     val validRomIds = client.getRomIdentifiers().toSet()
                     val stale = db.allGameIds() - validRomIds
                     if (stale.isNotEmpty()) db.deleteGames(stale)
-                }.onFailure { RommLog.write("romm purge deleted games failed: ${it.message}") }
+                    validRomIds
+                }.onFailure { RommLog.write("romm purge deleted games failed: ${it.message}") }.getOrNull()
+                if (serverRomIds != null) healLinks(serverRomIds)
                 runCatching {
                     val groups = enabledGroups()
                     val seen = mutableSetOf<String>()
@@ -133,7 +138,22 @@ class RommSyncCoordinator(
                 _status.value = SyncStatus.ERROR
                 _stale.value = true
             }
+            runCatching(onCacheChanged).onFailure { RommLog.write("romm cache listener failed: ${it.message}") }
         }
+    }
+
+    // A link to a rom the server no longer has (reorganised under a new id) pins save sync and art
+    // to a dead id and hides the filename match. Only a link under a tag the cache holds games for
+    // is judged, so a platform the refresh did not cover never loses its links.
+    private fun healLinks(serverRomIds: Set<Int>) {
+        val repo = links ?: return
+        runCatching {
+            val tags = db.platforms().map { it.cannoliTag }.toSet()
+            RommSyncPlanner.staleLinks(repo.allLinks(), serverRomIds, tags).forEach { (id, path) ->
+                repo.removeLink(id)
+                RommLog.write("romm link dropped: $path -> $id no longer on server")
+            }
+        }.onFailure { RommLog.write("romm link heal failed: ${it.message}") }
     }
 
     /** Returns the roms the server returned paired with the subset actually cached. */

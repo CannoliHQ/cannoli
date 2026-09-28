@@ -85,11 +85,15 @@ object RommModule {
         platformMap: PlatformMap,
         db: RommDatabase,
         rommStore: RommConnectionStore,
+        links: RommLinkRepository,
+        matcher: dev.cannoli.scorza.romm.sync.RommCacheMatcher,
         @ApplicationContext context: Context,
     ): RommSyncCoordinator = RommSyncCoordinator(
         client, platformMap, db,
         enabledGroups = { rommStore.enabledCollectionGroups() },
         collectionsLabel = { context.getString(dev.cannoli.scorza.R.string.label_collections) },
+        links = links,
+        onCacheChanged = { matcher.refresh() },
     )
 
     @Provides @Singleton
