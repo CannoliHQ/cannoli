@@ -39,6 +39,7 @@ enum class SettingsKey(val id: String) {
 
     CONTENT_MODE("content_mode"),
     FGH_COLLECTION("fgh_collection"),
+    FGH_SHOW_PORTS_AND_TOOLS("fgh_show_ports_and_tools"),
     START_ON_PLATFORM("start_on_platform"),
     SHOW_RECENTLY_PLAYED("show_recently_played"),
     SHOW_FAVORITES("show_favorites"),

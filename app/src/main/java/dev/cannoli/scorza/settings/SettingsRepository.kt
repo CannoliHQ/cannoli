@@ -295,6 +295,10 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         get() = jsonRead { optBoolean(KEY_SHOW_FAVORITES, true) }
         set(value) = jsonWrite { put(KEY_SHOW_FAVORITES, value) }
 
+    var fghShowPortsAndTools: Boolean
+        get() = jsonRead { optBoolean(KEY_FGH_SHOW_PORTS_AND_TOOLS, false) }
+        set(value) = jsonWrite { put(KEY_FGH_SHOW_PORTS_AND_TOOLS, value) }
+
     var scanLibraryAutomatically: Boolean
         get() = jsonRead { optBoolean(KEY_SCAN_LIBRARY_AUTOMATICALLY, true) }
         set(value) = jsonWrite { put(KEY_SCAN_LIBRARY_AUTOMATICALLY, value) }
@@ -573,6 +577,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         private const val KEY_SCREEN_GEOMETRY_X = "screen_geometry_x"
         private const val KEY_SCREEN_GEOMETRY_Y = "screen_geometry_y"
         private const val KEY_FGH_COLLECTION = "fgh_collection"
+        private const val KEY_FGH_SHOW_PORTS_AND_TOOLS = "fgh_show_ports_and_tools"
         private const val KEY_START_ON_PLATFORM = "start_on_platform"
         private const val KEY_ROMM_DEVICE_ID = "romm_device_id"
         private const val KEY_ROMM_DEVICE_NAME = "romm_device_name"

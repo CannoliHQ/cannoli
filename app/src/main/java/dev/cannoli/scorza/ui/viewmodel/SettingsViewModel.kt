@@ -265,6 +265,7 @@ class SettingsViewModel @Inject constructor(
         val contentMode: ContentMode,
         val igmSettingsMode: IgmSettingsMode,
         val fghCollectionId: Long?,
+        val fghShowPortsAndTools: Boolean,
         val sdRoot: String,
         val romDirectory: String,
         val toolsName: String,
@@ -530,6 +531,7 @@ class SettingsViewModel @Inject constructor(
             }
             SettingsKey.SHOW_RECENTLY_PLAYED -> settings.showRecentlyPlayed = !settings.showRecentlyPlayed
             SettingsKey.SHOW_FAVORITES -> settings.showFavorites = !settings.showFavorites
+            SettingsKey.FGH_SHOW_PORTS_AND_TOOLS -> settings.fghShowPortsAndTools = !settings.fghShowPortsAndTools
             SettingsKey.SCAN_LIBRARY -> settings.scanLibraryAutomatically = !settings.scanLibraryAutomatically
             SettingsKey.SHOW_WIFI -> settings.showWifi = !settings.showWifi
             SettingsKey.SHOW_BLUETOOTH -> settings.showBluetooth = !settings.showBluetooth
@@ -717,6 +719,7 @@ class SettingsViewModel @Inject constructor(
         contentMode = settings.contentMode,
         igmSettingsMode = settings.igmSettingsMode,
         fghCollectionId = settings.fghCollectionId,
+        fghShowPortsAndTools = settings.fghShowPortsAndTools,
         sdRoot = settings.sdCardRoot,
         romDirectory = settings.romDirectory,
         toolsName = settings.toolsName,
@@ -756,6 +759,7 @@ class SettingsViewModel @Inject constructor(
         settings.contentMode = snap.contentMode
         settings.igmSettingsMode = snap.igmSettingsMode
         settings.fghCollectionId = snap.fghCollectionId
+        settings.fghShowPortsAndTools = snap.fghShowPortsAndTools
         settings.sdCardRoot = snap.sdRoot
         settings.romDirectory = snap.romDirectory
         settings.toolsName = snap.toolsName
@@ -770,10 +774,8 @@ class SettingsViewModel @Inject constructor(
         settings.screenGeometryY = snap.screenGeometryY
     }
 
-    private fun fghCollections(): List<CollectionsRepository.CollectionRow> {
-        val cr = collectionsRepository ?: return emptyList()
-        return cr.all().filter { it.type == CollectionType.STANDARD }
-    }
+    private fun fghCollections(): List<CollectionsRepository.CollectionRow> =
+        collectionsRepository?.fghChoices().orEmpty()
 
     /** Read on every build, so a card that mounts late shows up the next time Library is opened. */
     private fun startOnPlatforms(): List<dev.cannoli.scorza.model.Platform> =
@@ -861,18 +863,23 @@ class SettingsViewModel @Inject constructor(
             if (settings.contentMode == ContentMode.FIVE_GAME_HANDHELD) {
                 val rows = fghCollections()
                 val curId = settings.fghCollectionId
-                val effective = rows.firstOrNull { it.id == curId } ?: rows.firstOrNull()
+                val effective = collectionsRepository?.resolveFghCollection(curId, rows)
                 if (effective != null && effective.id != curId) {
                     settings.fghCollectionId = effective.id
                 }
                 add(SettingsItem(
                     SettingsKey.FGH_COLLECTION.id,
                     R.string.setting_fgh_collection,
-                    valueText = effective?.displayName,
-                    valueRes = if (effective == null) R.string.value_none else null,
+                    valueText = effective?.takeIf { it.type != CollectionType.FAVORITES }?.displayName,
+                    valueRes = when {
+                        effective == null -> R.string.value_none
+                        effective.type == CollectionType.FAVORITES -> R.string.label_favorites
+                        else -> null
+                    },
                     isEditable = rows.isNotEmpty(),
                     canCycle = rows.isNotEmpty()
                 ))
+                add(SettingsItem(SettingsKey.FGH_SHOW_PORTS_AND_TOOLS.id, R.string.setting_fgh_show_ports_and_tools, valueRes = showHide(settings.fghShowPortsAndTools)))
             }
             if (settings.contentMode != ContentMode.FIVE_GAME_HANDHELD) {
                 add(SettingsItem(SettingsKey.SHOW_RECENTLY_PLAYED.id, R.string.setting_show_recently_played, valueRes = showHide(settings.showRecentlyPlayed)))
@@ -910,10 +917,11 @@ class SettingsViewModel @Inject constructor(
             val rows = fghCollections()
             val curId = settings.fghCollectionId
             for (row in rows) {
+                val isFavorites = row.type == CollectionType.FAVORITES
                 add(SettingsItem(
                     key = SettingsKey.FGH_PICK_PREFIX + row.id,
-                    labelRes = R.string.setting_fgh_collection,
-                    labelText = row.displayName,
+                    labelRes = if (isFavorites) R.string.label_favorites else R.string.setting_fgh_collection,
+                    labelText = if (isFavorites) null else row.displayName,
                     valueRes = if (row.id == curId) R.string.value_selected else null,
                     isEditable = true,
                     canCycle = false

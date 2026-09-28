@@ -33,6 +33,18 @@ class CollectionsRepository(private val db: CannoliDatabase) {
         "SELECT id FROM collections WHERE collection_type = 'FAVORITES' LIMIT 1",
     ) { it.getLong(0) }
 
+    fun fghChoices(): List<CollectionRow> {
+        val rows = all()
+        return rows.filter { it.type == CollectionType.FAVORITES } + rows.filter { it.type == CollectionType.STANDARD }
+    }
+
+    /** A missing pick falls back to the first standard collection, as it did before Favorites was
+     *  offered, and to Favorites only when there is no standard collection at all. */
+    fun resolveFghCollection(currentId: Long?, choices: List<CollectionRow> = fghChoices()): CollectionRow? =
+        choices.firstOrNull { it.id == currentId }
+            ?: choices.firstOrNull { it.type == CollectionType.STANDARD }
+            ?: choices.firstOrNull()
+
     fun romIdsIn(collectionId: Long): List<Long> = readMemberIds("rom_id", collectionId)
     fun appIdsIn(collectionId: Long): List<Long> = readMemberIds("app_id", collectionId)
 

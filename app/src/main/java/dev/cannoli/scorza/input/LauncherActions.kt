@@ -14,7 +14,6 @@ import dev.cannoli.scorza.db.RomsRepository
 import dev.cannoli.scorza.di.IoScope
 import dev.cannoli.scorza.launcher.LaunchManager
 import dev.cannoli.scorza.model.AppType
-import dev.cannoli.scorza.model.CollectionType
 import dev.cannoli.scorza.model.ListItem
 import dev.cannoli.scorza.model.Rom
 import dev.cannoli.scorza.romm.sync.PreLaunchOutcome
@@ -108,6 +107,7 @@ class LauncherActions @Inject constructor(
                 showFavorites = settings.showFavorites,
                 contentMode = settings.contentMode,
                 fghCollectionId = fghId,
+                fghShowPortsAndTools = settings.fghShowPortsAndTools,
                 toolsName = settings.toolsName,
                 portsName = settings.portsName,
             ),
@@ -153,12 +153,10 @@ class LauncherActions @Inject constructor(
 
     fun validateFghCollection(): Long? {
         if (settings.contentMode != ContentMode.FIVE_GAME_HANDHELD) return null
-        val all = collectionsRepository.all().filter { it.type == CollectionType.STANDARD }
         val current = settings.fghCollectionId
-        if (current != null && all.any { it.id == current }) return current
-        val fallback = all.firstOrNull()?.id
-        settings.fghCollectionId = fallback
-        return fallback
+        val resolved = collectionsRepository.resolveFghCollection(current)?.id
+        if (resolved != current) settings.fghCollectionId = resolved
+        return resolved
     }
 
     fun scanResumableGames() {

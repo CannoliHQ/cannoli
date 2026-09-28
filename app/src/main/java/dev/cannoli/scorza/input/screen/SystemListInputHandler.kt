@@ -77,6 +77,7 @@ class SystemListInputHandler @Inject constructor(
                     showFavorites = settings.showFavorites,
                     contentMode = settings.contentMode,
                         fghCollectionId = launcherActions.validateFghCollection(),
+                    fghShowPortsAndTools = settings.fghShowPortsAndTools,
                     toolsName = settings.toolsName,
                     portsName = settings.portsName,
                 )
@@ -217,6 +218,8 @@ class SystemListInputHandler @Inject constructor(
             nav.dialogState.value = DialogState.ContextMenu(gameName = menuName, options = options)
             return
         }
+        // A game menu dismissed with Back leaves its item behind, which would claim this menu's confirm.
+        nav.pendingFghItem = null
         val name = when (item) {
             is SystemListViewModel.ListItem.PlatformItem -> item.platform.displayName
             is SystemListViewModel.ListItem.ToolsFolder -> item.name

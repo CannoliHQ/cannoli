@@ -133,6 +133,7 @@ class SystemListViewModel @Inject constructor(
         val showFavorites: Boolean = true,
         val contentMode: ContentMode = ContentMode.PLATFORMS,
         val fghCollectionId: Long? = null,
+        val fghShowPortsAndTools: Boolean = false,
         val toolsName: String = "Tools",
         val portsName: String = "Ports",
     )
@@ -238,7 +239,7 @@ class SystemListViewModel @Inject constructor(
                 }
                 ContentMode.FIVE_GAME_HANDHELD -> {}
             }
-            if (config.contentMode != ContentMode.FIVE_GAME_HANDHELD) {
+            if (config.contentMode != ContentMode.FIVE_GAME_HANDHELD || config.fghShowPortsAndTools) {
                 if (portCount > 0) reorderableItems.add(ListItem.PortsFolder(config.portsName, portCount))
                 if (toolCount > 0) reorderableItems.add(ListItem.ToolsFolder(config.toolsName, toolCount))
             }
@@ -409,7 +410,12 @@ class SystemListViewModel @Inject constructor(
         scan(config)
     }
 
-    private fun ListItem.isReorderable(): Boolean = this is ListItem.PlatformItem || this is ListItem.ToolsFolder || this is ListItem.PortsFolder || this is ListItem.CollectionItem || this is ListItem.GameItem
+    // In Five Game Handheld only the collection's member order is saved, so a folder moved among
+    // the games would not stick, and moving the folders alone would rewrite the platform order.
+    private fun ListItem.isReorderable(): Boolean = when (this) {
+        is ListItem.ToolsFolder, is ListItem.PortsFolder -> lastScanConfig?.contentMode != ContentMode.FIVE_GAME_HANDHELD
+        else -> this is ListItem.PlatformItem || this is ListItem.CollectionItem || this is ListItem.GameItem
+    }
 
     private fun ListItem.orderTag(): String? = when (this) {
         is ListItem.PlatformItem -> platform.tag

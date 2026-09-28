@@ -261,6 +261,8 @@
     <!-- Library setting naming the platform the launcher opens on, instead of the list of systems. -->
     <string name="setting_start_on">Starting Screen</string>
     <string name="setting_show_recently_played">Recently Played</string>
+    <!-- Five Game Handheld setting: shows or hides the Ports and Tools folders after the collection's games. -->
+    <string name="setting_fgh_show_ports_and_tools">Ports and Tools</string>
     <!-- Opens the Tools manager (sideloaded utility apps). -->
     <string name="setting_manage_tools">Manage Tools</string>
     <!-- Opens the Ports manager. "Ports" means standalone native game ports. -->

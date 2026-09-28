@@ -237,7 +237,7 @@ class SettingsInputHandler @Inject constructor(
             SettingsKey.BG_IMAGE, SettingsKey.BG_TINT, SettingsKey.FONT, SettingsKey.TEXT_SIZE,
             SettingsKey.ART_SCALE, SettingsKey.ART_WIDTH, SettingsKey.PORTRAIT_MARGIN,
             SettingsKey.CONTENT_MODE, SettingsKey.SHOW_RECENTLY_PLAYED, SettingsKey.SHOW_FAVORITES,
-            SettingsKey.SCAN_LIBRARY, SettingsKey.SHOW_BATTERY, SettingsKey.SHOW_BLUETOOTH,
+            SettingsKey.FGH_SHOW_PORTS_AND_TOOLS, SettingsKey.SCAN_LIBRARY, SettingsKey.SHOW_BATTERY, SettingsKey.SHOW_BLUETOOTH,
             SettingsKey.SHOW_CLOCK, SettingsKey.SHOW_KITCHEN, SettingsKey.SHOW_DOWNLOADS,
             SettingsKey.SHOW_UPDATE, SettingsKey.SHOW_VPN, SettingsKey.SHOW_WIFI,
             SettingsKey.SCREEN_GEO_WIDTH, SettingsKey.SCREEN_GEO_HEIGHT, SettingsKey.SCREEN_GEO_X,

@@ -6,6 +6,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -110,6 +111,21 @@ class SettingsRepositoryTest {
         val settings = newRepo()
         settings.sdCardRoot = tmp.root.absolutePath
         assertEquals(IgmSettingsMode.CURATED, settings.igmSettingsMode)
+    }
+
+    @Test fun `five game handheld hides ports and tools by default`() {
+        val settings = newRepo()
+        settings.sdCardRoot = tmp.root.absolutePath
+        assertFalse(settings.fghShowPortsAndTools)
+    }
+
+    @Test fun `five game handheld ports and tools persists in settings json`() {
+        writeSettingsJson(tmp.root, """{"fgh_show_ports_and_tools":true}""")
+        val settings = newRepo()
+        settings.sdCardRoot = tmp.root.absolutePath
+        assertTrue(settings.fghShowPortsAndTools)
+        settings.fghShowPortsAndTools = false
+        assertFalse(settings.fghShowPortsAndTools)
     }
 
     @Test fun `the in-game settings mode round-trips`() {
