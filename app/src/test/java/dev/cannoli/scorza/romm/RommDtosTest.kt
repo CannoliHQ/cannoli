@@ -7,6 +7,22 @@ import org.junit.Test
 
 class RommDtosTest {
 
+    @Test fun `a rom file carries its category and top-level flag into the domain`() {
+        val json = """
+            {"id":1343,"platform_id":1,"fs_name":"Tecmo Super Bowl","full_path":"nes/roms/Tecmo Super Bowl",
+             "files":[
+               {"id":1832,"file_name":"Tecmo Super Bowl (USA).nes","file_path":"nes/roms/Tecmo Super Bowl",
+                "category":"game","is_top_level":true},
+               {"id":1833,"file_name":"Tecmo Super Bowl 2025.nes","file_path":"nes/roms/Tecmo Super Bowl/hacks",
+                "category":"hack","is_top_level":false},
+               {"id":7,"file_name":"legacy.nes"}]}
+        """.trimIndent()
+        val files = rommJson.decodeFromString(SimpleRomDto.serializer(), json).toDomain().files
+        assertEquals(listOf("game", "hack", null), files.map { it.category })
+        assertEquals(listOf(true, false, false), files.map { it.isTopLevel })
+        assertEquals("hacks", files[1].subDir)
+    }
+
     @Test fun `parses platform list entry`() {
         val json = """
             {"id":12,"slug":"snes","fs_slug":"snes","rom_count":42,

@@ -285,7 +285,7 @@ class RommBrowseViewModel(
 
     private fun localStateOf(game: RommGame, linkedIds: Set<Int>, present: Set<String>): LocalState =
         if (game.id in linkedIds) LocalState.PRESENT
-        else RommLocalState.of(game.fsName, present)
+        else RommLocalState.of(game, present)
 
     private suspend fun foldRows(platform: RommPlatform, search: String?): List<RommGameRow> =
         withContext(Dispatchers.IO) {
@@ -308,13 +308,16 @@ class RommBrowseViewModel(
     // present detection uses that platform's linked ids + present filenames for every member.
     private fun anyPresent(folded: RommFoldedGame, linkedIds: Set<Int>, present: Set<String>): Boolean =
         folded.memberIds.any { it in linkedIds } ||
-            folded.memberFsNames.any { RommLocalState.of(it, present) == LocalState.PRESENT }
+            folded.memberFsNames.any { RommLocalState.of(it, present) == LocalState.PRESENT } ||
+            folded.memberBaseFiles.any { RommLocalState.of(it, present) == LocalState.PRESENT }
 
     fun presentIdsForTag(tag: String, games: List<RommGame>): Set<Int> {
         val linkedIds = linkedIdsProvider()
         val present = presentNamesFor(tag)
         return games.filter { localStateOf(it, linkedIds, present) == LocalState.PRESENT }.map { it.id }.toSet()
     }
+
+    fun presentFileNames(tag: String): Set<String> = presentNamesFor(tag)
 
     suspend fun groupMembers(groupKey: Int): List<RommGame> = library.groupMembers(groupKey)
 }

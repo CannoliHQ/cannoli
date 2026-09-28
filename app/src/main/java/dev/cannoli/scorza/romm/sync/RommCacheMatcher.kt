@@ -1,5 +1,6 @@
 package dev.cannoli.scorza.romm.sync
 
+import dev.cannoli.scorza.romm.RommHacks
 import dev.cannoli.scorza.romm.cache.RommDatabase
 
 /**
@@ -19,12 +20,19 @@ class RommCacheMatcher(private val cache: RommDatabase) {
         return idx[tag.uppercase()]?.get(fileName.lowercase())
     }
 
+    // Hack file names are never indexed: a hack shares its entry's id, and resolving one here would
+    // sync the hack's saves into the base game's.
     private fun build(): Map<String, Map<String, Int>> {
         val result = HashMap<String, HashMap<String, Int>>()
         for (platform in cache.platforms()) {
             val byName = result.getOrPut(platform.cannoliTag.uppercase()) { HashMap() }
-            for (game in cache.allGames(platform.id)) {
+            val games = cache.allGames(platform.id)
+            for (game in games) {
                 byName.putIfAbsent(game.fsName.lowercase(), game.id)
+            }
+            for (game in games) {
+                val base = RommHacks.baseFileName(game) ?: continue
+                byName.putIfAbsent(base.lowercase(), game.id)
             }
         }
         return result

@@ -2,6 +2,8 @@ package dev.cannoli.scorza.romm.cache
 
 import dev.cannoli.scorza.romm.RommFile
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class RommCacheJsonTest {
@@ -26,6 +28,22 @@ class RommCacheJsonTest {
         )
         val decoded = RommCacheJson.decodeFiles(RommCacheJson.encodeFiles(files))
         assertEquals(files, decoded)
+    }
+
+    @Test fun `files round-trip category and top-level`() {
+        val files = listOf(
+            RommFile("Game (USA).nes", 10, null, null, null, id = 1, category = "game", isTopLevel = true),
+            RommFile("Game Hack.nes", 11, null, null, null, id = 2, subDir = "hacks", category = "hack"),
+        )
+        assertEquals(files, RommCacheJson.decodeFiles(RommCacheJson.encodeFiles(files)))
+    }
+
+    @Test fun `files cached before category and top-level decode with neither`() {
+        val legacy = """[{"name":"base.nsp","size":10,"id":41,"dir":""}]"""
+        val file = RommCacheJson.decodeFiles(legacy).single()
+        assertEquals(RommFile("base.nsp", 10, null, null, null, id = 41), file)
+        assertNull(file.category)
+        assertFalse(file.isTopLevel)
     }
 
     @Test fun `strings round-trip`() {

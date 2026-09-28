@@ -13,6 +13,6 @@ fun fakeFold(games: List<RommGame>): List<RommFoldedGame> =
                     .thenBy { RommVariantFolder.regionRank(it.regions) }
                     .thenBy(NaturalSort) { it.name }
             ) ?: members.first()
-            RommFoldedGame(rep, members.size, members.map { it.id }, members.map { it.fsName })
+            RommFoldedGame(rep, members.size, members.map { it.id }, members.map { it.fsName }, members.mapNotNull { RommHacks.baseFileName(it) })
         }
         .sortedWith(compareBy(NaturalSort) { it.game.name })

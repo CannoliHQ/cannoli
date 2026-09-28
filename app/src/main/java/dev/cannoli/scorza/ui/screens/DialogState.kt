@@ -363,7 +363,13 @@ sealed interface DialogState {
     ) : DialogState
 }
 
-data class RommVariantEntry(val game: dev.cannoli.scorza.romm.RommGame, val label: String, val present: Boolean, val isPrimary: Boolean)
+data class RommVariantEntry(
+    val game: dev.cannoli.scorza.romm.RommGame,
+    val label: String,
+    val present: Boolean,
+    val isPrimary: Boolean,
+    val hackFile: dev.cannoli.scorza.romm.RommFile? = null,
+)
 
 data class RommPlatformToggleItem(val tag: String, val displayName: String, val visible: Boolean)
 data class RommCollectionToggleItem(val group: dev.cannoli.scorza.romm.RommCollectionGroup, val displayName: String, val visible: Boolean)

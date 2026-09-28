@@ -32,7 +32,6 @@ import dev.cannoli.scorza.ui.screens.DialogState
 import dev.cannoli.scorza.ui.viewmodel.SettingsCategory
 import dev.cannoli.scorza.ui.screens.RenameTarget
 import dev.cannoli.scorza.input.runtime.InputDispatcher
-import dev.cannoli.scorza.util.NaturalSort
 import dev.cannoli.scorza.di.IoScope
 import dev.cannoli.ui.components.KeyboardState
 import kotlinx.coroutines.CoroutineScope
@@ -148,24 +147,17 @@ class InputRouter @Inject constructor(
             }
             override fun onNorth() {
                 val s = nav.currentScreen as? LauncherScreen.RommGameDetail ?: return
-                if (s.versionCount > 1) {
+                if (dev.cannoli.scorza.ui.screens.rommVersionRowCount(s.versionCount, s.game) > 1) {
                     ioScope.launch {
-                        val members = rommBrowseViewModel.groupMembers(s.groupKey)
-                        val presentIds = rommBrowseViewModel.presentIdsForTag(s.tag, members)
-                        val entries = members.map { g ->
-                            dev.cannoli.scorza.ui.screens.RommVariantEntry(
-                                game = g,
-                                label = g.fsName.substringBeforeLast('.'),
-                                present = g.id in presentIds,
-                                isPrimary = g.id == s.game.id,
-                            )
-                        }
-                        val sorted = entries.sortedWith(
-                            compareByDescending<dev.cannoli.scorza.ui.screens.RommVariantEntry> { it.isPrimary }
-                                .then(compareBy(NaturalSort) { it.label })
+                        val members = rommBrowseViewModel.groupMembers(s.groupKey).ifEmpty { listOf(s.game) }
+                        val entries = dev.cannoli.scorza.ui.screens.rommVersionEntries(
+                            viewed = s.game,
+                            members = members,
+                            presentIds = rommBrowseViewModel.presentIdsForTag(s.tag, members),
+                            presentNames = rommBrowseViewModel.presentFileNames(s.tag),
                         )
                         withContext(Dispatchers.Main) {
-                            nav.dialogState.value = dialogHandler.rommVersionPicker(s.tag, sorted)
+                            nav.dialogState.value = dialogHandler.rommVersionPicker(s.tag, entries)
                         }
                     }
                     return
@@ -704,7 +696,7 @@ class InputRouter @Inject constructor(
                 .filter { it.game.id in ids }
             if (rows.isEmpty()) return@scrollable
             rommDownloader.enqueue(rows.map {
-                dev.cannoli.scorza.romm.download.rommItem(it.game, it.platform.cannoliTag)
+                dev.cannoli.scorza.romm.download.rommPickedItem(it.game, it.platform.cannoliTag)
             })
             dev.cannoli.scorza.download.DownloadManager.ensureStarted(context)
             osdController.show(context.resources.getQuantityString(
@@ -752,7 +744,7 @@ class InputRouter @Inject constructor(
                 .filter { it.game.id in ids }.map { it.game }
             if (games.isEmpty()) return@scrollable
             rommDownloader.enqueue(games.map {
-                dev.cannoli.scorza.romm.download.rommItem(it, platform.cannoliTag)
+                dev.cannoli.scorza.romm.download.rommPickedItem(it, platform.cannoliTag)
             })
             dev.cannoli.scorza.download.DownloadManager.ensureStarted(context)
             osdController.show(context.resources.getQuantityString(

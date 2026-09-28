@@ -358,7 +358,10 @@ internal fun RommScreens(
             val loader = rommImageLoader
             val downloads = rommDownloader?.state?.collectAsState()?.value ?: emptyList()
             val downloaded = downloads.any {
-                (it.payload as? dev.cannoli.scorza.romm.download.RommPayload)?.rommId == currentScreen.game.id && it.status == dev.cannoli.scorza.download.DownloadStatus.Done
+                val p = it.payload as? dev.cannoli.scorza.romm.download.RommPayload
+                p?.rommId == currentScreen.game.id &&
+                    p.file?.let(dev.cannoli.scorza.romm.RommHacks::isHack) != true &&
+                    it.status == dev.cannoli.scorza.download.DownloadStatus.Done
             }
             androidx.compose.runtime.LaunchedEffect(downloaded) {
                 if (downloaded && currentScreen.localState != dev.cannoli.scorza.romm.LocalState.PRESENT) {
@@ -375,7 +378,7 @@ internal fun RommScreens(
                     imageLoader = loader,
                     scrollStep = currentScreen.scrollStep,
                     onScrollStepChanged = { nav?.replaceTop(currentScreen.copy(scrollStep = it)) },
-                    memberCount = currentScreen.versionCount,
+                    memberCount = dev.cannoli.scorza.ui.screens.rommVersionRowCount(currentScreen.versionCount, currentScreen.game),
                     listFontSize = listFontSize,
                     listLineHeight = listLineHeight,
                     buttonStyle = labels,

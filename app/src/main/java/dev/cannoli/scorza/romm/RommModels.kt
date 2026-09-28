@@ -17,6 +17,8 @@ data class RommFile(
     val sha1: String?,
     val id: Int = 0,
     val subDir: String = "",
+    val category: String? = null,
+    val isTopLevel: Boolean = false,
 )
 
 data class RommGame(
@@ -94,4 +96,5 @@ data class RommFoldedGame(
     val variantCount: Int,
     val memberIds: List<Int>,
     val memberFsNames: List<String>,
+    val memberBaseFiles: List<String> = emptyList(),
 )

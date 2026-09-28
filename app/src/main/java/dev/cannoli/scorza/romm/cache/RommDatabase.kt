@@ -97,7 +97,8 @@ class RommDatabase(private val dbFileProvider: () -> File) {
                 is_main_sibling INTEGER NOT NULL DEFAULT 0,
                 sort_key TEXT NOT NULL DEFAULT '',
                 updated_at TEXT,
-                region_rank INTEGER NOT NULL DEFAULT 3
+                region_rank INTEGER NOT NULL DEFAULT 3,
+                base_file TEXT
             )
         """.trimIndent())
         c.execSQL("CREATE INDEX IF NOT EXISTS idx_games_platform_sort ON games(platform_id, sort_key)")
@@ -182,8 +183,8 @@ class RommDatabase(private val dbFileProvider: () -> File) {
                 val g = rec.game
                 c.execute(
                     """INSERT OR REPLACE INTO games
-                       (id, platform_id, name, name_normalized, fs_name, size_bytes, summary, revision, regions, languages, companies, genres, game_modes, first_release_date, cover_path, files_json, ss_media_json, screenshot_path, has_manual, manual_path, group_key, is_main_sibling, sort_key, updated_at, region_rank)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                       (id, platform_id, name, name_normalized, fs_name, size_bytes, summary, revision, regions, languages, companies, genres, game_modes, first_release_date, cover_path, files_json, ss_media_json, screenshot_path, has_manual, manual_path, group_key, is_main_sibling, sort_key, updated_at, region_rank, base_file)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     g.id, g.platformId, g.name, TextNormalizer.normalize(g.name), g.fsName, g.sizeBytes, g.summary, g.revision,
                     RommCacheJson.encodeStrings(g.regions), RommCacheJson.encodeStrings(g.languages),
                     RommCacheJson.encodeStrings(g.companies), RommCacheJson.encodeStrings(g.genres),
@@ -192,6 +193,7 @@ class RommDatabase(private val dbFileProvider: () -> File) {
                     g.screenshotPath, if (g.hasManual) 1 else 0, g.manualPath,
                     g.groupKey, if (g.isMainSibling) 1 else 0,
                     NaturalSort.toSortKey(g.name), rec.updatedAt, RommVariantFolder.regionRank(g.regions),
+                    dev.cannoli.scorza.romm.RommHacks.baseFileName(g),
                 )
             }
             c.execSQL("COMMIT")
@@ -222,12 +224,13 @@ class RommDatabase(private val dbFileProvider: () -> File) {
         screenshotPath = if (stmt.isNull(20)) null else stmt.getText(20),
     )
 
-    // rowToGame reads columns 0..20; folded window queries append variant_count, member_ids, member_fs at 21..23.
+    // rowToGame reads columns 0..20; folded window queries append variant_count, member_ids, member_fs, member_base at 21..24.
     private fun rowToFolded(stmt: androidx.sqlite.SQLiteStatement) = RommFoldedGame(
         game = rowToGame(stmt),
         variantCount = stmt.getInt(21),
         memberIds = splitUnitSeparated(stmt.getText(22)).map { it.toInt() },
         memberFsNames = splitUnitSeparated(stmt.getText(23)),
+        memberBaseFiles = splitUnitSeparated(stmt.getText(24)),
     )
 
     private fun splitUnitSeparated(raw: String): List<String> =
@@ -463,7 +466,7 @@ class RommDatabase(private val dbFileProvider: () -> File) {
     }
 
     private companion object {
-        const val SCHEMA_VERSION = 7
+        const val SCHEMA_VERSION = 9
         const val GLOBAL_SEARCH_LIMIT = 300
 
         const val GAME_COLUMNS =
@@ -479,12 +482,13 @@ class RommDatabase(private val dbFileProvider: () -> File) {
             // sort_key must be projected out of the subquery: the bundled SQLite optimizer rejects an outer
             // ORDER BY over an unprojected column when the inner query mixes COUNT and group_concat windows.
             return """
-                SELECT $GAME_COLUMNS, variant_count, member_ids, member_fs FROM (
+                SELECT $GAME_COLUMNS, variant_count, member_ids, member_fs, member_base FROM (
                   SELECT $GAME_COLUMNS, sort_key,
                     ROW_NUMBER() OVER (PARTITION BY group_key ORDER BY $REPRESENTATIVE_ORDER) AS rn,
                     COUNT(*)     OVER (PARTITION BY group_key) AS variant_count,
                     group_concat(id, char(31))      OVER (PARTITION BY group_key) AS member_ids,
-                    group_concat(fs_name, char(31)) OVER (PARTITION BY group_key) AS member_fs
+                    group_concat(fs_name, char(31)) OVER (PARTITION BY group_key) AS member_fs,
+                    coalesce(group_concat(base_file, char(31)) OVER (PARTITION BY group_key), '') AS member_base
                   FROM games WHERE $where
                 ) WHERE rn = 1
                 ORDER BY sort_key$outer

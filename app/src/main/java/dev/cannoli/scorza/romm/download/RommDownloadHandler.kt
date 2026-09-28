@@ -23,6 +23,7 @@ data class RommPayload(
     val rommId: Int,
     val game: RommGame? = null,
     val firmware: dev.cannoli.scorza.romm.RommFirmware? = null,
+    val file: dev.cannoli.scorza.romm.RommFile? = null,
 )
 
 /**
@@ -61,10 +62,25 @@ class RommDownloadHandler(
         val game = p.game ?: return
         val tempDir = File(paths.root, "Config/Cache/RommDownloads").apply { mkdirs() }
         val multiPart = installer.isMultiPart(game)
-        val source = if (multiPart) File(tempDir, "${p.rommId}.parts") else File(tempDir, "${p.rommId}.part")
+        val file = p.file
+        val source = when {
+            multiPart -> File(tempDir, "${p.rommId}.parts")
+            file != null -> File(tempDir, "${p.rommId}-${file.id}.part")
+            else -> File(tempDir, "${p.rommId}.part")
+        }
         try {
             onProgress(0, game.sizeBytes)
-            if (multiPart) downloadParts(item, p, game, source, onProgress, isCancelled) else {
+            if (multiPart) downloadParts(item, p, game, source, onProgress, isCancelled)
+            else if (file != null) {
+                client.downloadRomFile(
+                    romId = p.rommId,
+                    fileId = file.id,
+                    fileName = File(file.fileName).name,
+                    dest = source,
+                    isCancelled = isCancelled,
+                    expectedTotal = file.sizeBytes,
+                ) { downloaded, total -> onProgress(downloaded, total) }
+            } else {
                 client.downloadRom(
                     romId = p.rommId,
                     fileName = game.fsName,
@@ -84,7 +100,10 @@ class RommDownloadHandler(
                 )
             }.onFailure { RommLog.write("ERROR romm guide adopt ${p.rommId} failed: ${it.message}") }
             artDownloader.download(store.host, game.coverPath, item.tag, result.artBaseName)
-            links.upsertLink(p.rommId, result.linkRelativePath, "download")
+            // A hack shares its entry's id, which the base game's link already owns.
+            if (file == null || !dev.cannoli.scorza.romm.RommHacks.isHack(file)) {
+                links.upsertLink(p.rommId, result.linkRelativePath, "download")
+            }
             artwork.invalidate(item.tag)
             scanScheduler.runNow(item.tag)
         } catch (e: RommDownloadCancelled) {

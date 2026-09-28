@@ -613,16 +613,21 @@ internal fun DialogInputHandler.rommVersionPicker(
     title = context.getString(dev.cannoli.scorza.R.string.romm_version_picker_title),
     confirmLabel = context.getString(dev.cannoli.scorza.R.string.label_download),
     items = entries.map { entry ->
+        val hack = entry.hackFile
+        val bytes = hack?.sizeBytes
+            ?: dev.cannoli.scorza.romm.RommHacks.baseDownloadFile(entry.game)?.sizeBytes
+            ?: entry.game.sizeBytes
+        val size = dev.cannoli.scorza.ui.screens.RommGameDetailLayout.formatBytes(bytes)
         dev.cannoli.scorza.ui.screens.PickerItem(
             label = if (entry.isPrimary) "${dev.cannoli.ui.theme.CannoliIcons.Primary.glyph} ${entry.label}" else entry.label,
-            value = dev.cannoli.scorza.ui.screens.RommGameDetailLayout.formatBytes(entry.game.sizeBytes),
+            value = if (hack != null) "${context.getString(dev.cannoli.ui.R.string.romm_version_hack)} · $size" else size,
             dot = if (entry.present) true else null,
         )
     },
 ) { index ->
     val entry = entries.getOrNull(index) ?: return@Picker
     nav.dialogState.value = DialogState.None
-    rommDownloader.enqueue(listOf(dev.cannoli.scorza.romm.download.rommItem(entry.game, tag, dev.cannoli.scorza.download.DownloadKind.ROM)))
+    rommDownloader.enqueue(listOf(dev.cannoli.scorza.romm.download.rommPickedItem(entry.game, tag, entry.hackFile)))
     dev.cannoli.scorza.download.DownloadManager.ensureStarted(context)
     osdController.show(context.getString(dev.cannoli.ui.R.string.romm_osd_download_queued))
 }

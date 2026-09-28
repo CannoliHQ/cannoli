@@ -1,5 +1,7 @@
 package dev.cannoli.scorza.romm.cache
 
+import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import androidx.sqlite.execSQL
 import dev.cannoli.scorza.romm.RommFile
 import dev.cannoli.scorza.romm.RommGame
 import dev.cannoli.scorza.romm.RommPlatform
@@ -147,6 +149,26 @@ class RommDatabaseTest {
     @Test fun `searchAllGames blank term returns empty`() {
         db.upsertGames(listOf(GameRecord(game(1, 1, "Game 1", "g1.sfc"), null)))
         assertEquals(emptyList<String>(), db.searchAllGames(RommSearchQuery("  ")).map { it.name })
+    }
+
+    // Files cached by schema 7 lack category and top-level, and a delta sync from the cursor
+    // would never rewrite unchanged rows, so opening an older cache must drop it and its cursor.
+    @Test fun `opening a schema 7 cache drops its rows and cursor so the next sync is full`() {
+        db.setSyncState("cursor", "2024-09-09T00:00:00")
+        db.replacePlatforms(listOf(platform(1, "NES", "NES", 1) to null))
+        db.upsertGames(listOf(GameRecord(game(1, 1, "A", "a.nes"), null)))
+        db.close()
+        val raw = BundledSQLiteDriver().open(dbFile.absolutePath)
+        try { raw.execSQL("PRAGMA user_version = 7") } finally { raw.close() }
+
+        val reopened = RommDatabase { dbFile }
+        try {
+            assertNull(reopened.getSyncState("cursor"))
+            assertEquals(emptyList<RommPlatform>(), reopened.platforms())
+            assertEquals(0, reopened.gamesCount(1, null))
+        } finally {
+            reopened.close()
+        }
     }
 
     @Test fun `sync_state round-trips and clearAll empties everything`() {

@@ -69,4 +69,44 @@ class RommBrowseViewModelMatchTest {
         val present = vm.presentIdsForTag(snes.cannoliTag, members)
         assertEquals(setOf(11), present)
     }
+
+    private val tecmoBase = RommFile("Tecmo Super Bowl (USA).nes", 1, null, null, null, id = 1832, category = "game", isTopLevel = true)
+    private val tecmoHack = RommFile("Tecmo Super Bowl 2025.nes", 1, null, null, null, id = 1833, subDir = "hacks", category = "hack")
+    private val tecmo = game(1343, "Tecmo Super Bowl", 2L).copy(files = listOf(tecmoBase, tecmoHack))
+
+    private fun vmWith(games: List<RommGame>, present: Set<String>) = RommBrowseViewModel(
+        library = FakeLibrary(games),
+        syncCoordinator = null,
+        db = null,
+        presentNamesFor = { present },
+        linkedIdsProvider = { emptySet() },
+    )
+
+    @Test fun `an unlinked local base game file makes its hacks entry present`() = runBlocking {
+        val vm = vmWith(listOf(tecmo), setOf("tecmo super bowl (usa).nes"))
+        vm.openPlatform(snes)
+        val row = vm.games.value!!.rows.single()
+        assertEquals(LocalState.PRESENT, row.localState)
+        assertEquals(true, row.anyPresent)
+        assertEquals(setOf(1343), vm.presentIdsForTag("SNES", listOf(tecmo)))
+    }
+
+    @Test fun `a local hack alone does not make its entry present`() = runBlocking {
+        val vm = vmWith(listOf(tecmo), setOf("tecmo super bowl 2025.nes"))
+        vm.openPlatform(snes)
+        val row = vm.games.value!!.rows.single()
+        assertEquals(LocalState.REMOTE, row.localState)
+        assertEquals(false, row.anyPresent)
+        assertEquals(emptySet<Int>(), vm.presentIdsForTag("SNES", listOf(tecmo)))
+    }
+
+    @Test fun `a folded group is any-present through a sibling's base game file`() = runBlocking {
+        val main = game(20, "Other (USA).nes", 1L).copy(groupKey = 20, isMainSibling = true)
+        val sib = tecmo.copy(groupKey = 20)
+        val vm = vmWith(listOf(main, sib), setOf("tecmo super bowl (usa).nes"))
+        vm.openPlatform(snes)
+        val row = vm.games.value!!.rows.single()
+        assertEquals(LocalState.REMOTE, row.localState)
+        assertEquals(true, row.anyPresent)
+    }
 }

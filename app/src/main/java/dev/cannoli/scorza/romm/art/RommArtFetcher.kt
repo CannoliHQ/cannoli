@@ -79,7 +79,7 @@ class RommArtFetcher(
             val platform = platformsByTag[tag.lowercase()] ?: continue
             processedTags.add(tag)
             val cached = db.allGames(platform.id)
-            val byFsName: Map<String, RommGame> = cached.associateBy { it.fsName.lowercase() }
+            val byFsName: Map<String, RommGame> = RommArtMatcher.byFileName(cached)
             val byId: Map<Int, RommGame> = cached.associateBy { it.id }
 
             for (rom in roms.allRomsForPlatform(tag)) {

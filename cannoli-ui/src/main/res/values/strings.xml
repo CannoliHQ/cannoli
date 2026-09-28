@@ -424,6 +424,8 @@
     <string name="romm_detail_on_device">On Device</string>
     <string name="romm_detail_not_on_device">Not on device</string>
     <string name="romm_version_picker_title">Download which version?</string>
+    <!-- Marks a version picker row as a ROM hack (a fan-modified game) rather than an official release. -->
+    <string name="romm_version_hack">Hack</string>
     <!-- Bottom-bar button opening the game's instruction manual (a document), not "manual/by hand". -->
     <string name="label_manual">MANUAL</string>
     <!-- The game's instruction manual (document), not "manual/by hand". -->

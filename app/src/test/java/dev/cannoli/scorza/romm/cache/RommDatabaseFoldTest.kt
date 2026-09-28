@@ -155,4 +155,19 @@ class RommDatabaseFoldTest {
         assertEquals(listOf(60, 61, 62), members.map { it.id })
         assertEquals(60, db.foldedGames(1, null).single().game.id)
     }
+
+    @Test fun `folded rows carry each member's base game file and never a hack`() {
+        val base = dev.cannoli.scorza.romm.RommFile("Tecmo Super Bowl (USA).nes", 1, null, null, null, id = 1832, category = "game", isTopLevel = true)
+        val hack = dev.cannoli.scorza.romm.RommFile("Tecmo Super Bowl 2025.nes", 1, null, null, null, id = 1833, subDir = "hacks", category = "hack")
+        db.replacePlatforms(listOf(dev.cannoli.scorza.romm.RommPlatform(1, "nes", "NES", "NES", 2) to null))
+        db.upsertGames(listOf(
+            GameRecord(game(1343, 1, "Tecmo Super Bowl", "Tecmo Super Bowl", groupKey = 1343).copy(files = listOf(base, hack)), null),
+            GameRecord(game(1400, 1, "Tecmo Super Bowl", "Tecmo Super Bowl (Japan).nes", groupKey = 1343), null),
+            GameRecord(game(5, 1, "Plain", "Plain.nes"), null),
+        ))
+        val byId = db.foldedGames(1, null).associateBy { it.game.id }
+        val tecmo = byId.values.single { 1343 in it.memberIds }
+        assertEquals(listOf("Tecmo Super Bowl (USA).nes"), tecmo.memberBaseFiles)
+        assertEquals(emptyList<String>(), byId.getValue(5).memberBaseFiles)
+    }
 }

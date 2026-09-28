@@ -39,6 +39,8 @@ data class RomFileDto(
     @SerialName("md5_hash") val md5Hash: String? = null,
     @SerialName("sha1_hash") val sha1Hash: String? = null,
     @SerialName("file_path") val filePath: String = "",
+    val category: String? = null,
+    @SerialName("is_top_level") val isTopLevel: Boolean = false,
 )
 
 @Serializable

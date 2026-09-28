@@ -16,6 +16,8 @@ data class CachedFile(
     val sha1: String? = null,
     val id: Int = 0,
     val dir: String = "",
+    val category: String? = null,
+    val top: Boolean = false,
 )
 
 @Serializable
@@ -44,10 +46,10 @@ object RommCacheJson {
     }
 
     fun encodeFiles(files: List<RommFile>): String =
-        rommJson.encodeToString(fileListSerializer, files.map { CachedFile(it.fileName, it.sizeBytes, it.crc, it.md5, it.sha1, it.id, it.subDir) })
+        rommJson.encodeToString(fileListSerializer, files.map { CachedFile(it.fileName, it.sizeBytes, it.crc, it.md5, it.sha1, it.id, it.subDir, it.category, it.isTopLevel) })
 
     fun decodeFiles(json: String): List<RommFile> =
-        rommJson.decodeFromString(fileListSerializer, json).map { RommFile(it.name, it.size, it.crc, it.md5, it.sha1, it.id, it.dir) }
+        rommJson.decodeFromString(fileListSerializer, json).map { RommFile(it.name, it.size, it.crc, it.md5, it.sha1, it.id, it.dir, it.category, it.top) }
 
     fun encodeStrings(values: List<String>): String =
         rommJson.encodeToString(stringListSerializer, values)
