@@ -17,6 +17,7 @@ import dev.cannoli.scorza.download.DownloadCancelled
 import dev.cannoli.scorza.download.DownloadHandler
 import dev.cannoli.scorza.download.DownloadItem
 import dev.cannoli.scorza.download.DownloadKind
+import dev.cannoli.scorza.download.DownloadStaging
 
 /** What a RomM transfer needs that the queue has no business knowing. */
 data class RommPayload(
@@ -42,6 +43,7 @@ class RommDownloadHandler(
     private val store: RommConnectionStore,
     private val http: RommHttp,
     private val paths: CannoliPathsProvider,
+    private val staging: DownloadStaging,
 ) : DownloadHandler {
 
     override fun run(
@@ -60,14 +62,9 @@ class RommDownloadHandler(
 
     private fun runRom(item: DownloadItem, p: RommPayload, onProgress: (Long, Long) -> Unit, isCancelled: () -> Boolean) {
         val game = p.game ?: return
-        val tempDir = File(paths.root, "Config/Cache/RommDownloads").apply { mkdirs() }
         val multiPart = installer.isMultiPart(game)
         val file = p.file
-        val source = when {
-            multiPart -> File(tempDir, "${p.rommId}.parts")
-            file != null -> File(tempDir, "${p.rommId}-${file.id}.part")
-            else -> File(tempDir, "${p.rommId}.part")
-        }
+        val source = if (multiPart) staging.dir() else staging.file()
         try {
             onProgress(0, game.sizeBytes)
             if (multiPart) downloadParts(item, p, game, source, onProgress, isCancelled)
@@ -107,22 +104,20 @@ class RommDownloadHandler(
             artwork.invalidate(item.tag)
             scanScheduler.runNow(item.tag)
         } catch (e: RommDownloadCancelled) {
-            deleteSource(source)
+            staging.discard(source)
             throw DownloadCancelled()
         } catch (e: Exception) {
-            deleteSource(source)
+            staging.discard(source)
             RommLog.write("ERROR romm download ${p.rommId} failed: ${e.message}")
             throw e
         }
     }
 
-    private fun downloadParts(item: DownloadItem, p: RommPayload, game: RommGame, staging: File, onProgress: (Long, Long) -> Unit, isCancelled: () -> Boolean) {
-        if (staging.exists()) staging.deleteRecursively()
-        staging.mkdirs()
+    private fun downloadParts(item: DownloadItem, p: RommPayload, game: RommGame, stagedDir: File, onProgress: (Long, Long) -> Unit, isCancelled: () -> Boolean) {
         var completed = 0L
         for (file in game.files.sortedWith(compareBy({ it.subDir }, { it.fileName }))) {
-            val dest = File(if (file.subDir.isEmpty()) staging else File(staging, file.subDir), File(file.fileName).name)
-            if (!dest.canonicalPath.startsWith(staging.canonicalPath + File.separator)) {
+            val dest = File(if (file.subDir.isEmpty()) stagedDir else File(stagedDir, file.subDir), File(file.fileName).name)
+            if (!dest.canonicalPath.startsWith(stagedDir.canonicalPath + File.separator)) {
                 throw Exception("invalid file path for ${file.fileName}")
             }
             client.downloadRomFile(
@@ -137,10 +132,6 @@ class RommDownloadHandler(
         }
     }
 
-    private fun deleteSource(source: File) {
-        if (source.isDirectory) source.deleteRecursively() else source.delete()
-    }
-
     private fun runManual(item: DownloadItem, p: RommPayload, onProgress: (Long, Long) -> Unit, isCancelled: () -> Boolean) {
         val game = p.game ?: return
         val url = RommManual.sourceUrl(store.host, game)
@@ -150,10 +141,10 @@ class RommDownloadHandler(
         val base = guideBaseName(links.relativePathFor(p.rommId), game.fsName)
         val dir = CannoliPaths(paths.root).guideDir(item.tag, base).apply { mkdirs() }
         val dest = File(dir, "Manual.pdf")
-        val temp = File(dir, "Manual.pdf.part")
-                try {
+        val temp = staging.file()
+        try {
             onProgress(0, 0)
-            if (isCancelled()) { temp.delete(); throw DownloadCancelled(); return }
+            if (isCancelled()) throw DownloadCancelled()
             http.downloadClient().newCall(Request.Builder().url(url).get().build()).execute().use { resp ->
                 if (!resp.isSuccessful) throw Exception("HTTP ${resp.code}")
                 val total = (resp.body?.contentLength() ?: -1L).coerceAtLeast(0L)
@@ -177,17 +168,15 @@ class RommDownloadHandler(
                             "content-type=${resp.header("Content-Type") ?: "(none)"} " +
                             "bytes=${temp.length()} head=${RommManual.describeHead(temp)}"
                     )
-                    temp.delete()
                     throw Exception("manual is not a PDF")
                 }
             }
-            if (dest.exists()) dest.delete()
-            if (!temp.renameTo(dest)) { temp.copyTo(dest, overwrite = true); temp.delete() }
+            staging.commit(temp, dest)
         } catch (e: RommDownloadCancelled) {
-            temp.delete()
+            staging.discard(temp)
             throw DownloadCancelled()
         } catch (e: Exception) {
-            temp.delete()
+            staging.discard(temp)
             RommLog.write("ERROR romm manual ${p.rommId} failed: ${e.message}")
             throw e
         }
@@ -202,7 +191,7 @@ class RommDownloadHandler(
             RommLog.write("ERROR romm firmware ${fw.id} blocked: path traversal in fileName")
             throw Exception("invalid firmware filename")
         }
-        val temp = File(biosDir, "$safeName.part")
+        val temp = staging.file()
         try {
             onProgress(0, fw.sizeBytes)
             client.downloadFirmware(
@@ -212,13 +201,12 @@ class RommDownloadHandler(
                 isCancelled = isCancelled,
                 expectedTotal = fw.sizeBytes,
             ) { downloaded, total -> onProgress(downloaded, total) }
-            if (dest.exists()) dest.delete()
-            if (!temp.renameTo(dest)) { temp.copyTo(dest, overwrite = true); temp.delete() }
+            staging.commit(temp, dest)
         } catch (e: RommDownloadCancelled) {
-            temp.delete()
+            staging.discard(temp)
             throw DownloadCancelled()
         } catch (e: Exception) {
-            temp.delete()
+            staging.discard(temp)
             RommLog.write("ERROR romm firmware ${fw.id} failed: ${e.message}")
             throw e
         }

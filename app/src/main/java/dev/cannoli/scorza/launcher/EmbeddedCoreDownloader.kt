@@ -2,6 +2,7 @@ package dev.cannoli.scorza.launcher
 
 import android.content.Context
 import android.util.Log
+import dev.cannoli.scorza.download.DownloadStaging
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
@@ -125,7 +126,8 @@ object EmbeddedCoreDownloader {
                     Log.i(TAG, "$soName already current")
                     return CoreDownloadService.Result("core", coreName, true, null, changed = false)
                 }
-                extractEntry(tmp, soName, soFile)
+                // cacheDir shares filesDir's volume, so the commit into cores/ is a rename.
+                extractEntry(tmp, soName, soFile, DownloadStaging { context.cacheDir })
                 // Stamped from the .so that landed, not from what the index promised about it.
                 // The index describes the inner binary and the etag describes the zip around it,
                 // published separately and observed to disagree, so only reading the installed
@@ -359,40 +361,29 @@ object EmbeddedCoreDownloader {
      * Unpack one entry over [dest] without ever leaving it partly written.
      *
      * Writing straight into [dest] truncates the core the launcher loads, so an interrupted
-     * extraction leaves a file RetroArch will still try to `dlopen`. Staging beside it and renaming
-     * makes the swap atomic: the destination is the old build or the new one, never half of either.
-     * The stage sits in the same directory because rename is only atomic within a filesystem.
+     * extraction leaves a file RetroArch will still try to `dlopen`. Staging and renaming makes the
+     * swap atomic: the destination is the old build or the new one, never half of either.
      */
     // Internal rather than private for the same reason as fetch: the failure mode is the point.
     // A test that cannot see this can only assert the happy path, which was never the risk.
-    internal fun extractEntry(zip: File, entrySuffix: String, dest: File) {
-        val stage = File(dest.parentFile, "${dest.name}.part")
+    internal fun extractEntry(zip: File, entrySuffix: String, dest: File, staging: DownloadStaging) {
+        val stage = staging.file()
         try {
             ZipInputStream(zip.inputStream().buffered()).use { zis ->
                 var e = zis.nextEntry
                 while (e != null) {
                     if (!e.isDirectory && e.name.endsWith(entrySuffix)) {
                         stage.outputStream().use { zis.copyTo(it) }
-                        if (!replace(stage, dest)) throw RuntimeException("could not replace ${dest.name}")
+                        staging.commit(stage, dest, allowCopy = false)
                         return
                     }
                     e = zis.nextEntry
                 }
             }
         } finally {
-            stage.delete()
+            staging.discard(stage)
         }
         throw RuntimeException("$entrySuffix not found in ${zip.name}")
-    }
-
-    /**
-     * Move [stage] onto [dest]. `renameTo` replaces an existing file on Android's filesystems, and
-     * the fallback covers the case where it does not rather than leaving the stage orphaned.
-     */
-    private fun replace(stage: File, dest: File): Boolean {
-        if (stage.renameTo(dest)) return true
-        if (!dest.delete() && dest.exists()) return false
-        return stage.renameTo(dest)
     }
 
     private fun extractAllInfo(zip: File, infoDir: File) {

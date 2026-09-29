@@ -1,6 +1,7 @@
 package dev.cannoli.scorza.romm.art
 
 import dev.cannoli.scorza.di.CannoliPathsProvider
+import dev.cannoli.scorza.download.DownloadStaging
 import dev.cannoli.scorza.romm.RommArtUrl
 import dev.cannoli.scorza.romm.RommHttp
 import dev.cannoli.scorza.util.ScanLog
@@ -11,6 +12,7 @@ import java.io.File
 class RommArtDownloader(
     private val http: RommHttp,
     private val paths: CannoliPathsProvider,
+    private val staging: DownloadStaging,
 ) {
     /** Downloads [coverPath] for [tag]/[baseName] into the Art dir. Returns true on success. */
     fun download(host: String, coverPath: String?, tag: String, baseName: String): Boolean {
@@ -28,14 +30,13 @@ class RommArtDownloader(
                     DirectoryLayout.hideFromGallery(this)
                 }
                 val dest = File(artDir, "$baseName.$ext")
-                val temp = File(artDir, "$baseName.$ext.part")
+                val temp = staging.file()
                 try {
                     temp.outputStream().use { out -> resp.body?.byteStream()?.copyTo(out) }
-                    if (temp.length() == 0L) { temp.delete(); return false }
-                    if (dest.exists()) dest.delete()
-                    if (!temp.renameTo(dest)) { temp.copyTo(dest, overwrite = true); temp.delete() }
+                    if (temp.length() == 0L) { staging.discard(temp); return false }
+                    staging.commit(temp, dest)
                 } catch (e: Exception) {
-                    temp.delete()
+                    staging.discard(temp)
                     throw e
                 }
                 true

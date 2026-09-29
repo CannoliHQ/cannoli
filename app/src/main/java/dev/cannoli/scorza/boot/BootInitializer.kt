@@ -102,6 +102,7 @@ class BootInitializer @Inject constructor(
         StorageLog.init(root.absolutePath)
         dev.cannoli.scorza.util.RommLog.init(root.absolutePath)
         dev.cannoli.scorza.util.ErrorLog.init(root.absolutePath)
+        withContext(Dispatchers.IO) { dev.cannoli.scorza.download.DownloadStaging.sweepOnce(root) }
         setupCoordinator.logStorageDiagnostics()
         platformConfig.load()
         // Backfill only. Fills platforms that have no stored choice and never touches one the

@@ -1,5 +1,6 @@
 package dev.cannoli.scorza.romm.download
 
+import dev.cannoli.scorza.download.DownloadStaging
 import dev.cannoli.scorza.romm.RommFile
 import dev.cannoli.scorza.romm.RommGame
 import org.junit.Assert.assertEquals
@@ -13,7 +14,7 @@ import java.io.File
 class RommInstallerTest {
 
     @get:Rule val tmp = TemporaryFolder()
-    private val installer = RommInstaller()
+    private val installer by lazy { RommInstaller(DownloadStaging { File(tmp.root, "Downloads") }) }
 
     private fun game(name: String, fsName: String, files: List<RommFile>) =
         RommGame(1, 1, name, fsName, 0, null, null, emptyList(), emptyList(), null, files)

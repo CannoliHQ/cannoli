@@ -1,11 +1,12 @@
 package dev.cannoli.scorza.romm.download
 
+import dev.cannoli.scorza.download.DownloadStaging
 import dev.cannoli.scorza.romm.RommGame
 import java.io.File
 
 data class InstallResult(val linkRelativePath: String, val artBaseName: String)
 
-class RommInstaller {
+class RommInstaller(private val staging: DownloadStaging) {
 
     fun isMultiPart(game: RommGame): Boolean = game.files.size > 1
 
@@ -21,14 +22,13 @@ class RommInstaller {
         val safeName = File(game.fsName).name
         val dest = File(tagDir, safeName)
         if (!dest.canonicalPath.startsWith(tagDir.canonicalPath)) throw Exception("invalid fsName: path traversal")
-        if (dest.exists()) dest.delete()
-        if (!temp.renameTo(dest)) { temp.copyTo(dest, overwrite = true); temp.delete() }
+        staging.commit(temp, dest)
         return InstallResult("$tag/$safeName", dest.nameWithoutExtension)
     }
 
-    private fun installMultiPart(game: RommGame, tag: String, tagDir: File, staging: File): InstallResult {
+    private fun installMultiPart(game: RommGame, tag: String, tagDir: File, stagedDir: File): InstallResult {
         val folderName = sanitizeFsName(game.fsName)
-        val topLevel = staging.listFiles { f: File -> f.isFile }.orEmpty().sortedBy { it.name.lowercase() }
+        val topLevel = stagedDir.listFiles { f: File -> f.isFile }.orEmpty().sortedBy { it.name.lowercase() }
         val single = topLevel.singleOrNull()
         val launchName = when {
             single != null -> renameToFolderName(single, folderName)
@@ -37,11 +37,7 @@ class RommInstaller {
         tagDir.mkdirs()
         val dest = File(tagDir, folderName)
         if (!dest.canonicalPath.startsWith(tagDir.canonicalPath + File.separator)) throw Exception("invalid game name: path traversal")
-        if (dest.exists()) dest.deleteRecursively()
-        if (!staging.renameTo(dest)) {
-            staging.copyRecursively(dest, overwrite = true)
-            staging.deleteRecursively()
-        }
+        staging.commit(stagedDir, dest)
         val linkRel = if (launchName != null) "$tag/$folderName/$launchName" else "$tag/$folderName"
         return InstallResult(linkRel, folderName)
     }

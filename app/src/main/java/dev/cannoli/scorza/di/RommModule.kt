@@ -24,6 +24,7 @@ import dev.cannoli.scorza.romm.cache.RommDatabase
 import dev.cannoli.scorza.romm.cache.RommSyncCoordinator
 import dev.cannoli.scorza.download.DownloadKind
 import dev.cannoli.scorza.download.DownloadQueue
+import dev.cannoli.scorza.download.DownloadStaging
 import dev.cannoli.scorza.download.Downloader
 import dev.cannoli.scorza.romm.download.RommDownloadHandler
 import dev.cannoli.scorza.romm.download.RommInstaller
@@ -227,11 +228,16 @@ object RommModule {
         })
 
     @Provides @Singleton
+    fun provideDownloadStaging(paths: CannoliPathsProvider): DownloadStaging =
+        DownloadStaging { DownloadStaging.cardFolder(paths.root) }
+
+    @Provides @Singleton
     fun provideRommArtDownloader(
         http: RommHttp,
         paths: CannoliPathsProvider,
+        staging: DownloadStaging,
     ): dev.cannoli.scorza.romm.art.RommArtDownloader =
-        dev.cannoli.scorza.romm.art.RommArtDownloader(http, paths)
+        dev.cannoli.scorza.romm.art.RommArtDownloader(http, paths, staging)
 
     @Provides @Singleton
     fun provideRommArtFetcher(
@@ -267,6 +273,7 @@ object RommModule {
         http: RommHttp,
         paths: CannoliPathsProvider,
         settings: dev.cannoli.scorza.settings.SettingsRepository,
+        staging: DownloadStaging,
         @ApplicationContext context: Context,
         @IoScope ioScope: CoroutineScope,
     ): Downloader {
@@ -275,7 +282,7 @@ object RommModule {
         fun romm(kind: DownloadKind) = RommDownloadHandler(
             kind = kind,
             client = client,
-            installer = RommInstaller(),
+            installer = RommInstaller(staging),
             links = links,
             artwork = artwork,
             artDownloader = artDownloader,
@@ -283,6 +290,7 @@ object RommModule {
             store = store,
             http = http,
             paths = paths,
+            staging = staging,
         )
         return Downloader(
             queue = DownloadQueue(),
