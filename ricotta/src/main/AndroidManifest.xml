@@ -17,14 +17,16 @@
             android:name="com.retroarch.browser.mainmenu.MainMenuActivity"
             tools:node="remove"/>
 
+        <!-- RetroArch cannot survive a relaunch: a change missing from configChanges drops the game. -->
         <activity
             android:name="com.retroarch.browser.retroactivity.RetroActivityFuture"
             android:exported="false"
             android:process=":retroarch"
             android:theme="@style/Theme.Ricotta.Game"
             android:launchMode="singleTop"
+            android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize|fontScale|density|layoutDirection|colorMode|fontWeightAdjustment|grammaticalGender"
             tools:node="merge"
-            tools:replace="android:exported,android:theme,android:launchMode" />
+            tools:replace="android:exported,android:theme,android:launchMode,android:configChanges" />
 
         <activity
             android:name="com.retroarch.browser.debug.CoreSideloadActivity"
