@@ -34,8 +34,6 @@
     <string name="label_credits">クレジット</string>
     <string name="label_update">更新</string>
     <string name="label_logout">LOGOUT</string>
-    <!-- Bottom-bar button opening cached RetroAchievements sets for offline play. RA = RetroAchievements. -->
-    <string name="achievos_offline_sets">オフラインセット</string>
     <string name="label_hex">HEX</string>
     <string name="label_rename">名前の変更</string>
     <string name="label_set">設定</string>
@@ -43,8 +41,6 @@
     <!-- Bottom-bar button; opens Nonna's Kitchen. -->
     <string name="label_kitchen">シチリア</string>
     <string name="label_hold_buttons" tools:ignore="TypographyEllipsis">1つまたは複数のボタンを長押ししてください...</string>
-    <!-- Bottom-bar button. RA = RetroAchievements. -->
-    <string name="achievos_settings">RAの設定</string>
     <string name="label_details">詳細</string>
     <string name="label_all">すべて</string>
     <string name="label_unlocked">アンロックしました</string>
@@ -61,8 +57,6 @@
     <string name="shortcut_action_save_and_quit">保存して終了</string>
     <!-- In-game shortcut action. "(Hold)" means it triggers on a long-press of the shortcut. -->
     <string name="shortcut_action_save_and_quit_hold">保存して終了 (Hold)</string>
-    <!-- In-game shortcut action: cycle through the video scaling modes. -->
-    <string name="shortcut_action_cycle_scaling">サイクルスケール</string>
     <!-- In-game shortcut action: cycle through the shader presets. -->
     <string name="shortcut_action_cycle_shader">サイクルシェーダー</string>
     <string name="shortcut_action_toggle_ff">早送り切り替え</string>
@@ -159,7 +153,6 @@
     <string name="setting_always_save_on_quit">終了時に状態を保存</string>
     <!-- Advanced setting toggle: skip the passcode gate for Nonna's Kitchen. Keep "Kitchen" consistent with the feature name. -->
     <string name="setting_kitchen_code_bypass">キッチンコードバイパス</string>
-    <string name="setting_experimental_features">実験的な機能</string>
     <string name="setting_set_default_launcher">デフォルトランチャーとして設定</string>
     <!-- Same row as setting_set_default_launcher, shown when Cannoli is already the default launcher and the user wants to pick another one. -->
     <!-- Advanced action: recreate the standard platform/system folders. -->
@@ -169,8 +162,6 @@
     <!-- Library setting for the Five Game Handheld collection. Keep "5GH" as-is. -->
     <string name="setting_fgh_collection">5GHコレクション</string>
     <string name="setting_show_recently_played">最近プレイした曲</string>
-    <!-- Library setting: show or hide the Favorites entry on the main list. -->
-    <string name="setting_show_favorites">お気に入り</string>
     <!-- Opens the Tools manager (sideloaded utility apps). -->
     <string name="setting_manage_tools">ツールを管理</string>
     <!-- Opens the Ports manager. "Ports" means standalone native game ports. -->
@@ -189,12 +180,7 @@
     <string name="setting_installed_cores">%s インストールされたコア</string>
     <!-- Screen title. %s is the emulator app name (e.g. RetroArch). -->
     <string name="title_installed_cores">%s インストールされたコア</string>
-    <string name="installed_cores_none">コアが見つかりません</string>
-    <!-- Setting: the app's root storage folder on the SD card. -->
-    <string name="setting_sd_root">Cannoliルート</string>
     <string name="setting_rom_directory">ROM ディレクトリ</string>
-    <!-- Setting: which installed RetroArch app/package to launch games with. -->
-    <string name="setting_ra_package">RetroArchパッケージ</string>
     <string name="setting_scan_library">スキャンモード</string>
     <!-- Scan Mode value: scan the library automatically. -->
     <string name="value_automatically">自動</string>
@@ -217,7 +203,6 @@
     <string name="save_conflict_title">競合を保存</string>
     <string name="save_conflict_keep_local">このデバイスを保持</string>
     <string name="save_conflict_use_server">サーバーを使用</string>
-    <string name="save_conflict_subtitle">サーバー上で変更されました</string>
     <string name="save_stale_title">サーバーには新しいセーブ機能があります</string>
     <string name="save_stale_play_local">とにかくローカルでプレイする</string>
     <string name="setting_romm_allow_self_signed">自己署名証明書を許可する</string>
@@ -245,7 +230,6 @@
     <string name="romm_detail_players">プレイヤー</string>
     <string name="romm_detail_on_device">デバイス上</string>
     <string name="romm_detail_not_on_device">デバイス上にありません</string>
-    <string name="romm_detail_download">ダウンロード</string>
     <string name="romm_version_picker_title">どのバージョンをダウンロードしますか？</string>
     <!-- Bottom-bar button opening the game's instruction manual (a document), not "manual/by hand". -->
     <string name="label_manual">マニュアル</string>
@@ -254,12 +238,10 @@
     <string name="romm_syncing" tools:ignore="TypographyEllipsis">キャッシュを構築しています...</string>
     <!-- Cache-building status. %1$s is the platform name. -->
     <string name="romm_syncing_platform" tools:ignore="TypographyEllipsis">キャッシュを構築中...\n%1$s</string>
-    <string name="romm_sync_collections">コレクション</string>
     <string name="romm_sync_error">RomMに到達できませんでした。キャッシュされたライブラリを表示しています。</string>
     <string name="romm_download_queue">キューをダウンロード</string>
     <string name="romm_download_queued">キューに入りました</string>
     <string name="romm_download_downloading">ダウンロード中</string>
-    <string name="romm_download_failed">失敗しました</string>
     <string name="romm_download_empty">ダウンロードなし</string>
     <string name="romm_download_completed">完了</string>
     <string name="romm_osd_download_queued">ダウンロードに追加しました</string>
@@ -282,7 +264,6 @@
     <string name="romm_settings_platforms">プラットフォームの表示/非表示</string>
     <string name="romm_settings_collections">コレクションの表示/非表示</string>
     <string name="romm_settings_server_info">サーバー情報</string>
-    <string name="romm_settings_advanced">高度な設定</string>
     <string name="romm_settings_rebuild">Rebuild Cache</string>
     <string name="romm_actions_title">RomMクイックメニュー</string>
     <string name="romm_settings_title">RomM設定</string>
@@ -296,7 +277,6 @@
     <string name="romm_firmware_empty">ファームウェアがありません</string>
     <string name="romm_firmware_error">ファームウェアを読み込めませんでした</string>
     <string name="romm_firmware_not_on_device">デバイスではありません</string>
-    <string name="romm_firmware_on_device">デバイス上</string>
     <string name="romm_art_default">デフォルト</string>
     <string name="romm_art_off">オフ</string>
     <string name="romm_art_box2d">2D ボックス</string>
@@ -319,10 +299,7 @@
     <string name="romm_art_no_match">ROMMが一致しません</string>
     <string name="romm_art_failed">失敗しました</string>
     <string name="romm_art_section_no_match">一致するものはありません</string>
-    <string name="romm_art_section_failed">失敗しました</string>
     <string name="romm_art_done">完了</string>
-    <string name="romm_collections_title">コレクション</string>
-    <string name="romm_collection_group_user">マイコレクション</string>
     <!-- RomM "Virtual" collections (auto-grouped, e.g. by franchise or genre). -->
     <string name="romm_collection_group_virtual">仮想設定</string>
     <!-- RomM "Smart" collections (rule-based, auto-updating). -->
@@ -331,7 +308,6 @@
     <string name="romm_collections_smart">スマートコレクション</string>
     <string name="romm_collections_virtual">仮想コレクション</string>
     <string name="romm_vtype_franchise">フランチャイズ</string>
-    <string name="romm_vtype_collection">コレクション</string>
     <string name="romm_vtype_genre">Genres</string>
     <string name="romm_vtype_company">会社名</string>
     <string name="romm_vtype_mode">ゲームモード</string>
@@ -340,7 +316,6 @@
     <string name="setting_audit_emulator_intents">監査エミュレータの目的</string>
     <string name="logging_title">ログ</string>
     <string name="logging_rom_scan">ROM スキャン</string>
-    <string name="logging_input">Input</string>
     <string name="logging_session">ゲームセッション</string>
     <string name="logging_storage">ストレージ</string>
     <string name="setting_input_tester">Input Tester</string>
@@ -415,20 +390,8 @@
     <string name="update_download_error_server">ダウンロードに失敗しました。サーバーがエラーを返しました。しばらくしてからもう一度お試しください。</string>
     <string name="update_download_error_network">ダウンロードに失敗しました。接続を確認してもう一度お試しください。</string>
     <string name="launch_error_resolve_file">起動ファイルの解決に失敗しました</string>
-    <string name="launch_error_extract">アーカイブの抽出に失敗しました</string>
     <string name="launch_error_generic">ゲームの起動に失敗しました</string>
     <!-- %1$s = file name. -->
-    <!-- %1$s = core name, %2$s = emulator app. -->
-    <string name="dialog_missing_core_pkg">%1$s は %2$s にインストールされていません。</string>
-    <!-- %1$s = core name. -->
-    <string name="dialog_missing_core_plain">%1$s はインストールされていません。</string>
-    <string name="dialog_missing_core_hint">エミュレータマッピングで設定します。</string>
-    <!-- %1$s = app name. -->
-    <string name="dialog_missing_app">%1$s はインストールされていません。</string>
-    <!-- %1$s = folder path. -->
-    <string name="dialog_missing_bios_header">%1$sには少なくとも1つのBIOSファイルが必要です:</string>
-    <string name="dialog_title_missing_core">欠けているコア</string>
-    <string name="dialog_title_missing_app">不足しているアプリ</string>
     <string name="dialog_title_launch_error">起動に失敗しました</string>
     <string name="dialog_rename_success">名前を変更しました</string>
     <!-- %1$s = error detail. -->
@@ -440,16 +403,8 @@
     <!-- %1$d = number of items selected. -->
     <string name="selected_count">%1$d Selected</string>
     <!-- Onboarding wizard -->
-    <string name="onboarding_header">キャンセルを設定</string>
     <string name="onboarding_permissions_title">権限とストレージ</string>
-    <string name="onboarding_storage_label">ストレージアクセス</string>
-    <string name="onboarding_storage_rationale">CannoliはROMや保存、アートなどへのアクセスが必要です。\nこれがなければCannoliは何もできません。</string>
-    <string name="onboarding_status_granted">付与済み</string>
-    <string name="onboarding_status_not_granted">許可されていません</string>
-    <string name="onboarding_press_a_to_select_folder">Aを押してフォルダを選択</string>
-    <string name="onboarding_storage_locked_hint">アクセス許可が付与されると設定できます。</string>
     <string name="onboarding_select_folder">フォルダーを選択</string>
-    <string name="onboarding_location_label">場所</string>
     <!-- Boot error screen -->
     <string name="boot_error_title">問題が発生しました</string>
     <!-- Storage row (shared with onboarding) -->
@@ -498,70 +453,20 @@
     <!-- Quick menu -->
     <string name="quick_menu_title">クイックメニュー</string>
     <string name="quick_menu_romm">RomMを閲覧する</string>
-    <string name="quick_menu_download_queue">キューをダウンロード</string>
     <string name="quick_menu_rescan">ライブラリを再スキャン</string>
     <string name="quick_menu_info">ネットワーク情報</string>
     <string name="quick_menu_sync_history">同期履歴を保存</string>
     <string name="sync_history_title">同期履歴を保存</string>
     <string name="sync_history_empty">同期履歴がありません</string>
     <string name="sync_relative_now">ちょうど今</string>
-    <string name="quick_info_title">ネットワーク情報</string>
     <string name="quick_info_ip">IP アドレス</string>
-    <!-- URL to reach the Nonna's Kitchen file server. -->
-    <string name="quick_info_kitchen_url">キッチンURL</string>
-    <string name="quick_info_kitchen_off">キッチンが稼働していません</string>
-    <string name="quick_info_offline">ネットワークがありません</string>
     <!-- RetroAchievements -->
-    <string name="achievos_logged_in_as">としてログイン</string>
     <!-- RA = RetroAchievements. -->
     <string name="achievos_login_failed">RA: ログインに失敗しました</string>
     <string name="achievos_login_invalid">ユーザー名またはパスワードが正しくありません</string>
-    <string name="achievos_status_online">オンライン</string>
-    <string name="achievos_status_offline">オフライン</string>
-    <!-- %1$d = achievements awaiting sync. -->
-    <string name="achievos_status_offline_pending">オフライン • %1$d 保留中の同期</string>
-    <string name="achievos_detect_not_logged_in">ログインしていません</string>
-    <string name="achievos_detect_not_recognized">ゲームが認識されていません</string>
-    <string name="achievos_detect_no_achievements">成果は公開されていません</string>
-    <string name="achievos_detect_mem_failed">メモリ初期化に失敗しました</string>
-    <!-- %d = achievement count. -->
-    <plurals name="achievos_detect_active">
-        <item quantity="other">アクティブ • %d アチーブメント数</item>
-    </plurals>
-    <!-- %d = number of achievements synced. -->
-    <plurals name="achievos_sync_done">
-        <item quantity="other">%d 達成を同期しました</item>
-    </plurals>
-    <!-- Counts of synced and failed achievements. -->
-    <string name="achievos_sync_partial">%1$d 同期、 %2$d 失敗</string>
-    <!-- OSD toast. %1$s = save slot name. -->
-    <string name="osd_state_saved">%1$s に保存しました</string>
-    <!-- OSD toast. %1$s = save slot name. -->
-    <string name="osd_state_loaded">読み込まれた %1$s</string>
-    <!-- OSD toast. %1$s = save slot name. -->
-    <string name="osd_state_deleted">%1$sを削除しました</string>
     <string name="osd_reset">Reset</string>
-    <!-- OSD toast. %1$s = scaling mode name. -->
-    <!-- OSD toast. %1$s = shader preset name. -->
-    <!-- OSD toast. %1$s = mode/item name. -->
-    <string name="osd_switched_to">%1$sに切り替えました</string>
-    <!-- OSD toast. %1$s = game name (setting saved per-game). -->
-    <string name="osd_saved_for">%1$s に保存しました</string>
-    <string name="osd_saved_for_game">このゲームに保存しました</string>
-    <!-- OSD toast. %1$s = controller name, %2$s = player slot. -->
-    <string name="osd_controller_connected_named">%1$s は %2$s に接続されました</string>
-    <!-- %1$d = disc number (multi-disc games). -->
-    <string name="osd_disc_fallback">ディスク %1$d</string>
     <string name="igm_quit">終了</string>
-    <string name="igm_cheats">チート</string>
     <string name="title_cheats">チート</string>
-    <!-- Scaling mode: use the size the emulator core reports. -->
-    <!-- Scaling mode: integer scaling pushed beyond 1x to fill more of the screen. -->
-    <!-- Scaling mode: fit the screen while keeping the aspect ratio. -->
-    <!-- Indicates a setting applies globally (all games). -->
-    <string name="override_source_global">グローバル</string>
-    <!-- Indicates a setting applies only to the current game. -->
-    <string name="override_source_game">このゲーム</string>
     <string name="device_controller">コントローラ</string>
     <!-- OSD toast. %1$d = player number, %2$s = controller name. -->
     <string name="osd_controller_connected">P%1$d: %2$s</string>
@@ -569,32 +474,23 @@
     <string name="osd_controller_disconnected_port">P%1$d: %2$s が切断されました</string>
     <!-- OSD toast. %1$s = controller name. -->
     <string name="osd_controller_disconnected">%1$s が切断されました</string>
-    <!-- RA login OSD. %1$s = username, %2$s = display name, %3$d/%4$d = unlocked/total achievements. -->
-    <string name="achievos_login_success">RA: %1$s (%2$s) · %3$d/%4$d ロック解除</string>
-    <string name="achievos_init_failed">RA: 初期化に失敗しました</string>
     <string name="achievos_load_not_recognized">RA: ゲームが認識されていません</string>
     <string name="achievos_load_no_achievements">RA: このゲームの実績はありません</string>
-    <string name="achievos_load_offline_pending">RA: オフライン (ゲームデータ利用不可)</string>
     <!-- Credits -->
     <string name="credits_title">クレジットとライセンス</string>
-    <!-- Core picker / nav -->
-    <string name="no_compatible_cores">互換性のあるコアが見つかりません</string>
     <string name="no_collections">コレクションがありません</string>
     <string name="title_child_collections">子コレクション</string>
     <string name="title_shortcuts">ショートカット</string>
     <string name="shortcut_hold_prompt" tools:ignore="TypographyEllipsis">1 つ以上のボタンを長押ししてください...</string>
     <!-- Update download -->
-    <string name="update_retry">再試行する</string>
     <string name="restart_required">変更を適用するには再起動が必要です。</string>
     <!-- IGM screen titles -->
-    <string name="igm_settings">設定</string>
     <string name="igm_video">ビデオ</string>
     <string name="igm_emulator">エミュレーター</string>
     <string name="igm_save_changes">変更を保存</string>
     <!-- D-Pad Mode value: 8 directions. -->
     <!-- D-Pad Mode value: 4 directions. -->
     <string name="title_guide">ガイド</string>
-    <string name="guide_zoom">ズーム</string>
     <!-- IGM info labels -->
     <!-- Info label: whether the ROM was extracted from an archive. -->
     <!-- IGM dialogs -->
@@ -623,10 +519,6 @@
     <!-- Setting: maps each platform to an emulator/core. -->
     <string name="setting_emulator_mapping">エミュレータのマッピング</string>
     <string name="label_reset">RESET</string>
-    <string name="label_show_all">すべて表示</string>
-    <string name="label_show_installed">インストール済みを表示</string>
-    <!-- The core is not bundled with the app. -->
-    <string name="value_not_bundled">バンドルしていません</string>
     <string name="value_no_overrides">ゲームごとのオーバーライドはありません。</string>
     <string name="value_no_firmware">このコアにファームウェアは必要ありません。</string>
     <string name="mapping_action_bios">BIOS ファイル</string>
@@ -639,19 +531,11 @@
     <string name="title_platform_mapping">%s マッピング</string>
     <!-- Screen title. %s = platform name. -->
     <string name="title_platform_bios">%s BIOS</string>
-    <string name="filter_all">すべて</string>
     <string name="filter_missing">不足しています</string>
     <string name="filter_unmapped">不足しています</string>
     <string name="filter_mapped">マッピング</string>
     <string name="value_unmapped">マップされていません</string>
     <string name="label_download">ダウンロード</string>
-    <!-- OSD toast. %1$s = core name. -->
-    <string name="osd_downloading_core">ダウンロード中 %1$s</string>
-    <!-- OSD toast. %1$s = core name. -->
-    <string name="osd_core_downloaded">ダウンロード済み %1$s</string>
-    <!-- OSD toast. %1$s = core name or error detail. -->
-    <string name="osd_core_download_failed">ダウンロードに失敗しました: %1$s</string>
-    <string name="osd_core_download_unknown_error">不明なエラー</string>
     <string name="bios_required">必須</string>
     <string name="bios_optional">オプション</string>
     <string name="bios_present">プレゼント</string>
@@ -676,7 +560,6 @@
         <item quantity="other">%d システムフォルダを作成しました</item>
     </plurals>
     <string name="value_no_cores_found">コアが見つかりません</string>
-    <string name="label_clear_override">消去</string>
     <!-- %1$s = platform name. -->
     <string name="dialog_reset_platform_confirm">%1$sをリセットしますか? このプラットフォームのエミュレータの選択を解除し、バンドルされたデフォルトを復元します。</string>
     <!-- RA achievement preload. %1$s = game name. -->
@@ -699,8 +582,6 @@
     <string name="save_slots_screen_title">%1$s スロット</string>
     <string name="save_slots_active">アクティブ</string>
     <string name="save_slots_create">New Slot</string>
-    <string name="save_slots_rename">名前の変更</string>
-    <string name="save_slots_delete">削除</string>
     <string name="save_slots_switch">スイッチ</string>
     <!-- %1$s = slot name. -->
     <string name="save_slots_delete_confirm">スロット \"%1$s\" を削除しますか？</string>
@@ -723,7 +604,6 @@
     </plurals>
     <string name="save_backup_restore">バックアップから復元</string>
     <string name="save_backup_games_title">保存を復元</string>
-    <string name="save_backup_list_title">バックアップ</string>
     <string name="save_backup_none">バックアップがありません</string>
     <string name="save_backup_restore_confirm">このバックアップを復元しますか？\n現在の保存が最初にバックアップされてから、現在のRomMの保存になります。</string>
     <string name="save_backup_restore_done">保存を復元しました</string>
@@ -731,10 +611,6 @@
     <string name="save_backup_restore_pending">復元されたデータを保存し、オンラインのときに同期します</string>
     <string name="save_backup_restore_conflict">復元された保存し、同期の競合を解決します</string>
     <string name="save_backup_restore_failed">復元に失敗しました</string>
-    <!-- %1$d = number of backups. -->
-    <plurals name="save_backup_count">
-        <item quantity="other">%1$d バックアップ</item>
-    </plurals>
     <string name="conflict_keep_local">ローカルを保持</string>
     <string name="conflict_use_server">サーバーを使用</string>
     <string name="conflict_skip">スキップ</string>
@@ -756,5 +632,4 @@
     <string name="kbd_help_cursor_move">左に移動/右</string>
     <string name="kbd_help_cursor_jump">ジャンプして開始 / 終了</string>
     <string name="kbd_help_submit">送信</string>
-    <string name="kbd_help_cancel">キャンセル</string>
 </resources>

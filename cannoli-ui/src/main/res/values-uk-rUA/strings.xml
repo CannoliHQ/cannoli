@@ -34,8 +34,6 @@
     <string name="label_credits">АВТОРИ</string>
     <string name="label_update">ОНОВИТИ</string>
     <string name="label_logout">ВИЙТИ З АКАУНТУ</string>
-    <!-- Bottom-bar button opening cached RetroAchievements sets for offline play. RA = RetroAchievements. -->
-    <string name="achievos_offline_sets">ОФЛАЙН-НАБОРИ</string>
     <string name="label_hex">HEX</string>
     <string name="label_rename">ПЕРЕЙМЕНУВАТИ</string>
     <string name="label_set">ВСТАНОВИТИ</string>
@@ -43,8 +41,6 @@
     <!-- Bottom-bar button; opens Nonna's Kitchen. -->
     <string name="label_kitchen">КУХНЯ</string>
     <string name="label_hold_buttons" tools:ignore="TypographyEllipsis">УТРИМУЙТЕ ОДНУ АБО ДЕКІЛЬКА КНОПОК...</string>
-    <!-- Bottom-bar button. RA = RetroAchievements. -->
-    <string name="achievos_settings">НАЛАШТУВАННЯ RA</string>
     <string name="label_details">ДЕТАЛІ</string>
     <string name="label_all">УСІ</string>
     <string name="label_unlocked">ВІДКРИТО</string>
@@ -61,8 +57,6 @@
     <string name="shortcut_action_save_and_quit">Зберегти і вийти</string>
     <!-- In-game shortcut action. "(Hold)" means it triggers on a long-press of the shortcut. -->
     <string name="shortcut_action_save_and_quit_hold">Зберегти і вийти (утримання)</string>
-    <!-- In-game shortcut action: cycle through the video scaling modes. -->
-    <string name="shortcut_action_cycle_scaling">Перемкнути масштабування</string>
     <!-- In-game shortcut action: cycle through the shader presets. -->
     <string name="shortcut_action_cycle_shader">Перемкнути шейдер</string>
     <string name="shortcut_action_toggle_ff">Перемкнути прискорення</string>
@@ -159,7 +153,6 @@
     <string name="setting_always_save_on_quit">Зберігати стан при виході</string>
     <!-- Advanced setting toggle: skip the passcode gate for Nonna's Kitchen. Keep "Kitchen" consistent with the feature name. -->
     <string name="setting_kitchen_code_bypass">Обхід коду «Кухні»</string>
-    <string name="setting_experimental_features">Експериментальні функції</string>
     <string name="setting_set_default_launcher">Встановити як лаунчер за замовчуванням</string>
     <!-- Same row as setting_set_default_launcher, shown when Cannoli is already the default launcher and the user wants to pick another one. -->
     <!-- Advanced action: recreate the standard platform/system folders. -->
@@ -169,8 +162,6 @@
     <!-- Library setting for the Five Game Handheld collection. Keep "5GH" as-is. -->
     <string name="setting_fgh_collection">Колекція 5GH</string>
     <string name="setting_show_recently_played">Недавно грані</string>
-    <!-- Library setting: show or hide the Favorites entry on the main list. -->
-    <string name="setting_show_favorites">Улюблені</string>
     <!-- Opens the Tools manager (sideloaded utility apps). -->
     <string name="setting_manage_tools">Керування інструментами</string>
     <!-- Opens the Ports manager. "Ports" means standalone native game ports. -->
@@ -189,12 +180,7 @@
     <string name="setting_installed_cores">Встановлені ядра %s</string>
     <!-- Screen title. %s is the emulator app name (e.g. RetroArch). -->
     <string name="title_installed_cores">Встановлені ядра %s</string>
-    <string name="installed_cores_none">Ядра не знайдено</string>
-    <!-- Setting: the app's root storage folder on the SD card. -->
-    <string name="setting_sd_root">Коренева папка Cannoli</string>
     <string name="setting_rom_directory">Папка ROM</string>
-    <!-- Setting: which installed RetroArch app/package to launch games with. -->
-    <string name="setting_ra_package">Пакет RetroArch</string>
     <string name="setting_scan_library">Режим сканування</string>
     <!-- Scan Mode value: scan the library automatically. -->
     <string name="value_automatically">Автоматично</string>
@@ -217,7 +203,6 @@
     <string name="save_conflict_title">Конфлікт збереження</string>
     <string name="save_conflict_keep_local">Залишити цей пристрій</string>
     <string name="save_conflict_use_server">Використати сервер</string>
-    <string name="save_conflict_subtitle">Змінено тут і на сервері</string>
     <string name="save_stale_title">На сервері є новіше збереження</string>
     <string name="save_stale_play_local">Все одно грати локально</string>
     <string name="setting_romm_allow_self_signed">Дозволити самопідписаний сертифікат</string>
@@ -245,7 +230,6 @@
     <string name="romm_detail_players">Гравці</string>
     <string name="romm_detail_on_device">На пристрої</string>
     <string name="romm_detail_not_on_device">Не на пристрої</string>
-    <string name="romm_detail_download">ЗАВАНТАЖИТИ</string>
     <string name="romm_version_picker_title">Яку версію завантажити?</string>
     <!-- Bottom-bar button opening the game's instruction manual (a document), not "manual/by hand". -->
     <string name="label_manual">ВРУЧНУ</string>
@@ -254,12 +238,10 @@
     <string name="romm_syncing" tools:ignore="TypographyEllipsis">Створення кешу...</string>
     <!-- Cache-building status. %1$s is the platform name. -->
     <string name="romm_syncing_platform" tools:ignore="TypographyEllipsis">Створення кешу...\n%1$s</string>
-    <string name="romm_sync_collections">Колекції</string>
     <string name="romm_sync_error">Не вдалося з\'єднатися з RomM. Показано кешовану бібліотеку.</string>
     <string name="romm_download_queue">Черга завантажень</string>
     <string name="romm_download_queued">У черзі</string>
     <string name="romm_download_downloading">Завантаження</string>
-    <string name="romm_download_failed">Помилка</string>
     <string name="romm_download_empty">Немає завантажень</string>
     <string name="romm_download_completed">Завершено</string>
     <string name="romm_osd_download_queued">Додано до завантажень</string>
@@ -285,7 +267,6 @@
     <string name="romm_settings_platforms">Показати / Приховати платформи</string>
     <string name="romm_settings_collections">Показати / Приховати колекції</string>
     <string name="romm_settings_server_info">Інформація про сервер</string>
-    <string name="romm_settings_advanced">Додатково</string>
     <string name="romm_settings_rebuild">Перебудувати кеш</string>
     <string name="romm_actions_title">Швидке меню RomM</string>
     <string name="romm_settings_title">Налаштування RomM</string>
@@ -299,7 +280,6 @@
     <string name="romm_firmware_empty">Немає прошивки</string>
     <string name="romm_firmware_error">Не вдалося завантажити прошивку</string>
     <string name="romm_firmware_not_on_device">Не на пристрої</string>
-    <string name="romm_firmware_on_device">На пристрої</string>
     <string name="romm_art_default">За замовчуванням</string>
     <string name="romm_art_off">Вимкнено</string>
     <string name="romm_art_box2d">Обкладинка 2D</string>
@@ -322,10 +302,7 @@
     <string name="romm_art_no_match">Немає збігів у RomM</string>
     <string name="romm_art_failed">Помилка</string>
     <string name="romm_art_section_no_match">Немає збігу</string>
-    <string name="romm_art_section_failed">Помилка</string>
     <string name="romm_art_done">ГОТОВО</string>
-    <string name="romm_collections_title">Колекції</string>
-    <string name="romm_collection_group_user">Мої колекції</string>
     <!-- RomM "Virtual" collections (auto-grouped, e.g. by franchise or genre). -->
     <string name="romm_collection_group_virtual">Віртуальні</string>
     <!-- RomM "Smart" collections (rule-based, auto-updating). -->
@@ -334,7 +311,6 @@
     <string name="romm_collections_smart">Розумні колекції</string>
     <string name="romm_collections_virtual">Віртуальні колекції</string>
     <string name="romm_vtype_franchise">Франшизи</string>
-    <string name="romm_vtype_collection">Колекції</string>
     <string name="romm_vtype_genre">Жанри</string>
     <string name="romm_vtype_company">Компанії</string>
     <string name="romm_vtype_mode">Ігрові режими</string>
@@ -343,7 +319,6 @@
     <string name="setting_audit_emulator_intents">Аудит намірів емулятора</string>
     <string name="logging_title">Журналювання</string>
     <string name="logging_rom_scan">Сканування ROM</string>
-    <string name="logging_input">Керування</string>
     <string name="logging_session">Ігрова сесія</string>
     <string name="logging_storage">Сховище</string>
     <string name="setting_input_tester">Тест керування</string>
@@ -418,20 +393,8 @@
     <string name="update_download_error_server">Не вдалося завантажити. Сервер повернув помилку. Спробуйте пізніше.</string>
     <string name="update_download_error_network">Не вдалося завантажити. Перевірте з\'єднання та спробуйте ще раз.</string>
     <string name="launch_error_resolve_file">Не вдалося визначити файл запуску</string>
-    <string name="launch_error_extract">Не вдалося розпакувати архів</string>
     <string name="launch_error_generic">Не вдалося запустити гру</string>
     <!-- %1$s = file name. -->
-    <!-- %1$s = core name, %2$s = emulator app. -->
-    <string name="dialog_missing_core_pkg">%1$s не встановлено в %2$s.</string>
-    <!-- %1$s = core name. -->
-    <string name="dialog_missing_core_plain">%1$s не встановлено.</string>
-    <string name="dialog_missing_core_hint">Налаштуйте це у розділі «Прив\'язка емуляторів».</string>
-    <!-- %1$s = app name. -->
-    <string name="dialog_missing_app">%1$s не встановлено.</string>
-    <!-- %1$s = folder path. -->
-    <string name="dialog_missing_bios_header">Потрібен щонайменше один файл BIOS у %1$s:</string>
-    <string name="dialog_title_missing_core">Відсутнє ядро</string>
-    <string name="dialog_title_missing_app">Відсутній застосунок</string>
     <string name="dialog_title_launch_error">Помилка запуску</string>
     <string name="dialog_rename_success">Успішно перейменовано</string>
     <!-- %1$s = error detail. -->
@@ -443,16 +406,8 @@
     <!-- %1$d = number of items selected. -->
     <string name="selected_count">Вибрано: %1$d</string>
     <!-- Onboarding wizard -->
-    <string name="onboarding_header">НАЛАШТУВАННЯ CANNOLI</string>
     <string name="onboarding_permissions_title">Дозволи та сховище</string>
-    <string name="onboarding_storage_label">Доступ до сховища</string>
-    <string name="onboarding_storage_rationale">Cannoli потрібен доступ до ваших ROM, збережень, обкладинок тощо.\nБез цього Cannoli не зможе працювати.</string>
-    <string name="onboarding_status_granted">Надано</string>
-    <string name="onboarding_status_not_granted">Не надано</string>
-    <string name="onboarding_press_a_to_select_folder">Натисніть A, щоб вибрати папку</string>
-    <string name="onboarding_storage_locked_hint">Стане доступним після надання дозволів.</string>
     <string name="onboarding_select_folder">ВИБРАТИ ПАПКУ</string>
-    <string name="onboarding_location_label">Розташування</string>
     <!-- Boot error screen -->
     <string name="boot_error_title">Щось пішло не так</string>
     <!-- Storage row (shared with onboarding) -->
@@ -501,78 +456,20 @@
     <!-- Quick menu -->
     <string name="quick_menu_title">Швидке меню</string>
     <string name="quick_menu_romm">Переглянути RomM</string>
-    <string name="quick_menu_download_queue">Черга завантажень</string>
     <string name="quick_menu_rescan">Пересканувати бібліотеку</string>
     <string name="quick_menu_info">Інформація про мережу</string>
     <string name="quick_menu_sync_history">Історія синхронізації збережень</string>
     <string name="sync_history_title">Історія синхронізації збережень</string>
     <string name="sync_history_empty">Історія синхронізації порожня</string>
     <string name="sync_relative_now">щойно</string>
-    <string name="quick_info_title">Інформація про мережу</string>
     <string name="quick_info_ip">IP-адреса</string>
-    <!-- URL to reach the Nonna's Kitchen file server. -->
-    <string name="quick_info_kitchen_url">URL «Кухні»</string>
-    <string name="quick_info_kitchen_off">«Кухня» не запущена</string>
-    <string name="quick_info_offline">Немає мережі</string>
     <!-- RetroAchievements -->
-    <string name="achievos_logged_in_as">Увійшли як</string>
     <!-- RA = RetroAchievements. -->
     <string name="achievos_login_failed">RA: не вдалося увійти</string>
     <string name="achievos_login_invalid">Неправильне ім\'я користувача або пароль</string>
-    <string name="achievos_status_online">У мережі</string>
-    <string name="achievos_status_offline">Не в мережі</string>
-    <!-- %1$d = achievements awaiting sync. -->
-    <string name="achievos_status_offline_pending">Не в мережі • Очікує синхр.: %1$d</string>
-    <string name="achievos_detect_not_logged_in">Не увійшли</string>
-    <string name="achievos_detect_identifying">Розпізнавання гри…</string>
-    <string name="achievos_detect_not_recognized">Гру не розпізнано</string>
-    <string name="achievos_detect_no_achievements">Досягнення не опубліковано</string>
-    <string name="achievos_detect_initializing">Ініціалізація…</string>
-    <string name="achievos_detect_mem_failed">Не вдалося ініціалізувати пам\'ять</string>
-    <!-- %d = achievement count. -->
-    <plurals name="achievos_detect_active">
-        <item quantity="one">Активно • %d досягнення</item>
-        <item quantity="few">Активно • %d досягнення</item>
-        <item quantity="many">Активно • %d досягнень</item>
-        <item quantity="other">Активно • %d досягнення</item>
-    </plurals>
-    <!-- %d = number of achievements synced. -->
-    <plurals name="achievos_sync_done">
-        <item quantity="one">Синхронізовано %d досягнення</item>
-        <item quantity="few">Синхронізовано %d досягнення</item>
-        <item quantity="many">Синхронізовано %d досягнень</item>
-        <item quantity="other">Синхронізовано %d досягнення</item>
-    </plurals>
-    <!-- Counts of synced and failed achievements. -->
-    <string name="achievos_sync_partial">Синхронізовано: %1$d, помилок: %2$d</string>
-    <!-- OSD toast. %1$s = save slot name. -->
-    <string name="osd_state_saved">Збережено в %1$s</string>
-    <!-- OSD toast. %1$s = save slot name. -->
-    <string name="osd_state_loaded">Завантажено %1$s</string>
-    <!-- OSD toast. %1$s = save slot name. -->
-    <string name="osd_state_deleted">Видалено %1$s</string>
     <string name="osd_reset">Скинуто</string>
-    <!-- OSD toast. %1$s = scaling mode name. -->
-    <!-- OSD toast. %1$s = shader preset name. -->
-    <!-- OSD toast. %1$s = mode/item name. -->
-    <string name="osd_switched_to">Перемкнено на %1$s</string>
-    <!-- OSD toast. %1$s = game name (setting saved per-game). -->
-    <string name="osd_saved_for">Збережено для %1$s</string>
-    <string name="osd_saved_for_game">Збережено для цієї гри</string>
-    <!-- OSD toast. %1$s = controller name, %2$s = player slot. -->
-    <string name="osd_controller_connected_named">%1$s підключено до %2$s</string>
-    <!-- %1$d = disc number (multi-disc games). -->
-    <string name="osd_disc_fallback">Диск %1$d</string>
     <string name="igm_quit">Вийти</string>
-    <string name="igm_cheats">Чит-коди</string>
     <string name="title_cheats">Чит-коди</string>
-    <!-- Scaling mode: use the size the emulator core reports. -->
-    <!-- Scaling mode: integer scaling pushed beyond 1x to fill more of the screen. -->
-    <!-- Scaling mode: fit the screen while keeping the aspect ratio. -->
-    <!-- Indicates a setting applies globally (all games). -->
-    <string name="override_source_global">Глобально</string>
-    <!-- Indicates a setting applies only to the current game. -->
-    <string name="override_source_game">Ця гра</string>
     <string name="device_controller">Контролер</string>
     <!-- OSD toast. %1$d = player number, %2$s = controller name. -->
     <string name="osd_controller_connected">Г%1$d: %2$s</string>
@@ -580,32 +477,23 @@
     <string name="osd_controller_disconnected_port">Г%1$d: %2$s від\'єднано</string>
     <!-- OSD toast. %1$s = controller name. -->
     <string name="osd_controller_disconnected">%1$s від\'єднано</string>
-    <!-- RA login OSD. %1$s = username, %2$s = display name, %3$d/%4$d = unlocked/total achievements. -->
-    <string name="achievos_login_success">RA: %1$s (%2$s) · %3$d/%4$d відкрито</string>
-    <string name="achievos_init_failed">RA: помилка ініціалізації</string>
     <string name="achievos_load_not_recognized">RA: гру не розпізнано</string>
     <string name="achievos_load_no_achievements">RA: немає досягнень для цієї гри</string>
-    <string name="achievos_load_offline_pending">RA: офлайн (дані гри недоступні)</string>
     <!-- Credits -->
     <string name="credits_title">Автори та ліцензії</string>
-    <!-- Core picker / nav -->
-    <string name="no_compatible_cores">Сумісні ядра не знайдено</string>
     <string name="no_collections">Немає колекцій</string>
     <string name="title_child_collections">Дочірні колекції</string>
     <string name="title_shortcuts">Ярлики</string>
     <string name="shortcut_hold_prompt" tools:ignore="TypographyEllipsis">Утримуйте одну або декілька кнопок...</string>
     <!-- Update download -->
-    <string name="update_retry">ПОВТОРИТИ</string>
     <string name="restart_required">Для застосування змін потрібен перезапуск.</string>
     <!-- IGM screen titles -->
-    <string name="igm_settings">Налаштування</string>
     <string name="igm_video">Відео</string>
     <string name="igm_emulator">Емулятор</string>
     <string name="igm_save_changes">Зберегти зміни</string>
     <!-- D-Pad Mode value: 8 directions. -->
     <!-- D-Pad Mode value: 4 directions. -->
     <string name="title_guide">Посібник</string>
-    <string name="guide_zoom">МАСШТАБ</string>
     <!-- IGM info labels -->
     <!-- Info label: whether the ROM was extracted from an archive. -->
     <!-- IGM dialogs -->
@@ -635,10 +523,6 @@
     <!-- Setting: maps each platform to an emulator/core. -->
     <string name="setting_emulator_mapping">Прив\'язка емуляторів</string>
     <string name="label_reset">СКИНУТИ</string>
-    <string name="label_show_all">ПОКАЗАТИ ВСІ</string>
-    <string name="label_show_installed">ПОКАЗАТИ ВСТАНОВЛЕНІ</string>
-    <!-- The core is not bundled with the app. -->
-    <string name="value_not_bundled">НЕ ВБУДОВАНО</string>
     <string name="value_no_overrides">Немає перевизначень для окремих ігор.</string>
     <string name="value_no_firmware">Для цього ядра прошивка не потрібна.</string>
     <string name="mapping_action_bios">Файли BIOS</string>
@@ -651,19 +535,11 @@
     <string name="title_platform_mapping">Прив\'язка %s</string>
     <!-- Screen title. %s = platform name. -->
     <string name="title_platform_bios">BIOS %s</string>
-    <string name="filter_all">УСІ</string>
     <string name="filter_missing">ВІДСУТНІ</string>
     <string name="filter_unmapped">НЕ ПРИЗНАЧЕНО</string>
     <string name="filter_mapped">ПРИЗНАЧЕНО</string>
     <string name="value_unmapped">Не призначено</string>
     <string name="label_download">ЗАВАНТАЖИТИ</string>
-    <!-- OSD toast. %1$s = core name. -->
-    <string name="osd_downloading_core">Завантаження %1$s</string>
-    <!-- OSD toast. %1$s = core name. -->
-    <string name="osd_core_downloaded">Завантажено %1$s</string>
-    <!-- OSD toast. %1$s = core name or error detail. -->
-    <string name="osd_core_download_failed">Помилка завантаження: %1$s</string>
-    <string name="osd_core_download_unknown_error">невідома помилка</string>
     <string name="bios_required">ОБОВ\'ЯЗКОВО</string>
     <string name="bios_optional">НЕОБОВ\'ЯЗКОВО</string>
     <string name="bios_present">Наявний</string>
@@ -700,7 +576,6 @@
         <item quantity="other">Створено %d системної папки</item>
     </plurals>
     <string name="value_no_cores_found">Ядра не знайдено</string>
-    <string name="label_clear_override">ОЧИСТИТИ</string>
     <!-- %1$s = platform name. -->
     <string name="dialog_reset_platform_confirm">Скинути %1$s? Це очистить вибір емулятора для цієї платформи та відновить типовий вбудований варіант.</string>
     <!-- RA achievement preload. %1$s = game name. -->
@@ -726,8 +601,6 @@
     <string name="save_slots_screen_title">Слоти %1$s</string>
     <string name="save_slots_active">Активний</string>
     <string name="save_slots_create">НОВИЙ СЛОТ</string>
-    <string name="save_slots_rename">ПЕРЕЙМЕНУВАТИ</string>
-    <string name="save_slots_delete">ВИДАЛИТИ</string>
     <string name="save_slots_switch">ПЕРЕМКНУТИ</string>
     <!-- %1$s = slot name. -->
     <string name="save_slots_delete_confirm">Видалити слот «%1$s»?</string>
@@ -759,7 +632,6 @@
     </plurals>
     <string name="save_backup_restore">Відновити з резервної копії</string>
     <string name="save_backup_games_title">Відновлення збереження</string>
-    <string name="save_backup_list_title">Резервні копії</string>
     <string name="save_backup_none">Немає резервних копій</string>
     <string name="save_backup_restore_confirm">Відновити цю резервну копію?\nСпочатку буде створено резервну копію поточного збереження, після чого ця копія стане поточним збереженням на RomM.</string>
     <string name="save_backup_restore_done">Збереження відновлено</string>
@@ -767,13 +639,6 @@
     <string name="save_backup_restore_pending">Збереження відновлено, синхронізується при підключенні</string>
     <string name="save_backup_restore_conflict">Збереження відновлено, вирішіть конфлікт синхронізації</string>
     <string name="save_backup_restore_failed">Не вдалося відновити</string>
-    <!-- %1$d = number of backups. -->
-    <plurals name="save_backup_count">
-        <item quantity="one">%1$d резервна копія</item>
-        <item quantity="few">%1$d резервні копії</item>
-        <item quantity="many">%1$d резервних копій</item>
-        <item quantity="other">%1$d резервної копії</item>
-    </plurals>
     <string name="conflict_keep_local">Залишити локальну</string>
     <string name="conflict_use_server">Використати серверну</string>
     <string name="conflict_skip">Пропустити</string>
@@ -795,5 +660,4 @@
     <string name="kbd_help_cursor_move">РУХ ВЛІВО / ВПРАВО</string>
     <string name="kbd_help_cursor_jump">ПЕРЕХІД НА ПОЧАТОК / КІНЕЦЬ</string>
     <string name="kbd_help_submit">ПІДТВЕРДИТИ</string>
-    <string name="kbd_help_cancel">СКАСУВАТИ</string>
 </resources>

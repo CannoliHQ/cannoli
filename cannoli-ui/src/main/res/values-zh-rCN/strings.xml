@@ -34,8 +34,6 @@
     <string name="label_credits">鸣谢</string>
     <string name="label_update">更新</string>
     <string name="label_logout">登出</string>
-    <!-- Bottom-bar button opening cached RetroAchievements sets for offline play. RA = RetroAchievements. -->
-    <string name="achievos_offline_sets">离线成就</string>
     <string name="label_hex">HEX</string>
     <string name="label_rename">重命名</string>
     <string name="label_set">设置</string>
@@ -43,8 +41,6 @@
     <!-- Bottom-bar button; opens Nonna's Kitchen. -->
     <string name="label_kitchen">厨房</string>
     <string name="label_hold_buttons" tools:ignore="TypographyEllipsis">按住一个或多个按键…</string>
-    <!-- Bottom-bar button. RA = RetroAchievements. -->
-    <string name="achievos_settings">复古成就设定</string>
     <string name="label_details">详情</string>
     <string name="label_all">全部</string>
     <string name="label_unlocked">已解锁</string>
@@ -61,8 +57,6 @@
     <string name="shortcut_action_save_and_quit">保存并退出</string>
     <!-- In-game shortcut action. "(Hold)" means it triggers on a long-press of the shortcut. -->
     <string name="shortcut_action_save_and_quit_hold">保存并退出 (长按)</string>
-    <!-- In-game shortcut action: cycle through the video scaling modes. -->
-    <string name="shortcut_action_cycle_scaling">切换缩放比例</string>
     <!-- In-game shortcut action: cycle through the shader presets. -->
     <string name="shortcut_action_cycle_shader">切换着色器</string>
     <string name="shortcut_action_toggle_ff">切换快速模式</string>
@@ -159,7 +153,6 @@
     <string name="setting_always_save_on_quit">退出时保存状态</string>
     <!-- Advanced setting toggle: skip the passcode gate for Nonna's Kitchen. Keep "Kitchen" consistent with the feature name. -->
     <string name="setting_kitchen_code_bypass">跳过厨房密码</string>
-    <string name="setting_experimental_features">实验特性</string>
     <string name="setting_set_default_launcher">设置为默认启动器</string>
     <!-- Same row as setting_set_default_launcher, shown when Cannoli is already the default launcher and the user wants to pick another one. -->
     <string name="setting_change_default_launcher">更换启动器</string>
@@ -170,8 +163,6 @@
     <!-- Library setting for the Five Game Handheld collection. Keep "5GH" as-is. -->
     <string name="setting_fgh_collection">5GH 收藏集</string>
     <string name="setting_show_recently_played">最近玩过的</string>
-    <!-- Library setting: show or hide the Favorites entry on the main list. -->
-    <string name="setting_show_favorites">最爱的</string>
     <!-- Opens the Tools manager (sideloaded utility apps). -->
     <string name="setting_manage_tools">管理工具</string>
     <!-- Opens the Ports manager. "Ports" means standalone native game ports. -->
@@ -190,12 +181,7 @@
     <string name="setting_installed_cores">%s 已安装的核心</string>
     <!-- Screen title. %s is the emulator app name (e.g. RetroArch). -->
     <string name="title_installed_cores">%s 已安装的核心</string>
-    <string name="installed_cores_none">未找到核心</string>
-    <!-- Setting: the app's root storage folder on the SD card. -->
-    <string name="setting_sd_root">Cannoli 根目录</string>
     <string name="setting_rom_directory">ROM 目录</string>
-    <!-- Setting: which installed RetroArch app/package to launch games with. -->
-    <string name="setting_ra_package">Retroarch应用包</string>
     <string name="setting_scan_library">扫描模式</string>
     <!-- Scan Mode value: scan the library automatically. -->
     <string name="value_automatically">自动</string>
@@ -218,7 +204,6 @@
     <string name="save_conflict_title">保存冲突</string>
     <string name="save_conflict_keep_local">保留此设备版本</string>
     <string name="save_conflict_use_server">使用服务器版本</string>
-    <string name="save_conflict_subtitle">在这里和服务器上更改</string>
     <string name="save_stale_title">服务器有较新的保存</string>
     <string name="save_stale_play_local">仍然本地游玩</string>
     <string name="setting_romm_allow_self_signed">允许自签名证书</string>
@@ -246,7 +231,6 @@
     <string name="romm_detail_players">玩家数</string>
     <string name="romm_detail_on_device">在设备上</string>
     <string name="romm_detail_not_on_device">不在设备上</string>
-    <string name="romm_detail_download">下载</string>
     <string name="romm_version_picker_title">下载哪个版本？</string>
     <!-- Bottom-bar button opening the game's instruction manual (a document), not "manual/by hand". -->
     <string name="label_manual">手册</string>
@@ -255,12 +239,10 @@
     <string name="romm_syncing" tools:ignore="TypographyEllipsis">正在构建缓存...</string>
     <!-- Cache-building status. %1$s is the platform name. -->
     <string name="romm_syncing_platform" tools:ignore="TypographyEllipsis">正在构建缓存...\n%1$s</string>
-    <string name="romm_sync_collections">收藏集</string>
     <string name="romm_sync_error">无法连接到RomM。显示缓存的库。</string>
     <string name="romm_download_queue">下载队列</string>
     <string name="romm_download_queued">队列中</string>
     <string name="romm_download_downloading">下载中</string>
-    <string name="romm_download_failed">失败</string>
     <string name="romm_download_empty">无下载</string>
     <string name="romm_download_completed">已完成</string>
     <string name="romm_osd_download_queued">添加到下载</string>
@@ -283,7 +265,6 @@
     <string name="romm_settings_platforms">显示/隐藏平台</string>
     <string name="romm_settings_collections">显示/隐藏收藏集</string>
     <string name="romm_settings_server_info">服务器信息</string>
-    <string name="romm_settings_advanced">高级设置</string>
     <string name="romm_settings_rebuild">重建缓存</string>
     <string name="romm_actions_title">RomM快捷菜单</string>
     <string name="romm_settings_title">RomM设置</string>
@@ -297,7 +278,6 @@
     <string name="romm_firmware_empty">没有固件</string>
     <string name="romm_firmware_error">无法加载固件</string>
     <string name="romm_firmware_not_on_device">不在设备上</string>
-    <string name="romm_firmware_on_device">在设备上</string>
     <string name="romm_art_default">默认</string>
     <string name="romm_art_off">已关闭</string>
     <string name="romm_art_box2d">2D封面</string>
@@ -320,10 +300,7 @@
     <string name="romm_art_no_match">无 RomM 匹配</string>
     <string name="romm_art_failed">失败</string>
     <string name="romm_art_section_no_match">无匹配</string>
-    <string name="romm_art_section_failed">失败</string>
     <string name="romm_art_done">完成</string>
-    <string name="romm_collections_title">收藏集</string>
-    <string name="romm_collection_group_user">我的收藏集</string>
     <!-- RomM "Virtual" collections (auto-grouped, e.g. by franchise or genre). -->
     <string name="romm_collection_group_virtual">虚拟</string>
     <!-- RomM "Smart" collections (rule-based, auto-updating). -->
@@ -332,7 +309,6 @@
     <string name="romm_collections_smart">智能收藏集</string>
     <string name="romm_collections_virtual">虚拟收藏集</string>
     <string name="romm_vtype_franchise">系列</string>
-    <string name="romm_vtype_collection">收藏集</string>
     <string name="romm_vtype_genre">分类</string>
     <string name="romm_vtype_company">公司</string>
     <string name="romm_vtype_mode">游戏模式</string>
@@ -341,7 +317,6 @@
     <string name="setting_audit_emulator_intents">查看模拟器Intents</string>
     <string name="logging_title">日志</string>
     <string name="logging_rom_scan">扫描ROM</string>
-    <string name="logging_input">输入</string>
     <string name="logging_session">游戏会话</string>
     <string name="logging_storage">存储</string>
     <string name="setting_input_tester">测试输入</string>
@@ -416,21 +391,9 @@
     <string name="update_download_error_server">下载失败。服务器返回错误。请稍后再试。</string>
     <string name="update_download_error_network">下载失败。请检查您的连接，然后重试。</string>
     <string name="launch_error_resolve_file">无法解析启动文件</string>
-    <string name="launch_error_extract">提取归档失败</string>
     <string name="launch_error_generic">无法启动游戏</string>
     <!-- %1$s = file name. -->
     <string name="launch_error_bad_game_file">无法从 %1$s 读取游戏ID</string>
-    <!-- %1$s = core name, %2$s = emulator app. -->
-    <string name="dialog_missing_core_pkg">%1$s 没有安装在 %2$s 中。</string>
-    <!-- %1$s = core name. -->
-    <string name="dialog_missing_core_plain">%1$s 未安装。</string>
-    <string name="dialog_missing_core_hint">在模拟器映射中设置它。</string>
-    <!-- %1$s = app name. -->
-    <string name="dialog_missing_app">%1$s 未安装。</string>
-    <!-- %1$s = folder path. -->
-    <string name="dialog_missing_bios_header">%1$s 中至少需要一个BIOS 文件：</string>
-    <string name="dialog_title_missing_core">缺少核心文件</string>
-    <string name="dialog_title_missing_app">缺少应用程序</string>
     <string name="dialog_title_launch_error">启动失败</string>
     <string name="dialog_rename_success">重命名成功</string>
     <!-- %1$s = error detail. -->
@@ -442,16 +405,8 @@
     <!-- %1$d = number of items selected. -->
     <string name="selected_count">已选择 %1$d</string>
     <!-- Onboarding wizard -->
-    <string name="onboarding_header">设置Cannoli</string>
     <string name="onboarding_permissions_title">权限和存储</string>
-    <string name="onboarding_storage_label">存取权限</string>
-    <string name="onboarding_storage_rationale">Cannoli需要获取您ROMs，存档，封面和其他文件的权限。\n如缺少权限，Cannoli将无法正常工作。</string>
-    <string name="onboarding_status_granted">已授权</string>
-    <string name="onboarding_status_not_granted">未授权</string>
-    <string name="onboarding_press_a_to_select_folder">按 A 选择文件夹</string>
-    <string name="onboarding_storage_locked_hint">授予权限后可进行配置。</string>
     <string name="onboarding_select_folder">选择文件夹</string>
-    <string name="onboarding_location_label">位置</string>
     <!-- Boot error screen -->
     <string name="boot_error_title">出错了</string>
     <!-- Storage row (shared with onboarding) -->
@@ -500,72 +455,20 @@
     <!-- Quick menu -->
     <string name="quick_menu_title">快捷菜单</string>
     <string name="quick_menu_romm">浏览RomM</string>
-    <string name="quick_menu_download_queue">下载队列</string>
     <string name="quick_menu_rescan">重新扫描库</string>
     <string name="quick_menu_info">网络信息</string>
     <string name="quick_menu_sync_history">保存同步历史记录</string>
     <string name="sync_history_title">保存同步历史记录</string>
     <string name="sync_history_empty">没有同步历史记录</string>
     <string name="sync_relative_now">刚刚</string>
-    <string name="quick_info_title">网络信息</string>
     <string name="quick_info_ip">IP地址</string>
-    <!-- URL to reach the Nonna's Kitchen file server. -->
-    <string name="quick_info_kitchen_url">厨房URL</string>
-    <string name="quick_info_kitchen_off">厨房未运行</string>
-    <string name="quick_info_offline">无网络</string>
     <!-- RetroAchievements -->
-    <string name="achievos_logged_in_as">登录为</string>
     <!-- RA = RetroAchievements. -->
     <string name="achievos_login_failed">RA: 登录失败</string>
     <string name="achievos_login_invalid">无效的用户名或密码</string>
-    <string name="achievos_status_online">在线</string>
-    <string name="achievos_status_offline">离线</string>
-    <!-- %1$d = achievements awaiting sync. -->
-    <string name="achievos_status_offline_pending">离线• %1$d 等待同步</string>
-    <string name="achievos_detect_not_logged_in">未登录</string>
-    <string name="achievos_detect_identifying">识别游戏…</string>
-    <string name="achievos_detect_not_recognized">游戏未识别</string>
-    <string name="achievos_detect_no_achievements">没有发布的成就</string>
-    <string name="achievos_detect_initializing">正在初始化…</string>
-    <string name="achievos_detect_mem_failed">内存初始化失败</string>
-    <!-- %d = achievement count. -->
-    <plurals name="achievos_detect_active">
-        <item quantity="other">活动的 %d 成就</item>
-    </plurals>
-    <!-- %d = number of achievements synced. -->
-    <plurals name="achievos_sync_done">
-        <item quantity="other">%d 成就已同步</item>
-    </plurals>
-    <!-- Counts of synced and failed achievements. -->
-    <string name="achievos_sync_partial">%1$d 已同步， %2$d 失败</string>
-    <!-- OSD toast. %1$s = save slot name. -->
-    <string name="osd_state_saved">已保存到 %1$s</string>
-    <!-- OSD toast. %1$s = save slot name. -->
-    <string name="osd_state_loaded">已加载 %1$s</string>
-    <!-- OSD toast. %1$s = save slot name. -->
-    <string name="osd_state_deleted">已删除 %1$s</string>
     <string name="osd_reset">重置</string>
-    <!-- OSD toast. %1$s = scaling mode name. -->
-    <!-- OSD toast. %1$s = shader preset name. -->
-    <!-- OSD toast. %1$s = mode/item name. -->
-    <string name="osd_switched_to">切换到 %1$s</string>
-    <!-- OSD toast. %1$s = game name (setting saved per-game). -->
-    <string name="osd_saved_for">已保存为 %1$s</string>
-    <string name="osd_saved_for_game">为这个游戏保存</string>
-    <!-- OSD toast. %1$s = controller name, %2$s = player slot. -->
-    <string name="osd_controller_connected_named">%1$s 已连接到 %2$s</string>
-    <!-- %1$d = disc number (multi-disc games). -->
-    <string name="osd_disc_fallback">光盘 %1$d</string>
     <string name="igm_quit">退出</string>
-    <string name="igm_cheats">作弊码</string>
     <string name="title_cheats">作弊码</string>
-    <!-- Scaling mode: use the size the emulator core reports. -->
-    <!-- Scaling mode: integer scaling pushed beyond 1x to fill more of the screen. -->
-    <!-- Scaling mode: fit the screen while keeping the aspect ratio. -->
-    <!-- Indicates a setting applies globally (all games). -->
-    <string name="override_source_global">全局</string>
-    <!-- Indicates a setting applies only to the current game. -->
-    <string name="override_source_game">此游戏</string>
     <string name="device_controller">控制器</string>
     <!-- OSD toast. %1$d = player number, %2$s = controller name. -->
     <string name="osd_controller_connected">P%1$d: %2$s</string>
@@ -573,32 +476,23 @@
     <string name="osd_controller_disconnected_port">P%1$d: %2$s 断开连接</string>
     <!-- OSD toast. %1$s = controller name. -->
     <string name="osd_controller_disconnected">%1$s 已断开连接</string>
-    <!-- RA login OSD. %1$s = username, %2$s = display name, %3$d/%4$d = unlocked/total achievements. -->
-    <string name="achievos_login_success">RA: %1$s (%2$s) · %3$d/%4$d 已解锁</string>
-    <string name="achievos_init_failed">RA: 初始化失败</string>
     <string name="achievos_load_not_recognized">RA：游戏未识别</string>
     <string name="achievos_load_no_achievements">RA：此游戏没有成就</string>
-    <string name="achievos_load_offline_pending">RA：离线(游戏数据不可用)</string>
     <!-- Credits -->
     <string name="credits_title">鸣谢与授权</string>
-    <!-- Core picker / nav -->
-    <string name="no_compatible_cores">没有找到兼容的核心。</string>
     <string name="no_collections">暂无收藏集</string>
     <string name="title_child_collections">子收藏集</string>
     <string name="title_shortcuts">快捷方式</string>
     <string name="shortcut_hold_prompt" tools:ignore="TypographyEllipsis">按住一个或多个按钮...</string>
     <!-- Update download -->
-    <string name="update_retry">重试</string>
     <string name="restart_required">重启以应用更改。</string>
     <!-- IGM screen titles -->
-    <string name="igm_settings">设置</string>
     <string name="igm_video">视频</string>
     <string name="igm_emulator">模拟器</string>
     <string name="igm_save_changes">保存更改</string>
     <!-- D-Pad Mode value: 8 directions. -->
     <!-- D-Pad Mode value: 4 directions. -->
     <string name="title_guide">指南</string>
-    <string name="guide_zoom">缩放</string>
     <!-- IGM info labels -->
     <!-- Info label: whether the ROM was extracted from an archive. -->
     <!-- IGM dialogs -->
@@ -628,10 +522,6 @@
     <!-- Setting: maps each platform to an emulator/core. -->
     <string name="setting_emulator_mapping">模拟器映射</string>
     <string name="label_reset">重置</string>
-    <string name="label_show_all">显示全部</string>
-    <string name="label_show_installed">显示已安装的</string>
-    <!-- The core is not bundled with the app. -->
-    <string name="value_not_bundled">未打包的</string>
     <string name="value_no_overrides">没有游戏覆盖。</string>
     <string name="value_no_firmware">此核心不需要固件。</string>
     <string name="mapping_action_bios">BIOS文件</string>
@@ -645,19 +535,11 @@
     <string name="title_platform_mapping">%s 映射</string>
     <!-- Screen title. %s = platform name. -->
     <string name="title_platform_bios">%s BIOS</string>
-    <string name="filter_all">全部</string>
     <string name="filter_missing">缺失</string>
     <string name="filter_unmapped">未映射</string>
     <string name="filter_mapped">已映射</string>
     <string name="value_unmapped">未映射的</string>
     <string name="label_download">下载</string>
-    <!-- OSD toast. %1$s = core name. -->
-    <string name="osd_downloading_core">正在下载 %1$s</string>
-    <!-- OSD toast. %1$s = core name. -->
-    <string name="osd_core_downloaded">已下载 %1$s</string>
-    <!-- OSD toast. %1$s = core name or error detail. -->
-    <string name="osd_core_download_failed">下载失败: %1$s</string>
-    <string name="osd_core_download_unknown_error">未知错误</string>
     <string name="bios_required">必需</string>
     <string name="bios_optional">可选</string>
     <string name="bios_present">当前</string>
@@ -682,7 +564,6 @@
         <item quantity="other">已创建 %d 系统文件夹</item>
     </plurals>
     <string name="value_no_cores_found">未找到核心</string>
-    <string name="label_clear_override">清除</string>
     <!-- %1$s = platform name. -->
     <string name="dialog_reset_platform_confirm">重置 %1$s吗？这将清除您对此平台的模拟器选择，并还原捆绑的默认值。</string>
     <!-- RA achievement preload. %1$s = game name. -->
@@ -705,8 +586,6 @@
     <string name="save_slots_screen_title">%1$s 栏位</string>
     <string name="save_slots_active">启用</string>
     <string name="save_slots_create">新栏位</string>
-    <string name="save_slots_rename">重命名</string>
-    <string name="save_slots_delete">删除</string>
     <string name="save_slots_switch">切换</string>
     <!-- %1$s = slot name. -->
     <string name="save_slots_delete_confirm">删除栏位 \"%1$s 吗？</string>
@@ -729,7 +608,6 @@
     </plurals>
     <string name="save_backup_restore">从备份恢复</string>
     <string name="save_backup_games_title">还原存档</string>
-    <string name="save_backup_list_title">备份</string>
     <string name="save_backup_none">没有备份</string>
     <string name="save_backup_restore_confirm">还原此备份吗？\n您当前的存档将进行备份，然后这将成为您目前在 RomM 上的存档。</string>
     <string name="save_backup_restore_done">存档已恢复</string>
@@ -737,10 +615,6 @@
     <string name="save_backup_restore_pending">存档已恢复，上线时同步</string>
     <string name="save_backup_restore_conflict">存档已还原，解决同步冲突</string>
     <string name="save_backup_restore_failed">还原失败</string>
-    <!-- %1$d = number of backups. -->
-    <plurals name="save_backup_count">
-        <item quantity="other">%1$d 备份</item>
-    </plurals>
     <string name="conflict_keep_local">保留本地版本</string>
     <string name="conflict_use_server">使用服务器版本</string>
     <string name="conflict_skip">跳过</string>
@@ -762,5 +636,4 @@
     <string name="kbd_help_cursor_move">向左/右移动</string>
     <string name="kbd_help_cursor_jump">跳到开始/结束</string>
     <string name="kbd_help_submit">提交</string>
-    <string name="kbd_help_cancel">取消</string>
 </resources>

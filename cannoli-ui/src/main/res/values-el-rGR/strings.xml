@@ -34,8 +34,6 @@
     <string name="label_credits">ΠΙΣΤΩΣΕΙΣ</string>
     <string name="label_update">ΕΝΗΜΕΡΩΣΗ</string>
     <string name="label_logout">LOGOUT</string>
-    <!-- Bottom-bar button opening cached RetroAchievements sets for offline play. RA = RetroAchievements. -->
-    <string name="achievos_offline_sets">ΠΡΟΓΡΑΜΜΜΑΤΑ ΣΤΟΙΧΕΙΩΝ</string>
     <string name="label_hex">HEX</string>
     <string name="label_rename">ΕΠΙΣΤΡΟΦΗ</string>
     <string name="label_set">ΕΝΑΡΞΗ</string>
@@ -43,8 +41,6 @@
     <!-- Bottom-bar button; opens Nonna's Kitchen. -->
     <string name="label_kitchen">KITCHEN</string>
     <string name="label_hold_buttons" tools:ignore="TypographyEllipsis">ΧΑΡΑΚΤΗΡΙΣΤΙΚΑ Ή ΠΕΡΙΣΣΟΤΕΡΑ ΒΟΥΤΥΝ...</string>
-    <!-- Bottom-bar button. RA = RetroAchievements. -->
-    <string name="achievos_settings">ΡΥΘΜΙΣΕΙΣ RA</string>
     <string name="label_details">ΛΕΠΤΟΜΕΡΕΙΣ</string>
     <string name="label_all">ΟΛΑ</string>
     <string name="label_unlocked">ΞΕΚΛΕΙΔΩΜΕΝΟ</string>
@@ -61,8 +57,6 @@
     <string name="shortcut_action_save_and_quit">Αποθήκευση και έξοδος</string>
     <!-- In-game shortcut action. "(Hold)" means it triggers on a long-press of the shortcut. -->
     <string name="shortcut_action_save_and_quit_hold">Αποθήκευση και έξοδος (Hold)</string>
-    <!-- In-game shortcut action: cycle through the video scaling modes. -->
-    <string name="shortcut_action_cycle_scaling">Κλιμάκωση Κύκλου</string>
     <!-- In-game shortcut action: cycle through the shader presets. -->
     <string name="shortcut_action_cycle_shader">Σκίαση Κύκλου</string>
     <string name="shortcut_action_toggle_ff">Εναλλαγή Γρήγορης Προώθησης</string>
@@ -159,7 +153,6 @@
     <string name="setting_always_save_on_quit">Αποθήκευση Κατάστασης Στο Τερματισμό</string>
     <!-- Advanced setting toggle: skip the passcode gate for Nonna's Kitchen. Keep "Kitchen" consistent with the feature name. -->
     <string name="setting_kitchen_code_bypass">Παράκαμψη Κωδικού Κουζίνας</string>
-    <string name="setting_experimental_features">Πειραματικά Χαρακτηριστικά</string>
     <string name="setting_set_default_launcher">Ορισμός ως προεπιλεγμένο πρόγραμμα εκκίνησης</string>
     <!-- Same row as setting_set_default_launcher, shown when Cannoli is already the default launcher and the user wants to pick another one. -->
     <!-- Advanced action: recreate the standard platform/system folders. -->
@@ -169,8 +162,6 @@
     <!-- Library setting for the Five Game Handheld collection. Keep "5GH" as-is. -->
     <string name="setting_fgh_collection">Συλλογή 5GH</string>
     <string name="setting_show_recently_played">Πρόσφατα Παίχτηκαν</string>
-    <!-- Library setting: show or hide the Favorites entry on the main list. -->
-    <string name="setting_show_favorites">Αγαπημένα</string>
     <!-- Opens the Tools manager (sideloaded utility apps). -->
     <string name="setting_manage_tools">Διαχείριση Εργαλείων</string>
     <!-- Opens the Ports manager. "Ports" means standalone native game ports. -->
@@ -185,14 +176,7 @@
     <string name="setting_color_accent">Απόχρωση</string>
     <string name="setting_color_background">Φόντο</string>
     <string name="setting_color_status_bar">Γραμμή Κατάστασης</string>
-    <!-- Settings row. %s is the emulator app name (e.g. RetroArch). -->
-    <!-- Screen title. %s is the emulator app name (e.g. RetroArch). -->
-    <string name="installed_cores_none">Δεν βρέθηκαν πυρήνες</string>
-    <!-- Setting: the app's root storage folder on the SD card. -->
-    <string name="setting_sd_root">Ρίζα Κανόλι</string>
     <string name="setting_rom_directory">Κατάλογος ROM</string>
-    <!-- Setting: which installed RetroArch app/package to launch games with. -->
-    <string name="setting_ra_package">Πακέτο RetroArch</string>
     <string name="setting_scan_library">Λειτουργία Σάρωσης</string>
     <!-- Scan Mode value: scan the library automatically. -->
     <string name="value_automatically">Αυτόματο</string>
@@ -215,7 +199,6 @@
     <string name="save_conflict_title">Αποθήκευση σύγκρουσης</string>
     <string name="save_conflict_keep_local">Διατήρηση Αυτής Της Συσκευής</string>
     <string name="save_conflict_use_server">Χρήση Διακομιστή</string>
-    <string name="save_conflict_subtitle">Άλλαξε εδώ και στο διακομιστή</string>
     <string name="save_stale_title">Ο διακομιστής έχει νεότερη αποθήκευση</string>
     <string name="save_stale_play_local">Αναπαραγωγή Τοπικού Τέλος Τέλος Πάντων</string>
     <string name="setting_romm_allow_self_signed">Επιτρέψτε Αυτο-Υπογεγραμμένο Cert</string>
@@ -243,7 +226,6 @@
     <string name="romm_detail_players">Παίκτες</string>
     <string name="romm_detail_on_device">Στη Συσκευή</string>
     <string name="romm_detail_not_on_device">Όχι στη συσκευή</string>
-    <string name="romm_detail_download">ΛΗΨΗ</string>
     <string name="romm_version_picker_title">Κατεβάστε ποια έκδοση?</string>
     <!-- Bottom-bar button opening the game's instruction manual (a document), not "manual/by hand". -->
     <string name="label_manual">ΠΑΡΑΓΩΓΗ</string>
@@ -251,12 +233,10 @@
     <string name="romm_download_manual">Χειροκίνητα</string>
     <string name="romm_syncing" tools:ignore="TypographyEllipsis">Δημιουργία προσωρινής μνήμης...</string>
     <!-- Cache-building status. %1$s is the platform name. -->
-    <string name="romm_sync_collections">Συλλογές</string>
     <string name="romm_sync_error">Δεν ήταν δυνατή η πρόσβαση σε RomM. Εμφανίζονται προσωρινά οι βιβλιοθήκες.</string>
     <string name="romm_download_queue">Αναμονή Λήψης</string>
     <string name="romm_download_queued">Σε Αναμονή</string>
     <string name="romm_download_downloading">Λήψη</string>
-    <string name="romm_download_failed">Απέτυχε</string>
     <string name="romm_download_empty">Χωρίς λήψεις</string>
     <string name="romm_download_completed">Ολοκληρώθηκε</string>
     <string name="romm_osd_download_queued">Προστέθηκε στις λήψεις</string>
@@ -280,7 +260,6 @@
     <string name="romm_settings_platforms">Εμφάνιση / Απόκρυψη Πλατφορμών</string>
     <string name="romm_settings_collections">Εμφάνιση / Απόκρυψη Συλλογών</string>
     <string name="romm_settings_server_info">Πληροφορίες Διακομιστή</string>
-    <string name="romm_settings_advanced">Προχωρημένα</string>
     <string name="romm_settings_rebuild">Rebuild Cache</string>
     <string name="romm_actions_title">Γρήγορο Μενού Romm</string>
     <string name="romm_settings_title">Ρυθμίσεις RomM</string>
@@ -294,7 +273,6 @@
     <string name="romm_firmware_empty">Χωρίς υλικολογισμικό</string>
     <string name="romm_firmware_error">Αδυναμία φόρτωσης του υλικολογισμικού</string>
     <string name="romm_firmware_not_on_device">Δεν είναι στη συσκευή</string>
-    <string name="romm_firmware_on_device">Στη Συσκευή</string>
     <string name="romm_art_default">Προεπιλογή</string>
     <string name="romm_art_off">Ανενεργό</string>
     <string name="romm_art_box2d">Θέση 2Δ</string>
@@ -317,10 +295,7 @@
     <string name="romm_art_no_match">Δεν υπάρχει αντιστοίχιση RomM</string>
     <string name="romm_art_failed">Απέτυχε</string>
     <string name="romm_art_section_no_match">Δεν υπάρχει αντιστοιχία</string>
-    <string name="romm_art_section_failed">Απέτυχε</string>
     <string name="romm_art_done">ΕΓΙΝΕ</string>
-    <string name="romm_collections_title">Συλλογές</string>
-    <string name="romm_collection_group_user">Οι Συλλογές Μου</string>
     <!-- RomM "Virtual" collections (auto-grouped, e.g. by franchise or genre). -->
     <string name="romm_collection_group_virtual">Εικονικό</string>
     <!-- RomM "Smart" collections (rule-based, auto-updating). -->
@@ -329,7 +304,6 @@
     <string name="romm_collections_smart">Έξυπνες Συλλογές</string>
     <string name="romm_collections_virtual">Εικονικές Συλλογές</string>
     <string name="romm_vtype_franchise">Franchises</string>
-    <string name="romm_vtype_collection">Συλλογές</string>
     <string name="romm_vtype_genre">Genres</string>
     <string name="romm_vtype_company">Εταιρείες</string>
     <string name="romm_vtype_mode">Λειτουργίες Παιχνιδιού</string>
@@ -338,7 +312,6 @@
     <string name="setting_audit_emulator_intents">Προτάσεις Εξομοιωτή Ελέγχου</string>
     <string name="logging_title">Καταγραφή</string>
     <string name="logging_rom_scan">Σάρωση ROM</string>
-    <string name="logging_input">Input</string>
     <string name="logging_session">Συνεδρία Παιχνιδιού</string>
     <string name="logging_storage">Αποθήκευση</string>
     <string name="setting_input_tester">Input Tester</string>
@@ -412,19 +385,8 @@
     <string name="update_download_error_server">Η λήψη απέτυχε. Ο διακομιστής επέστρεψε ένα σφάλμα. Δοκιμάστε ξανά αργότερα.</string>
     <string name="update_download_error_network">Η λήψη απέτυχε. Ελέγξτε τη σύνδεσή σας και προσπαθήστε ξανά.</string>
     <string name="launch_error_resolve_file">Αποτυχία επίλυσης του αρχείου εκκίνησης</string>
-    <string name="launch_error_extract">Αποτυχία εξαγωγής συμπιεσμένου αρχείου</string>
     <string name="launch_error_generic">Αποτυχία εκκίνησης παιχνιδιού</string>
     <!-- %1$s = file name. -->
-    <!-- %1$s = core name, %2$s = emulator app. -->
-    <string name="dialog_missing_core_pkg">Το %1$s δεν είναι εγκατεστημένο στο %2$s.</string>
-    <!-- %1$s = core name. -->
-    <string name="dialog_missing_core_hint">Ρυθμίστε το στη χαρτογράφηση εξομοιωτή.</string>
-    <!-- %1$s = app name. -->
-    <string name="dialog_missing_app">Το %1$s δεν είναι εγκατεστημένο.</string>
-    <!-- %1$s = folder path. -->
-    <string name="dialog_missing_bios_header">Απαιτείται τουλάχιστον ένα αρχείο BIOS στο %1$s:</string>
-    <string name="dialog_title_missing_core">Λείπει ο πυρήνας</string>
-    <string name="dialog_title_missing_app">Εφαρμογή Που Λείπει</string>
     <string name="dialog_title_launch_error">Η εκκίνηση απέτυχε</string>
     <string name="dialog_rename_success">Μετονομάστηκε με επιτυχία</string>
     <!-- %1$s = error detail. -->
@@ -435,15 +397,8 @@
     <!-- %1$d = number of items selected. -->
     <string name="selected_count">%1$d Επιλέχθηκε</string>
     <!-- Onboarding wizard -->
-    <string name="onboarding_header">ΕΠΕΞΕΡΓΑΣΙΑ ΚΑΝΝΟΛΙ</string>
     <string name="onboarding_permissions_title">Δικαιώματα και αποθηκευτικός χώρος</string>
-    <string name="onboarding_storage_label">Πρόσβαση αποθηκευτικού χώρου</string>
-    <string name="onboarding_status_granted">Χορηγήθηκε</string>
-    <string name="onboarding_status_not_granted">Δεν χορηγείται</string>
-    <string name="onboarding_press_a_to_select_folder">Πατήστε A για να επιλέξετε φάκελο</string>
-    <string name="onboarding_storage_locked_hint">Διαμορφώσιμα μόλις χορηγηθούν τα δικαιώματα.</string>
     <string name="onboarding_select_folder">ΕΠΙΛΕΞΤΕ ΤΟ ΠΑΡΟΝΤΑ</string>
-    <string name="onboarding_location_label">Τοποθεσία</string>
     <!-- Boot error screen -->
     <string name="boot_error_title">Κάτι πήγε στραβά</string>
     <!-- Storage row (shared with onboarding) -->
@@ -492,100 +447,42 @@
     <!-- Quick menu -->
     <string name="quick_menu_title">Γρήγορο Μενού</string>
     <string name="quick_menu_romm">Περιήγηση Σε Romm</string>
-    <string name="quick_menu_download_queue">Αναμονή Λήψης</string>
     <string name="quick_menu_rescan">Επανασάρωση Βιβλιοθήκης</string>
     <string name="quick_menu_info">Πληροφορίες Δικτύου</string>
     <string name="quick_menu_sync_history">Αποθήκευση Ιστορικού Συγχρονισμού</string>
     <string name="sync_history_title">Αποθήκευση Ιστορικού Συγχρονισμού</string>
     <string name="sync_history_empty">Δεν υπάρχει ιστορικό συγχρονισμού</string>
     <string name="sync_relative_now">μόλις τώρα</string>
-    <string name="quick_info_title">Πληροφορίες Δικτύου</string>
     <string name="quick_info_ip">Διεύθυνση IP</string>
-    <!-- URL to reach the Nonna's Kitchen file server. -->
-    <string name="quick_info_kitchen_url">Διεύθυνση Url Κουζίνας</string>
-    <string name="quick_info_kitchen_off">Η κουζίνα δεν τρέχει</string>
-    <string name="quick_info_offline">Χωρίς δίκτυο</string>
     <!-- RetroAchievements -->
-    <string name="achievos_logged_in_as">Συνδεδεμένος ως</string>
     <!-- RA = RetroAchievements. -->
     <string name="achievos_login_failed">RA: Η σύνδεση απέτυχε</string>
     <string name="achievos_login_invalid">Μη έγκυρο όνομα χρήστη ή κωδικός πρόσβασης</string>
-    <string name="achievos_status_online">Συνδεδεμένος</string>
-    <string name="achievos_status_offline">Αποσυνδεδεμένος</string>
-    <!-- %1$d = achievements awaiting sync. -->
-    <string name="achievos_status_offline_pending">Εκτός Σύνδεσης • Αναμονή Συγχρονισμού %1$d</string>
-    <string name="achievos_detect_not_logged_in">Δεν έχετε συνδεθεί</string>
-    <string name="achievos_detect_not_recognized">Το παιχνίδι δεν αναγνωρίζεται</string>
-    <string name="achievos_detect_no_achievements">Δεν δημοσιεύθηκαν επιτεύγματα</string>
-    <string name="achievos_detect_initializing">Αρχικοποίηση…</string>
-    <string name="achievos_detect_mem_failed">Η μνήμη init απέτυχε</string>
-    <!-- %d = achievement count. -->
-    <plurals name="achievos_detect_active">
-        <item quantity="one">Ενεργό • %d επίτευγμα</item>
-        <item quantity="other">Ενεργό • %d επιτεύγματα</item>
-    </plurals>
-    <!-- %d = number of achievements synced. -->
-    <!-- Counts of synced and failed achievements. -->
-    <string name="achievos_sync_partial">%1$d Συγχρονισμένο, %2$d Απέτυχε</string>
-    <!-- OSD toast. %1$s = save slot name. -->
-    <string name="osd_state_saved">Αποθηκεύτηκε στο %1$s</string>
-    <!-- OSD toast. %1$s = save slot name. -->
-    <string name="osd_state_loaded">Φορτώθηκε %1$s</string>
-    <!-- OSD toast. %1$s = save slot name. -->
-    <string name="osd_state_deleted">Διαγράφηκε %1$s</string>
     <string name="osd_reset">Reset</string>
-    <!-- OSD toast. %1$s = scaling mode name. -->
-    <!-- OSD toast. %1$s = shader preset name. -->
-    <!-- OSD toast. %1$s = mode/item name. -->
-    <string name="osd_switched_to">Αλλαγή σε %1$s</string>
-    <!-- OSD toast. %1$s = game name (setting saved per-game). -->
-    <string name="osd_saved_for">Αποθηκεύτηκε για %1$s</string>
-    <string name="osd_saved_for_game">Αποθηκεύτηκε για αυτό το παιχνίδι</string>
-    <!-- OSD toast. %1$s = controller name, %2$s = player slot. -->
-    <string name="osd_controller_connected_named">Το %1$s συνδέθηκε με %2$s</string>
-    <!-- %1$d = disc number (multi-disc games). -->
-    <string name="osd_disc_fallback">Δίσκος %1$d</string>
     <string name="igm_quit">Έξοδος</string>
-    <string name="igm_cheats">Cheat</string>
     <string name="title_cheats">Cheat</string>
-    <!-- Scaling mode: use the size the emulator core reports. -->
-    <!-- Scaling mode: integer scaling pushed beyond 1x to fill more of the screen. -->
-    <!-- Scaling mode: fit the screen while keeping the aspect ratio. -->
-    <!-- Indicates a setting applies globally (all games). -->
-    <string name="override_source_global">Καθολικό</string>
-    <!-- Indicates a setting applies only to the current game. -->
-    <string name="override_source_game">Αυτό Το Παιχνίδι</string>
     <string name="device_controller">Ελεγκτής</string>
     <!-- OSD toast. %1$d = player number, %2$s = controller name. -->
     <string name="osd_controller_connected">P%1$d: %2$s</string>
     <!-- OSD toast. %1$d = player number, %2$s = controller name. -->
     <!-- OSD toast. %1$s = controller name. -->
-    <!-- RA login OSD. %1$s = username, %2$s = display name, %3$d/%4$d = unlocked/total achievements. -->
-    <string name="achievos_login_success">RA: %1$s (%2$s) · %3$d/%4$d ξεκλείδωτο</string>
-    <string name="achievos_init_failed">RA: Η αρχικοποίηση απέτυχε</string>
     <string name="achievos_load_not_recognized">RA: Το παιχνίδι δεν αναγνωρίζεται</string>
     <string name="achievos_load_no_achievements">RA: Δεν υπάρχουν επιτεύγματα για αυτό το παιχνίδι</string>
-    <string name="achievos_load_offline_pending">RA: Χωρίς σύνδεση (μη διαθέσιμα δεδομένα παιχνιδιού)</string>
     <!-- Credits -->
     <string name="credits_title">Πιστώσεις και άδειες</string>
-    <!-- Core picker / nav -->
-    <string name="no_compatible_cores">Δεν βρέθηκαν συμβατοί πυρήνες</string>
     <string name="no_collections">Καμία συλλογή</string>
     <string name="title_child_collections">Συλλογές Παιδιών</string>
     <string name="title_shortcuts">Συντομεύσεις</string>
     <string name="shortcut_hold_prompt" tools:ignore="TypographyEllipsis">Κρατήστε ένα ή περισσότερα κουμπιά...</string>
     <!-- Update download -->
-    <string name="update_retry">ΕΠΑΝΑΛΗΨΗ</string>
     <string name="restart_required">Απαιτείται επανεκκίνηση για να εφαρμοστούν οι αλλαγές.</string>
     <!-- IGM screen titles -->
-    <string name="igm_settings">Ρυθμίσεις</string>
     <string name="igm_video">Βίντεο</string>
     <string name="igm_emulator">Εξομοιωτής</string>
     <string name="igm_save_changes">Αποθήκευση Αλλαγών</string>
     <!-- D-Pad Mode value: 8 directions. -->
     <!-- D-Pad Mode value: 4 directions. -->
     <string name="title_guide">Οδηγός</string>
-    <string name="guide_zoom">ZOOM</string>
     <!-- IGM info labels -->
     <!-- Info label: whether the ROM was extracted from an archive. -->
     <!-- IGM dialogs -->
@@ -615,10 +512,6 @@
     <!-- Setting: maps each platform to an emulator/core. -->
     <string name="setting_emulator_mapping">Χαρτογράφηση Εξομοιωτή</string>
     <string name="label_reset">RESET</string>
-    <string name="label_show_all">ΕΜΦΑΝΙΣΗ ΌΛΩΝ</string>
-    <string name="label_show_installed">ΕΜΦΑΝΙΣΗ ΕΓΚΑΤΑΣΤΑΣΗΣ</string>
-    <!-- The core is not bundled with the app. -->
-    <string name="value_not_bundled">ΔΕΝ ΑΝΑΛΗΨΕΙ</string>
     <string name="value_no_overrides">Δεν υπάρχουν αναπροσαρμογές ανά παιχνίδι.</string>
     <string name="value_no_firmware">Δεν απαιτείται υλικολογισμικό για αυτόν τον πυρήνα.</string>
     <string name="mapping_action_bios">Αρχεία BIOS</string>
@@ -630,19 +523,11 @@
     <!-- Screen title. %s = platform name. -->
     <string name="title_platform_mapping">Αντιστοίχιση %s</string>
     <!-- Screen title. %s = platform name. -->
-    <string name="filter_all">ΟΛΑ</string>
     <string name="filter_missing">ΔΙΑΦΟΡΑ</string>
     <string name="filter_unmapped">ΑΠΑΝΤΗΣΗ</string>
     <string name="filter_mapped">ΧΑΜΗΛΑ</string>
     <string name="value_unmapped">Ααντιστοιχισμένο</string>
     <string name="label_download">ΛΗΨΗ</string>
-    <!-- OSD toast. %1$s = core name. -->
-    <string name="osd_downloading_core">Λήψη %1$s</string>
-    <!-- OSD toast. %1$s = core name. -->
-    <string name="osd_core_downloaded">Λήφθηκε %1$s</string>
-    <!-- OSD toast. %1$s = core name or error detail. -->
-    <string name="osd_core_download_failed">Η λήψη απέτυχε: %1$s</string>
-    <string name="osd_core_download_unknown_error">άγνωστο σφάλμα</string>
     <string name="bios_required">ΑΠΑΙΤΗΣΗ</string>
     <string name="bios_optional">ΠΡΟΑΙΡΕΤΙΚΟ</string>
     <string name="bios_present">Παρόν</string>
@@ -671,7 +556,6 @@
         <item quantity="other">Φάκελοι συστήματος %d</item>
     </plurals>
     <string name="value_no_cores_found">Δεν Βρέθηκαν Πυρήνες</string>
-    <string name="label_clear_override">ΚΑΘΑΡΙΣΜΟΣ</string>
     <!-- %1$s = platform name. -->
     <string name="dialog_reset_platform_confirm">Επαναφορά %1$s? Αυτό καθαρίζει την επιλογή εξομοιωτή σας για αυτήν την πλατφόρμα και επαναφέρει την προκαθορισμένη ομαδοποίηση.</string>
     <!-- RA achievement preload. %1$s = game name. -->
@@ -694,8 +578,6 @@
     <!-- Screen title. %1$s = game name. -->
     <string name="save_slots_active">Ενεργό</string>
     <string name="save_slots_create">ΝΕΑ SLOT</string>
-    <string name="save_slots_rename">ΕΠΙΣΤΡΟΦΗ</string>
-    <string name="save_slots_delete">ΔΙΑΓΡΑΦΗ</string>
     <string name="save_slots_switch">ΕΛΒΕΤΗ</string>
     <!-- %1$s = slot name. -->
     <string name="save_slots_delete_confirm">Διαγραφή υποδοχής \"%1$s\"?</string>
@@ -721,7 +603,6 @@
     </plurals>
     <string name="save_backup_restore">Επαναφορά από αντίγραφο ασφαλείας</string>
     <string name="save_backup_games_title">Επαναφορά Αποθήκευσης</string>
-    <string name="save_backup_list_title">Αντίγραφα Ασφαλείας</string>
     <string name="save_backup_none">Χωρίς αντίγραφα ασφαλείας</string>
     <string name="save_backup_restore_confirm">Επαναφορά αυτού του αντιγράφου ασφαλείας?\nΗ τρέχουσα αποθήκευση σας υποστηρίζεται πρώτα, τότε αυτό γίνεται τρέχουσα αποθήκευση σας σε RomM.</string>
     <string name="save_backup_restore_done">Η αποθήκευση επαναφέρθηκε</string>
@@ -729,11 +610,6 @@
     <string name="save_backup_restore_pending">Αποθήκευση επαναφοράς, συγχρονισμός όταν είστε συνδεδεμένος</string>
     <string name="save_backup_restore_conflict">Αποθήκευση επαναφοράς, επίλυση της διένεξης συγχρονισμού</string>
     <string name="save_backup_restore_failed">Η επαναφορά απέτυχε</string>
-    <!-- %1$d = number of backups. -->
-    <plurals name="save_backup_count">
-        <item quantity="one">%1$d αντίγραφο ασφαλείας</item>
-        <item quantity="other">%1$d αντίγραφα ασφαλείας</item>
-    </plurals>
     <string name="conflict_keep_local">Διατήρηση Τοπικού</string>
     <string name="conflict_use_server">Χρήση Διακομιστή</string>
     <string name="conflict_skip">Παράλειψη</string>
@@ -755,5 +631,4 @@
     <string name="kbd_help_cursor_move">ΕΠΕΞΕΡΓΑΣΙΑ / ΔΙΚΑΙΩΜΑ</string>
     <string name="kbd_help_cursor_jump">JUMP ΓΙΑ ΤΗΝ ΕΝΑΡΞΗ / ΤΕΛΟΣ</string>
     <string name="kbd_help_submit">ΥΠΟΒΟΛΗ</string>
-    <string name="kbd_help_cancel">ΑΚΥΡΩΣΗ</string>
 </resources>
