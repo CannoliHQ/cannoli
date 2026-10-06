@@ -1,6 +1,7 @@
 package dev.cannoli.scorza.config
 
 import java.io.File
+import java.security.MessageDigest
 
 /**
  * Moves a pre-Internal config tree onto the current layout: the top of Config/ is what a user may
@@ -36,6 +37,7 @@ object ConfigLayoutMigration {
         val paths = CannoliPaths(root)
         if (!paths.configDir.isDirectory) return 0
         deleteV1InputMappings(paths)
+        deleteLegacyShaders(paths.shadersDir)
         val pending = moves(paths).filter { (from, to) -> from.exists() && !to.exists() }
         if (pending.isEmpty()) return 0
         backupDatabases(paths)
@@ -51,6 +53,34 @@ object ConfigLayoutMigration {
             if (file.isFile && (file.name.endsWith(".ini") || file.name.endsWith(".ini.tmp"))) file.delete()
         }
         dir.delete()
+    }
+
+    internal fun deleteLegacyShaders(shadersDir: File, known: Map<String, Set<String>> = LegacyShaders.FILES) {
+        for ((folder, entries) in known.entries.groupBy { it.key.substringBefore('/') }) {
+            if (!File(shadersDir, folder).isDirectory) continue
+            for ((rel, hashes) in entries) {
+                val file = File(shadersDir, rel)
+                if (file.isFile && sha256(file) in hashes) file.delete()
+            }
+            entries
+                .flatMap { (rel, _) -> rel.split('/').dropLast(1).runningReduce { a, b -> "$a/$b" } }
+                .distinct()
+                .sortedByDescending { it.length }
+                .forEach { File(shadersDir, it).delete() }
+        }
+    }
+
+    private fun sha256(file: File): String {
+        val md = MessageDigest.getInstance("SHA-256")
+        file.inputStream().use { input ->
+            val buf = ByteArray(16 * 1024)
+            while (true) {
+                val n = input.read(buf)
+                if (n < 0) break
+                md.update(buf, 0, n)
+            }
+        }
+        return md.digest().joinToString("") { "%02x".format(it) }
     }
 
     /**

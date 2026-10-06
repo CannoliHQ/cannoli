@@ -277,4 +277,79 @@ class ConfigLayoutMigrationTest {
         assertFalse(File(v1Mappings(root), "pad.ini").exists())
         assertEquals("mine", File(v1Mappings(root), "notes.txt").readText())
     }
+
+    private fun sha256(text: String) = java.security.MessageDigest.getInstance("SHA-256")
+        .digest(text.toByteArray()).joinToString("") { "%02x".format(it) }
+
+    private val shipped = mapOf(
+        "zfast-crt/zfast-crt.glslp" to setOf(sha256("preset")),
+        "zfast-crt/shaders/zfast_crt.glsl" to setOf(sha256("old source"), sha256("source")),
+        "crt-cannoli/crt-cannoli.glslp" to setOf(sha256("gl port")),
+    )
+
+    @Test
+    fun `shaders Cannoli once shipped are deleted with the folders they leave empty`() {
+        val shaders = tmp.newFolder("Shaders")
+        write(File(shaders, "zfast-crt/zfast-crt.glslp"), "preset")
+        write(File(shaders, "zfast-crt/shaders/zfast_crt.glsl"), "source")
+        write(File(shaders, "crt-cannoli/crt-cannoli.glslp"), "gl port")
+        write(File(shaders, "crt-cannoli/crt-cannoli.slangp"), "vulkan")
+
+        ConfigLayoutMigration.deleteLegacyShaders(shaders, shipped)
+
+        assertFalse(File(shaders, "zfast-crt").exists())
+        assertFalse(File(shaders, "crt-cannoli/crt-cannoli.glslp").exists())
+        assertEquals("vulkan", File(shaders, "crt-cannoli/crt-cannoli.slangp").readText())
+        assertTrue(shaders.isDirectory)
+    }
+
+    @Test
+    fun `an edited shader and a file Cannoli never shipped keep their folder`() {
+        val shaders = tmp.newFolder("Shaders")
+        write(File(shaders, "zfast-crt/zfast-crt.glslp"), "my tweak")
+        write(File(shaders, "zfast-crt/shaders/zfast_crt.glsl"), "source")
+        write(File(shaders, "zfast-crt/shaders/mine.glsl"), "mine")
+
+        ConfigLayoutMigration.deleteLegacyShaders(shaders, shipped)
+
+        assertEquals("my tweak", File(shaders, "zfast-crt/zfast-crt.glslp").readText())
+        assertFalse(File(shaders, "zfast-crt/shaders/zfast_crt.glsl").exists())
+        assertEquals("mine", File(shaders, "zfast-crt/shaders/mine.glsl").readText())
+    }
+
+    @Test
+    fun `downloaded shaders are left alone`() {
+        val shaders = tmp.newFolder("Shaders")
+        write(File(shaders, "crt/zfast-crt.glslp"), "preset")
+        write(File(shaders, "crt/shaders/zfast_crt.glsl"), "source")
+
+        ConfigLayoutMigration.deleteLegacyShaders(shaders, shipped)
+
+        assertEquals("preset", File(shaders, "crt/zfast-crt.glslp").readText())
+        assertEquals("source", File(shaders, "crt/shaders/zfast_crt.glsl").readText())
+    }
+
+    @Test
+    fun `no shaders folder is a no-op`() {
+        val root = tmp.newFolder()
+
+        ConfigLayoutMigration.deleteLegacyShaders(File(root, "Shaders"), shipped)
+
+        assertFalse(File(root, "Shaders").exists())
+    }
+
+    @Test
+    fun `the shipped table covers v1 and the GLSL crt-cannoli and spares the Slang one`() {
+        val names = LegacyShaders.FILES.keys
+        for (folder in listOf(
+            "crt-aperture", "crt-easymode", "crt-geom", "crt-lottes-fast", "dot", "lcd3x",
+            "scanline", "sharp-bilinear-simple", "zfast-crt", "zfast-lcd",
+        )) {
+            assertTrue(folder, names.any { it.startsWith("$folder/") && it.endsWith(".glslp") })
+        }
+        assertTrue(names.contains("crt-cannoli/crt-cannoli.glslp"))
+        assertTrue(names.contains("crt-cannoli/crt-cannoli-lite.glslp"))
+        assertFalse(names.any { it.startsWith("crt-cannoli/") && (it.endsWith(".slang") || it.endsWith(".slangp")) })
+        assertTrue(LegacyShaders.FILES.values.flatten().all { it.matches(Regex("[0-9a-f]{64}")) })
+    }
 }
