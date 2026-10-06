@@ -92,8 +92,7 @@ class LaunchManager(
      * Copies Cannoli's own shader presets onto the card.
      *
      * Only what Cannoli authored ships in the APK; everything else comes from the libretro shader
-     * database through Update Shaders. Both formats are copied because which one loads depends on
-     * the video driver a platform is running, and only the menu knows that.
+     * database through Update Shaders.
      *
      * Keyed on the app's version rather than on the files existing, so an upgrade carrying a fixed
      * preset actually replaces the old one. It copies rather than syncs: anything downloaded or
