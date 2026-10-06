@@ -13,14 +13,9 @@ enum class MatchRank {
 
 object IdentityMatcher {
 
-    // Name outranks vid/pid, inverting RetroArch's own weighting (30 vid/pid, 20 name). Moorechip
-    // firmware republishes external pads with the host's virtual 2022:3001, so vid/pid identifies
-    // nothing there while the name survives the re-emit. Do not "converge" this with RA's order.
     fun rank(entry: RetroArchCfgEntry, device: ConnectedDevice): MatchRank? {
         val entryName = entry.deviceName.trim()
         val deviceName = device.name.trim()
-        // Aliases are exact names someone confirmed (or the database ships) for this same pad, so
-        // they clear the name contradiction without loosening it into a prefix or fuzzy match.
         val aliasMatch = deviceName.isNotEmpty() && entry.deviceAliases.any { it.trim() == deviceName }
         if (entryName.isNotEmpty() && deviceName.isNotEmpty() && entryName != deviceName && !aliasMatch) return null
 
@@ -41,9 +36,6 @@ object IdentityMatcher {
         }
     }
 
-    // Advisory only. isBuiltIn is a heuristic (Retroid reports its internal pad as external, so
-    // ControllerBridge falls back to a brand-prefix check), and a pad whose name defeats that check
-    // should lose a tiebreak rather than its profile.
     fun builtinAgrees(entry: RetroArchCfgEntry, device: ConnectedDevice): Boolean =
         entry.builtin == null || entry.builtin == device.isBuiltIn
 }

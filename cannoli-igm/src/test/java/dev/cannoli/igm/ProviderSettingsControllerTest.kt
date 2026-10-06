@@ -41,11 +41,6 @@ private class FakeProvider : IgmSettingsProvider {
     fun fireChanged() { onChanged?.invoke() }
 }
 
-/**
- * A row revealed *above* the one being edited. RetroArch lists its conditional rows after the
- * setting that controls them, so its own screens do not do this today, but the cursor is an index
- * and nothing guarantees that stays true: the row set is RetroArch's and changes when it changes.
- */
 private class RevealingProvider : IgmSettingsProvider {
     var revealed = false
     override fun screen(path: List<String>): GenericIgmSettingsScreen = GenericIgmSettingsScreen(
@@ -80,10 +75,6 @@ private class NestedProvider : IgmSettingsProvider {
     override fun setOnChanged(callback: () -> Unit) {}
 }
 
-/**
- * A setting that reveals a row directly beneath it, which is how RetroArch orders a gated setting:
- * black frame insertion and its dark-frame count, sub frame shaders and its scan count.
- */
 private class GatedProvider : IgmSettingsProvider {
     var gateOpen = false
     override fun screen(path: List<String>): GenericIgmSettingsScreen = GenericIgmSettingsScreen(
@@ -229,12 +220,6 @@ class ProviderSettingsControllerTest {
         assertEquals("B", chosen)
     }
 
-    /**
-     * Confirming runs the action of the option that was rendered under the cursor, in any order.
-     *
-     * The answer used to be the cursor index, which the provider read back positionally, so
-     * inserting or moving an option retargeted every answer after it without a compile error.
-     */
     @Test
     fun `the answer is the option under the cursor whatever order they are in`() {
         for (index in 0..2) {
@@ -284,9 +269,6 @@ class ProviderSettingsControllerTest {
         assertEquals("B", chosen)
     }
 
-    // The reported bug: RetroArch reveals a row above the one being edited, and because the cursor
-    // is an index the highlight slid onto the next setting mid-edit, so the following press changed
-    // something the user never selected.
     @Test
     fun `the cursor follows the row being edited when a row is revealed above it`() {
         val c = ProviderSettingsController(RevealingProvider())
@@ -294,7 +276,6 @@ class ProviderSettingsControllerTest {
         var state = c.state() as ProviderSettingsController.State.Menu
         assertEquals("aspect_ratio_index", state.items[state.selectedIndex].key)
 
-        // Cycling it reveals a row above it, so the index it occupies changes.
         state = c.onNav(ProviderSettingsController.Nav.RIGHT) as ProviderSettingsController.State.Menu
         assertEquals(
             "the highlight must stay on the row being edited",
@@ -306,10 +287,6 @@ class ProviderSettingsControllerTest {
     private fun selected(state: ProviderSettingsController.State) =
         (state as ProviderSettingsController.State.Menu).let { it.items[it.selectedIndex].key }
 
-    /**
-     * The row list is RetroArch's and changes when its values change, so an index alone names a
-     * different setting the moment a row appears above the highlight.
-     */
     @Test fun `a row appearing above the selection does not move it`() {
         val p = GatedProvider()
         val c = ProviderSettingsController(p)
@@ -323,7 +300,6 @@ class ProviderSettingsControllerTest {
         assertEquals("vrr_runloop_enable", selected(c.state()))
     }
 
-    // The row that governs it is the way to bring it back, and RetroArch lists it directly above.
     @Test fun `a vanishing row hands the selection to the setting that governs it`() {
         val p = GatedProvider().apply { gateOpen = true }
         val c = ProviderSettingsController(p)
@@ -348,7 +324,6 @@ class ProviderSettingsControllerTest {
         assertEquals("video_black_frame_insertion", selected(c.state()))
     }
 
-    // Nothing to follow and nothing above it either, so position is all that is left.
     @Test fun `a list that loses everything below still lands somewhere valid`() {
         val p = ShrinkProvider()
         val c = ProviderSettingsController(p)

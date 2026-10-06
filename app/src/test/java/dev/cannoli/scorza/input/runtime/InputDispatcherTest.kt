@@ -144,11 +144,9 @@ class InputDispatcherTest {
 
     @Test
     fun repeat_event_re_fires_callback_for_non_nav_canonicals() {
-        // Non-nav canonical (BTN_SOUTH) still repeats via the dispatcher. Nav canonicals
-        // (BTN_UP/DOWN/LEFT/RIGHT) intentionally do not -- MenuNavigationPoller drives those.
         val (d, _, _) = setup(westernTemplate())
         var back = 0
-        d.onBack = { back++ }  // western template: BTN_SOUTH -> back
+        d.onBack = { back++ }
         d.handleKeyEventForTest(deviceId = 7, keyCode = 96, action = android.view.KeyEvent.ACTION_DOWN, repeatCount = 0)
         d.handleKeyEventForTest(deviceId = 7, keyCode = 96, action = android.view.KeyEvent.ACTION_DOWN, repeatCount = 1)
         d.handleKeyEventForTest(deviceId = 7, keyCode = 96, action = android.view.KeyEvent.ACTION_DOWN, repeatCount = 2)
@@ -157,9 +155,6 @@ class InputDispatcherTest {
 
     @Test
     fun nav_repeat_events_are_suppressed_in_dispatcher() {
-        // Nav buttons auto-repeat via MenuNavigationPoller polling PortRouter held state.
-        // Android-supplied keycode repeats for nav buttons are dropped in the dispatcher so
-        // the poller is the sole repeat source. Initial press still fires.
         val (d, _, _) = setup(westernTemplate())
         var up = 0
         d.onUp = { up++ }
@@ -221,7 +216,6 @@ class InputDispatcherTest {
         val d = InputDispatcher(router, ActiveMappingHolder())
         var south = 0
         d.onBack = { south++ }
-        // Nothing ever fires; phantom stays pending.
         d.handleKeyEventForTest(deviceId = 7, keyCode = 96, action = android.view.KeyEvent.ACTION_UP, repeatCount = 0)
         d.handleMotionEventForTest(deviceId = 7, axisValues = mapOf(0 to 0.0f, 1 to 0.0f))
         assertFalse(router.isActivated(7))
@@ -262,9 +256,7 @@ class InputDispatcherTest {
         val d = InputDispatcher(router, ActiveMappingHolder())
         var t = 0L
         d.clock = { ++t }
-        // Device 8 presses first.
         d.handleKeyEventForTest(deviceId = 8, keyCode = 96, action = android.view.KeyEvent.ACTION_DOWN, repeatCount = 0)
-        // Then device 7.
         d.handleKeyEventForTest(deviceId = 7, keyCode = 96, action = android.view.KeyEvent.ACTION_DOWN, repeatCount = 0)
         assertEquals(0, router.portFor(8))
         assertEquals(1, router.portFor(7))
@@ -281,10 +273,6 @@ class InputDispatcherTest {
 
     @Test
     fun hat_bound_dpad_fires_initial_press_only_in_dispatcher() {
-        // Template binds BTN_UP via Hat (axis 16, UP) -- no Button binding for keycode 19. The
-        // dispatcher fires once on the initial axis crossing; subsequent Android keycode repeats
-        // for the synthesized KEYCODE_DPAD_UP are dropped because nav auto-repeat is owned by
-        // MenuNavigationPoller (held-state poll, source-agnostic).
         val template = westernTemplate().copy(
             bindings = westernTemplate().bindings + (CanonicalButton.BTN_UP to listOf(
                 InputBinding.Hat(axis = 16, direction = HatDirection.UP, threshold = 0.5f)
@@ -415,9 +403,6 @@ class InputDispatcherTest {
 
     @Test
     fun dpad_keycode_auto_repeat_is_dropped_when_evaluator_already_holds_canonical() {
-        // GameSir Pocket Taco scenario: device emits AXIS_HAT_Y motion (canonical held) and then
-        // Android also synthesizes KEYCODE_DPAD_UP with repeatCount > 0. The repeat must not produce
-        // a second onUp(); MenuNavigationPoller is responsible for held-state nav repeat.
         val template = DeviceMapping(
             id = "hybrid-pad",
             displayName = "Hybrid Pad",
@@ -441,7 +426,6 @@ class InputDispatcherTest {
         d.onUp = { up++ }
         d.handleMotionEventForTest(deviceId = 7, axisValues = mapOf(android.view.MotionEvent.AXIS_HAT_Y to -1f))
         assertEquals(1, up)
-        // Synthesized keycode auto-repeat for the same canonical must not double-fire.
         d.handleKeyEventForTest(deviceId = 7, keyCode = 19, action = android.view.KeyEvent.ACTION_DOWN, repeatCount = 1)
         assertEquals(1, up)
     }
@@ -477,7 +461,6 @@ class InputDispatcherTest {
         val (d, _, _) = setup(westernTemplate())
         var up = 0
         d.onConfirmUp = { up++ }
-        // keycode 96 is BTN_SOUTH = menuBack for westernTemplate
         d.handleKeyEventForTest(deviceId = 7, keyCode = 96, action = android.view.KeyEvent.ACTION_DOWN, repeatCount = 0)
         d.handleKeyEventForTest(deviceId = 7, keyCode = 96, action = android.view.KeyEvent.ACTION_UP, repeatCount = 0)
         assertEquals(0, up)
@@ -495,11 +478,6 @@ class InputDispatcherTest {
 
     @Test
     fun dpad_keycode_initial_press_after_hat_assertion_does_not_double_fire() {
-        // Hybrid pad (HAT + KEYCODE_DPAD): HAT fires first, then a non-repeat synthesized
-        // KEYCODE_DPAD_UP arrives. The evaluator's per-source assert tracking dedupes the
-        // initial press (BTN_UP already asserted from the HAT path) so onUp fires only once.
-        // This complements the auto-repeat dedup case above and pins the contract for the
-        // first press transition.
         val template = DeviceMapping(
             id = "hybrid-pad-initial",
             displayName = "Hybrid Pad",
@@ -535,7 +513,6 @@ class InputDispatcherTest {
             override fun onConfirm() { fired++ }
         }
         d.wireToRegistry(screenResolver = { resolved })
-        // keycode 97 = BTN_EAST = menuConfirm for westernTemplate
         d.handleKeyEventForTest(deviceId = 7, keyCode = 97, action = android.view.KeyEvent.ACTION_DOWN, repeatCount = 0)
         assertEquals(1, fired)
     }
@@ -547,10 +524,9 @@ class InputDispatcherTest {
         val resolved = object : dev.cannoli.scorza.input.ScreenInputHandler {
             override fun onConfirm() { fired++ }
         }
-        d.wireToRegistry(screenResolver = { resolved })  // launcher-style wiring
-        d.wireToRegistry()                               // IGM-style re-wire must reset the resolver
+        d.wireToRegistry(screenResolver = { resolved })
+        d.wireToRegistry()
         d.handleKeyEventForTest(deviceId = 7, keyCode = 97, action = android.view.KeyEvent.ACTION_DOWN, repeatCount = 0)
-        // resolver cleared -> dispatch goes to registry top (empty), not the launcher resolver
         assertEquals(0, fired)
     }
 
@@ -607,8 +583,6 @@ class InputDispatcherTest {
 
     @Test
     fun unidentified_pad_activates_on_an_unbound_press_so_it_can_reach_the_wizard() {
-        // It has no bindings by definition, so an unbound press is the only announcement it can
-        // make. Without this it never activates, onDeviceAdded never fires, and the pad is inert.
         val (d, router, _) = setup(unidentifiedTemplate())
         assertFalse(router.isActivated(7))
         d.handleKeyEventForTest(deviceId = 7, keyCode = 96, action = android.view.KeyEvent.ACTION_DOWN, repeatCount = 0)
@@ -617,7 +591,6 @@ class InputDispatcherTest {
 
     @Test
     fun identified_pad_does_not_claim_a_port_from_an_unbound_press() {
-        // A media or vendor key on a pad we do know must not take a port.
         val (d, router, _) = setup(westernTemplate())
         d.handleKeyEventForTest(deviceId = 7, keyCode = 300, action = android.view.KeyEvent.ACTION_DOWN, repeatCount = 0)
         assertFalse(router.isActivated(7))

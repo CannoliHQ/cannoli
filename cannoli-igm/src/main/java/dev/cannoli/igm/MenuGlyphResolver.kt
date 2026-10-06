@@ -2,15 +2,6 @@ package dev.cannoli.igm
 
 import dev.cannoli.ui.theme.MenuGlyph
 
-/**
- * What a legend should draw for the menu button on this pad. Shared by the launcher and the in-game
- * menu, which each pass what they know about the active pad and the shortcuts in force.
- *
- * A menu button wins: it is what the pad has. Without one, only the two shapes the setup wizard
- * writes get a drawing of their own, select + start on the pad's own select and start, or holding
- * the pad's start. Any other chord was bound by hand and keeps the menu glyph, since there is no
- * telling what it looks like on the pad.
- */
 fun menuGlyphFor(
     menuButtonBound: Boolean,
     selectKeys: Collection<Int>,
@@ -28,7 +19,6 @@ fun menuGlyphFor(
     return MenuGlyph.Menu
 }
 
-/** [menuGlyphFor] for the in-game menu, which knows the pad by its [IgmInputMapping]. */
 fun menuGlyphFor(mapping: IgmInputMapping?, shortcuts: Map<ShortcutAction, Set<Int>>): MenuGlyph =
     if (mapping == null) {
         MenuGlyph.Menu

@@ -8,9 +8,6 @@ data class CoreInfo(
     val id: String,
     val displayName: String,
     val databases: List<String>,
-    // What the core itself parses. RetroArch delivers more than this: it unpacks archives and
-    // resolves m3u playlists before the core sees anything, so an absent extension here does not
-    // mean the file cannot be played. See ContentSupport.
     val extensions: List<String> = emptyList()
 )
 
@@ -20,23 +17,13 @@ data class FirmwareEntry(
     val optional: Boolean
 )
 
-/**
- * One thing a platform needs before a core can run, which is not always one file.
- *
- * A core declares firmware file by file, so that is all its `.info` can say. Several cores accept a
- * dozen interchangeable regional BIOS dumps where holding any single one is enough, and asking the
- * question per file cannot express that: it would either demand all thirteen or pick one and call
- * the other twelve missing.
- */
 sealed interface FirmwareRequirement {
     val satisfied: Boolean
 
-    /** One file the core named, required or optional exactly as declared. */
     data class Single(val entry: FirmwareEntry, val present: Boolean) : FirmwareRequirement {
         override val satisfied: Boolean get() = present || entry.optional
     }
 
-    /** Interchangeable files, any one of which satisfies the whole group. */
     data class AnyOf(val options: List<Pair<FirmwareEntry, Boolean>>) : FirmwareRequirement {
         override val satisfied: Boolean get() = options.any { it.second }
     }
@@ -102,12 +89,7 @@ class CoreInfoRepository(
         "NAOMI" to listOf("Sega - Naomi", "Sega - Naomi 2"),
         "ATOMISWAVE" to listOf("Atomiswave"),
         "SATELLAVIEW" to listOf("Nintendo - Satellaview"),
-        // No core declares a 64DD database: the 64DD in mupen64plus_next and parallel_n64 is a
-        // firmware entry for the IPL, not a DAT. The cores that run N64 are the cores that run its
-        // disks, so this deliberately borrows the N64 database rather than resolving to nothing.
         "N64DD" to listOf("Nintendo - Nintendo 64"),
-        // FBNeo runs all three CPS generations. MAME joins the first two and is deliberately absent
-        // from CPS-3, which arrived in MAME long after the 0.78 the 2003 builds are cut from.
         "CPS1" to listOf("FBNeo - Arcade Games", "MAME", "MAME 2003-Plus", "MAME 2000", "MAME 2003", "MAME 2010"),
         "CPS2" to listOf("FBNeo - Arcade Games", "MAME", "MAME 2003-Plus", "MAME 2000", "MAME 2003", "MAME 2010"),
         "CPS3" to listOf("FBNeo - Arcade Games"),
@@ -118,8 +100,6 @@ class CoreInfoRepository(
         "X68000" to listOf("Sharp - X68000"),
         "ATARIST" to listOf("Atari - ST"),
         "ODYSSEY2" to listOf("Magnavox - Odyssey2", "Philips - Videopac+"),
-        // The gw core's database is the generic LCD handheld set, not a Nintendo one, so this
-        // platform matches Game & Watch alongside every other maker's LCD game.
         "GAMEANDWATCH" to listOf("Handheld Electronic Game"),
         "ZX81" to listOf("Sinclair - ZX 81"),
         "DOS" to listOf("DOS"),
@@ -146,8 +126,6 @@ class CoreInfoRepository(
                 assets.open("core_info/$filename").bufferedReader().useLines { lines ->
                     for (line in lines) {
                         val trimmed = line.trim()
-                        // Match the whole key, not a prefix: fbneo declares database_match_archive_member
-                        // on the line above its real database, and a prefix match reads that instead.
                         val key = trimmed.substringBefore('=').trim()
                         if (displayName == null && key == "corename") {
                             displayName = trimmed.substringAfter('=').trim().removeSurrounding("\"")
@@ -156,8 +134,6 @@ class CoreInfoRepository(
                             databases.addAll(value.split('|').map { it.trim() })
                         } else if (extensions.isEmpty() && key == "supported_extensions") {
                             val value = trimmed.substringAfter('=').trim().removeSurrounding("\"")
-                            // puae ends its list with a trailing pipe, which would otherwise put an
-                            // empty extension in the list and render as a bare dot.
                             extensions.addAll(
                                 value.split('|').map { it.trim().lowercase() }.filter { it.isNotEmpty() }
                             )
@@ -184,9 +160,6 @@ class CoreInfoRepository(
         return try {
             cacheFile.readLines().mapNotNull { line ->
                 val parts = line.split('\t', limit = 4)
-                // A three-field line is a cache from before extensions were recorded. It cannot
-                // outlive its build, since the version file is the APK stamp, but an empty list
-                // reads as "unknown" rather than "supports nothing" either way.
                 if (parts.size >= 3) CoreInfo(
                     parts[0], parts[1], parts[2].split('|'),
                     parts.getOrNull(3)?.split('|')?.filter { it.isNotEmpty() }.orEmpty(),
@@ -209,10 +182,6 @@ class CoreInfoRepository(
         } catch (_: Exception) {}
     }
 
-    /**
-     * What the core parses, lowercase and without dots, in the order the `.info` declares them:
-     * that order leads with the format the core is actually for. Empty means it did not say.
-     */
     fun getExtensionsFor(coreId: String): List<String> =
         coreById[coreId]?.extensions.orEmpty()
 
@@ -220,7 +189,6 @@ class CoreInfoRepository(
         return coreById[coreId]?.displayName ?: coreId
     }
 
-    /** Tag to the cores excluded from it. Hand-maintained, unlike the generated core lists. */
     private val exclusions: Map<String, Set<String>> by lazy {
         val parsed = mutableMapOf<String, MutableSet<String>>()
         try {
@@ -241,17 +209,6 @@ class CoreInfoRepository(
         parsed
     }
 
-    /**
-     * The catalogue is curated, so what a tag's databases match is already close to the offer. The
-     * exclusions cover what curation alone cannot: a core kept for one system has to ship, which
-     * also offers it on every other system its database claims.
-     *
-     * A core the user already chose is re-synthesised by the picker rather than read from here, so
-     * neither filter can strand anyone on a choice they already made.
-     *
-     * Arm64OnlyCores is filtered here too, on a 32-bit device, for the same reason: offering a core
-     * with no armeabi-v7a build would trade one unrunnable option for another.
-     */
     fun getCoresForTag(tag: String): List<CoreInfo> {
         val upper = tag.uppercase()
         val dbs = tagToDatabases[upper] ?: return emptyList()

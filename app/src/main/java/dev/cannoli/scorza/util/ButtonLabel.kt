@@ -7,7 +7,6 @@ import dev.cannoli.scorza.input.DeviceMapping
 import dev.cannoli.scorza.input.GlyphStyle
 import dev.cannoli.scorza.input.InputBinding
 
-/** What Cannoli calls a face button layout, for a row that asks the user to pick one. */
 fun glyphStyleName(context: Context, style: GlyphStyle): String = context.getString(
     when (style) {
         GlyphStyle.REDMOND -> R.string.glyph_style_redmond
@@ -17,7 +16,6 @@ fun glyphStyleName(context: Context, style: GlyphStyle): String = context.getStr
     }
 )
 
-/** The label printed on a face button, or null for a button that has no printed glyph. */
 fun faceGlyph(context: Context, button: CanonicalButton, style: GlyphStyle): String? =
     faceRes(button, style)?.let { (_, glyphRes) -> context.getString(glyphRes) }
 
@@ -85,13 +83,6 @@ fun canonicalLabel(context: Context, button: CanonicalButton, style: GlyphStyle)
     return context.getString(res)
 }
 
-/**
- * Shortcut chords store the physical keycode the pad reported. Name it after the canonical button
- * the active mapping assigns to that key, so someone who has remapped (say, swapped Start and
- * Select) reads back the button they configured rather than the one the hardware ships with.
- * Keys the mapping does not bind as a button (hat directions, analog triggers) keep their
- * hardware name.
- */
 fun buttonLabel(context: Context, keyCode: Int, mapping: DeviceMapping?, style: GlyphStyle): String {
     val canonical = canonicalForKeyCode(keyCode, mapping)
     return canonical?.let { canonicalLabel(context, it, style) } ?: keyCodeName(keyCode)

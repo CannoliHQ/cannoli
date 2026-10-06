@@ -50,16 +50,12 @@ class UnidentifiedMappingCaptureTest {
         assertEquals(listOf("submission_source_mask = \"16777233\""), lines)
     }
 
-    // A quote would produce a line the parser cannot match, so the capture would silently vanish on
-    // the next read while the cfg looked fine.
     @Test
     fun `a quote in the model name cannot break the line`() {
         val lines = unidentifiedMapping(device(buildModel = "Odd\"Model"), "Controller").unmodeledLines
         assertEquals("submission_build_model = \"OddModel\"", lines.first())
     }
 
-    // The point of the capture is that it survives to whoever curates the pad, and the wizard's
-    // output is edited before that happens: the button editor rewrites the cfg.
     @Test
     fun `capture survives a write and read round trip`() {
         val mapping = unidentifiedMapping(device(), "Controller")

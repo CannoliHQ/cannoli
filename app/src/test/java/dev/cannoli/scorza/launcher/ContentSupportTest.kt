@@ -12,15 +12,6 @@ import java.io.File
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
-/**
- * A core's `supported_extensions` is what the core parses, not what it can be handed. RetroArch
- * unpacks archives and resolves m3u playlists first, so refusing on the file's own extension would
- * break a zipped ROM on `snes9x`, which declares no archive format, and multi-disc on the 66 of 83
- * curated cores that never declare `m3u`.
- *
- * The refusal exists for the opposite case: Geolith takes the NeoSD `.neo` format, so a MAME-style
- * Neo Geo romset is content it has no parser for rather than content it fails to load.
- */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class ContentSupportTest {
@@ -59,7 +50,6 @@ class ContentSupportTest {
         assertNull(check(zip(d, "lbowling.zip", "lbowling/202-c1.c1"), "fbneo_libretro"))
     }
 
-    // snes9x declares smc|sfc|swc|fig|bs|st and no archive format, yet zipped ROMs are the norm.
     @Test fun `a zipped ROM passes on a core that declares no archive format`() {
         val d = dir("cs-zipped")
         assertNull(check(zip(d, "Mario.zip", "Mario.sfc"), "snes9x_libretro"))
@@ -75,7 +65,6 @@ class ContentSupportTest {
         assertEquals("sfc", check(rom(d, "Mario.sfc"), "gambatte_libretro"))
     }
 
-    // The multi-disc guard. Neither of these cores declares m3u, and both must still launch.
     @Test fun `multi-disc m3u passes on cores that never declare m3u`() {
         val d = dir("cs-m3u")
         val playlist = m3u(d, "FF7.m3u", "FF7 (Disc 1).cue", "FF7 (Disc 2).cue")
@@ -89,7 +78,6 @@ class ContentSupportTest {
         assertNull(check(m3u(d, "FF7.m3u", "FF7 (Disc 1).cue"), "pcsx_rearmed_libretro"))
     }
 
-    // An m3u naming discs the core cannot read is still refused, since resolving is the point.
     @Test fun `an m3u of unreadable discs is refused`() {
         val d = dir("cs-m3u-bad")
         assertEquals("m3u", check(m3u(d, "Game.m3u", "Game (Disc 1).sfc"), "pcsx_rearmed_libretro"))
@@ -101,14 +89,11 @@ class ContentSupportTest {
         assertNull(check(playlist, "yabasanshiro_libretro"))
     }
 
-    // The third line on the screen comes from this, so the order has to be the core's own: it
-    // leads with the format the core is actually for.
     @Test fun `declared formats keep the order the info gives them`() {
         assertEquals(listOf("cue", "ccd", "toc", "chd"), repo.getExtensionsFor("mednafen_pcfx_libretro"))
         assertEquals(listOf("zip", "7z", "cue", "ccd"), repo.getExtensionsFor("fbneo_libretro"))
     }
 
-    // puae ends its list with a trailing pipe. An empty entry would render as a bare dot.
     @Test fun `a trailing separator does not become an empty format`() {
         for (core in listOf("puae_libretro", "dosbox_pure_libretro")) {
             val exts = repo.getExtensionsFor(core)
@@ -121,7 +106,6 @@ class ContentSupportTest {
         assertNull(ContentSupport.unsupported(rom(d, "Mario.sfc"), emptySet()))
     }
 
-    // Never block on a guess: an unreadable or empty archive is let through to fail honestly.
     @Test fun `an unreadable archive is let through`() {
         val d = dir("cs-corrupt")
         assertNull(check(rom(d, "broken.zip"), "mednafen_pcfx_libretro"))

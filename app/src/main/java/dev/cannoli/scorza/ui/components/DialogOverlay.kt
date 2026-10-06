@@ -50,8 +50,6 @@ fun DialogOverlay(
     updateAvailable: Boolean = false,
     buttonStyle: ButtonStyle = ButtonStyle(),
     use24hTime: Boolean = false,
-    // Only the Tools and Ports lists offer to drop a shortcut for an app that has gone missing,
-    // and that depends on the list being viewed rather than on anything the dialog carries.
     appListPlatformTag: String? = null,
 ) {
     val itemHeight = pillItemHeight(listLineHeight, listVerticalPadding)
@@ -116,7 +114,6 @@ fun DialogOverlay(
     }
 }
 
-/** Draws any [DialogState.Picker]. Sits outside the four families because it belongs to none. */
 @Composable
 private fun PickerDialog(
     dialogState: DialogState.Picker,
@@ -128,16 +125,12 @@ private fun PickerDialog(
     buttonStyle: ButtonStyle,
     itemHeight: Dp,
 ) {
-    // The legend follows the selected row, which is the rule four screens had each written out.
     val selectedRow = dialogState.items.getOrNull(dialogState.selectedIndex)
     val cycles = selectedRow?.cycles == true
     val clears = selectedRow?.clears == true
     ListDialogScreen(
         backgroundImagePath = backgroundImagePath,
         backgroundTint = backgroundTint,
-        // A picker opened from a context menu is titled after the row that opened it, and those
-        // rows carry a stable key rather than words. Anything with no entry passes through, which
-        // is what pickers built from already-translated titles rely on.
         title = dev.cannoli.scorza.input.MENU_LABELS[dialogState.title]
             ?.let { stringResource(it) } ?: dialogState.title,
         listFontSize = listFontSize,
@@ -160,9 +153,6 @@ private fun PickerDialog(
             return@ListDialogScreen
         }
         List(items = dialogState.items, selectedIndex = dialogState.selectedIndex, itemHeight = itemHeight) { _, item, isSelected ->
-            // A row with no value is a text row, not a key-value row with a blank value: the
-            // highlight hugs the label on one and runs full width on the other, so passing an
-            // empty string here would quietly restyle every picker that carries labels alone.
             if (item.value == null && item.dot == null) {
                 PillRowText(
                     label = item.label,
@@ -193,8 +183,6 @@ internal fun ConfirmOverlay(
     buttonStyle: ButtonStyle,
     cancelLabel: String? = null,
     confirmLabel: String? = null,
-    // A third answer, for a question where declining and going back are not the same thing. Sits in
-    // the left group with back, which is where modifiers live.
     northLabel: String? = null,
 ) {
     Box(

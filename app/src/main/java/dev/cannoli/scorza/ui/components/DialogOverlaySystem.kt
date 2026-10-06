@@ -232,8 +232,6 @@ internal fun SystemDialogs(
             confirmLabel = stringResource(R.string.label_update),
         )
 
-        // One standing statement rather than the core name: twenty-seven names in five seconds
-        // reads as flicker, and which core is in flight is not something to act on.
         is DialogState.UpdatingCores -> dev.cannoli.ui.components.ProgressOverlay(
             title = stringResource(R.string.updating_cores),
             subtitle = "",
@@ -292,14 +290,6 @@ internal fun SystemDialogs(
     }
 }
 
-/**
- * A size to warn someone with, rounded up to a whole unit.
- *
- * The exact figure is a guess built from a file count and a cluster size, so rendering it as
- * "0.96 GB" claims a precision it does not have and reads as smaller than it is. Rounding up keeps
- * the warning honest in the direction that matters, and the threshold sits below a gigabyte because
- * that is the point where "nearly a gigabyte" is what a person would say.
- */
 private fun roundedUpSize(bytes: Long): String =
     if (bytes >= 900_000_000L) "${kotlin.math.ceil(bytes / 1_000_000_000.0).toInt()} GB"
     else "${kotlin.math.ceil(bytes / 1_000_000.0).toInt()} MB"
@@ -312,7 +302,6 @@ private fun quickMenuLabel(row: dev.cannoli.scorza.ui.quickmenu.QuickMenuRow): S
     dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.SYNC_HISTORY -> stringResource(R.string.quick_menu_sync_history)
     dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.CONFLICTS -> stringResource(dev.cannoli.ui.R.string.conflicts_title)
     dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.ERRORS -> stringResource(dev.cannoli.ui.R.string.sync_errors_title)
-    // Only ever drawn with a count, since the row is absent when the queue is empty.
     dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.UNSYNCED_UNLOCKS ->
         pluralStringResource(dev.cannoli.ui.R.plurals.quick_menu_unsynced_unlocks, 1, 1)
     dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.KITCHEN -> stringResource(R.string.quick_menu_kitchen)

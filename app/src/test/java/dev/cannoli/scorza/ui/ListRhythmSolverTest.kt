@@ -6,12 +6,6 @@ import dev.cannoli.ui.components.solveListRhythm
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/**
- * The rhythm divides a screen into whole rows and hands the remainder back to the gaps. These pin
- * both halves of that: the content adds back up to no more than the screen it was given, and the
- * three gaps a reader actually sees - title to first row, row to row, last row to footer - come out
- * the same size once the ink offsets each end carries are taken into account.
- */
 class ListRhythmSolverTest {
 
     private class Geo(
@@ -30,8 +24,6 @@ class ListRhythmSolverTest {
         val pillScale = minOf(1f, textSize / 24f)
         val lineHeight = textSize + 10f * pillScale
         val edge = 6f * pillScale
-        // Three plausible shapes of font metric, including one where the title sits lower than the
-        // row does, which drives topExtra negative.
         val (above, below, titleBelow) = when (inkProfile) {
             0 -> Triple(0.15f, 0.20f, 0.10f)
             1 -> Triple(0.25f, 0.10f, 0.30f)
@@ -55,11 +47,6 @@ class ListRhythmSolverTest {
                 r.rows * g.rowHeight +
                 (r.rows - 1) * r.itemSpacing.value +
                 r.footerReserve.value
-            // Overflowing by even a pixel clips the bottom row out of the fully-visible set that
-            // PageJump and reveal scrolling read, so the solve always rounds down.
-            // 0.25dp is under half a pixel at any density this ships on, so it cannot cost a row:
-            // List clamps its row count to what measurably fits regardless. It is float noise in
-            // the Dp arithmetic, not real overflow.
             assertTrue("$label overflows: used $used > $available", used <= available + 0.25f)
         }
     }
@@ -70,9 +57,6 @@ class ListRhythmSolverTest {
             val barHeight = 34f
             val rowGap = g.belowInk + g.edge + r.itemSpacing.value + g.edge + g.aboveInk
             val footerGap = g.belowInk + g.edge + (r.footerReserve.value - barHeight)
-            // Row spacing is one whole-pixel value repeated across every slot, so quantising it down
-            // strands up to a pixel per slot. That remainder goes to the ends, which a titled screen
-            // has two of and an untitled screen only one.
             val slots = if (titled) r.rows + 1 else r.rows
             val ends = if (titled) 2f else 1f
             val slack = if (pixel == 0f) 0.05f else pixel * slots / ends + 0.05f

@@ -36,8 +36,6 @@ class QuickMenuAboutDebugActionTest {
     private lateinit var settingsViewModel: SettingsViewModel
     private lateinit var handler: DialogInputHandler
 
-    // The quick-menu rebuild finishes on Dispatchers.Main, so Main has to be the same test
-    // dispatcher for advanceUntilIdle() to carry the rebuild all the way to dialogState.
     private val dispatcher = StandardTestDispatcher()
 
     @Before fun setup() {

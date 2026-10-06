@@ -53,7 +53,6 @@ class RomsRepository(
         }
     }
 
-    /** Null clears the override, putting the game back on whatever the global mode says. */
     fun setRaHardcore(romId: Long, hardcore: Boolean?) =
         if (hardcore == null) db.execute("UPDATE roms SET ra_hardcore = NULL WHERE id = ?", romId)
         else db.execute("UPDATE roms SET ra_hardcore = ? WHERE id = ?", if (hardcore) 1L else 0L, romId)
@@ -63,9 +62,6 @@ class RomsRepository(
         newRelativePath, romId,
     )
 
-    // Renames a rom in place: updates the path plus every name-derived column the same way the
-    // scanner would, so the list re-sorts to the new name immediately instead of waiting for the
-    // file-watcher rescan (which then finds nothing changed and stays a no-op).
     fun renameRom(romId: Long, newRelativePath: String, newBaseName: String) {
         val (displayName, tags) = RomNaming.splitNameAndTags(newBaseName)
         db.execute(
@@ -103,7 +99,6 @@ class RomsRepository(
         "SELECT tag FROM platforms ORDER BY sort_order, display_name COLLATE NOCASE",
     ) { it.getText(0) }
 
-    /** Lowercased filenames currently indexed for [platformTag], for RomM on-device matching. */
     fun presentFileNames(platformTag: String): Set<String> = db.queryAll(
         "SELECT path FROM roms WHERE platform_tag = ?", platformTag.uppercase(),
     ) { File(it.getText(0)).name.lowercase() }.toSet()
@@ -135,9 +130,6 @@ class RomsRepository(
         platformTag, mapper = ::rowToRom,
     )
 
-    /** When a subfolder is selected, return roms inside it (here) and roms in deeper subdirs (deeper).
-     *  When no subfolder is selected, return roms at the platform root (here) and roms anywhere
-     *  inside subfolders (deeper) so the deeper set drives top-level subfolder pseudo-items. */
     private fun partitionForSubfolder(roms: List<Rom>, subfolder: String?): Pair<List<Rom>, List<Rom>> {
         val sep = File.separatorChar
         val basePrefix = if (subfolder.isNullOrEmpty()) "" else "$subfolder$sep"
@@ -149,9 +141,6 @@ class RomsRepository(
         }
     }
 
-    /** A rom whose remaining path is `<folder>/<folder>.<ext>` is a self-contained bundle
-     *  (organizer-created or user-organized). Show it at the current level, not behind a
-     *  subfolder row. */
     private fun isSelfContainedBundle(remaining: String, sep: Char): Boolean {
         val sepIndex = remaining.indexOf(sep)
         if (sepIndex < 0 || remaining.indexOf(sep, sepIndex + 1) >= 0) return false

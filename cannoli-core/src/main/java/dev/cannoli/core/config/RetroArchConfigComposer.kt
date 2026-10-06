@@ -1,14 +1,7 @@
 package dev.cannoli.core.config
 
-/**
- * Pure merge logic for a RetroArch cfg's `key = "value"` lines, shared by every layer that
- * writes on top of a base config (launch overrides today, the full preference layer stack later).
- */
 object RetroArchConfigComposer {
 
-    // Parse a cfg's `key = "value"` lines to an ordered map. Lenient: blank lines,
-    // comments, and malformed lines are dropped (caller logs). First occurrence wins,
-    // matching RetroArch's config_file insert-if-absent semantics.
     fun parse(text: String): Map<String, String> {
         val result = LinkedHashMap<String, String>()
         for (line in text.lines()) {
@@ -22,8 +15,6 @@ object RetroArchConfigComposer {
         return result
     }
 
-    // Fold preference layers over the base text (later layer overrides earlier),
-    // reusing applyOverrides semantics. Returns the merged base string.
     fun compose(base: String, layers: List<Map<String, String>>): String =
         layers.fold(base) { source, overrides -> applyOverrides(source, overrides) }
 

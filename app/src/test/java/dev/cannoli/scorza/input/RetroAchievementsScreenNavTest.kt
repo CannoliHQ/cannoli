@@ -136,8 +136,6 @@ class RetroAchievementsScreenNavTest {
         assertEquals("bob", s.raUsername)
     }
 
-    // Opened directly from the Integrations list, so Log Out clears the credentials and drops the
-    // account screen back to Settings without stepping out of a credential sub-list it never entered.
     @Test fun `confirming the logout clears creds and pops the account screen`() {
         val s = settings()
         val r = onAccountScreen(s)
@@ -178,8 +176,6 @@ class RetroAchievementsScreenNavTest {
         assertTrue(nav.currentScreen is LauncherScreen.RetroAchievements)
     }
 
-    // Bug fix: opening Offline Sets must not destroy the account screen. It stays on the stack under
-    // the platforms screen, so backing out of Offline Sets lands on the account, not on Integrations.
     @Test fun `offline sets keeps the account screen so back returns to it`() {
         onIntegrations()
         val s = settings()

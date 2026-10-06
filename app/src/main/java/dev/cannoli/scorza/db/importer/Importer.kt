@@ -106,10 +106,6 @@ class Importer(
             result
         } catch (t: Throwable) {
             ScanLog.write("ERROR import failed: ${t.message}")
-            // importPlatforms()/importRoms() committed to the platforms and roms tables
-            // outside the transaction above. Clear them so the countRoms() re-entry guard
-            // does not treat this half-finished import as complete and skip the remaining
-            // migration (collections, overrides, recently-played) on the next boot.
             runCatching {
                 conn.transaction {
                     conn.execSQL("DELETE FROM roms")
@@ -433,8 +429,6 @@ class Importer(
 
     private fun archiveLegacyFiles(backupDir: File) {
         backupDir.mkdirs()
-        // cores.json is deliberately absent: unlike everything below it, no table supersedes
-        // it and PlatformConfig still reads it, so archiving it lost every emulator mapping.
         val candidates = listOf(
             paths.collectionsDir,
             paths.raGameIdsFile,

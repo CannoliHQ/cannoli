@@ -5,13 +5,6 @@ import dev.cannoli.scorza.config.CannoliPaths
 import dev.cannoli.scorza.di.CannoliPathsProvider
 import java.io.File
 
-/**
- * Walks a ROM directory and returns the in-memory list of ROMs that should exist for a platform.
- * Reorganizes loose multi-disc sets into per-game subfolders with a generated `<base>.m3u` so
- * libretro cores resolve disc paths correctly. Honors ignore lists, m3u/cue/stem-matching-rom
- * dir launches (collapsing only when all top-level files share the folder's name), disc grouping,
- * name-map overrides, and tag/region splitting.
- */
 class RomDirectoryWalker(
     private val pathsProvider: CannoliPathsProvider,
     private val assets: AssetManager,
@@ -37,8 +30,6 @@ class RomDirectoryWalker(
         val tags: String?,
     )
 
-    /** A multi-disc set that the organizer relocated; `oldRelPath` is what the DB previously
-     *  referenced (the first disc's path), `newRelPath` is the generated m3u. */
     data class RekeyMove(val oldRelPath: String, val newRelPath: String)
 
     private fun ensureIgnoreLists() {
@@ -51,7 +42,6 @@ class RomDirectoryWalker(
         ignoreListsLoaded = true
     }
 
-    /** Returns null when the platform directory does not exist. */
     fun walk(platformTag: String, isArcade: Boolean): WalkResult? {
         ensureIgnoreLists()
         val tag = platformTag.uppercase()
@@ -71,20 +61,13 @@ class RomDirectoryWalker(
 
     fun invalidateNameMap(tagDir: File) = arcadeTitleLookup.invalidate(tagDir)
 
-    /** Invalidates the cached folder list for a tag. Called when the launcher or Nonna's Kitchen
-     *  changes a platform's contents, since a folder created below the top level does not move the
-     *  tag directory's own timestamp. */
     fun invalidateCategoryFolders(platformTag: String) {
         categoryFolderCache.remove(platformTag.uppercase())
     }
 
-    /** Every category (non-game) folder under the platform, as platform-relative slash paths. */
     fun categoryFolders(platformTag: String, isArcade: Boolean): List<String> {
         val tag = platformTag.uppercase()
         val tagDir = resolveTagDir(tag) ?: return emptyList()
-        // Finding the subfolders means stat-ing every entry, so a platform holding a few thousand
-        // loose ROMs pays for all of them to discover a handful of directories, or none at all.
-        // The timestamp catches top-level edits; deeper ones arrive via invalidateCategoryFolders.
         val stamp = tagDir.lastModified()
         categoryFolderCache[tag]?.let { if (it.stamp == stamp && it.isArcade == isArcade) return it.folders }
         val folders = walkCategoryFolders(tagDir, isArcade)
@@ -110,8 +93,6 @@ class RomDirectoryWalker(
         return out.sortedWith(compareBy { it.lowercase() })
     }
 
-    /** The dedicated on-disk folder for the game launched by [primaryFile], or null when the game
-     *  is a loose file not contained in its own folder. */
     fun gameDirectory(primaryFile: File): File? {
         val parent = primaryFile.parentFile ?: return null
         if (parent.parentFile == romDirectory) return null
@@ -119,8 +100,6 @@ class RomDirectoryWalker(
         return if (launch.file == primaryFile) parent else null
     }
 
-    /** The `<romset>/` CHD folder belonging to an arcade game, which deleting the game must take
-     *  with it. Null when the game has no such folder. */
     fun arcadeSupportDir(primaryFile: File, isArcade: Boolean): File? {
         if (!isArcade) return null
         if (primaryFile.extension.lowercase() !in ARCADE_ROMSET_EXTENSIONS) return null
@@ -128,7 +107,6 @@ class RomDirectoryWalker(
         return File(parent, primaryFile.nameWithoutExtension).takeIf { it.isDirectory }
     }
 
-    /** Every on-disk file that makes up the game launched by [primaryFile]. */
     fun gameFiles(primaryFile: File): List<File> {
         gameDirectory(primaryFile)?.let { dir ->
             return dir.listFiles { f -> f.isFile }?.sortedBy { it.name.lowercase() }
@@ -155,12 +133,8 @@ class RomDirectoryWalker(
 
     enum class RenameOutcome { RENAMED, NAME_TAKEN, FAILED }
 
-    /** [newPrimary] is non-null exactly when [outcome] is RENAMED: the primary file's new
-     *  location, cascaded to match the folder/file's new name. */
     data class RenameGameResult(val outcome: RenameOutcome, val newPrimary: File? = null)
 
-    /** Renames a game. For a single-file game, renames the rom file. For a folder game, cascades:
-     *  the folder, the launch file, the disc files, and the m3u contents all take the new name. */
     fun renameGame(primaryFile: File, newName: String): RenameGameResult {
         if (newName.isBlank()) return RenameGameResult(RenameOutcome.FAILED)
 
@@ -260,7 +234,6 @@ class RomDirectoryWalker(
             .filter { it.extension.equals("m3u", ignoreCase = true) }
             .associateBy { it.nameWithoutExtension }
 
-        // Discs belonging to a loose m3u in the same directory are represented by that m3u.
         val suppressed = discGroups
             .filter { (baseName, discs) -> discs.size > 1 && m3uByBase[baseName] != null }
             .values.flatten()
@@ -280,8 +253,6 @@ class RomDirectoryWalker(
         }
     }
 
-    // MAME and FBNeo read a romset's CHDs from `<romset>/` sitting beside `<romset>.zip`, so that
-    // folder is support data for the archive rather than a game of its own.
     private fun isArcadeSupportDir(dir: File): Boolean {
         val parent = dir.parentFile ?: return false
         return ARCADE_ROMSET_EXTENSIONS.any { File(parent, "${dir.name}.$it").isFile }
@@ -416,7 +387,6 @@ class RomDirectoryWalker(
         m3u.readLines().map { it.trim() }.filter { it.isNotEmpty() && !it.startsWith("#") }
     }.getOrDefault(emptyList())
 
-    // Relocates a loose m3u set into its own folder; skips m3us whose entries are not flat siblings.
     private fun relocateLooseM3uSet(
         parent: File,
         baseName: String,
@@ -482,8 +452,6 @@ class RomDirectoryWalker(
         return true
     }
 
-    // Moves late-arriving loose discs into an existing `<baseName>/` bundle and rewrites its m3u,
-    // so incremental uploads (a disc landing after the bundle was already organized) still converge.
     private fun mergeLooseDiscsIntoBundle(
         baseName: String,
         subdir: File,
@@ -492,7 +460,6 @@ class RomDirectoryWalker(
         tag: String,
     ): Boolean {
         val m3uFile = File(subdir, "$baseName.m3u")
-        // Also merge into a folder that already holds this game's discs but has no m3u yet.
         if (!m3uFile.exists() && !folderHoldsDiscsOf(subdir, baseName)) return false
 
         val toMove = linkedSetOf<File>().apply {
@@ -635,9 +602,6 @@ class RomDirectoryWalker(
         val paths = CannoliPaths(cannoliRoot)
         val savesTagDir = paths.savesFor(tag)
         renameStemMatchedFiles(savesTagDir, fromStem, toStem)
-        // The per-game save folder follows the stem the way the state folder below does. Only the
-        // files carrying the ROM's name are renamed inside it; the rest were written by the
-        // emulator under names of its own choosing.
         val saveSub = File(savesTagDir, fromStem)
         val saveSubTarget = File(savesTagDir, toStem)
         if (saveSub.isDirectory && !saveSubTarget.exists() && saveSub.renameTo(saveSubTarget)) {
@@ -649,8 +613,6 @@ class RomDirectoryWalker(
         val stateSubTarget = File(statesTagDir, toStem)
         if (stateSub.isDirectory && !stateSubTarget.exists() && stateSub.renameTo(stateSubTarget)) {
             renameStemMatchedFiles(stateSubTarget, fromStem, toStem)
-            // States are keyed by core now, so each core has a folder inside the game folder and
-            // the files that carry the ROM's name are one level further down.
             stateSubTarget.listFiles { f: File -> f.isDirectory }?.forEach {
                 renameStemMatchedFiles(it, fromStem, toStem)
             }

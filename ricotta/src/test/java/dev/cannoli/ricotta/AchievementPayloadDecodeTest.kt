@@ -4,11 +4,6 @@ import dev.cannoli.igm.AchievementInfo
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-/**
- * Pins the wire format ricotta_sb_escaped produces for the achievement snapshot. Every literal
- * below is the exact output of that C function, so changing the escaping means consciously
- * rewriting these bytes.
- */
 class AchievementPayloadDecodeTest {
 
     @Test

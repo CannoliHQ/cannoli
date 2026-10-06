@@ -17,10 +17,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import kotlinx.coroutines.delay
 
-// Work that resolves inside this shows nothing at all.
 private const val StatusDelayMs = 250L
 
-/** Black while a launch is in flight. [status] appears only for work holding the launch up. */
 @Composable
 fun LaunchScrim(status: String? = null) {
     Box(

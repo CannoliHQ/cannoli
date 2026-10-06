@@ -29,12 +29,8 @@ class RetroActivityFuture : RetroActivityCamera() {
     private var osdOverlay: OsdOverlay? = null
     private var resumed = false
     private var viewportController: ViewportController? = null
-    // Held so the echo listener can be released: the native side keeps a global ref to the
-    // bridge, so it outlives the local scope it is built in.
     private var raBridge: EmbeddedRetroArchBridge? = null
 
-    // The OSD sits beside the IGM, so it must resolve strings in the launcher's chosen
-    // language rather than the system one, exactly as IGMOverlay's uiContext does.
     private var osdContext: Context = this
 
     private val mHandler = object : Handler(Looper.getMainLooper()) {
@@ -63,10 +59,6 @@ class RetroActivityFuture : RetroActivityCamera() {
         isRunning = true
         mDecorView = window.decorView
 
-        // Immersive before the surface exists. RetroArch posts this toggle a few hundred ms into
-        // the run, and applying it first time round let the system bars lay out and then resized
-        // the window under a live surface. Setting the flags here keeps the window one size for
-        // the whole launch.
         attemptToggleImmersiveMode(true)
 
         try {
@@ -88,8 +80,6 @@ class RetroActivityFuture : RetroActivityCamera() {
 
             val ds = params?.displaySettings
             val fontSizeSp = ds?.fontSizeSp ?: 24
-            // Before the config is built, because the labels in it are translated: reading them off
-            // the activity would answer in the device's language rather than the launcher's.
             osdContext = localeContext(this, localeTag)
             val hostConfig = dev.cannoli.igm.IGMHostConfig(
                 fontSizeSp = fontSizeSp,
@@ -109,7 +99,6 @@ class RetroActivityFuture : RetroActivityCamera() {
                 timeFormat = ds?.timeFormat ?: dev.cannoli.igm.TimeFormatMode.TWELVE_HOUR,
                 buttonLabelSet = ds?.buttonLabelSet ?: dev.cannoli.ui.ButtonLabelSet.PLUMBER,
                 confirmButton = ds?.confirmButton ?: dev.cannoli.ui.ConfirmButton.SOUTH,
-                // Readable rather than raw: KEYCODE_BUTTON_L1 is not what a chord should read as.
                 keyCodeName = { code ->
                     android.view.KeyEvent.keyCodeToString(code)
                         .removePrefix("KEYCODE_")
@@ -152,9 +141,6 @@ class RetroActivityFuture : RetroActivityCamera() {
                         colors?.accent, colors?.title, localeTag, romBaseName,
                     )
                     igmOverlay?.onCreate(savedInstanceState)
-                    // The scaling row owns aspect_ratio_index, so writing a new preset pulls RetroArch out
-                    // of the custom viewport Cannoli applied; once the whole menu closes and play resumes,
-                    // claim it back for whatever the user picked.
                     igmOverlay?.onHidden = { refreshViewport() }
                     // The menu writes the scaling row through a queued command while the viewport reads
                     // settings synchronously, so a refresh fired on dismissal can read the value from
@@ -165,8 +151,6 @@ class RetroActivityFuture : RetroActivityCamera() {
                     bridge.setOnRaSettingApplied { key, _ ->
                         if (key == dev.cannoli.igm.RaKeys.ASPECT_RATIO_INDEX ||
                             key == dev.cannoli.igm.RaKeys.VIDEO_SCALE_INTEGER) refreshViewport()
-                        // The curated Show FPS row writes RetroArch's key; the pill that actually draws it
-                        // is Cannoli's, so it follows the echo rather than the row.
                         if (key == KEY_FPS_SHOW) bridge.syncShowFps()
                         if (key == KEY_STATISTICS_SHOW) bridge.syncShowDebug()
                     }
@@ -195,21 +179,11 @@ class RetroActivityFuture : RetroActivityCamera() {
                     igmOverlay?.onWindowAttached = { osd.raise() }
                     igmOverlay?.onVisibilityChanged = { open -> osd.setIgmOpen(open) }
                     bridge.onOsdEvent = { type, slot ->
-                        // Fast forward is the one event that reports a state rather than something that
-                        // happened, so it holds a pill for as long as it lasts instead of flashing a toast
-                        // the game then outlives.
                         if (type == RicottaOsdEvent.FASTFORWARD) osd.setFastForward(slot != 0)
-                        // Raised on every frame the buffer stays exhausted, so it sets a state rather than
-                        // queueing a toast per frame. Cleared when the rewind chord is let go.
                         else if (type == RicottaOsdEvent.REWIND_END) osd.setRewindAtEnd()
                         else osd.showMessage(osdEventText(type, slot))
                         refreshViewport()
-                        // The game has jumped to a point the recorded frames do not lead back to, so
-                        // what is behind it now is a different timeline. Resume is the case that showed
-                        // it: rewinding walked past the resumed state and into the game's boot.
                         if (type == RicottaOsdEvent.LOAD_STATE) bridge.resetRewindBuffer()
-                        // A save is queued, not written, when the IGM asks for it. The slot on disk only
-                        // changes once RetroArch reports back, so the polaroid is stale until then.
                         if (type == RicottaOsdEvent.SAVE_STATE ||
                             type == RicottaOsdEvent.UNDO_SAVE_STATE
                         ) {
@@ -248,7 +222,6 @@ class RetroActivityFuture : RetroActivityCamera() {
                     osd.fpsProvider = { bridge.fps() }
                     bridge.onShowFpsChanged = { on -> osd.setShowFps(on) }
                     bridge.onShowDebugChanged = { on -> osd.setShowDebug(on) }
-                    // Native reports stable keys; the words are this side's, so they translate.
                     osd.debugStatsProvider = {
                         bridge.debugStats().map { (key, value) -> debugLabel(key) to value }
                     }
@@ -257,8 +230,6 @@ class RetroActivityFuture : RetroActivityCamera() {
                     bridge.onRunloopReady = {
                         bridge.syncShowFps()
                         bridge.syncShowDebug()
-                        // Same reason the two above wait for this: a setting cannot be read, let alone
-                        // written, until RetroArch's own loop has started.
                         dev.cannoli.ricotta.RaSweepRunner.runIfRequested(cannoliRoot, bridge)
                     }
                     if (resumed) igmOverlay?.onResume()
@@ -272,14 +243,6 @@ class RetroActivityFuture : RetroActivityCamera() {
     }
 
     private var shortcuts: dev.cannoli.igm.ShortcutController? = null
-    /**
-     * Chords bound in the launcher, pushed to native because that is where they are matched.
-     *
-     * Matching cannot happen up here. A chord is only known to be one when its last key lands, and
-     * the keys it claims have to come back out of the input state before the core's next poll;
-     * anything reaching this process is already frames late, by which time the game has acted on
-     * the press. This wires up what happens once native has decided.
-     */
     private fun debugLabel(key: String): String = when (key) {
         "fps" -> getString(R.string.igm_debug_fps)
         "frames" -> getString(R.string.igm_debug_frames)
@@ -296,49 +259,35 @@ class RetroActivityFuture : RetroActivityCamera() {
         triggerKeycodes: Set<Int>,
     ) {
         val overlay = igmOverlay ?: return
-        // Wired before anything can return early. A game with nothing bound is exactly the case the
-        // in-game menu exists for, and without these a chord bound there reached neither the input
-        // path nor the screen's idea of what it is layering over: it only appeared after a relaunch.
         bridge.globalShortcuts = table
         bridge.onShortcutsStaged = {
             val staged = bridge.resolveShortcutsStaged(table)
             bridge.setShortcutChords(dev.cannoli.igm.ShortcutTable.encode(staged))
             overlay.controller.setMenuShortcuts(staged)
         }
-        // What the launcher passed is the global table. This game's and this platform's tiers can
-        // add to it or switch a chord off, so the effective table is what native and the menu see.
         val effective = bridge.resolveShortcuts(table)
         val union = effective.values.flatten().toSet()
         val controller = dev.cannoli.igm.ShortcutController(
             controller = overlay.controller,
             showMenu = { overlay.show() },
-            // Only the trigger keys a chord actually uses. Native keeps opening the menu itself for
-            // the rest, so claiming them here would leave a press with nothing left to open it.
             menuKeys = triggerKeycodes.intersect(union),
         )
         shortcuts = controller
         bridge.setShortcutChords(dev.cannoli.igm.ShortcutTable.encode(effective))
-        // The menu's own screens read the same table, so a pad with no menu button can still reach
-        // their help pages once the menu is up and the game no longer has the keys.
         overlay.controller.setMenuShortcuts(effective)
         controller.onToast = { action ->
             val text = when (action) {
                 dev.cannoli.igm.ShortcutAction.CYCLE_EFFECT -> getString(
                     when {
                         bridge.appliedShaderPreset() != null -> R.string.osd_event_shader_on
-                        // Nothing to turn on is not the same as having turned it off, and saying
-                        // off would describe a state the game was already in.
                         bridge.shaderToRestore() == null -> R.string.osd_event_shader_none
                         else -> R.string.osd_event_shader_off
                     }
                 )
-                // Fast forward and the frame counter hold a pill of their own for as long as they
-                // are on, and everything else is either visible on its own or leaves the game.
                 else -> null
             }
             text?.let { osdOverlay?.showMessage(it) }
         }
-        // Not the action's own label, which already ends in "(Hold)" and would read twice over.
         controller.onHoldArmed = { action ->
             when (action) {
                 dev.cannoli.igm.ShortcutAction.SAVE_AND_QUIT_HOLD ->
@@ -366,15 +315,6 @@ class RetroActivityFuture : RetroActivityCamera() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
 
-        // Every launch restarts, including a relaunch of the game already running.
-        //
-        // This used to restart only when the ROM or core differed, and continue the running
-        // session otherwise. That was unreachable while backgrounding killed the process, but now
-        // that a backgrounded session survives it would silently override the launcher: the
-        // launcher decides whether a launch is a fresh Play or a Resume and encodes it in the
-        // config this intent points at, so carrying on regardless would drop Play back into a game
-        // already in progress and make Resume's slot never load. Same ROM relaunched is precisely
-        // the case that has to restart, so comparing content cannot be the test.
         if (intent.getStringExtra("ROM") == null) {
             setIntent(intent)
             return
@@ -422,19 +362,11 @@ class RetroActivityFuture : RetroActivityCamera() {
         igmOverlay?.onDestroy()
         super.onDestroy()
         isRunning = false
-        // `quitfocus` means "do not linger once the player has moved on". Finishing is the signal
-        // for that; stopping is not. This used to run in onStop, which cannot tell a player who is
-        // done from a screen that locked, a call that came in, or a home press they meant to come
-        // back from, and killed a running game in all of those cases.
-        //
-        // Quitting from the in-game menu does not depend on this: it enqueues CMD_EVENT_QUIT and
-        // RetroArch exits on its own.
         if (quitfocus && isFinishing) EmbeddedRetroArchBridge.nativeExitProcess()
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        // Focus lost to the IGM panel must not drop immersive, or the nav bar flashes.
         if (hasFocus) sendUiMessage(HANDLER_WHAT_TOGGLE_IMMERSIVE, true)
 
         if (autoMouseGrab) inputGrabMouse(hasFocus)
@@ -448,11 +380,6 @@ class RetroActivityFuture : RetroActivityCamera() {
             refreshViewportRetrying(w, h)
     }
 
-    // The surface commonly becomes ready before the core has reported its geometry, so a decline
-    // for that reason alone is retried rather than left to silently do nothing for the session.
-    // Ten attempts 100ms apart cover about a second, which is comfortably past the gap seen on
-    // device (geometry showed up 449ms after the first decline), while still giving up if a core
-    // never reports geometry at all.
     private fun refreshViewportRetrying(width: Int, height: Int, attempt: Int = 0) {
         val result = viewportController?.refresh(width, height) ?: return
         if (result == ViewportController.RefreshResult.NOT_READY && attempt < GEOMETRY_RETRY_MAX_ATTEMPTS) {
@@ -468,8 +395,6 @@ class RetroActivityFuture : RetroActivityCamera() {
         refreshViewport()
     }
 
-    // The surface is (re)created after the core loads, so this also carries the core-load
-    // trigger: RetroArch has no Kotlin-visible hook for "content is running" here.
     override fun surfaceChanged(holder: android.view.SurfaceHolder, format: Int, width: Int, height: Int) {
         super.surfaceChanged(holder, format, width, height)
         refreshViewportRetrying(width, height)
@@ -540,9 +465,6 @@ class RetroActivityFuture : RetroActivityCamera() {
         }
     }
 
-    // Formats a structured OSD event into a Cannoli pill. No string parsing -
-    // type and slot come straight from the source site. RetroArch state_slot N
-    // matches the IGM's "Slot N"; slot < 0 is the auto slot.
     private fun osdEventText(type: Int, slot: Int): String {
         val where = if (slot < 0) {
             osdContext.getString(R.string.igm_slot_auto)

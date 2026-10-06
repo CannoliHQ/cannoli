@@ -82,8 +82,6 @@ class SettingsInputHandler @Inject constructor(
         }
     }
 
-    // The shoulders travel, the D-pad places. Only meaningful on rows that take a coarse step;
-    // elsewhere cycleSelected ignores it and the row behaves as it does under Left and Right.
     override fun onL1() {
         if (settingsViewModel.state.value.inSubList)
             settingsViewModel.cycleSelected(-1, repeatCount = nav.lastKeyRepeatCount, coarse = true)
@@ -219,7 +217,6 @@ class SettingsInputHandler @Inject constructor(
                 nav.push(LauncherScreen.ColorList(colors = entries, selectedIndex = idx))
                 launcherActions.openColorPicker(key)
             }
-            // A pick carries its target in the key, so it never resolves to a constant.
             null -> if (key.startsWith(SettingsKey.FGH_PICK_PREFIX)) {
                 val id = key.removePrefix(SettingsKey.FGH_PICK_PREFIX).toLongOrNull()
                 settingsViewModel.selectFghCollectionId(id)
@@ -227,12 +224,10 @@ class SettingsInputHandler @Inject constructor(
                 settingsViewModel.exitSubList()
                 launcherActions.rescanSystemList()
             } else if (key.startsWith(SettingsKey.START_ON_PICK_PREFIX)) {
-                // An empty tag is the System List row, which is the prefix on its own.
                 settingsViewModel.selectStartOnPlatform(key.removePrefix(SettingsKey.START_ON_PICK_PREFIX))
                 settingsViewModel.save()
                 settingsViewModel.exitSubList()
             }
-            // Rows that cycle a value rather than open something: Confirm does nothing.
             SettingsKey.LANGUAGE, SettingsKey.SWAP_PLAY_RESUME, SettingsKey.MAIN_MENU_QUIT,
             SettingsKey.BG_IMAGE, SettingsKey.BG_TINT, SettingsKey.FONT, SettingsKey.TEXT_SIZE,
             SettingsKey.ART_SCALE, SettingsKey.ART_WIDTH, SettingsKey.PORTRAIT_MARGIN,
@@ -251,8 +246,6 @@ class SettingsInputHandler @Inject constructor(
     override fun onBack() {
         val state = settingsViewModel.state.value
         val screen = nav.currentScreen as? LauncherScreen.Settings
-        // The quick menu is only returned to from the level it dropped us at; anything deeper
-        // still unwinds one level at a time.
         val quickMenuRow = screen?.quickMenuRow?.takeIf {
             state.parentCategory == null && state.activeCategory == screen.quickMenuCategory
         }
@@ -304,19 +297,10 @@ class SettingsInputHandler @Inject constructor(
     }
 
     private fun openEmulatorMapping() {
-        // Built once: the rows come from a directory read, so there is no scan to wait for.
         val initial = emulatorMappingBuilder.detailedMappings()
         nav.push(LauncherScreen.EmulatorMapping(mappings = initial, allMappings = initial))
     }
 
-    /**
-     * Opens Developer options, which is as deep as anything can go.
-     *
-     * Wireless debugging is a preference row rather than a screen on both handhelds checked: there
-     * is no activity for it, only a Quick Settings tile, and the fragment that owns the row lives
-     * behind SubSettings, which is not exported to anyone, adb included. The scroll-to-a-row extra
-     * that AOSP honours is ignored here too.
-     */
     private fun openDeveloperOptions() {
         runCatching {
             context.startActivity(
@@ -340,16 +324,8 @@ class SettingsInputHandler @Inject constructor(
         }
     }
 
-    // Throwaway, with the Wi-Fi Direct netplay spike. Remove with it.
     private var wifiDirectProbe: dev.cannoli.scorza.netplay.WifiDirectProbe? = null
 
-    /**
-     * Shows what the other handhelds nearby are advertising, live.
-     *
-     * A Picker rather than a screen of its own: the join list this is standing in for is a list of
-     * rows and what to do with the chosen one, which is what a Picker is. Rebuilt on every change
-     * the way the toggles are, so a handheld appearing mid-discovery shows up without a refresh.
-     */
     private fun runWifiDirectProbe(host: Boolean) {
         wifiDirectProbe?.stop()
         val probe = dev.cannoli.scorza.netplay.WifiDirectProbe(context)
@@ -369,8 +345,6 @@ class SettingsInputHandler @Inject constructor(
 
     private fun showWifiDirectPeers(peers: List<dev.cannoli.scorza.netplay.WifiDirectGroup.Peer>) {
         val current = nav.dialogState.value
-        // Only while this screen is the one on top: discovery keeps answering after you leave, and
-        // pushing a peer list over whatever replaced it would be worse than missing one.
         if (peers.isNotEmpty() && current !is DialogState.Picker) return
         nav.dialogState.value = DialogState.Picker(
             title = "Wi-Fi Direct Test",
@@ -392,12 +366,6 @@ class SettingsInputHandler @Inject constructor(
         }
     }
 
-    /**
-     * The numbers crossing the group, newest first.
-     *
-     * Both handhelds show the same list, one because it made them and one because it received
-     * them, which is the end of the question: discovery, a group, and a TCP path that stays up.
-     */
     private fun showWifiDirectLink(state: String, numbers: List<Int>) {
         if (wifiDirectProbe == null) return
         nav.dialogState.value = DialogState.Picker(

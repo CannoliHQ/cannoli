@@ -22,10 +22,6 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.io.File
 
-/**
- * The invariant this whole rework exists for: a stored choice always renders as exactly one
- * selected row, whatever the option generator can or cannot produce.
- */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class MappingCurrentSelectionTest {
@@ -97,8 +93,6 @@ class MappingCurrentSelectionTest {
             "cur-g-app", EmulatorChoice(EmulatorSource.Standalone, appPackage = "com.fastemulator.gba"), true,
         )
 
-    // A shipped update can drop an app from platforms.json, and a hand-edited cores.json can
-    // name a core that is not a candidate for the tag. Neither may make the row disappear.
     @Test fun `a core the generator cannot produce is still current`() =
         assertExactlyOneCurrent("cur-orphan-core", EmulatorChoice(EmulatorSource.Embedded, "not_a_real_core"), false)
 
@@ -140,8 +134,6 @@ class MappingCurrentSelectionTest {
         val screen = f.builder.buildPlatformMapping(
             "GBA", "GBA", romId = f.romId, gameName = "Game",
         )
-        // scrollTarget is passed through untouched, so changing it proves the screen was actually
-        // rebuilt rather than handed back, which is what makes the scope assertions mean something.
         val again = f.builder.rebuild(screen, scrollTarget = 5)
         assertEquals(f.romId, again.romId)
         assertEquals("GBA", again.tag)

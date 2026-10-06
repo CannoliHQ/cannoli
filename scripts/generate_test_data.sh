@@ -1,7 +1,4 @@
 #!/bin/sh
-# Generate extreme dummy data for collection performance testing.
-# Targets: 2000 collections, 11200 ROMs, deep nesting
-# Run via: adb shell sh /sdcard/generate_test_data.sh
 
 ROOT="/storage/689D-DA19/CannoliTest"
 ROMS="$ROOT/Roms"
@@ -29,7 +26,6 @@ done
 
 echo "=== Creating 2000 collections ==="
 
-# 200 top-level "Series" collections with 30-120 entries each
 c=1
 while [ $c -le 200 ]; do
     name="Series $c"
@@ -48,7 +44,6 @@ while [ $c -le 200 ]; do
 done
 echo "  Created 200 Series collections (30-120 entries each)"
 
-# 400 "Genre" collections (children of Series) with 15-60 entries
 c=1
 while [ $c -le 400 ]; do
     name="Genre $c"
@@ -67,7 +62,6 @@ while [ $c -le 400 ]; do
 done
 echo "  Created 400 Genre collections (15-60 entries each)"
 
-# 600 "Sub" collections (children of Genre) with 5-30 entries
 c=1
 while [ $c -le 600 ]; do
     name="Sub $c"
@@ -86,7 +80,6 @@ while [ $c -le 600 ]; do
 done
 echo "  Created 600 Sub collections (5-30 entries each)"
 
-# 400 "Leaf" collections (deepest level) with 3-15 entries
 c=1
 while [ $c -le 400 ]; do
     name="Leaf $c"
@@ -105,7 +98,6 @@ while [ $c -le 400 ]; do
 done
 echo "  Created 400 Leaf collections (3-15 entries each)"
 
-# 396 standalone top-level collections with 10-80 entries (to hit ~2000 total + Favorites)
 c=1
 while [ $c -le 396 ]; do
     name="Standalone $c"
@@ -124,7 +116,6 @@ while [ $c -le 396 ]; do
 done
 echo "  Created 396 Standalone collections (10-80 entries each)"
 
-# Favorites with 600 entries
 fav="$COLLECTIONS/Favorites.txt"
 > "$fav"
 i=1
@@ -142,7 +133,6 @@ echo "=== Building deep nesting hierarchy ==="
 parents_file="$CONFIG/collection_parents.txt"
 > "$parents_file"
 
-# Genre 1-400 → parent is Series ceil(c/2)
 c=1
 while [ $c -le 400 ]; do
     parent_num=$(( (c + 1) / 2 ))
@@ -150,7 +140,6 @@ while [ $c -le 400 ]; do
     c=$((c + 1))
 done
 
-# Sub 1-600 → parent is Genre ceil(c/1.5)
 c=1
 while [ $c -le 600 ]; do
     parent_num=$(( (c * 2 + 2) / 3 ))
@@ -159,28 +148,24 @@ while [ $c -le 600 ]; do
     c=$((c + 1))
 done
 
-# Leaf 1-200 → parent is Sub c (depth 4)
 c=1
 while [ $c -le 200 ]; do
     echo "Leaf $c=Sub $c" >> "$parents_file"
     c=$((c + 1))
 done
 
-# Leaf 201-300 → parent is Leaf c-200 (depth 5)
 c=201
 while [ $c -le 300 ]; do
     echo "Leaf $c=Leaf $((c - 200))" >> "$parents_file"
     c=$((c + 1))
 done
 
-# Leaf 301-360 → parent is Leaf c-100 (depth 6)
 c=301
 while [ $c -le 360 ]; do
     echo "Leaf $c=Leaf $((c - 100))" >> "$parents_file"
     c=$((c + 1))
 done
 
-# Leaf 361-400 → parent is Leaf c-60 (depth 7)
 c=361
 while [ $c -le 400 ]; do
     echo "Leaf $c=Leaf $((c - 60))" >> "$parents_file"

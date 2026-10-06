@@ -40,8 +40,6 @@ class InputTesterTriggerTest {
         assertFalse(unbound(m) { if (it == LTRIGGER) 1f else 0f })
     }
 
-    // The defect the flag exists for: the tester's bar fills off the raw axis either way, so
-    // nothing else on this screen says the mapping missed it.
     @Test fun `an axis the mapping does not name is flagged`() {
         val m = l2(InputBinding.Button(104), triggerAxis(LTRIGGER))
         assertTrue(unbound(m, axes(BRAKE)))
@@ -52,7 +50,6 @@ class InputTesterTriggerTest {
         assertFalse(unbound(m, axes(LTRIGGER, BRAKE)))
     }
 
-    // A digital trigger arrives as a keycode and moves no axis at all, so there is nothing to flag.
     @Test fun `a keycode only trigger with no axis movement stays quiet`() {
         assertFalse(unbound(l2(InputBinding.Button(104)), axes()))
     }

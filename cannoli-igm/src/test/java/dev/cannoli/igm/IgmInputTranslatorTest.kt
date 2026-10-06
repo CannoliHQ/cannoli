@@ -8,7 +8,6 @@ import org.junit.Test
 
 class IgmInputTranslatorTest {
 
-    // Retroid Pocket: East=96, South=97, North=99, West=100; confirm=East, back=South.
     private val retroid = IgmInputMapping(
         buttonKeycodes = mapOf(
             CanonicalButton.BTN_EAST to listOf(96),
@@ -49,9 +48,6 @@ class IgmInputTranslatorTest {
         assertEquals(MenuAction.BACK, t.normalize(4))
     }
 
-    // The Retroid Pocket Nova's menu button reports KEYCODE_BACK, and its cfg says so. Answering
-    // from the pass-through first made that button back once you were inside the menu, so menu and
-    // back were one key and nothing could be bound to menu.
     @Test fun `a menu button that reports back is still menu`() {
         val withMenu = retroid.copy(
             buttonKeycodes = retroid.buttonKeycodes + (CanonicalButton.BTN_MENU to listOf(4))
@@ -99,8 +95,6 @@ class IgmInputTranslatorTest {
         assertEquals(MenuAction.NORTH, t.normalize(100))
     }
 
-    // The same physical press means opposite things on the two layouts, which is the reason a
-    // handler is given the action rather than the button.
     @Test fun `the same keycode confirms on one layout and goes back on the other`() {
         val xbox = retroid.copy(
             menuConfirm = CanonicalButton.BTN_SOUTH,
@@ -119,8 +113,6 @@ class IgmInputTranslatorTest {
         assertEquals(MenuAction.WEST, t.normalize(188))
     }
 
-    // No profile is not no meaning: the conventional numbering is all there is to assume, and it is
-    // what a pad launched outside Cannoli reports.
     @Test fun `with no mapping the conventional numbering is assumed`() {
         val t = IgmInputTranslator(null)
         assertEquals(MenuAction.CONFIRM, t.normalize(96))
@@ -129,17 +121,10 @@ class IgmInputTranslatorTest {
         assertEquals(MenuAction.UP, t.normalize(19))
     }
 
-    // It used to arrive at the handlers as its own number, where it could match a branch by
-    // sharing it. A key this pad has no meaning for now means nothing.
     @Test fun `an unrecognised keycode resolves to nothing`() {
         assertNull(IgmInputTranslator(retroid).normalize(4242))
     }
 
-    /**
-     * The whole point of the mapping: a pad that reports a button on an unconventional keycode has
-     * to arrive at the same place as one that does not. Select used to fall through to its raw
-     * value, so reordering a shader chain did nothing on any pad that numbered it differently.
-     */
     @Test fun everyMappedButtonNormalizesRatherThanFallingThrough() {
         val expected = mapOf(
             CanonicalButton.BTN_UP to MenuAction.UP,
@@ -158,7 +143,6 @@ class IgmInputTranslatorTest {
             CanonicalButton.BTN_SELECT to MenuAction.SELECT,
             CanonicalButton.BTN_MENU to MenuAction.MENU,
         )
-        // Deliberately nothing like the conventional numbering, so a fallthrough cannot pass.
         val odd = expected.keys.withIndex().associate { (i, b) -> b to listOf(700 + i) }
         val t = IgmInputTranslator(
             IgmInputMapping(
@@ -177,7 +161,6 @@ class IgmInputTranslatorTest {
         assertEquals(MenuAction.BACK, t.normalize(801))
     }
 
-    // Sticks are axes, so they carry no button meaning and must not be given one.
     @Test fun analogAxesAreNotTurnedIntoButtons() {
         val t = IgmInputTranslator(
             retroid.copy(

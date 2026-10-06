@@ -1,10 +1,5 @@
 package dev.cannoli.igm
 
-/**
- * One .cht file's cheats for one IGM session. Rows come from Cannoli's own parse of the file, but
- * every index used to talk to RetroArch is the one observed by reading it back after the load,
- * matched by identity so a positional disagreement between the two parsers cannot mis-toggle.
- */
 class CheatSession(
     private val manager: CheatManager,
     val file: CheatFile,
@@ -39,7 +34,6 @@ class CheatSession(
 
     fun firstSupportedIndex(): Int = rows.indexOfFirst { it.supported }.coerceAtLeast(0)
 
-    /** The row RetroArch must be told about, or null when the row cannot be toggled. */
     fun toggle(rowIndex: Int): Row? {
         val row = rows.getOrNull(rowIndex) ?: return null
         if (!row.supported) return null
@@ -53,10 +47,8 @@ class CheatSession(
         .map { identityHash(it) }
         .toSet()
 
-    /** Whether [restore] would turn anything on, which is what the offer to restore may promise. */
     fun canRestore(hashes: Set<String>): Boolean = rows.any { isRestorable(it, hashes) }
 
-    /** Enables every remembered identity that is present and supported. Returns what changed. */
     fun restore(hashes: Set<String>): List<Row> {
         val changed = rows.filter { isRestorable(it, hashes) }
         for (row in changed) enabled[row.cheatIndex] = true
@@ -67,8 +59,6 @@ class CheatSession(
     private fun isRestorable(row: Row, hashes: Set<String>): Boolean =
         row.supported && !enabled[row.cheatIndex] && identityHash(row) in hashes
 
-    // An all-off set is not written: the point of the store is the last set the user actually had,
-    // and turning everything off is how you stop cheating, not how you forget.
     fun persist() {
         val hashes = enabledHashes()
         if (hashes.isNotEmpty()) manager.saveLastUsed(file.file.name, hashes)

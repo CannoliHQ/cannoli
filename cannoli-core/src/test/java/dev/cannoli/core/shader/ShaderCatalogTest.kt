@@ -22,7 +22,6 @@ class ShaderCatalogTest {
     @Test fun `the driver decides which format is offered`() {
         assertEquals("slangp", ShaderCatalog.presetExtension("vulkan"))
         assertEquals("glslp", ShaderCatalog.presetExtension("gl"))
-        // Anything else is a GL-family driver as far as shaders go, and glsl is the safe read.
         assertEquals("glslp", ShaderCatalog.presetExtension("glcore"))
         assertEquals("glslp", ShaderCatalog.presetExtension(""))
     }
@@ -46,7 +45,6 @@ class ShaderCatalogTest {
         assertEquals(listOf("only-glsl"), names(ShaderCatalog.list(r, emptyList(), "gl")))
     }
 
-    // Entering a folder must never be a dead end, and the packs nest, so the check recurses.
     @Test fun `a folder with nothing loadable is not offered`() {
         val r = root()
         file(File(r, "slang-only-pack"), "x.slangp")
@@ -64,13 +62,11 @@ class ShaderCatalogTest {
         assertEquals(listOf("pack"), names(ShaderCatalog.list(r, emptyList(), "vulkan")))
     }
 
-    // The archives put their shader sources in a top-level "shaders" folder beside the presets.
     @Test fun `the archives source folder is never offered at the root`() {
         val r = root()
         file(File(r, "shaders"), "crt.glslp")
 
         assertFalse(names(ShaderCatalog.list(r, emptyList(), "gl")).contains("shaders"))
-        // Only at the root: a pack of its own may legitimately have one.
         file(File(File(r, "pack"), "shaders"), "inner.glslp")
         assertEquals(listOf("shaders"), names(ShaderCatalog.list(r, listOf("pack"), "gl")))
     }
@@ -87,8 +83,6 @@ class ShaderCatalogTest {
         assertTrue(ShaderCatalog.list(root(), listOf("nope"), "gl").isEmpty())
     }
 
-    // The index is what keeps the browser off the disk. These pin that it is actually consulted,
-    // and that being out of date degrades to a check rather than to a wrong answer.
     @Test fun `the index answers instead of walking, and an unknown folder still works`() {
         val r = root()
         file(File(File(r, "deep"), "nested"), "x.slangp")
@@ -98,7 +92,6 @@ class ShaderCatalogTest {
         assertEquals(listOf("deep"), names(ShaderCatalog.list(r, emptyList(), "vulkan", index)))
         assertEquals(listOf("glsl-only"), names(ShaderCatalog.list(r, emptyList(), "gl", index)))
 
-        // Added after the index was written: unknown to it, so it falls back and is still offered.
         file(File(r, "added-later"), "z.slangp")
         assertTrue(names(ShaderCatalog.list(r, emptyList(), "vulkan", index)).contains("added-later"))
     }
@@ -124,15 +117,12 @@ class ShaderCatalogTest {
         assertEquals(listOf("real"), names(ShaderCatalog.list(r, emptyList(), "gl", ShaderIndex.load(r))))
     }
 
-    // RetroArch rewrites this every time two presets are combined, so it holds whatever the last
-    // append produced. Offering it would be offering a leftover.
     @Test fun `RetroArch's scratch preset is never offered at the root`() {
         val r = root()
         file(r, "retroarch.glslp")
         file(r, "real.glslp")
 
         assertEquals(listOf("real"), names(ShaderCatalog.list(r, emptyList(), "gl")))
-        // Only at the root: a pack of its own may legitimately name a preset this.
         file(File(r, "pack"), "retroarch.glslp")
         assertEquals(listOf("retroarch"), names(ShaderCatalog.list(r, listOf("pack"), "gl")))
     }

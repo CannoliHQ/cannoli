@@ -23,15 +23,6 @@ import dev.cannoli.ui.ButtonStyle
 import dev.cannoli.ui.R
 import dev.cannoli.ui.theme.LocalCannoliColors
 
-/**
- * One screen for every way a game fails to start: a core or app that is absent, a platform with
- * nothing mapped, a required BIOS that is not there, or a file that would not read.
- *
- * Three parts, none repeating another. [title] is the problem itself rather than a generic heading,
- * so the first line already says what went wrong. [subject] names only what it went wrong with, a
- * platform and the thing that is missing, never a sentence. The remedy is left to the legend, which
- * states it once: [confirmLabel] when there is something to do, Close alone when there is not.
- */
 @Composable
 fun LaunchIssue(
     title: String,
@@ -54,10 +45,6 @@ fun LaunchIssue(
         val titleStyle = MaterialTheme.typography.titleLarge
         val bodyStyle = MaterialTheme.typography.bodyLarge
         val smallStyle = MaterialTheme.typography.bodyMedium
-        // The overlay column does not scroll and centres its content, so anything too tall is
-        // clipped at both ends and the title is the first thing lost. The column already reserves
-        // the footer, so its constraint is the real budget: measure against it and step the subject
-        // down rather than let a long list push the title off the screen.
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
             val lines = subject.count { it == '\n' } + 1
             val density = LocalDensity.current
@@ -85,11 +72,6 @@ fun LaunchIssue(
     }
 }
 
-/**
- * Line height in px, falling back to 1.3 times the font size where a style leaves `lineHeight`
- * unspecified, which `titleLarge` does. `TextUnit.toPx` throws on anything that is not Sp, so
- * reading `lineHeight` unguarded crashes rather than mis-measuring.
- */
 private fun TextStyle.lineHeightPx(density: Density): Float = with(density) {
     lineHeight.takeOrElse { fontSize.takeOrElse { 16.sp } * 1.3f }.toPx()
 }

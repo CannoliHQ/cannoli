@@ -28,10 +28,6 @@ class RommMenuRowTest {
         assertEquals(false, noBackups.contains(RommSaveSyncRow.RESTORE))
     }
 
-    /**
-     * Restore is appended last, so a caller that omitted it happened to look up the right index.
-     * The menu builder owns the row list now, but pin the ordering the shortcut depended on.
-     */
     @Test fun `restore sits after every gated row`() {
         val all = RommSaveSyncRow.visibleRows(
             supported = true, enabled = true, pendingConflicts = 1, syncErrors = 1, hasBackups = true,

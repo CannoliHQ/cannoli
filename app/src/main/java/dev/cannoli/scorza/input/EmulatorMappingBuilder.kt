@@ -28,7 +28,6 @@ class EmulatorMappingBuilder @Inject constructor(
     private val gameOverrideStore: dev.cannoli.scorza.db.GameOverrideStore,
     @ActivityContext private val context: Context,
 ) {
-    /** Per-game override rows for a platform, resolved through the rom_id join. */
     fun overrideRows(tag: String): List<dev.cannoli.scorza.ui.screens.GameOverrideRow> =
         gameOverrideStore.forPlatform(tag).map { entry ->
             dev.cannoli.scorza.ui.screens.GameOverrideRow(
@@ -43,7 +42,6 @@ class EmulatorMappingBuilder @Inject constructor(
             context.packageManager,
             LaunchManager.extractBundledCores(context),
         )
-        // MAME and FBN are both named Arcade; tag the name so the two rows are tellable apart.
         val shared = entries.groupingBy { it.platformName }.eachCount().filterValues { it > 1 }.keys
         if (shared.isEmpty()) return order(entries, alphabetical)
         return entries.map { entry ->
@@ -58,9 +56,6 @@ class EmulatorMappingBuilder @Inject constructor(
         }.let { order(it, alphabetical) }
     }
 
-    // Manufacturer mode sorts A-Z within each group, under headers that are themselves A-Z.
-    // Alphabetical is the same sort with no grouping, which is what the list falls back to when
-    // the user turns headers off.
     private fun order(entries: List<EmulatorMappingEntry>, alphabetical: Boolean): List<EmulatorMappingEntry> =
         if (alphabetical) entries.sortedNatural { it.platformName }
         else entries.sortedWith(
@@ -75,9 +70,6 @@ class EmulatorMappingBuilder @Inject constructor(
         else -> all
     }
 
-    // A single platform's screen always lists every option. The Show All toggle that used to gate
-    // this hid most of the list behind a face button nobody found, so the emulator a user wanted
-    // read as unavailable rather than as not yet installed.
     fun buildPlatformMapping(
         tag: String,
         platformName: String,
@@ -89,13 +81,11 @@ class EmulatorMappingBuilder @Inject constructor(
     ): LauncherScreen.PlatformMapping {
         val bundled = LaunchManager.extractBundledCores(context)
         val sources = platformConfig.availableSources(tag = tag, embeddedCoresDir = bundled)
-        // Game scope reads the per-game override; platform scope reads the platform choice.
         val current =
             if (romId != null) gameOverrideStore.get(romId) else platformConfig.getPlatformChoice(tag)
         val currentSource = current?.source
         val currentCoreId = platformConfig.getCoreMapping(tag)
 
-        // Matches on the stored identity, not on a caption parsed back out of the row label.
         fun isCurrent(opt: dev.cannoli.scorza.ui.screens.EmulatorPickerOption): Boolean {
             val cur = current ?: return false
             if (opt.source != cur.source) return false
@@ -113,8 +103,6 @@ class EmulatorMappingBuilder @Inject constructor(
                     tag = tag, source = source, includeAll = includeAll,
                     embeddedCoresDir = bundled, pm = context.packageManager,
                 )
-                // Always surface the current mapping even when its core/app is not installed
-                // and Show All is off, so a missing or bundled-default mapping stays visible.
                 if (source == currentSource && options.none { isCurrent(it) }) {
                     platformConfig.emulatorOptionsForSource(
                         tag = tag, source = source, includeAll = true,
@@ -139,10 +127,6 @@ class EmulatorMappingBuilder @Inject constructor(
 
         val section = emulatorSection(true).toMutableList()
 
-        // A stored choice must always render, even when the option generator can no longer
-        // produce it: a shipped update can drop an app from platforms.json, and a hand-edited
-        // cores.json can name a core that is not a candidate for the tag. Without this the
-        // screen reads as unset while the choice is still live at launch.
         if (current != null && section.none { it is MappingItem.EmulatorOption && it.isCurrent }) {
             synthesizeCurrentRow(current)?.let { row ->
                 val header = when (current.source) {
@@ -177,14 +161,9 @@ class EmulatorMappingBuilder @Inject constructor(
         val overridesCount = gameOverrideStore.countForPlatform(tag)
         val resettable = platformConfig.hasUserMapping(tag)
 
-        // BIOS, per-game overrides and Reset are platform-wide actions and have no meaning
-        // when the screen is scoped to a single game.
         if (romId == null) {
             items.add(MappingItem.Divider())
 
-            // Firmware belongs to the selected core, so gate on the actual choice. Gating on
-            // isRicotta made every platform show BIOS, including standalone ones, and reading
-            // the core from the platform default reported firmware for a core nobody picked.
             val biosCore = current?.takeIf { it.source != EmulatorSource.Standalone }?.coreId.orEmpty()
             if (biosCore.isNotBlank()) {
                 val biosDir = CannoliPaths(File(settings.sdCardRoot)).biosFor(tag)
@@ -224,8 +203,6 @@ class EmulatorMappingBuilder @Inject constructor(
         )
     }
 
-    // Every rebuild goes through this so no call site can drop tag or scope and silently turn a
-    // game-scoped screen into a platform-scoped one, which would write the wrong mapping.
     fun rebuild(
         screen: LauncherScreen.PlatformMapping,
         selectedIndex: Int = screen.selectedIndex,
@@ -257,8 +234,6 @@ class EmulatorMappingBuilder @Inject constructor(
             EmulatorSource.Embedded -> context.getString(EmulatorSource.Embedded.labelRes)
             EmulatorSource.Standalone -> context.getString(EmulatorSource.Standalone.labelRes)
         }
-        // Both remaining sources answer for certain: the embedded runner reads a directory and a
-        // standalone app is either installed or not, so a synthesized row is never unknowable.
         val availability = CoreAvailability.UNAVAILABLE
         return MappingItem.EmulatorOption(
             dev.cannoli.scorza.ui.screens.EmulatorPickerOption(
@@ -272,16 +247,12 @@ class EmulatorMappingBuilder @Inject constructor(
     }
 
     fun buildBiosStatus(tag: String, platformName: String): LauncherScreen.BiosStatus {
-        // Reads the same core the BIOS row gated on. Deriving it separately is how the row and
-        // the detail screen come to disagree.
         val coreId = platformConfig.getPlatformChoice(tag)
             ?.takeIf { it.source != EmulatorSource.Standalone }
             ?.coreId?.ifEmpty { null }
             ?: platformConfig.getCoreMapping(tag)
         val runner = platformConfig.getRunnerLabel(tag, coreId)
         val biosDir = CannoliPaths(File(settings.sdCardRoot)).biosFor(tag)
-        // The screen still lists every file, so someone can see what they might supply, but a row
-        // that belongs to a choose-one group says so rather than reading as thirteen missing files.
         val firmware = platformConfig.getFirmwareStatus(tag, coreId, biosDir).flatMap { req ->
             when (req) {
                 is dev.cannoli.scorza.config.FirmwareRequirement.Single ->
@@ -301,8 +272,6 @@ class EmulatorMappingBuilder @Inject constructor(
     }
 
     companion object {
-        // Downloadable only for the embedded RetroArch, which installs cores into a directory
-        // Cannoli owns. Cores for a separately installed RetroArch are the user's own to manage.
         fun isDownloadable(source: EmulatorSource, availability: CoreAvailability): Boolean =
             source == EmulatorSource.Embedded && availability != CoreAvailability.AVAILABLE
     }

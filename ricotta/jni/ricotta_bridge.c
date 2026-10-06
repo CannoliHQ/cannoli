@@ -1,10 +1,3 @@
-/*
- * ricotta_bridge.c - JNI bridge for RicottaArch IGM (In-Game Menu)
- *
- * Provides native methods for dev.cannoli.ricotta.EmbeddedRetroArchBridge
- * that dispatch RetroArch command events and query emulator state.
- */
-
 #include <jni.h>
 #include "ricotta_osd.h"
 #include <pthread.h>
@@ -57,48 +50,32 @@ static long long get_time_ms(void)
 #include "../../../../verbosity.h"
 #include <queues/task_queue.h>
 
-/* Cached JVM and bridge object refs for callbacks */
 static JavaVM *g_jvm           = NULL;
 static jobject g_bridge_obj    = NULL;
 static jmethodID g_on_menu_closed_mid = NULL;
 static jmethodID g_on_debug_key_mid = NULL;
 
-/* Flag set by Java side when IGM overlay is visible */
 static volatile int g_igm_visible = 0;
 
-/* Cannoli IGM trigger keycodes, set from Kotlin via nativeSetIgmTriggerKeycodes. */
 #define RICOTTA_MAX_TRIGGER_KEYS 8
 static volatile int g_igm_trigger_keycodes[RICOTTA_MAX_TRIGGER_KEYS];
 static volatile int g_igm_trigger_keycount = 0;
 
-/* The union of every key any shortcut chord uses, set from Kotlin. Only these are forwarded:
- * gameplay input is hot, and a JNI call for every button press would be paid on every frame a
- * game is being played rather than only when a chord might be forming. */
 #define RICOTTA_MAX_SHORTCUT_KEYS 32
 #define RICOTTA_SHORTCUT_QUEUE    64
 static volatile int g_shortcut_keycodes[RICOTTA_MAX_SHORTCUT_KEYS];
 static volatile int g_shortcut_keycount = 0;
 
-/* keycode in the low bits, down in bit 31, so one slot carries a whole event. */
 static volatile int g_shortcut_queue[RICOTTA_SHORTCUT_QUEUE];
 static volatile int g_shortcut_head = 0;
 static volatile int g_shortcut_tail = 0;
 
-/* The chords themselves, so a press can be recognised here rather than in Kotlin.
- *
- * Matching has to be synchronous with the key that completes the chord. Kotlin learns about a press
- * two to four frames later (queue drain on the runloop thread, a JNI upcall, then a post to the
- * main thread), and by then the core has already polled the earlier keys several times and the
- * game has acted on them. v1 matched inside its own key handler for exactly this reason. */
 #define RICOTTA_MAX_CHORDS     16
 #define RICOTTA_MAX_CHORD_KEYS 8
 typedef struct
 {
    int action;
-   /* Milliseconds the chord must stay down before the action runs, 0 to run on the match. */
    int hold_ms;
-   /* A hold chord whose keys stay with the game while it counts, for a chord made of a button the
-    * game needs, such as START on its own. */
    int pass_through;
    int count;
    int keys[RICOTTA_MAX_CHORD_KEYS];
@@ -106,60 +83,35 @@ typedef struct
 static ricotta_chord g_chords[RICOTTA_MAX_CHORDS];
 static volatile int g_chord_count = 0;
 
-/* A hold-style chord that is down and counting. Its keys are already taken from the game, so the
- * wait costs the game nothing; letting go before the deadline simply means the action never ran.
- * A pass-through chord's keys are not taken, and the game plays on while it counts. */
 static volatile int g_hold_chord = -1;
 static volatile long long g_hold_deadline_us = 0;
 
-/* What a queued action says happened, mirroring ShortcutTable.Kind. */
 #define RICOTTA_ACT_FIRED          0
 #define RICOTTA_ACT_RELEASED       1
 #define RICOTTA_ACT_HOLD_ARMED     2
 #define RICOTTA_ACT_HOLD_CANCELLED 3
 
-/* Defined with the other chord helpers, below the pump that has to reach it for the hold deadline. */
 static void ricotta_queue_action(int action, int kind);
 static long long ricotta_now_us(void);
 
 
-/* Chord keys currently down, in arrival order. */
 static volatile int g_held[RICOTTA_MAX_SHORTCUT_KEYS];
 static volatile int g_held_count = 0;
 
-/* Index into g_chords of the chord being satisfied, so it fires once per press and its release is
- * reported for the actions that only run while held. */
 static volatile int g_firing_chord = -1;
 
-/* action in the low bits, release in bit 31. */
 static volatile int g_action_queue[RICOTTA_SHORTCUT_QUEUE];
 static volatile int g_action_head = 0;
 static volatile int g_action_tail = 0;
 
-/* Keys android_input must take back out of its own state because a chord claimed them after they
- * had already been delivered. Drained by the patched key handler, which is where that state lives.
- *
- * This is the half that stops a chord leaking into the game. The first key of a chord cannot be
- * withheld, since nothing yet says a chord is coming, so it reaches the core and is retracted the
- * moment the chord completes. The core reads a level state once a frame, so a key retracted before
- * the next poll was never seen at all. */
 static volatile int g_retract[RICOTTA_MAX_SHORTCUT_KEYS];
 static volatile int g_retract_count = 0;
 
-/* Set while the IGM trigger is held and that trigger is itself part of a chord. The trigger key is
- * already swallowed whole, so a chord built on it can swallow its other keys too and reach the
- * action without the game ever seeing the press. No other chord can do that: its first key is
- * delivered before there is any way to know a chord was starting. */
 static volatile int g_menu_modifier_held = 0;
 
-/* Keys whose down was swallowed above, so their up is swallowed too even if the modifier has
- * already been released by then. Otherwise the core is told a button it never saw pressed came up. */
 static volatile int g_swallowed[RICOTTA_MAX_SHORTCUT_KEYS];
 static volatile int g_swallowed_count = 0;
 
-/* Keys of a pass-through chord that fired while still down. The game saw them pressed, so it has to
- * see them come up even if the menu the chord opened is on screen by then, or RetroArch goes on
- * believing the button is held. Survives the menu opening, which is exactly when it is needed. */
 static volatile int g_passthrough_up[RICOTTA_MAX_SHORTCUT_KEYS];
 static volatile int g_passthrough_up_count = 0;
 
@@ -171,9 +123,6 @@ static jmethodID g_on_osd_event_mid = NULL;
 static jmethodID g_on_osd_achievement_mid = NULL;
 static jmethodID g_on_cheevos_load_mid = NULL;
 
-/* Latched so the Info screen can state it whenever the menu is opened, rather than only in the
- * instant the pill is up. It also separates an outcome that never happened from one that happened
- * and was never drawn, which a toast alone cannot tell you. */
 static volatile int g_cheevos_outcome = -1;
 static jmethodID g_on_ra_applied_mid = NULL;
 static jmethodID g_on_ra_apply_done_mid = NULL;
@@ -182,31 +131,20 @@ static jmethodID g_on_cheevos_request_mid = NULL;
 static jmethodID g_on_cheevos_response_mid = NULL;
 static jmethodID g_on_cheevos_failed_mid = NULL;
 
-/* Cached JNIEnv for the native runloop thread (attached once, never detached) */
 static JNIEnv *g_native_env = NULL;
 
-/* Cannoli launch context, set from Kotlin via nativeSetCannoliContext before any override save.
- * The IGM save-scope rows target Cannoli's own override tiers, which are keyed by these. */
 static char g_cannoli_root[PATH_MAX_LENGTH];
 static char g_platform_tag[PATH_MAX_LENGTH];
 static char g_rom_base_name[PATH_MAX_LENGTH];
 static char g_core_id[PATH_MAX_LENGTH];
 
-/* Timestamp of when the IGM was opened, to debounce the menu button */
 static volatile long long g_igm_open_time = 0;
 
-/* Set on the first pump, which only runs once RetroArch's own loop is going.
- *
- * The activity's onCreate happens before NativeActivity has started any of that, so a setting read
- * from there walks an uninitialised settings system and takes the process down inside
- * menu_setting_new. Reading early now answers nothing instead of crashing. */
 static volatile int g_runloop_ready = 0;
 static volatile int g_runloop_ready_pending = 0;
 
-/* Set by the input poll, raised by the pump. See ricotta_bridge_intercept_key. */
 static volatile int g_igm_trigger_pending = 0;
 
-/* Menu close polling */
 #define MENU_POLL_INTERVAL_MS 50
 #define MENU_OPEN_TIMEOUT_MS  2000
 static pthread_t g_menu_poll_thread;
@@ -216,12 +154,7 @@ static volatile int g_menu_poll_active = 0;
  * thread while retro_run executes on the runloop thread, so the JNI methods enqueue
  * commands here and ricotta_bridge_poll_commands() runs them on the runloop thread. */
 #define RICOTTA_CMD_QUEUE_SIZE 32
-/* Menu writes need room the run loop can drain into once the menu closes: without a reserve, a
- * stalled run loop can fill the queue with writes and starve the flush/unpause that unsticks it. */
 #define RICOTTA_CMD_RESERVE 8
-/* A setting crosses as a flat name/value array rather than a fixed positional one. Adding a field
- * cannot shift another, and the two describers cannot drift apart by allocating different counts,
- * which is how core options ended up with no machine value. */
 #define RICOTTA_MAX_OPTS 48
 
 typedef struct
@@ -268,9 +201,7 @@ static jobjectArray ricotta_fields_to_array(JNIEnv *env, const ricotta_field *f,
 #define RICOTTA_QCMD_REMAP_SET        -15
 #define RICOTTA_QCMD_HELD_FLUSH       -16
 #define RICOTTA_QCMD_HELD_DROP        -17
-/* Matches PortDevices.PLAYER_ROWS in cannoli-igm. */
 #define RICOTTA_PLAYER_ROWS           4
-/* RetroPad's sixteen digital buttons, matching RemapButton in cannoli-igm. */
 #define RICOTTA_REMAP_BUTTONS         16
 typedef struct
 {
@@ -306,7 +237,7 @@ static int ricotta_enqueue_entry(ricotta_cmd_entry entry)
       int depth = (g_cmd_tail - g_cmd_head + RICOTTA_CMD_QUEUE_SIZE) % RICOTTA_CMD_QUEUE_SIZE;
       int free_slots  = RICOTTA_CMD_QUEUE_SIZE - 1 - depth;
       int menu_write  = entry.cmd == RICOTTA_QCMD_RA_SET && entry.ra_wait != 0;
-      if (next != g_cmd_head && !(menu_write && free_slots < RICOTTA_CMD_RESERVE)) /* drop if full, or a menu write below the reserve, rather than overwrite */
+      if (next != g_cmd_head && !(menu_write && free_slots < RICOTTA_CMD_RESERVE))
       {
          g_cmd_queue[g_cmd_tail] = entry;
          g_cmd_tail = next;
@@ -314,9 +245,6 @@ static int ricotta_enqueue_entry(ricotta_cmd_entry entry)
       }
    }
    pthread_mutex_unlock(&g_cmd_mutex);
-   /* A dropped cheat load emits no snapshot: the upcall only runs on the runloop thread, so
-    * nothing can report the drop from here. The screen keeps its old list and reloads on the
-    * next entry. */
    if (!queued)
    {
       free(entry.ra_key);
@@ -337,8 +265,6 @@ static void ricotta_enqueue_command(int cmd, int slot, int has_slot)
 
 #define RICOTTA_HELD_MAX 32
 
-/* Set on the runloop thread for the length of one menu write, so only that write's commands are
- * held and a command from any other thread or path runs as it always did. */
 static __thread int g_hold_active = 0;
 static int g_held_cmds[RICOTTA_HELD_MAX];
 static int g_held_cmd_count = 0;
@@ -378,8 +304,6 @@ static int ricotta_deferrable(int cmd)
    }
 }
 
-/* The command a held one cancels out, so the later press wins instead of both running in
- * whichever order they were first held. CMD_EVENT_NONE when cmd has no opposite. */
 static int ricotta_opposite(int cmd)
 {
    switch (cmd)
@@ -424,7 +348,6 @@ static void ricotta_held_flush(void)
       command_event((enum event_command)cmds[i], NULL);
 }
 
-/* The name RetroArch's own menu shows for a controller type: the core's description, else generic. */
 static const char *ricotta_port_device_label(rarch_system_info_t *sys_info,
       unsigned port, unsigned device)
 {
@@ -447,8 +370,6 @@ static const char *ricotta_port_device_label(rarch_system_info_t *sys_info,
    }
 }
 
-/* One exchange of two players' pads. Stepping RetroArch's device index action instead swaps with
- * every player it passes, which rotates them. Player 1 is never left without a pad. */
 static void ricotta_swap_players(unsigned a, unsigned b)
 {
    settings_t *settings = config_get_ptr();
@@ -468,8 +389,6 @@ static void ricotta_swap_players(unsigned a, unsigned b)
    settings->uints.input_joypad_index[b] = pad_a;
 }
 
-/* Cheat descriptions and codes have no fixed bound (CHEAT_CODE_SCRATCH_SIZE is 16 KB), so a
- * snapshot is built into a growable buffer rather than a fixed line buffer. */
 typedef struct
 {
    char  *buf;
@@ -503,7 +422,6 @@ static void ricotta_sb_putc(ricotta_strbuf *sb, char c)
    sb->buf[sb->len]   = '\0';
 }
 
-/* For text already known to be plain ASCII, such as a formatted number. */
 static void ricotta_sb_puts(ricotta_strbuf *sb, const char *s)
 {
    size_t n;
@@ -518,14 +436,6 @@ static void ricotta_sb_puts(ricotta_strbuf *sb, const char *s)
    sb->buf[sb->len] = '\0';
 }
 
-/* Backslash, pipe and newline are escaped so a desc or code containing them cannot forge a field
- * or a row boundary. The Kotlin decoder reverses exactly these three and splits rows on \n alone,
- * so a lone \r is deliberately left as a literal byte inside its field.
- *
- * These bytes come from a user-supplied .cht or from the RetroAchievements server, neither of
- * which is reliably UTF-8, so anything that is not valid modified UTF-8 is replaced with '?' as it
- * is copied: NewStringUTF aborts the process under CheckJNI on a bad sequence. Four-byte sequences
- * are invalid here too, modified UTF-8 spells those as a surrogate pair of three-byte ones. */
 static void ricotta_sb_escaped(ricotta_strbuf *sb, const char *s)
 {
    const unsigned char *p = (const unsigned char *)s;
@@ -544,8 +454,6 @@ static void ricotta_sb_escaped(ricotta_strbuf *sb, const char *s)
       else if ((*p & 0xF0) == 0xE0)
          seq = 3;
 
-      /* A terminator fails the continuation test and breaks here, so a string that ends
-       * mid-sequence is never read past. */
       for (k = 1; k < seq; k++)
       {
          if ((p[k] & 0xC0) != 0x80)
@@ -557,7 +465,6 @@ static void ricotta_sb_escaped(ricotta_strbuf *sb, const char *s)
 
       if (seq == 0)
       {
-         /* Resync one byte at a time so the ASCII after a bad sequence still survives. */
          ricotta_sb_putc(sb, '?');
          p++;
       }
@@ -585,9 +492,6 @@ static void ricotta_ra_apply(const char *key, const char *value, int token, cons
 static void ricotta_ra_save_override(int scope, const char *keys);
 static JNIEnv *ricotta_runloop_env(void);
 
-/* A pending exception is sticky: once a callback into Kotlin throws, every later JNI call on that
- * thread aborts the process under CheckJNI, so the crash lands in whatever unrelated code called
- * into Java next rather than at the throw. Clear it at our own boundary and name the site. */
 static int ricotta_jni_check(JNIEnv *env, const char *where)
 {
    if (!env || !(*env)->ExceptionCheck(env))
@@ -598,8 +502,6 @@ static int ricotta_jni_check(JNIEnv *env, const char *where)
    return 1;
 }
 
-/* RETRO-handler cheats need a system RAM mapping. Same two checks
- * cheat_manager_initialize_memory makes, without its allocations or its failure toast. */
 static int ricotta_cheat_has_system_ram(void)
 {
    retro_ctx_memory_info_t meminfo;
@@ -623,9 +525,6 @@ static int ricotta_cheat_has_system_ram(void)
    return 0;
 }
 
-/* One line per loaded cheat, "desc|code|state|supported", the nativeGetAchievementData shape.
- * Sent as an upcall rather than returned from a getter because the load that produces it is
- * queued: a synchronous read from the JNI thread would race the runloop and see the old list. */
 static void ricotta_cheat_emit_snapshot(void)
 {
    JNIEnv        *env = ricotta_runloop_env();
@@ -661,10 +560,6 @@ static void ricotta_cheat_emit_snapshot(void)
    (*env)->DeleteLocalRef(env, payload);
 }
 
-/* The four viewport bias floats the RICOTTA_QCMD_VIEWPORT_SET apply branch forces to zero below
- * are not menu settings under RaSettingsHost, so nothing on the Kotlin side can shadow and restore
- * them the way it does aspect_ratio_index and video_scale_integer. Stash them here across the
- * takeover instead and hand them back verbatim when the viewport clears. */
 static int   g_vp_bias_saved = 0;
 static float g_vp_bias_x = 0.0f;
 static float g_vp_bias_y = 0.0f;
@@ -676,13 +571,6 @@ static float g_vp_bias_portrait_y = 0.0f;
 /* Called from runloop_iterate on the runloop thread, once per iteration, and deliberately not from
  * the input driver's poll: a core enters that from within retro_run, and one running its own
  * coroutine stack makes every JNI call from there throw a spurious StackOverflowError. */
-/* Frames per second, measured here rather than read from RetroArch.
- *
- * RetroArch keeps its rate in a file-local static inside video_driver_frame, and its own counter
- * draws itself, which is the thing Cannoli is replacing. This pump already runs once per frame from
- * runloop_iterate, so counting calls over a window is both the rate and free.
- *
- * Averaged over half a second, as v1 sampled it: a per-frame figure flickers too fast to read. */
 #define RICOTTA_FPS_WINDOW_US 500000
 static volatile float g_fps = 0.0f;
 static int g_fps_frames = 0;
@@ -723,12 +611,6 @@ float ricotta_fps(void)
    return g_fps;
 }
 
-/* A resume a core refused because it was still booting, tried again until it takes.
- *
- * RetroArch queues the auto-load at content load and applies it a few frames later, and a core
- * that boots its machine asynchronously after retro_load_game (ARMSX2) refuses it at that point.
- * The same file loads fine once the game is running. Only a refused deserialize of an auto-load
- * starts this: hardcore and a missing or unreadable file fail before task_save reports anything. */
 #define RICOTTA_RESUME_RETRY_US     500000LL
 #define RICOTTA_RESUME_WINDOW_US    5000000LL
 static char          g_resume_path[PATH_MAX_LENGTH];
@@ -736,8 +618,6 @@ static int           g_resume_active    = 0;
 static int           g_resume_attempts  = 0;
 static int           g_resume_scheduled = 0;
 static volatile int  g_resume_in_flight = 0;
-/* Set once the retry is abandoned. An attempt still out when that happens reports later, and its
- * refusal must not open a fresh window over a reset or a given-up resume. */
 static int           g_resume_spent     = 0;
 static long long     g_resume_first_us  = 0;
 static long long     g_resume_next_us   = 0;
@@ -779,8 +659,6 @@ void ricotta_state_loaded(const char *path, int autoload, int ok)
       if (g_resume_active)
       {
          RARCH_LOG("[State] Resume loaded on attempt %d.\n", g_resume_attempts + 1);
-         /* The read that raised the load notification for this attempt had it muted, so the rewind
-          * reset that notification would have triggered is asked for here. */
          ricotta_enqueue_command(RICOTTA_QCMD_REWIND_RESET, 0, 0);
       }
       ricotta_resume_clear();
@@ -823,8 +701,6 @@ static void ricotta_resume_tick(void)
 
    now = ricotta_now_us();
 
-   /* An attempt that ends without reaching the deserialize reports nothing, so it is presumed over
-    * one interval past the window rather than muting load notifications any longer. */
    if (g_resume_in_flight)
    {
       if (now - g_resume_first_us >= RICOTTA_RESUME_WINDOW_US + RICOTTA_RESUME_RETRY_US)
@@ -847,9 +723,6 @@ static void ricotta_resume_tick(void)
       return;
    }
 
-   /* task_queue_push drops a blocking task while another runs, and content_load_state does not
-    * say so: the attempt would vanish with it still marked in flight. A user's load, save or
-    * screenshot holds the slot, so wait it out. */
    blocking.func     = ricotta_task_is_blocking;
    blocking.userdata = NULL;
    if (task_queue_find(&blocking))
@@ -886,7 +759,6 @@ void ricotta_bridge_poll_commands(void)
    ricotta_fps_tick();
    ricotta_resume_tick();
 
-   /* A held chord produces no further key events, so the deadline can only be noticed here. */
    if (g_hold_chord >= 0 && ricotta_now_us() >= g_hold_deadline_us)
    {
       const ricotta_chord *c = &g_chords[g_hold_chord];
@@ -992,7 +864,6 @@ void ricotta_bridge_poll_commands(void)
             unsigned target = entry.remap_value < 0
                ? RARCH_UNMAPPED
                : (unsigned)entry.remap_value;
-            /* Nothing reloads a remap: input_driver_poll reads this array every frame. */
             if (entry.port_a < 0)
             {
                unsigned port;
@@ -1006,11 +877,6 @@ void ricotta_bridge_poll_commands(void)
       }
       if (entry.cmd == RICOTTA_QCMD_SHADER_SET)
       {
-         /* Through the menu's own loader rather than straight to the render chain. Both apply the
-          * preset, but this one also reads it into the shader the chain screen edits, and those
-          * are different objects: applying directly leaves All Settings looking at an empty chain,
-          * so appending combines with nothing and leaving recompiles the stale one over the top.
-          * An empty path clears the passes, which is how the chain is emptied. */
          const char *path = entry.ra_key ? entry.ra_key : "";
          enum rarch_shader_type type = video_shader_parse_type(path);
          if (*path && !video_driver_test_all_flags(video_shader_type_to_flag(type)))
@@ -1040,12 +906,7 @@ void ricotta_bridge_poll_commands(void)
                settings->video_vp_custom.height = entry.vp_h;
                configuration_set_uint(settings,
                      settings->uints.video_aspect_ratio_idx, ASPECT_RATIO_CUSTOM);
-               /* Cannoli's own integer mode already yields an integer scaled rect, so
-                * RetroArch's would re-quantise one that is already correct. */
                configuration_set_bool(settings, settings->bools.video_scale_integer, false);
-               /* Stash the pre-takeover bias values the first time so the clear branch can hand
-                * them back; a later apply while still active must not re-stash the zeros this
-                * already wrote. */
                if (!g_vp_bias_saved)
                {
                   g_vp_bias_x = settings->floats.video_vp_bias_x;
@@ -1056,8 +917,6 @@ void ricotta_bridge_poll_commands(void)
 #endif
                   g_vp_bias_saved = 1;
                }
-               /* With bias zero the padding term RetroArch adds to custom_vp vanishes, so
-                * the rect below resolves to an absolute top-left rect under both drivers' y conventions. */
                configuration_set_float(settings, settings->floats.video_vp_bias_x, 0.0f);
                configuration_set_float(settings, settings->floats.video_vp_bias_y, 0.0f);
 #if defined(RARCH_MOBILE)
@@ -1108,7 +967,6 @@ void ricotta_bridge_poll_commands(void)
          cheat_manager_state_free();
          if (entry.ra_key && cheat_manager_load(entry.ra_key, false))
          {
-            /* A user's file may carry enable = "true"; the disabled-start rule wins. */
             size = cheat_manager_get_size();
             for (i = 0; i < size; i++)
                cheat_manager_state.cheats[i].state = false;
@@ -1125,8 +983,6 @@ void ricotta_bridge_poll_commands(void)
       if (entry.cmd == RICOTTA_QCMD_CHEAT_TOGGLE)
       {
          settings_t *settings = config_get_ptr();
-         /* A toggle queued against a longer list drains after the load that replaced it, and
-          * RetroArch range-checks nothing here: its own caller is the synchronous menu. */
          if ((unsigned)entry.slot < cheat_manager_get_size())
             cheat_manager_toggle_index(true,
                   settings ? settings->bools.notification_show_cheats_applied : false,
@@ -1172,13 +1028,6 @@ void ricotta_bridge_poll_commands(void)
       }
       if (entry.cmd == RICOTTA_QCMD_REWIND_RESET)
       {
-         /* Loading a state moves the game to a different point in its own history, so the frames
-          * recorded before the load are no longer behind it. Left in place they are still
-          * rewindable, which walks a resumed game back past the resume and into its boot.
-          *
-          * Recreated rather than emptied, which is how RetroArch reinitialises it too: there is no
-          * call to clear the buffer, only to build one. Nothing to do when rewind is off, since
-          * then there is no buffer to hold anything. */
          runloop_state_t *rl = runloop_state_get_ptr();
          if (rl && rl->rewind_st.state)
          {
@@ -1200,7 +1049,6 @@ void ricotta_bridge_poll_commands(void)
          if (settings)
             settings->ints.state_slot = entry.slot;
       }
-      /* A resume landing after these would undo the reset, or load into a game on its way out. */
       if (entry.cmd == CMD_EVENT_RESET || entry.cmd == CMD_EVENT_QUIT)
          ricotta_resume_abandon();
       command_event(entry.cmd, NULL);
@@ -1250,14 +1098,6 @@ static rarch_setting_t *ricotta_ra_find(const char *key)
    return s;
 }
 
-/* All Settings defers to RetroArch for structure: which rows exist right now, in what order, under
- * what name, and what a row leads to. RetroArch decides all of that in its displaylist builders,
- * including the conditions that hide a row (video_aspect_ratio only appears when the aspect index
- * is Config, the integer-scaling rows only when integer scaling is on). Rebuilding one here and
- * reading it back means those conditions are RetroArch's rather than a copy of them that rots.
- *
- * Values are deliberately NOT read through this. Both menu modes read and write through
- * ricotta_ra_find, so there is one write path, one changed-key set, and one save tier. */
 static int ricotta_screen_dl(const char *label)
 {
    size_t i;
@@ -1269,7 +1109,6 @@ static int ricotta_screen_dl(const char *label)
    return -1;
 }
 
-/* Builds `label`'s screen into a throwaway list. Caller frees with file_list_free. */
 static file_list_t *ricotta_build_screen(const char *label)
 {
    menu_displaylist_info_t info;
@@ -1280,8 +1119,6 @@ static file_list_t *ricotta_build_screen(const char *label)
       return NULL;
    if (!(list = (file_list_t*)calloc(1, sizeof(*list))))
       return NULL;
-   /* Entries carry a menu_file_list_cbs_t that owns further allocations, so the list needs the
-    * same destructor the menu's own lists use or freeing it leaks every row. */
    list->actiondata_free = menu_entries_cbs_free;
 
    menu_displaylist_info_init(&info);
@@ -1303,9 +1140,6 @@ static file_list_t *ricotta_build_screen(const char *label)
    return list;
 }
 
-/* A small-range numeric setting that carries a label representation (aspect
- * ratio, rotation, swap interval). Surfaced as an ENUM of labels rather than a
- * raw integer; matches how RetroArch's own dropdown builder enumerates options. */
 static int ricotta_ra_is_combobox(rarch_setting_t *s)
 {
    float step, span;
@@ -1342,10 +1176,6 @@ static void ricotta_ra_set_int(rarch_setting_t *s, long v)
    }
 }
 
-/* The machine value, never the display text. A combobox renders through
- * actions->repr, which for aspect_ratio_index returns a translated label out of
- * aspectratio_lut, so anything comparing values has to read this instead: labels differ by
- * locale, can repeat, and enumerating them writes the live setting once per option. */
 static int ricotta_ra_format_raw_value(rarch_setting_t *s, char *buf, size_t len)
 {
    buf[0] = '\0';
@@ -1414,8 +1244,6 @@ static int ricotta_ra_format_value(rarch_setting_t *s, char *buf, size_t len)
    }
 }
 
-/* Core options live in a separate namespace from RetroArch's own settings and are keyed by the
- * core, so they carry this prefix to keep the two apart on one get/set path. */
 #define RICOTTA_CORE_OPT_PREFIX "core::"
 
 static core_option_manager_t *ricotta_core_options(void)
@@ -1424,7 +1252,6 @@ static core_option_manager_t *ricotta_core_options(void)
    return runloop_st ? runloop_st->core_options : NULL;
 }
 
-/* Index of the core option with this key, or -1. */
 static long ricotta_core_opt_index(const char *key)
 {
    size_t i;
@@ -1437,8 +1264,6 @@ static long ricotta_core_opt_index(const char *key)
    return -1;
 }
 
-/* The machine value of a core option, which is what an .opt file stores. val_labels carries the
- * translated display text and must never reach disk. */
 static const char *ricotta_core_opt_value(const char *key)
 {
    core_option_manager_t *opt = ricotta_core_options();
@@ -1462,8 +1287,6 @@ static void ricotta_core_opt_apply(const char *key, const char *value)
       return;
    {
       struct core_option *o = &opt->opts[idx];
-      /* Machine values only. Labels are translated and can repeat, and every writer sends the
-       * machine value, so matching one would only ever hide a caller that did not. */
       if (!o->vals)
          return;
       for (v = 0; v < o->vals->size; v++)
@@ -1477,9 +1300,6 @@ static void ricotta_core_opt_apply(const char *key, const char *value)
    }
 }
 
-/* A core option is always a labelled value list, which is the ENUM case. Its machine values and its
- * display labels are separate lists and must stay that way: the labels are translated, and only the
- * machine value is what the core and the .opt file understand. */
 static jobjectArray ricotta_core_opt_describe(JNIEnv *env, const char *key)
 {
    size_t v;
@@ -1546,10 +1366,6 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeCoreOptionKeys(
    if (!out)
       return NULL;
 
-   /* "optionKey|categoryKey|categoryLabel", the key already carrying the prefix that marks it a
-    * core option rather than a RetroArch setting. Emitting it here rather than having Kotlin
-    * prepend it keeps the prefix defined once, next to the five sites that strip it back off.
-    * Cores that declare no categories leave the last two empty and the caller shows one flat list. */
    for (i = 0, n = 0; i < opt->size; i++)
    {
       char entry[512];
@@ -1577,7 +1393,6 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeCoreOptionKeys(
    return out;
 }
 
-/* The machine value a key holds now, RetroArch setting or core option alike. */
 static int ricotta_raw_value_of(const char *key, char *buf, size_t len)
 {
    size_t plen = strlen(RICOTTA_CORE_OPT_PREFIX);
@@ -1635,8 +1450,6 @@ static ricotta_watched *ricotta_watch_read(const char *watch, int *count)
    return out;
 }
 
-/* Answers the menu's write on the runloop thread: the value the setting holds now, and each
- * watched key the write moved with the value it held before. */
 static void ricotta_apply_done(int token, const char *raw, ricotta_watched *w, int n)
 {
    JNIEnv *env = ricotta_runloop_env();
@@ -1699,12 +1512,8 @@ static int ricotta_ra_write(const char *key, const char *value, char *raw, size_
    s = ricotta_ra_find(key);
    if (!s)
       return 0;
-   /* Every path below reaches the echo, including the ones that change nothing. A write RetroArch
-    * refuses or clamps has to be reported, or the menu keeps showing the value it predicted and
-    * only finds out it never took by being left and re-entered. */
    if (ricotta_ra_is_combobox(s))
    {
-      /* A combobox is a numeric setting rendered with labels, so a write is the number. */
       char *end = NULL;
       long  n   = strtol(value, &end, 10);
       if (end && end != value && *end == '\0'
@@ -1734,9 +1543,6 @@ static int ricotta_ra_write(const char *key, const char *value, char *raw, size_
             break;
          case ST_STRING:
          case ST_STRING_OPTIONS:
-         /* A path is a string target like the two above. Falling to default dropped the write and
-          * returned before the change handler, so setting input_overlay did nothing at all and the
-          * overlay that handler then reloaded was whatever was there before. */
          case ST_PATH:
          case ST_DIR:
             strlcpy(s->value.target.string, value, s->size);
@@ -1754,7 +1560,6 @@ static int ricotta_ra_write(const char *key, const char *value, char *raw, size_
       command_event(s->cmd_trigger_idx, NULL);
 
 echo:
-   /* Confirm with the authoritative value; handlers may clamp or rewrite it. */
    {
       char buf[512];
       int found;
@@ -1790,11 +1595,6 @@ static void ricotta_ra_apply(const char *key, const char *value, int token, cons
    ricotta_watch_free(w, n);
 }
 
-/* A setting is looked up by its menu name, but config_file reads and writes its config key, and for
- * 68 settings the two differ. Writing an override under the menu name produces a key RetroArch
- * never reads back, so the setting silently reverts on the next launch: audio_output_rate is stored
- * as audio_out_rate, gpu_index as vulkan_gpu_index. Only the file write needs this; a live change
- * still goes through menu_setting_find, which matches the menu name. */
 static const char *ricotta_config_key(const char *menu_key)
 {
    size_t i;
@@ -1804,8 +1604,6 @@ static const char *ricotta_config_key(const char *menu_key)
    return menu_key;
 }
 
-/* Writes one live setting into conf with the same typed setters and raw values
- * config_save_overrides uses, so a combobox saves its index rather than its label. */
 static void ricotta_ra_config_set(config_file_t *conf, const char *key, rarch_setting_t *s)
 {
    switch (s->type)
@@ -1834,8 +1632,6 @@ static void ricotta_ra_config_set(config_file_t *conf, const char *key, rarch_se
    }
 }
 
-/* An empty tier file is worse than none: the launch composer would read it, and a stale one left
- * behind after the last key was cleared would keep applying. */
 static void ricotta_ra_write_tier(const char *path, config_file_t *conf)
 {
    FILE *fp;
@@ -1852,17 +1648,6 @@ static void ricotta_ra_write_tier(const char *path, config_file_t *conf)
    }
 }
 
-/* Saves an override .cfg holding only the newline-delimited keys the IGM changed this session,
- * at their live values, merged over any existing override so untouched keys survive. Replaces
- * config_save_overrides, which diffed the whole live config against Cannoli's minimal launch
- * config and wrote hundreds of unrelated keys. Runs on the runloop thread. scope: 1 = game,
- * else system. Keys with no live RA setting (e.g. core options) are silently skipped.
- *
- * The target is Cannoli's own override tier, not RetroArch's library-keyed
- * Config/RetroArch/<library>/ location, so the launch composer reads these back. Both tiers are
- * keyed by core, because what is worth overriding is mostly what differs between cores:
- *   game   -> <root>/Config/Overrides/Games/<tag>/<base>/<core>.cfg
- *   system -> <root>/Config/Overrides/Systems/<tag>/<core>.cfg */
 static void ricotta_ra_save_override(int scope, const char *keys)
 {
    char override_path[PATH_MAX_LENGTH];
@@ -1872,8 +1657,6 @@ static void ricotta_ra_save_override(int scope, const char *keys)
    config_file_t *opt_conf;
    const char *p;
 
-   /* Non-zero selects the game tier over the system one. Values Cannoli owns rather than
-    * RetroArch are written by the Kotlin side straight into its own tier, not through here. */
    const int is_game = scope != 0;
 
    if (!keys || !*keys)
@@ -1892,14 +1675,10 @@ static void ricotta_ra_save_override(int scope, const char *keys)
             "%s/Config/Overrides/Systems/%s/%s.cfg",
             g_cannoli_root, g_platform_tag, g_core_id);
 
-   /* config_save_overrides made this directory; config_file_write's fopen will not. */
    fill_pathname_basedir(base_dir, override_path, sizeof(base_dir));
    if (*base_dir && !path_is_directory(base_dir))
       path_mkdir(base_dir);
 
-   /* Core options are not RetroArch settings and never resolve through menu_setting_find, so they
-    * go to a sibling .opt that the launch composer feeds to RetroArch through core_options_path.
-    * Same directory, same core key, same two scopes as the .cfg beside it. */
    strlcpy(opt_path, override_path, sizeof(opt_path));
    {
       char *ext = strrchr(opt_path, '.');
@@ -1939,10 +1718,6 @@ static void ricotta_ra_save_override(int scope, const char *keys)
             continue;
          }
          s = ricotta_ra_find(key);
-         /* A setting whose enum has no _STR define falls back to its US display label, so its name
-          * arrives here as something like "HDR Mode". No RetroArch config key contains whitespace,
-          * so writing one produces a line RetroArch cannot read and that merging then preserves
-          * forever. Drop it, and clear any an older build already wrote. */
          if (strpbrk(key, " \t"))
          {
             config_unset(conf, key);
@@ -1951,8 +1726,6 @@ static void ricotta_ra_save_override(int scope, const char *keys)
          if (s)
          {
             const char *ck = ricotta_config_key(key);
-            /* An override written before the alias fix holds the menu name, which RetroArch
-             * ignores. Merging would keep it forever, so it goes when the right key is written. */
             if (ck != key)
                config_unset(conf, key);
             ricotta_ra_config_set(conf, ck, s);
@@ -1982,7 +1755,6 @@ static void *menu_close_poll_func(void *arg)
 
    (void)arg;
 
-   /* Attach this thread to the JVM */
    if ((*g_jvm)->GetEnv(g_jvm, (void **)&env, JNI_VERSION_1_6) != JNI_OK)
    {
       if ((*g_jvm)->AttachCurrentThread(g_jvm, &env, NULL) != JNI_OK)
@@ -1990,8 +1762,6 @@ static void *menu_close_poll_func(void *arg)
       attached = 1;
    }
 
-   /* The toggle was enqueued, not run, so wait for the menu to come up before watching for it to
-    * close. */
    while (g_menu_poll_active)
    {
       struct menu_state *menu_st = menu_state_get_ptr();
@@ -2008,7 +1778,6 @@ static void *menu_close_poll_func(void *arg)
       }
       else if (!alive)
       {
-         /* Menu has closed - notify Kotlin */
          if (g_bridge_obj && g_on_menu_closed_mid)
             (*env)->CallVoidMethod(env, g_bridge_obj, g_on_menu_closed_mid);
          ricotta_jni_check(env, "onNativeMenuClosed");
@@ -2044,16 +1813,10 @@ static JNIEnv *ricotta_runloop_env(void)
             return NULL;
       }
    }
-   /* Pending here and none of our callbacks ran: it came from RetroArch's own JNI on this thread. */
    ricotta_jni_check(g_native_env, "runloop env, before our call");
    return g_native_env;
 }
 
-/*
- * Called from android_input.c when a key event arrives.
- * Returns 1 if the event should be consumed (IGM wants it).
- */
-/* Set from Kotlin, read once per frame by the patched hotkey check in runloop.c. */
 static volatile int g_ff_toggle_pending = 0;
 static volatile int g_ff_held = 0;
 
@@ -2070,9 +1833,6 @@ int ricotta_ff_held(void)
    return g_ff_held;
 }
 
-/* Rewind, held rather than latched, and fed to RetroArch as its own hotkey for the same reason
- * fast forward is: everything RetroArch decides about rewinding stays in force, including refusing
- * to rewind while its menu is up, stepping a single frame while paused, and audio_rewind_mute. */
 static volatile int g_rewind_held = 0;
 
 int ricotta_rewind_held(void)
@@ -2080,11 +1840,6 @@ int ricotta_rewind_held(void)
    return g_rewind_held;
 }
 
-/* The figures behind the debug panel, as name and value pairs.
- *
- * Read here rather than lifted out of RetroArch's own status line: that string is assembled inside
- * video_driver_frame for its own renderer, in a local, and the renderer it feeds is turned off. The
- * sources underneath it are public, so the panel reads those and Cannoli formats them. */
 JNIEXPORT jobjectArray JNICALL
 Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeGetDebugStats(
       JNIEnv *env, jobject obj)
@@ -2132,8 +1887,6 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeGetDebugStats(
    return ricotta_fields_to_array(env, fields, n);
 }
 
-/* Cannoli draws the counter itself, in the same pill as fast forward, so RetroArch's own is left
- * off: CMD_EVENT_FPS_TOGGLE here would put a second figure on screen in RetroArch's own styling. */
 JNIEXPORT jfloat JNICALL
 Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeGetFps(
       JNIEnv *env, jobject obj)
@@ -2186,7 +1939,7 @@ static int ricotta_is_shortcut_key(int keycode)
 static void ricotta_queue_shortcut(int keycode, int action)
 {
    int next = (g_shortcut_tail + 1) % RICOTTA_SHORTCUT_QUEUE;
-   if (next == g_shortcut_head) /* drop rather than overwrite an unread event */
+   if (next == g_shortcut_head)
       return;
    g_shortcut_queue[g_shortcut_tail] =
          (action == 0) ? (int)(keycode | (int)0x80000000) : keycode;
@@ -2234,8 +1987,6 @@ static int ricotta_chord_satisfied(const ricotta_chord *c)
    return 1;
 }
 
-/* The most specific chord currently satisfied, so binding L+R and L+R+X leaves the longer one
- * reachable: pressing all three satisfies both, and the one the user went further to press wins. */
 static int ricotta_best_chord(void)
 {
    int i;
@@ -2250,7 +2001,6 @@ static int ricotta_best_chord(void)
    return best;
 }
 
-/* Action in the low 16 bits, kind above it. */
 static void ricotta_queue_action(int action, int kind)
 {
    int next = (g_action_tail + 1) % RICOTTA_SHORTCUT_QUEUE;
@@ -2280,7 +2030,6 @@ static void ricotta_mark_swallowed(int keycode)
       g_swallowed[g_swallowed_count++] = keycode;
 }
 
-/* Reports without removing, for the repeat downs that arrive while a key is still held. */
 static int ricotta_is_swallowed(int keycode)
 {
    int i;
@@ -2290,7 +2039,6 @@ static int ricotta_is_swallowed(int keycode)
    return 0;
 }
 
-/* Removes and reports, so each release is let through once. */
 static int ricotta_take_passthrough_up(int keycode)
 {
    int i;
@@ -2305,7 +2053,6 @@ static int ricotta_take_passthrough_up(int keycode)
    return 0;
 }
 
-/* Removes and reports, so an up is swallowed exactly once. */
 static int ricotta_take_swallowed(int keycode)
 {
    int i;
@@ -2322,15 +2069,13 @@ static int ricotta_take_swallowed(int keycode)
 
 int ricotta_bridge_intercept_key(int keycode, int action)
 {
-   /* While the IGM is visible, consume all gamepad input (handled by the Dialog). */
    if (g_igm_visible)
    {
-      if (action == 1 && ricotta_take_passthrough_up(keycode)) /* AKEY_EVENT_ACTION_UP */
+      if (action == 1 && ricotta_take_passthrough_up(keycode))
          return 0;
       return 1;
    }
 
-   /* Open the Cannoli IGM on any configured trigger key's down event. */
    {
       int i;
       int is_trigger = 0;
@@ -2344,9 +2089,6 @@ int ricotta_bridge_intercept_key(int keycode, int action)
       }
       if (is_trigger)
       {
-         /* A trigger that no chord uses opens the menu on its own press, as it always has.
-          * One that a chord uses has to wait for the release to know whether it was a chord's
-          * modifier or a menu press, which Kotlin decides and asks for. */
          if (ricotta_is_shortcut_key(keycode))
          {
             g_menu_modifier_held = (action == 0);
@@ -2355,27 +2097,21 @@ int ricotta_bridge_intercept_key(int keycode, int action)
          /* Record only. A core that runs on its own coroutine stack enters this poll from inside
           * retro_run, where a JNI call throws a spurious StackOverflowError; the pump raises it
           * from runloop_iterate instead, which is always on this thread's own stack. */
-         else if (action == 0) /* AKEY_EVENT_ACTION_DOWN */
+         else if (action == 0)
             g_igm_trigger_pending = 1;
-         return 1; /* consume down and up so the game never sees the trigger key */
+         return 1;
       }
    }
 
-   /* Shortcut chords, matched here rather than in Kotlin so the decision lands in the same key
-    * event that completes the chord. */
    if (ricotta_is_shortcut_key(keycode))
    {
-      /* Kotlin still sees the raw key: the menu key opens the menu on its release when no chord
-       * claimed the press, and only Kotlin knows which keys those are. */
       ricotta_queue_shortcut(keycode, action);
 
-      if (action == 0) /* AKEY_EVENT_ACTION_DOWN */
+      if (action == 0)
       {
          int best;
          ricotta_held_add(keycode);
          best = ricotta_best_chord();
-         /* A longer chord took over from a pass-through one still counting, so that one's action
-          * must not also run when its deadline passes. */
          if (best >= 0 && g_hold_chord >= 0 && g_hold_chord != best
                && g_chords[g_hold_chord].pass_through)
          {
@@ -2385,8 +2121,6 @@ int ricotta_bridge_intercept_key(int keycode, int action)
          if (best >= 0 && best != g_firing_chord
                && g_chords[best].pass_through && g_chords[best].hold_ms > 0)
          {
-            /* Nothing is taken from the game: the press is its own until the hold is up, and
-             * letting go first leaves it an ordinary press. */
             g_firing_chord = best;
             g_hold_chord = best;
             g_hold_deadline_us = ricotta_now_us()
@@ -2398,10 +2132,6 @@ int ricotta_bridge_intercept_key(int keycode, int action)
          {
             int i;
             g_firing_chord = best;
-            /* Take back every key of the chord, including the ones already delivered, and eat
-             * their releases so the core is never told a button it never saw came up. Done for a
-             * hold chord too, as v1 did: the wait is about giving the user a chance to let go, not
-             * about leaving the game playable meanwhile. */
             for (i = 0; i < g_chords[best].count; i++)
             {
                ricotta_request_retract(g_chords[best].keys[i]);
@@ -2418,15 +2148,8 @@ int ricotta_bridge_intercept_key(int keycode, int action)
                ricotta_queue_action(g_chords[best].action, RICOTTA_ACT_FIRED);
             return 1;
          }
-         /* A key a chord already took, arriving again because the pad repeats while it is held.
-          * Letting this through would put the key straight back into the state it was retracted
-          * from, which both leaks the chord into the game and leaves RetroArch believing a button
-          * is down: it defers the whole quit check until nothing is pressed, so a Save and Quit
-          * issued mid-hold sat unactioned until the user let go. */
          if (ricotta_is_swallowed(keycode))
             return 1;
-         /* Nothing is known yet: this may be the first key of a chord or just play. It reaches the
-          * game, and is retracted above if a chord completes. */
          if (g_menu_modifier_held)
          {
             ricotta_mark_swallowed(keycode);
@@ -2438,8 +2161,6 @@ int ricotta_bridge_intercept_key(int keycode, int action)
       ricotta_held_remove(keycode);
       if (g_firing_chord >= 0 && !ricotta_chord_satisfied(&g_chords[g_firing_chord]))
       {
-         /* Let go before the deadline: the action never ran, so this reports the hold ending
-          * rather than the action ending. */
          if (g_hold_chord == g_firing_chord)
          {
             ricotta_queue_action(g_chords[g_firing_chord].action, RICOTTA_ACT_HOLD_CANCELLED);
@@ -2457,8 +2178,6 @@ int ricotta_bridge_intercept_key(int keycode, int action)
    return 0;
 }
 
-/* Drained by the patched android_input key handler, which owns the state these have to come out
- * of. Reports at most [max] and keeps the rest for the next call. */
 int ricotta_bridge_take_retract(int *out, int max)
 {
    int n = 0;
@@ -2474,9 +2193,6 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSetIGMVisible(
    (void)env;
    (void)obj;
    g_igm_visible = visible ? 1 : 0;
-   /* The menu swallows every key while it is up, so the releases that would have cleared these
-    * never arrive. Left set, the modifier would go on eating chord keys and a half-held chord
-    * would never fire again for the rest of the session. */
    g_menu_modifier_held = 0;
    g_swallowed_count = 0;
    g_held_count = 0;
@@ -2515,9 +2231,6 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSetIgmTriggerKeycodes(
 }
 
 JNIEXPORT void JNICALL
-/* Flat [action, hold_ms, pass_through, count, key...] records, repeated. One array rather than a
- * call per chord, so the table can never be read half written. The union every other check uses is
- * derived here. */
 Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSetShortcutChords(
       JNIEnv *env, jobject obj, jintArray table)
 {
@@ -2529,7 +2242,6 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSetShortcutChords(
 
    (void)obj;
 
-   /* Anything held under the old table has no release coming that this would recognise. */
    g_shortcut_keycount   = 0;
    g_chord_count         = 0;
    g_held_count          = 0;
@@ -2583,8 +2295,6 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSetShortcutChords(
    g_chord_count       = chords;
 }
 
-/* One RetroArch settings screen, as "key\x1fname\x1fisMenu" per row. An empty label is the root.
- * A row is a submenu when its key names another screen in the generated table. */
 JNIEXPORT jobjectArray JNICALL
 Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeRaScreenRows(
       JNIEnv *env, jobject obj, jstring jlabel)
@@ -2656,7 +2366,6 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeInit(
 
    ricotta_ra_settings_lock_init();
 
-   /* Clean up any previous global ref */
    if (g_bridge_obj)
    {
       (*env)->DeleteGlobalRef(env, g_bridge_obj);
@@ -2817,7 +2526,6 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeMenuToggle(
    ricotta_enqueue_command(RICOTTA_QCMD_HELD_FLUSH, 0, 0);
    ricotta_enqueue_command(CMD_EVENT_MENU_TOGGLE, 0, 0);
 
-   /* Start polling for menu close */
    if (!g_menu_poll_active)
    {
       g_menu_poll_active = 1;
@@ -3033,14 +2741,6 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeIsPaused(
    return (flags & RUNLOOP_FLAG_PAUSED) ? JNI_TRUE : JNI_FALSE;
 }
 
-/* What a setting holds right now, and nothing else: the machine value and the text RetroArch
- * renders for it, tab separated.
- *
- * Describing a setting is what costs: building a combobox's labels walks its whole range, writing
- * the live value once per candidate so RetroArch's own repr can render each one. That is fine once
- * per key, and ruinous on every render of every row. None of it is needed to answer what the value
- * is now, so this reads and never writes, which also means the runloop cannot sample a candidate
- * value that was only ever meant to produce a label. */
 JNIEXPORT jstring JNICALL
 Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeRaValue(
       JNIEnv *env, jobject obj, jstring jkey)
@@ -3063,7 +2763,6 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeRaValue(
       (*env)->ReleaseStringUTFChars(env, jkey, key);
       if (!v)
          return NULL;
-      /* A core option's machine value is its own label, the same as describe reports. */
       snprintf(joined, sizeof(joined), "%s\x1f%s", v, v);
       return (*env)->NewStringUTF(env, joined);
    }
@@ -3105,8 +2804,6 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeRaGetSetting(
    (void)obj;
 
    key = (*env)->GetStringUTFChars(env, jkey, NULL);
-   /* Copied because the fields below reference it and the JNI string is released before they are
-    * built. */
    strlcpy(key_buf, key ? key : "", sizeof(key_buf));
 
    if (key && !strncmp(key, RICOTTA_CORE_OPT_PREFIX, strlen(RICOTTA_CORE_OPT_PREFIX)))
@@ -3170,7 +2867,6 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeRaGetSetting(
    }
    else if (s->type == ST_STRING_OPTIONS && s->values)
    {
-      /* A pipe separated list of machine values, with no separate labels to show. */
       const char *p = s->values;
       while (*p && opt_count < RICOTTA_MAX_OPTS)
       {
@@ -3223,11 +2919,6 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeRaGetSetting(
       fields[n].name = opt_names[opt_i * 2 + 1]; fields[n++].value = opt_display[opt_i];
    }
 
-   /* RetroArch's own description. MENU_LABEL() declares LABEL, SUBLABEL and LABEL_VALUE
-    * consecutively and enum_idx is the LABEL, so the sublabel sits at enum_idx + 1. Two guards:
-    * a setting added with dont_use_enum_idx has MSG_UNKNOWN and reading past it would return an
-    * unrelated string, and msg_hash_to_str yields the literal "null" for an enum with no entry in
-    * any language, including the English fallback. */
    {
       const char *sub = NULL;
       if (s->enum_idx != MSG_UNKNOWN)
@@ -3241,13 +2932,6 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeRaGetSetting(
    return out;
 }
 
-/* Values only, in a fixed order: core name, core version, content path, save file, achievement
- * game id, achievement hash. The labels are localized on the Kotlin side, so nothing
- * user-visible is spelled out here, and an empty value is a row the screen leaves out.
- *
- * The content path is what RetroArch actually loaded, which for an archive is the extracted
- * copy rather than what the user picked. The save file is the resolved path rather than the
- * directory, since knowing which directory a save went to does not answer which file it is. */
 JNIEXPORT jobjectArray JNICALL
 Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSystemInfo(
       JNIEnv *env, jobject obj)
@@ -3273,8 +2957,6 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSystemInfo(
    if (client)
       game = rc_client_get_game_info(client);
 
-   /* Zero is rcheevos for nothing recognised, which is a different answer from achievements
-    * being off, and the hash below is what you would look up to find out which. */
    game_id[0] = '\0';
    if (game && game->id)
       snprintf(game_id, sizeof(game_id), "%u", game->id);
@@ -3314,10 +2996,6 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeRaSetSetting(
 
    (void)obj;
 
-   /* The apply runs on the runloop, so whether it succeeds is not knowable here. Whether the key
-    * exists at all is, and that is the half worth reporting: a key that resolves to nothing was
-    * still recorded as a change and then silently dropped at save time, which is how a write that
-    * never landed stayed invisible until an override came out empty. */
    if (key)
       known = !strncmp(key, RICOTTA_CORE_OPT_PREFIX, plen)
             ? ricotta_core_opt_index(key + plen) >= 0
@@ -3381,8 +3059,6 @@ static char *ricotta_join_watch(JNIEnv *env, jobjectArray jwatch)
    return out;
 }
 
-/* Queues a menu write and answers through onRaApplyDone once the runloop has made it. False when
- * the key resolves to nothing or the queue was full, and then nothing will answer. */
 JNIEXPORT jboolean JNICALL
 Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeRaApply(
       JNIEnv *env, jobject obj, jint token, jstring jkey, jstring jvalue, jobjectArray jwatch)
@@ -3461,7 +3137,6 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeCoreGeometry(
 
    vals[0] = (jint)video_st->av_info.geometry.base_width;
    vals[1] = (jint)video_st->av_info.geometry.base_height;
-   /* aspect_ratio is a float; send it as a rational so the Kotlin side does one divide. */
    vals[2] = (jint)(video_st->av_info.geometry.aspect_ratio * 10000.0f);
    vals[3] = 10000;
 
@@ -3520,22 +3195,6 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSetShaderPreset(
    ricotta_enqueue_entry(entry);
 }
 
-/* Edits the menu shader in place, on the thread that asked.
- *
- * These touch nothing but the struct, and the struct belongs to the menu rather than to the render
- * chain: nothing is visible until the chain is compiled on the way out. Queueing them meant the
- * write landed on the runloop while the read that redrew the list happened immediately, so removing
- * a pass redrew the chain it had before, and a second press acted on a list that was already wrong.
- * Anything that reaches the video driver stays queued.
- */
-/* Loads a preset into the chain without compiling it.
- *
- * menu_shader_manager_set_preset applies as well as loads, and applying reaches the video driver,
- * which belongs to the runloop. Queueing it meant the chain root redrew from the shader RetroArch
- * had before the queue ran, so a loaded preset only appeared on the next visit. With apply left
- * off, the load is pure struct work and can happen here, and the chain is compiled on the way out
- * of the tree like every other edit.
- */
 JNIEXPORT void JNICALL
 Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeRaSaveOverride(
       JNIEnv *env, jobject obj, jint scope, jstring jkeys)
@@ -3555,10 +3214,6 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeRaSaveOverride(
    ricotta_enqueue_entry(entry);
 }
 
-/* Snapshot the live rc_client achievement list as a delimited string:
- * one line per achievement, "id|title|description|points|unlocked|state|unlock_time".
- * Title and description are server text, so they go through ricotta_sb_escaped and the Kotlin
- * decoder reverses it. The IGM pauses emulation while shown, so reading the client here is safe. */
 JNIEXPORT jstring JNICALL
 Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeGetAchievementData(
       JNIEnv *env, jobject obj)
@@ -3665,22 +3320,10 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeCheatHardcoreActive(
 #endif
 }
 
-/* Achievement progress carried by a save state, held until the set it belongs to arrives.
- *
- * A state applied before the set has arrived is every resumed launch: the load is local and the
- * set is a network round trip, so rc_client refuses the block and nothing revisits it, silently
- * restarting whatever the save had accumulated. cheevos.c hands it here on the refusal and asks
- * for it back once the game load finishes.
- *
- * Here rather than in cheevos.c so the lock can be a plain static mutex, the way everything else
- * in this file is, and so the patch on the file upstream churns most is two calls instead of
- * eighty lines. The state load that stashes and the game load that applies are different threads
- * and either can free the buffer, so taking it has to be indivisible. */
 static uint8_t        *g_pending_progress      = NULL;
 static size_t          g_pending_progress_size = 0;
 static pthread_mutex_t g_progress_mutex        = PTHREAD_MUTEX_INITIALIZER;
 
-/* Caller holds g_progress_mutex. */
 static void ricotta_drop_progress_locked(void)
 {
    free(g_pending_progress);
@@ -3697,18 +3340,12 @@ void ricotta_cheevos_forget_progress(void)
 
 void ricotta_cheevos_stash_progress(const void *buffer, size_t size)
 {
-   /* cheevos.c asks rc_client the same question through a static wrapper of its own. Asked
-    * directly here so this does not need a function that file keeps to itself. */
    rcheevos_locals_t *locals = get_rcheevos_locals();
    const int game_loaded     = locals && rc_client_is_game_loaded(locals->client);
    uint8_t *copy             = NULL;
 
-   /* Refused with a game already loaded is a real deserialize failure rather than an ordering
-    * problem, and holding that for later would answer a question nobody asked. */
    if (!game_loaded && buffer && size > 0)
    {
-      /* Copied outside the lock: a savestate block's malloc and memcpy have no business running
-       * with the apply side waiting behind them. */
       if ((copy = (uint8_t*)malloc(size)))
          memcpy(copy, buffer, size);
    }
@@ -3726,7 +3363,6 @@ void ricotta_cheevos_apply_pending_progress(void)
    uint8_t           *progress;
    size_t             size;
 
-   /* Taken under the lock, so exactly one caller leaves holding the buffer and owns freeing it. */
    pthread_mutex_lock(&g_progress_mutex);
    progress                = g_pending_progress;
    size                    = g_pending_progress_size;
@@ -3737,7 +3373,6 @@ void ricotta_cheevos_apply_pending_progress(void)
    if (!progress)
       return;
 
-   /* Softcore only. Hardcore's relationship with save states is RetroArch's own. */
    locals = get_rcheevos_locals();
    if (locals && locals->client && !rcheevos_hardcore_active())
       rc_client_deserialize_progress_sized(locals->client, progress, size);
@@ -3745,9 +3380,6 @@ void ricotta_cheevos_apply_pending_progress(void)
    free(progress);
 }
 
-/* Called from RetroArch source sites (HAVE_RICOTTA_OSD) when Cannoli owns an
- * event, with structured data. type: 0 save, 1 load, 4 undo-save. slot: RetroArch
- * state_slot (< 0 = auto). */
 static volatile int g_pending_save_type = -1;
 static volatile int g_pending_save_slot;
 static volatile int g_save_active;
@@ -3790,22 +3422,14 @@ void ricotta_osd_event(int type, int slot)
     * raises it from the runloop thread. */
    if (!g_jvm || !g_bridge_obj || !g_on_osd_event_mid)
       return;
-   /* The resume's first attempt already raised this, and each retry would raise it again. */
    if (type == RICOTTA_OSD_LOAD_STATE && g_resume_in_flight)
       return;
-   /* RA-key-backed OSD toggles gate here against the live setting the IGM writes,
-    * so a muted event costs no JNI call. Reset and the save events gate on the
-    * Kotlin side instead. */
    {
       settings_t *settings = config_get_ptr();
       if (settings)
       {
          switch (type)
          {
-            /* Deliberately not gated here. The save events tell Cannoli the slot on
-             * disk changed, and the menu reads the new thumbnail when it hears; a
-             * notification preference must not decide whether that read happens.
-             * Kotlin gates the message instead. */
             case RICOTTA_OSD_DISK_CHANGED:
                if (!settings->bools.notification_show_disk_control)
                   return;
@@ -3828,14 +3452,6 @@ void ricotta_osd_event(int type, int slot)
    }
 }
 
-/* Called from cheevos.c (HAVE_RICOTTA_OSD) on an achievement unlock. */
-/* How a game's achievements settled, for Cannoli to word in the user's language.
- *
- * Facts rather than a sentence: RetroArch says this four different ways across two functions, and
- * only the counts and the outcome differ between them. Delimited because the payload is small and
- * one queued string beats five accessors called back across JNI a frame later.
- *
- * outcome: 0 loaded, 1 unrecognised, 2 no achievements published, 3 could not be fetched. */
 void ricotta_osd_cheevos_load(int outcome, int unlocked, int total)
 {
    ricotta_cmd_entry entry = {0};
@@ -3848,9 +3464,6 @@ void ricotta_osd_cheevos_load(int outcome, int unlocked, int total)
    if (!g_bridge_obj || !g_on_cheevos_load_mid)
       return;
 
-   /* An unreachable server makes the game unidentifiable, so rcheevos reports both in turn and the
-    * second one reads as though the ROM were the problem. The network answer is the true one and
-    * the cause of the other, so once it has been given, a later unrecognised is not news. */
    if (g_cheevos_outcome == 3 && outcome == 1)
       return;
 
@@ -3874,7 +3487,6 @@ void ricotta_osd_cheevos_load(int outcome, int unlocked, int total)
 void ricotta_osd_achievement(const char *title)
 {
    ricotta_cmd_entry entry = {0};
-   /* Unlocks are checked inside retro_run, so this runs on the core's stack. Queue it. */
    if (!title || !title[0] || !g_bridge_obj || !g_on_osd_achievement_mid)
       return;
    entry.cmd    = RICOTTA_QCMD_OSD_ACHIEVEMENT;
@@ -3940,8 +3552,6 @@ int ricotta_cheevos_intercept(const char *post_data, char **out_body)
    return answered;
 }
 
-/* Says a request's own network attempt failed. A cache is served only for a request that has
- * actually been refused, so this has to be told before the body is asked for. */
 void ricotta_cheevos_failed(const char *post_data)
 {
    JNIEnv *env;

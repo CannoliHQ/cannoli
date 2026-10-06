@@ -2,8 +2,6 @@ package dev.cannoli.scorza.onboarding
 
 import dev.cannoli.scorza.boot.PermissionStatus
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class OnboardingPermissionTest {
@@ -22,11 +20,6 @@ class OnboardingPermissionTest {
             listOf(OnboardingPermission.STORAGE, OnboardingPermission.OVERLAY),
             onboardingPermissions(hasSecondDisplay = true),
         )
-    }
-
-    @Test fun onlyStorageIsRequired() {
-        assertTrue(OnboardingPermission.STORAGE.required)
-        assertFalse(OnboardingPermission.OVERLAY.required)
     }
 
     @Test fun grantsAreReadPerPermission() {

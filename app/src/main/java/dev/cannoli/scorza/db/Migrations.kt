@@ -225,8 +225,6 @@ internal object Migrations {
                 )
                 """.trimIndent()
             )
-            // runner held the picker's display caption, so the source has to be recovered from
-            // it with the same rules the cores.json v1 migration uses.
             db.execSQL(
                 """
                 INSERT INTO game_overrides_v12 (rom_id, source, core_id, app_package)
@@ -246,38 +244,19 @@ internal object Migrations {
             db.execSQL("ALTER TABLE game_overrides_v12 RENAME TO game_overrides")
         },
         Migration(13) { db ->
-            // Nullable on purpose: absent is this game deferring to the global mode, the same
-            // three-state shape the override tiers use. This replaced a force_softcore column
-            // that only ever existed on v2, where 12 is the last version any shipped build has,
-            // so there is nothing in the wild to carry across.
             db.execSQL("ALTER TABLE roms ADD COLUMN ra_hardcore INTEGER")
         },
         Migration(14) { db ->
-            // Sidecars on roms rather than fields on the Rom model, which is materialized for
-            // every row of every game list and would carry seven columns one overlay reads.
             db.execSQL("ALTER TABLE roms ADD COLUMN sigil_title_id TEXT")
             db.execSQL("ALTER TABLE roms ADD COLUMN sigil_save_id TEXT")
             db.execSQL("ALTER TABLE roms ADD COLUMN sigil_raw_serial TEXT")
             db.execSQL("ALTER TABLE roms ADD COLUMN sigil_usage TEXT")
             db.execSQL("ALTER TABLE roms ADD COLUMN sigil_source TEXT")
             db.execSQL("ALTER TABLE roms ADD COLUMN sigil_experimental INTEGER NOT NULL DEFAULT 0")
-            // Size and mtime of the file that was read. Non-null means the row was attempted, so a
-            // failure is remembered as firmly as a success and nothing is retried every boot, and
-            // it is the fingerprint a later slice needs to notice a rom replaced in place.
             db.execSQL("ALTER TABLE roms ADD COLUMN sigil_probe TEXT")
-            // Partial and keyed on the tag, because the drain only ever asks for unprobed rows on
-            // the handful of tags sigil reads. Cartridge rows stay unprobed forever and sit in
-            // here, which is deliberate: a fingerprint written for a file nothing read would stop
-            // a later release probing them if sigil learns their platform. The tag key is what
-            // keeps the lookup cheap despite them.
             db.execSQL("CREATE INDEX roms_sigil_pending ON roms(platform_tag) WHERE sigil_probe IS NULL")
         },
         Migration(15) { db ->
-            // Migration 13 was rewritten in place: it first shipped adding force_softcore and was
-            // later changed to add ra_hardcore. An install that ran the first version is stamped 13
-            // and so never runs it again, leaving it without a column every game list selects, which
-            // is a crash on the first platform opened rather than a missing feature. Adding it here
-            // heals those and does nothing to an install that got the column the ordinary way.
             if (!hasColumn(db, "roms", "ra_hardcore")) {
                 db.execSQL("ALTER TABLE roms ADD COLUMN ra_hardcore INTEGER")
             }

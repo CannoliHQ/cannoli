@@ -4,19 +4,11 @@ enum class QuickMenuRow {
     SETTINGS, ROMM, DOWNLOADS, SYNC_HISTORY, CONFLICTS, ERRORS, UNSYNCED_UNLOCKS, KITCHEN, RESCAN, INFO, ABOUT, DEBUG;
 
     companion object {
-        /**
-         * [downloadCount] includes rows that have finished, and the queue leads the menu for as long
-         * as it holds any of them. It used to lead only while something was still transferring and
-         * then drop to sit after ROMM, which moved a row under the thumb of anyone who opened the
-         * menu to check on a download that had just landed. It now stays put until the list is
-         * cleared, which is the one action that makes it go away.
-         */
         fun visibleRows(rommPaired: Boolean, kitchenRunning: Boolean, saveSyncEnabled: Boolean = false, pendingConflicts: Int = 0, syncErrors: Int = 0, pendingUnlocks: Int = 0, downloadCount: Int = 0, devBuild: Boolean = false): List<QuickMenuRow> =
             buildList {
                 if (downloadCount > 0) add(DOWNLOADS)
                 if (rommPaired && pendingConflicts > 0) add(CONFLICTS)
                 if (rommPaired && saveSyncEnabled && syncErrors > 0) add(ERRORS)
-                // Cannoli's own queue rather than RomM's, so it does not wait on a paired server.
                 if (pendingUnlocks > 0) add(UNSYNCED_UNLOCKS)
                 add(SETTINGS)
                 if (rommPaired) add(ROMM)

@@ -22,11 +22,6 @@ class SaveBackupManager(
         prune(dir, keepCount)
     }
 
-    /**
-     * Store bytes that came from somewhere else, rather than zipping what is on disk. Used to keep
-     * the server's copy before an upload replaces it; the file is stored as-is, and applyDownload
-     * sniffs whether it is an archive when restoring, so a bare save and a bundle both work.
-     */
     fun keepIncoming(tag: String, base: String, source: File, stamp: Long, keepCount: Int) {
         if (keepCount <= 0) return
         val dir = gameDir(tag, base).apply { mkdirs() }

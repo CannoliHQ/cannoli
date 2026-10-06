@@ -28,7 +28,6 @@ class RaIgmSettingsSublabelTest {
         host = h, strings = RaOptionStrings(), curated = false,
     )
 
-    // RetroArch supplies the screen; the row it names is looked up through the host like any other.
     private fun scalingRow(h: SublabelHost, key: String): GenericIgmSettingsItem.Choice {
         h.screens["video_scaling_settings"] =
             h.settings.keys.map { RaScreenRow(it, it, isMenu = false) }
@@ -49,7 +48,6 @@ class RaIgmSettingsSublabelTest {
         )
     }
 
-    // RetroArch has no sublabel for every setting, and a core option has none at all.
     @Test
     fun `a row without one carries null rather than an empty string`() {
         val h = SublabelHost()
@@ -97,7 +95,6 @@ class DescriptionToggleTest {
         assertNull(menu(c.onNav(ProviderSettingsController.Nav.BACK)).description)
     }
 
-    // Back has to close the description before it closes the screen, or one press would do both.
     @Test
     fun `back out of a description does not leave the settings screen`() {
         val c = ProviderSettingsController(OneRowProvider("Softens hard pixel edges."))
@@ -114,8 +111,6 @@ class DescriptionToggleTest {
         assertNull(menu(c.onNav(ProviderSettingsController.Nav.HELP)).description)
     }
 
-    // The description covers the list, so the list stops taking input. Moving a selection the user
-    // cannot see would also close the description as a side effect of the redraw.
     @Test
     fun `the list is frozen while the description is up`() {
         val c = ProviderSettingsController(OneRowProvider("Softens hard pixel edges."))
@@ -134,7 +129,6 @@ class DescriptionToggleTest {
         assertNull(menu(c.onNav(ProviderSettingsController.Nav.BACK)).description)
     }
 
-    // Up and Down scroll the text rather than moving the hidden selection.
     @Test
     fun `up and down scroll the description without moving the selection`() {
         val c = ProviderSettingsController(OneRowProvider("Softens hard pixel edges."))
@@ -147,7 +141,6 @@ class DescriptionToggleTest {
         assertEquals(0, menu(c.onNav(ProviderSettingsController.Nav.UP)).descriptionScroll)
     }
 
-    // Reopening starts at the top rather than wherever the last one was left.
     @Test
     fun `the scroll position resets each time the description opens`() {
         val c = ProviderSettingsController(OneRowProvider("Softens hard pixel edges."))

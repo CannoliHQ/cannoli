@@ -15,11 +15,6 @@ import org.junit.rules.TemporaryFolder
 import java.io.File
 import java.io.FileNotFoundException
 
-/**
- * A save now lives in the game's own folder, so a rename has to carry the folder the way it already
- * carries the per-game state folder. Missing it strands the save under the old name, where nothing
- * looks for it.
- */
 class AtomicRenameSaveFolderTest {
 
     @get:Rule val tmp = TemporaryFolder()
@@ -56,7 +51,6 @@ class AtomicRenameSaveFolderTest {
         assertEquals("RTC", File(root, "Saves/SNES/New Game/New Game.rtc").readText())
     }
 
-    /** The emulator names some of its own files; those keep their names when the game changes. */
     @Test fun `a file the emulator named is carried without being renamed`() {
         val root = tmp.root
         write(File(root, "Saves/PSP/Old Game/ULUS10064/DATA.BIN"), "SAVE")
@@ -76,7 +70,6 @@ class AtomicRenameSaveFolderTest {
         assertTrue(backups.any { File(it, "savedir_Old Game/Old Game.srm").isFile })
     }
 
-    /** A loose save on an install the sweep has not reached still renames as it always did. */
     @Test fun `a loose save is still carried`() {
         val root = tmp.root
         write(File(root, "Saves/SNES/Old Game.srm"), "SAVE")

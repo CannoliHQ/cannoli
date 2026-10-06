@@ -18,7 +18,6 @@ object InputModule {
     @Provides @ActivityScoped
     fun provideOsdController(): OsdController = OsdController()
 
-    // Lives in cannoli-igm so the in-game menu can hold one too, where this graph does not reach.
     @Provides @ActivityScoped
     fun provideBindingController(): dev.cannoli.igm.BindingController =
         dev.cannoli.igm.BindingController()

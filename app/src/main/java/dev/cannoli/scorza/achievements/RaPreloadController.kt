@@ -99,8 +99,6 @@ class RaPreloadController @Inject constructor(
         nav.dialogState.value = DialogState.RAPreloadResult(success = success, message = "$displayName\n\n$message")
     }
 
-    /** The preload coroutines run on the process-lifetime IoScope so they finish even if the user
-     *  navigates away; this skips the UI transitions once the hosting Activity is gone. */
     private fun activityGone(): Boolean {
         val act = context as? android.app.Activity ?: return false
         return act.isFinishing || act.isDestroyed

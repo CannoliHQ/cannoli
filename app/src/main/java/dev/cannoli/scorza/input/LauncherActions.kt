@@ -121,9 +121,6 @@ class LauncherActions @Inject constructor(
         )
     }
 
-    /** Rescans behind the progress overlay. A disk scan can run for a long time on a slow card, so
-     *  anything that triggers one from the UI shows this rather than leaving the launcher looking
-     *  hung with no indication that work is happening. */
     fun rescanWithProgress(reconcileOrphans: Boolean = false, onComplete: (() -> Unit)? = null) {
         nav.dialogState.value = DialogState.RescanProgress(
             0f, context.getString(dev.cannoli.scorza.R.string.boot_preparing),
@@ -178,22 +175,14 @@ class LauncherActions @Inject constructor(
         arcadeTitleLookup.invalidateAll()
     }
 
-    /** Asks before writing the setting, so declining leaves the library exactly as it was. Pass an
-     *  empty [newRomDirectory] to clear the pick back to the Cannoli root. */
     fun confirmRomDirectoryChange(newRomDirectory: String) {
         nav.dialogState.value = DialogState.LibrarySwitchConfirm(newRomDirectory)
     }
 
-    /** Everything that resolves the ROM directory reads it on demand, and the watcher rebinds when
-     *  the scan restarts it, so the change only needs the caches dropped, the new place scaffolded
-     *  and the library reconciled against it. Reconciling is what prunes the entries the new
-     *  location cannot account for, and this is the only path that does it. */
     fun applyRomDirectoryChange(newRomDirectory: String) {
         settings.romDirectory = newRomDirectory
         invalidateAllLibraryCaches()
         settingsViewModel.refreshActiveCategory()
-        // Straight from the confirmation onto the scan screen. Clearing the dialog and waiting for
-        // the scaffold to finish first flashes the settings list back up in between.
         nav.dialogState.value = DialogState.RescanProgress(
             0f, context.getString(dev.cannoli.scorza.R.string.boot_preparing),
         )
@@ -203,8 +192,6 @@ class LauncherActions @Inject constructor(
                 dev.cannoli.scorza.util.DirectoryLayout.scaffoldRomFolders(romDir, platformConfig.getAllTags())
             }
             withContext(Dispatchers.Main) {
-                // The settings screens below were built against the old library, so the scan lands
-                // the user back on the main list rather than where they started.
                 rescanWithProgress(reconcileOrphans = true) {
                     nav.screenStack.clear()
                     nav.screenStack.add(LauncherScreen.SystemList)
@@ -390,7 +377,6 @@ class LauncherActions @Inject constructor(
     internal enum class PlayOutcome { IGNORE, HOLD, RECORD }
 
     companion object {
-        // Launching is a success, not a failure.
         internal fun playOutcomeFor(dialog: DialogState?, saveSyncChecking: Boolean): PlayOutcome = when {
             dialog != null && dialog !is DialogState.Launching -> PlayOutcome.IGNORE
             saveSyncChecking -> PlayOutcome.HOLD

@@ -8,8 +8,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-// The "Platform Setting (X)" row in the game context menu names whatever the platform is
-// mapped to, which is a standalone app as often as a core.
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class PlatformSettingLabelTest {

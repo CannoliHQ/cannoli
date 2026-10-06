@@ -14,7 +14,6 @@ class RommArtDownloader(
     private val paths: CannoliPathsProvider,
     private val staging: DownloadStaging,
 ) {
-    /** Downloads [coverPath] for [tag]/[baseName] into the Art dir. Returns true on success. */
     fun download(host: String, coverPath: String?, tag: String, baseName: String): Boolean {
         val url = RommArtUrl.resolve(host, coverPath) ?: return false
         return try {

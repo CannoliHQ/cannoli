@@ -129,9 +129,7 @@ class RetroArchCfgParserTest {
         org.junit.Assert.assertEquals(HatRef(0, CfgHatDirection.DOWN), entry.hatBindings["down_btn"])
         org.junit.Assert.assertEquals(HatRef(0, CfgHatDirection.LEFT), entry.hatBindings["left_btn"])
         org.junit.Assert.assertEquals(HatRef(0, CfgHatDirection.RIGHT), entry.hatBindings["right_btn"])
-        // Integer-valued button still parses as a normal button binding.
         org.junit.Assert.assertEquals(97, entry.buttonBindings["a_btn"])
-        // Up/Down/Left/Right are NOT in buttonBindings (their values were hat values).
         org.junit.Assert.assertNull(entry.buttonBindings["up_btn"])
         org.junit.Assert.assertNull(entry.buttonBindings["down_btn"])
     }

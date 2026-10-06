@@ -13,14 +13,6 @@ val LocalScreenInputRegistry = staticCompositionLocalOf<ScreenInputRegistry> {
     error("ScreenInputRegistry not provided. Wrap setContent in CompositionLocalProvider.")
 }
 
-/**
- * Registers [handler] as the active screen handler while this composable is in composition AND
- * the containing lifecycle is at least RESUMED. The lifecycle gate is critical: when an activity
- * goes to the background (e.g. MainActivity pauses to launch LibretroActivity for emulation), its
- * composables stay in composition but its handler must release the registry slot so the other
- * activity's screens can take over. Without it, the launcher's last-shown handler would silently
- * receive events while the IGM is in front.
- */
 @Composable
 fun ScreenInput(handler: ScreenInputHandler) {
     val registry = LocalScreenInputRegistry.current

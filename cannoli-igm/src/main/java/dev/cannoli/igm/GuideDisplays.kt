@@ -20,8 +20,6 @@ object GuideDisplays {
         .minByOrNull { it.displayId }
         ?.displayId
 
-    // DISPLAY_CATEGORY_PRESENTATION would work on the Thor, whose second panel does carry
-    // FLAG_PRESENTATION, but that flag is not guaranteed on other dual-screen hardware.
     fun secondDisplayId(context: Context): Int? {
         val manager = context.getSystemService(DisplayManager::class.java) ?: return null
         return select(

@@ -70,7 +70,6 @@ class GameOverrideStoreTest {
         assertNull(store.get(id))
     }
 
-    // The whole reason per-game overrides moved into the database.
     @Test fun `an override follows its rom through a path change`() {
         val db = db("ov-move")
         val store = GameOverrideStore(db)
@@ -92,7 +91,6 @@ class GameOverrideStoreTest {
         assertNull(store.get(id))
     }
 
-    // path.startsWith(tagDir) used to make Game Boy list and clear GBA overrides.
     @Test fun `forPlatform does not leak across a tag prefix`() {
         val db = db("ov-prefix")
         val store = GameOverrideStore(db)

@@ -7,9 +7,6 @@ import org.junit.Test
 
 class DownloadQueueTest {
 
-    // Deliberately not a RomM item: the queue schedules, dedupes and claims without knowing what
-    // it is transferring, and a test that needed a RommGame to say so would be testing the wrong
-    // thing.
     private fun item(id: Int, kind: DownloadKind = DownloadKind.ROM) = DownloadItem(
         key = "${kind.name}-$id",
         displayName = "Item $id",
@@ -67,7 +64,7 @@ class DownloadQueueTest {
         q.cancel("ROM-2")
         assertEquals(listOf("ROM-1", "ROM-3"), q.state.value.map { it.key })
         q.cancelAll()
-        assertEquals(listOf("ROM-1"), q.state.value.map { it.key }) // active stays; queued cleared
+        assertEquals(listOf("ROM-1"), q.state.value.map { it.key })
     }
 
     @Test fun `retry moves a failed item back to queued`() {
@@ -83,7 +80,7 @@ class DownloadQueueTest {
         q.enqueue(listOf(item(1), item(2), item(3)))
         q.setStatus("ROM-1", DownloadStatus.Downloading(0, 1))
         q.setStatus("ROM-2", DownloadStatus.Done)
-        assertEquals(2, q.activeCount()) // downloading(1) + queued(3)
+        assertEquals(2, q.activeCount())
     }
 
     @Test fun `clearFinished removes done and failed but keeps queued and downloading`() {
@@ -102,15 +99,12 @@ class DownloadQueueTest {
         q.enqueue(listOf(item(1), item(2), item(3), item(4)))
         q.setStatus("ROM-1", DownloadStatus.Done)
         q.setStatus("ROM-3", DownloadStatus.Done)
-        // Insertion order is 1,2,3,4. Active (2,4) newest-first, then done (1,3) newest-first.
         assertEquals(
             listOf("ROM-4", "ROM-2", "ROM-3", "ROM-1"),
             q.state.value.inDisplayOrder().map { it.key },
         )
     }
 
-    // Lanes are the reason a core install does not wait behind a rom. A worker asks only for the
-    // kinds it serves, so the rom sitting first in the list must not be what a core worker gets.
     @Test fun `a claim only takes the kinds its lane serves`() {
         val q = DownloadQueue()
         q.enqueue(listOf(item(1, DownloadKind.ROM), item(2, DownloadKind.CORE)))
@@ -133,8 +127,6 @@ class DownloadQueueTest {
         assertEquals(2, q.activeCount(setOf(DownloadKind.ROM)))
     }
 
-    // Cancelling is about work still to come. Finished rows are the record of what happened and
-    // only Clear Finished removes them, so a cancel-all must not sweep them up as collateral.
     @Test fun `cancelAll drops what has not started and keeps the rest`() {
         val q = DownloadQueue()
         q.enqueue(listOf(item(1), item(2), item(3)))

@@ -40,7 +40,6 @@ import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.LocalCannoliTypography
 import dev.cannoli.ui.theme.Spacing
 
-// A long RetroArch sublabel does not fit on one screen, so Up and Down page through it.
 private const val DESCRIPTION_SCROLL_STEP_PX = 220f
 
 @Composable
@@ -51,17 +50,11 @@ fun IGMSettingsScreen(
     bottomBarLeft: kotlin.collections.List<Pair<String, String>>,
     bottomBarRight: kotlin.collections.List<Pair<String, String>>,
     coreInfo: String = "",
-    /** Marks the row that is picked up, so it is obvious which one Up and Down are moving. */
     reorderingIndex: Int? = null,
     description: String? = null,
     descriptionScroll: Int = 0,
     fontSize: TextUnit = 22.sp,
     lineHeight: TextUnit = 32.sp,
-    /**
-     * How much of the game to hide. A list of shaders is judged by what the shader does to the
-     * picture, so that list gets a narrow, barely dimmed panel and leaves the rest of the frame
-     * visible. Everything else covers the screen as before.
-     */
     dimAlpha: Float = 0.85f,
     widthFraction: Float = 1f,
 ) {
@@ -78,8 +71,6 @@ fun IGMSettingsScreen(
         ) {
             if (description != null) {
                 val descriptionScrollState = rememberScrollState()
-                // Scroll by the change since the last look, so holding a direction keeps moving and
-                // reopening the description starts at the top.
                 var lastScrollStep by remember(description) { mutableIntStateOf(0) }
                 LaunchedEffect(descriptionScroll, description) {
                     val delta = descriptionScroll - lastScrollStep
@@ -108,8 +99,6 @@ fun IGMSettingsScreen(
                 }
             } else {
                 Column(
-                    // Narrowed here rather than around the whole screen, so the legend below still
-                    // spans the display and its right-hand item stays on the right.
                     modifier = Modifier
                         .fillMaxWidth(widthFraction)
                         .padding(bottom = footerReservation())
@@ -164,8 +153,6 @@ fun IGMSettingsScreen(
             }
 
             BottomBar(
-                // Outside the narrowed column: the legend spans the screen even when the list
-                // steps aside, or its right-hand item lands in the middle of the display.
                 modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
                 leftItems = bottomBarLeft,
                 rightItems = if (description != null) emptyList() else bottomBarRight

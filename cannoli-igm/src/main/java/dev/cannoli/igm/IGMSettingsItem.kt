@@ -5,7 +5,6 @@ data class IGMSettingsItem(
     val value: String? = null,
     val hint: String? = null,
     val description: String? = null,
-    /** False keeps Left and Right out of the legend, for a row that only reports something. */
     val cyclable: Boolean = true,
     val leadingIcon: String? = null,
 )

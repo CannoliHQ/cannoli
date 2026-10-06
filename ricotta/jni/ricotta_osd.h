@@ -1,23 +1,12 @@
 #ifndef RICOTTA_OSD_H
 #define RICOTTA_OSD_H
 
-/* This lands before anything else in every translation unit, so it can assume nothing is
- * declared yet. stddef.h is freestanding and safe to include from both C and C++. */
 #include <stddef.h>
 
-/* Force-included into every RetroArch translation unit by Android.mk, which includes the C++ ones
- * such as griffin_cpp.cpp. Without this the declaration would get C++ linkage there and fail to
- * link against the C definition in ricotta_bridge.c. */
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/*
- * Cannoli owns the on-screen notifications RetroArch would otherwise draw itself.
- * The patched RetroArch sites report what happened through ricotta_osd_event and
- * Cannoli decides how to show it, so these values cross the JNI boundary and are
- * mirrored by RicottaOsdEvent on the Kotlin side. Never renumber them.
- */
 enum ricotta_osd_type
 {
    RICOTTA_OSD_SAVE_STATE            = 0,
@@ -34,72 +23,36 @@ enum ricotta_osd_type
    RICOTTA_OSD_REWIND_END            = 14
 };
 
-/* slot carries RetroArch's state_slot for the state events (< 0 is the auto slot),
- * 1 or 0 for RICOTTA_OSD_FASTFORWARD, meaning on or off,
- * the disk index for RICOTTA_OSD_DISK_CHANGED, and 1 when the stored login must be re-entered
- * (0 otherwise) on RICOTTA_OSD_CHEEVOS_LOGIN_FAILED. It is unused elsewhere. */
 void ricotta_osd_event(int type, int slot);
 
-/* How a game's achievements settled, reported as facts for Cannoli to word.
- * outcome: 0 loaded, 1 unrecognised, 2 no achievements published, 3 could not be fetched. */
 void ricotta_osd_cheevos_load(int outcome, int unlocked, int total);
 
-/* An achievement was just earned. Cannoli draws the pill RetroArch would have drawn. */
 void ricotta_osd_achievement(const char *title);
 
-/* Achievement progress carried by a save state, held until the set it belongs to arrives.
- *
- * Three call sites in three files: tasks/task_save.c stashes the block rc_client refused,
- * cheevos/cheevos.c applies it once the game load finishes and forgets it on unload. Declared
- * here rather than in each patch, so a signature that drifted between them fails to build
- * instead of linking and misbehaving. */
 void ricotta_cheevos_stash_progress(const void *buffer, size_t size);
 void ricotta_cheevos_apply_pending_progress(void);
 void ricotta_cheevos_forget_progress(void);
 
-/* Every state task_save deserialized, and whether the core took it. A refused auto-load is the
- * resume arriving while the core is still booting, and the bridge tries it again from its pump. */
 void ricotta_state_loaded(const char *path, int autoload, int ok);
 
-/* The save notification is deferred until the thumbnail it names exists on disk. task_save latches
- * it before queueing the screenshot; the screenshot task raises it once the PNG is written. That
- * ordering used to be bought by encoding the PNG on the runloop thread, which stalled the frame. */
 void ricotta_osd_defer_save(int type, int slot);
 void ricotta_osd_flush_save(void);
 
-/* Open across a savestate. Video drivers skip black frame insertion while it is set: a save stalls
- * the runloop, and whichever frame was swapped last stays on screen for the duration, so a BFI dark
- * frame reads as the screen blanking. */
 void ricotta_save_begin(void);
 void ricotta_save_end(void);
 int  ricotta_save_is_active(void);
 
-/* The input hooks RetroArch's android_input.c calls. Declared here because this header is
- * force-included everywhere, which keeps the patch down to the two call sites: an extern in the
- * patch itself would be a third hunk to rebase, anchored on whatever happened to sit above it. */
 int  ricotta_bridge_intercept_key(int keycode, int action);
 void ricotta_bridge_poll_commands(void);
 
-/* Keycodes a chord has claimed after they were already recorded, for the key handler to clear out
- * of its own state. The first key of a chord cannot be withheld, since nothing yet says a chord is
- * coming, so it is taken back instead: the core reads that state once a frame, and a key retracted
- * before the next read was never pressed as far as the game is concerned. */
 #define RICOTTA_MAX_RETRACT 32
 int  ricotta_bridge_take_retract(int *out, int max);
 
-/* Cannoli's fast forward shortcuts, read by the runloop's own hotkey check so RetroArch's rules
- * about pausing, netplay and audio still decide what happens.
- *
- * take_toggle is consumed by the read: RetroArch toggles on the edge from unpressed to pressed, so
- * the request has to look like a press that ends, not one that is held. held is a level, matching
- * the hold hotkey it stands in for. */
 int  ricotta_ff_take_toggle(void);
 int  ricotta_ff_held(void);
 
-/* Rewind while held, fed to RetroArch's own rewind hotkey by the runloop patch. */
 int  ricotta_rewind_held(void);
 
-/* Asked at the top of command_event. Returns 1 when Cannoli held the command to run later. */
 int  ricotta_hold_command(int cmd, void *data);
 
 #ifdef __cplusplus

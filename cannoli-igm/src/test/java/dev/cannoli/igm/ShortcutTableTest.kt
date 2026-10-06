@@ -7,20 +7,15 @@ import org.junit.Test
 private const val L = 102
 private const val R = 103
 
-/**
- * The chord table is matched in C now, so this covers the one part still testable here: that what
- * native is handed says what the bindings said.
- */
 class ShortcutTableTest {
 
-    /** Reads the wire form back, so a test states the chords rather than the offsets. */
     private fun decode(flat: IntArray): Map<Int, List<Int>> {
         val out = LinkedHashMap<Int, List<Int>>()
         var at = 0
         while (at + 3 < flat.size) {
             val action = flat[at++]
-            at++ // hold
-            at++ // pass through
+            at++
+            at++
             val count = flat[at++]
             out[action] = (0 until count).map { flat[at + it] }
             at += count
@@ -51,7 +46,6 @@ class ShortcutTableTest {
         )
     }
 
-    // Native cannot look up an action's hold, so it has to travel with the chord.
     @Test fun `a hold action carries its wait to native`() {
         val flat = ShortcutTable.encode(mapOf(ShortcutAction.SAVE_AND_QUIT_HOLD to setOf(L, R)))
         assertEquals(
@@ -61,7 +55,6 @@ class ShortcutTableTest {
         assertTrue("the hold variant is the one action that waits", ShortcutAction.SAVE_AND_QUIT_HOLD.holdMs > 0)
     }
 
-    // START alone opens the menu on a pad without a menu button, so the game has to keep START.
     @Test fun `the held menu carries its wait and its pass through to native`() {
         val start = 108
         val flat = ShortcutTable.encode(mapOf(ShortcutAction.OPEN_MENU_HOLD to setOf(start)))
@@ -101,8 +94,6 @@ class ShortcutTableTest {
         assertTrue("an empty chord would match on nothing held", flat.isEmpty())
     }
 
-    // Dropped rather than truncated: a chord short of a key fires on fewer buttons than the user
-    // bound, which is worse than one that never fires.
     @Test fun `a chord longer than native can hold is dropped, not cut short`() {
         val long = (1..ShortcutTable.MAX_CHORD_KEYS + 1).toSet()
         val flat = ShortcutTable.encode(
@@ -122,8 +113,6 @@ class ShortcutTableTest {
         assertTrue(ShortcutTable.encode(emptyMap()).isEmpty())
     }
 
-    // The tier key is per action so a game can rebind one chord and inherit the rest. Spelled the
-    // same at both ends or the menu stages a key the writer never matches.
     @Test fun `each action has its own tier key`() {
         assertEquals("cannoli_shortcut_SAVE_STATE", ShortcutTable.keyFor(ShortcutAction.SAVE_STATE))
         val keys = ShortcutAction.entries.map { ShortcutTable.keyFor(it) }
@@ -135,8 +124,6 @@ class ShortcutTableTest {
         assertEquals(chord, ShortcutTable.parseChord(ShortcutTable.formatChord(chord)))
     }
 
-    // Empty is a scope saying the action is off here, which the tier reader must not confuse with
-    // the scope saying nothing at all.
     @Test fun `an empty stored value is a chord of no keys`() {
         assertTrue(ShortcutTable.parseChord("").isEmpty())
     }

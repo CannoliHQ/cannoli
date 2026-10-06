@@ -33,7 +33,6 @@ import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.LocalCannoliTypography
 import dev.cannoli.ui.theme.Spacing
 
-/** The chrome every first-run step shares: step counter, title, body, footer legend. */
 @Composable
 fun OnboardingScaffold(
     step: OnboardingStep,
@@ -59,8 +58,6 @@ fun OnboardingScaffold(
             OnboardingStepCounter(step)
             Spacer(modifier = Modifier.height(Spacing.Xs))
             ScreenTitle(text = title, fontSize = listFontSize, lineHeight = listLineHeight)
-            // Not listTitleSpacing(): the list rhythm spreads a whole screen of rows into that gap,
-            // and these steps carry one or two, so it opens up as dead space above the content.
             Spacer(modifier = Modifier.height(Spacing.Md))
             content()
         }
@@ -72,10 +69,6 @@ fun OnboardingScaffold(
     }
 }
 
-/**
- * The step counter every first-run step carries, inset to the same edge as the title and the rows
- * below it. The welcome step lays itself out but keeps this, so all three read as one flow.
- */
 @Composable
 fun OnboardingStepCounter(step: OnboardingStep) {
     Text(
@@ -86,7 +79,6 @@ fun OnboardingStepCounter(step: OnboardingStep) {
     )
 }
 
-/** Supporting copy under a row: rationales, hints, resolved paths. */
 @Composable
 fun OnboardingBodyText(
     text: String,
@@ -100,7 +92,6 @@ fun OnboardingBodyText(
     )
 }
 
-/** Keeps the focused row on screen: the steps scroll on short handhelds. */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun Modifier.revealWhenFocused(isFocused: Boolean): Modifier {

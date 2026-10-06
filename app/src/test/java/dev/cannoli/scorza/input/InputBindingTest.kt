@@ -20,7 +20,6 @@ class InputBindingTest {
 
     @Test
     fun axis_normalization_with_negative_resting_value() {
-        // Stadia LTRIGGER: rests at -1, active 0..1.
         val a = InputBinding.Axis(
             axis = 17, restingValue = -1f, activeMin = 0f, activeMax = 1f,
             digitalThreshold = 0.5f

@@ -3,14 +3,6 @@ package dev.cannoli.igm
 import androidx.annotation.StringRes
 import dev.cannoli.ui.R as UIR
 
-/**
- * A RetroPad button, in the order the remap screen lists them.
- *
- * [id] and [raKey] are RetroArch's own device id and key name, so a stored remap stays in one
- * vocabulary rather than inventing a second. [position] is where the button sits on a pad, which is
- * what a row is labelled with: the four face positions are named by the pad's own style, so they
- * carry no [labelRes].
- */
 enum class RemapButton(
     val id: Int,
     val raKey: String,
@@ -42,20 +34,11 @@ enum class RemapButton(
     }
 }
 
-/**
- * Where a remap is stored and what its values mean.
- *
- * A remap map is keyed by RetroArch button id and holds the id that button sends. A button the map
- * does not mention sends itself, so an empty map is a pad that behaves normally.
- */
 object ButtonRemap {
-    /** What a cleared row sends, which is nothing. RetroArch's own file convention. */
     const val UNBOUND = -1
 
-    /** Port argument meaning every port rather than one, for the native that applies a change. */
     const val ALL_PORTS = -1
 
-    /** Staged-only: drop this scope's key on save rather than write a target. Never a tier value. */
     const val INHERIT = -2
 
     private const val KEY_PREFIX = "cannoli_remap_"
@@ -68,12 +51,6 @@ object ButtonRemap {
         return RemapButton.entries.firstOrNull { it.raKey == raKey }
     }
 
-    /**
-     * A stored value, or null when the text is not one.
-     *
-     * A tier is a text file someone can edit, and RetroArch indexes its bind array with whatever
-     * this returns, so a number naming no button has to stop here.
-     */
     fun valueOf(text: String?): Int? {
         val value = text?.trim()?.toIntOrNull() ?: return null
         return value.takeIf { it == UNBOUND || RemapButton.forId(it) != null }

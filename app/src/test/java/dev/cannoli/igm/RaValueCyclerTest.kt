@@ -6,7 +6,6 @@ import org.junit.Test
 
 class RaValueCyclerTest {
 
-    /** Labels are deliberately not the machine values: cycling must never return one. */
     private fun setting(
         type: RaSettingType,
         value: String,

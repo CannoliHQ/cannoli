@@ -23,8 +23,6 @@ class ConflictsApplyingStateTest {
     private lateinit var nav: NavigationController
     private lateinit var handler: DialogInputHandler
 
-    // Never advanced: the apply coroutine stays queued so the assertions see only what Start did
-    // synchronously, which is the part the user perceives.
     private val dispatcher = StandardTestDispatcher()
 
     @Before fun setup() {
@@ -55,10 +53,6 @@ class ConflictsApplyingStateTest {
         )
     )
 
-    /**
-     * The same reason the list swaps: resolving one conflict is an upload or a download, and until
-     * this the screen sat unchanged for the whole round trip, so Start read as a dead button.
-     */
     @Test fun `confirming a single conflict swaps to applying before the network runs`() {
         nav.dialogState.value = singleConflict()
 
@@ -74,8 +68,6 @@ class ConflictsApplyingStateTest {
         rows = listOf(ConflictRow(gameKey = "snes/Zelda.sfc", name = "Zelda"))
     )
 
-    // Resolving a row is a network round trip. Without the swap the list sits there unchanged for
-    // seconds and Start reads as dead.
     @Test fun start_leaves_the_conflicts_list_immediately() {
         nav.dialogState.value = conflictsMenu()
         handler.onStart()

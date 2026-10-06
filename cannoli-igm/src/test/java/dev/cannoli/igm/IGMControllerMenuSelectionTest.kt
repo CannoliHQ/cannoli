@@ -17,8 +17,6 @@ class IGMControllerMenuSelectionTest {
         assertEquals(c.buildMenuOptions().resumeIndex, menu(c).selectedIndex)
     }
 
-    // The menu is opened mid-game far more often to get back to the game than to do anything else,
-    // so the most common action has to be the one already under the cursor.
     @Test fun `reopening the menu returns to Resume rather than the last row`() {
         val c = testController(FakeRetroArchBridge())
         c.openMenu()
@@ -111,8 +109,6 @@ class IGMControllerMenuSelectionTest {
         val c = testController(bridge)
         c.openMenu()
         val opts = c.buildMenuOptions()
-        // Confirming every row in turn, so the empty slot lists below mean no row could reach a
-        // state rather than that nothing was ever pressed.
         for (i in opts.actions.indices) {
             assertEquals(i, menu(c).selectedIndex)
 

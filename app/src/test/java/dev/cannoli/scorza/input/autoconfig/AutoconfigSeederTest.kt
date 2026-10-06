@@ -64,8 +64,6 @@ class AutoconfigSeederTest {
         assertTrue(File(target, "PadB.cfg").readText().contains("input_b_btn"))
     }
 
-    // seedIfNeeded no longer swallows I/O failures; the caller is given somewhere to report them
-    // in a later task.
     @Test(expected = java.io.IOException::class)
     fun `unreadable stamp propagates the failure`() {
         val target = tmp.newFolder("android")
@@ -73,8 +71,6 @@ class AutoconfigSeederTest {
         seeder(target).seedIfNeeded()
     }
 
-    // The SD root can change under a running app, so the seeder has to read the directory the way
-    // the repository does: when it seeds, not when it was built.
     @Test
     fun `the target directory is resolved at seed time`() {
         var target = tmp.newFolder("first")
@@ -108,8 +104,6 @@ class AutoconfigSeederTest {
         assertFalse(File(target, "PadZ.cfg").exists())
     }
 
-    // Distinct from the "no bundled counterpart" case above: here the asset exists but the write
-    // itself fails, mirroring a flaky SD card mid-restore.
     @Test
     fun `reseeding a file whose write fails returns false`() {
         val target = tmp.newFolder("android")
@@ -119,8 +113,6 @@ class AutoconfigSeederTest {
         assertFalse(seeder.reseedSingle("PadA.cfg"))
     }
 
-    // Seeding leaves v1's Config/Input/Mappings alone. Whether those are worth reading before they
-    // are dropped is the v1-config wipe's call, not something to do as a side effect of seeding.
     @Test
     fun `leaves the legacy ini store alone`() {
         val target = tmp.newFolder("android")
@@ -188,9 +180,6 @@ class AutoconfigSeederTest {
         assertEquals(true, java.io.File(tmp.root, "corrupt.cfg").exists())
     }
 
-    // isUserOwned defaults an unreadable file to user-owned so seeding skips the overwrite. Flip
-    // that default and this test starts failing: a regular file the process merely can't read
-    // right now (a flaky SD card, a transient permission glitch) would otherwise get clobbered.
     @Test fun `an unreadable regular file at a seed target is never overwritten`() {
         val target = tmp.newFolder("android")
         val existing = File(target, "PadA.cfg")

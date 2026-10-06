@@ -13,9 +13,6 @@ class ScreenGeometryPaddingTest {
 
     @Test
     fun `pixel scale region reaches the panel's true right edge`() {
-        // width 50% -> w = 1920*50/100 = 960; maxXPct = (100-50)/2 = 25, xPct 25 is unclamped
-        // x = (1920-960)/2 + 1920*25/100 = 480 + 480 = 960, so right edge = x + w = 1920 exactly.
-        // Density 1 keeps px and dp numerically identical, isolating this from unit conversion.
         val padding = computeScreenGeometryPadding(
             surfaceWidthPx = 1920,
             surfaceHeightPx = 1080,
@@ -34,9 +31,6 @@ class ScreenGeometryPaddingTest {
 
     @Test
     fun `falls back to dp-derived region when pixel size is unavailable`() {
-        // An early composition pass reports a zero-sized view. Must use the dp-derived rect
-        // rather than computing off a zero-width, zero-height surface.
-        // wPct=60 -> w=480; maxXPct=20, xPct=10 stays; x=(800-480)/2 + 800*10/100 = 160+80=240
         val padding = computeScreenGeometryPadding(
             surfaceWidthPx = 0,
             surfaceHeightPx = 0,

@@ -19,8 +19,6 @@ class PreviewPickerControllerTest {
         return c to applied
     }
 
-    // The live read is deferred to open time because RetroArch has no settings system during
-    // onCreate; asking it for one there crashed the emulator process.
     @Test fun `opening re-reads live state first`() {
         val (c, _) = controller(selected = null)
         c.onRefresh = { c.selected.value = "CRT Frame" }
@@ -48,7 +46,6 @@ class PreviewPickerControllerTest {
         assertEquals(listOf(2), applied)
     }
 
-    // Reopening lands on what was left showing, since a move is the change rather than a proposal.
     @Test fun `a move updates what counts as in force`() {
         val (c, _) = controller()
         c.cycle(1, 1)
@@ -56,7 +53,6 @@ class PreviewPickerControllerTest {
         assertEquals(2, c.refresh())
     }
 
-    // Wraps, so a short list can be walked in one direction rather than reversing at the ends.
     @Test fun `cycling wraps at both ends`() {
         val (c, applied) = controller()
         assertEquals(2, c.cycle(0, -1))

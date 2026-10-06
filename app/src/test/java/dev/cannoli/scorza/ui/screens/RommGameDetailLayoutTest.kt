@@ -30,8 +30,8 @@ class RommGameDetailLayoutTest {
 
     @Test fun `scaleFor is 1 at reference and clamps at both ends`() {
         assertEquals(1.0f, RommGameDetailLayout.scaleFor(640f, 360f), 0.001f)
-        assertEquals(0.85f, RommGameDetailLayout.scaleFor(300f, 300f), 0.001f)   // clamp low
-        assertEquals(1.6f, RommGameDetailLayout.scaleFor(1280f, 960f), 0.001f)   // clamp high
+        assertEquals(0.85f, RommGameDetailLayout.scaleFor(300f, 300f), 0.001f)
+        assertEquals(1.6f, RommGameDetailLayout.scaleFor(1280f, 960f), 0.001f)
         assertTrue(RommGameDetailLayout.scaleFor(420f, 420f) > RommGameDetailLayout.scaleFor(360f, 360f))
     }
 

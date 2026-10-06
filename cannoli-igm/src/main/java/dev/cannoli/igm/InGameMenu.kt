@@ -180,8 +180,6 @@ fun InGameMenu(
     }
 }
 
-/* Laid-out height of the slot indicator row: one labelSmall line at 10.sp plus its padding.
- * Named rather than derived because the photo has to be sized before the row is measured. */
 private val SlotIndicatorRowHeight = 16.dp
 
 @Composable
@@ -194,8 +192,6 @@ fun PolaroidFrame(
 ) {
     val selectedColor = PolaroidSelect
 
-    // Empty slots have no bitmap to measure, so the last ratio seen for this game is held here
-    // and reused: without it the frame would change height as you cycle onto an empty slot.
     val lastRatio = remember { floatArrayOf(10f / 9f) }
     val photoRatio = remember(thumbnail) {
         if (thumbnail != null && thumbnail.height > 0)
@@ -205,8 +201,6 @@ fun PolaroidFrame(
     }
 
     BoxWithConstraints(contentAlignment = Alignment.Center) {
-        // Width drives the card, but a tall ratio would otherwise run past the space the caller gave
-        // us. Cap the width so the whole card, chrome included, still fits the available height.
         val chrome = 8.dp + if (showIndicators) 12.dp + Spacing.Sm + SlotIndicatorRowHeight else 8.dp
         val cardWidth = maxWidth.coerceAtMost(
             ((maxHeight - chrome) * photoRatio).coerceAtLeast(0.dp)
@@ -265,11 +259,6 @@ fun PolaroidFrame(
                         text = stringResource(dev.cannoli.ui.R.string.igm_slot_auto).uppercase(),
                         style = MaterialTheme.typography.labelSmall.copy(
                             fontWeight = FontWeight.Bold,
-                            // The smallest type in the app, so it has to follow the size setting
-                            // rather than stay at 10sp for someone who turned it up to read it.
-                            // Recovered from the scaled typography, which is provided by both the
-                            // in-game menu and the launcher, so all three callers of this frame get
-                            // it without a new parameter.
                             fontSize = (10 * autoSlotScale()).sp,
                             color = when {
                                 autoSelected -> Color.White
@@ -326,7 +315,6 @@ private fun igmMenuLabel(action: IgmMenuAction): String = stringResource(
     }
 )
 
-/** The text scale in force, recovered from the typography: bodyLarge is 22sp at scale 1. */
 @Composable
 private fun autoSlotScale(): Float =
     dev.cannoli.ui.theme.LocalCannoliTypography.current.bodyLarge.fontSize.value / 22f

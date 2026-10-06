@@ -13,15 +13,6 @@ import kotlinx.coroutines.yield
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Runs the id backfill in the background, and only while the launcher is in front. Reading discs
- * off the card while a core is running is the one thing this pass must never do, and pausing on the
- * activity covers every case with one rule: an embedded game and a standalone emulator both take
- * the launcher off screen.
- *
- * Work is found by asking the database for unprobed rows, so a pass killed halfway resumes rather
- * than restarts, and a scan that adds roms simply leaves more of them to find.
- */
 @Singleton
 class SigilBackfillService @Inject constructor(
     repository: GameIdRepository,

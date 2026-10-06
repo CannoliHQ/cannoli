@@ -3,11 +3,6 @@ package dev.cannoli.scorza.launcher
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-/**
- * RetroArch builds its save directory by appending the content directory name and then the core's
- * library_name, and both sort flags default to on. Cannoli wants the first level and never the
- * second, so leaving either flag unstated puts saves somewhere the launcher does not look.
- */
 class MinimalConfigSaveDirsTest {
 
     private fun config() = LaunchManager.buildMinimalConfig("/sd/Cannoli")
@@ -19,17 +14,12 @@ class MinimalConfigSaveDirsTest {
             ?.trim()
             ?.trim('"')
 
-    // The regression this guards: Android defaults bundle extraction on, and because the config is
-    // rewritten every launch the last-extracted version never matches, so RetroArch unpacks the
-    // APK's assets on every run and its completion callback reinitialises every driver.
     @Test fun `the apk bundle is never extracted`() =
         assertEquals("false", valueOf("bundle_assets_extract_enable"))
 
     @Test fun `saves sort by content directory`() =
         assertEquals("true", valueOf("sort_savefiles_by_content_enable"))
 
-    // The regression this guards: unstated, this defaults to true and appends the core name,
-    // giving Saves/GBA/mGBA instead of Saves/GBA.
     @Test fun `saves never sort by core`() =
         assertEquals("false", valueOf("sort_savefiles_enable"))
 
@@ -44,8 +34,6 @@ class MinimalConfigSaveDirsTest {
         assertEquals("/sd/Cannoli/Save States", valueOf("savestate_directory"))
     }
 
-    // RetroArch must never write its own config back: Cannoli's store is authoritative and a
-    // config written on exit would silently clobber whatever was generated here.
     @Test fun `RetroArch does not save its config on exit`() =
         assertEquals("false", valueOf("config_save_on_exit"))
 
@@ -53,11 +41,6 @@ class MinimalConfigSaveDirsTest {
         assertEquals("/sd/Cannoli/Config/Input/Autoconfig", valueOf("joypad_autoconfig_dir"))
 }
 
-/**
- * RetroArch only defaults savestate_thumbnail_enable on for x86_64, so on every device Cannoli
- * ships to it is off unless stated. Without it RetroArch writes the state and no screenshot, and
- * the save and load rows show whatever stale image was left beside it.
- */
 class MinimalConfigThumbnailTest {
 
     @Test fun `state screenshots are enabled`() {

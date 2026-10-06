@@ -7,32 +7,7 @@ import dev.cannoli.scorza.model.Rom
 import dev.cannoli.scorza.util.StorageLog
 import java.io.File
 
-/**
- * One-shot: renames pre-cutover Guides/<tag>/<dir> directories keyed by a rom's display name to
- * the canonical base-name key GuideManager and the launcher guide sites now resolve by (RomKey).
- * Kitchen already uploads under the base name, so this only touches dirs the launcher or IGM
- * created before the cutover.
- *
- * For each Guides/<tag>/<dir>:
- * - the dir already equals a rom's base name: left alone.
- * - the dir equals exactly one rom's display name and differs from its base name: renamed to the
- *   base name, merging into an existing base-name dir; a duplicate filename is never overwritten
- *   or deleted, only renamed aside to "<name>.superseded" in the old dir.
- * - the dir matches multiple roms' display names, or none at all: skipped and logged, since
- *   guessing with user content is worse than leaving a dir the launcher no longer resolves.
- *
- * The `.guides_key_version` stamp is only written after every dir in the pass either fully
- * migrated or was deliberately skipped (ambiguous or unmatched). A dir that failed partway
- * through a rename or merge leaves the pass unstamped, so the whole thing retries on the next
- * boot rather than stranding content the app can no longer resolve - the same retry-until-clean
- * posture as CheevosOverrideMigration, gated on success instead of removing the gate entirely.
- * Every operation only acts on whatever is physically on disk at call time, so a retry of a
- * dir that already fully or partially migrated is safe: an already-base-named or already-merged
- * dir is a cheap no-op, and a partial merge just picks up the files still left behind.
- */
 class GuidesKeyMigration(
-    // Resolved fresh on every call, like CheevosOverrideMigration, so a root re-resolved after
-    // setup (e.g. a portable SD move) never leaves this migrating a stale directory.
     private val guidesDir: () -> File,
     private val positionsFile: () -> File,
     private val roms: () -> List<Rom>,
@@ -74,8 +49,6 @@ class GuidesKeyMigration(
                 matches.size == 1 -> {
                     if (!renameToBaseName(tagDir.name, dir, RomKey.baseName(matches[0].path))) success = false
                 }
-                // Ambiguous or unmatched dirs are a deliberate, permanent hold, not a failure:
-                // they must not block the stamp, or the pass would retry them forever for nothing.
                 matches.size > 1 -> StorageLog.write(
                     "[guides-key-migration] skip ${tagDir.name}/$name: matches ${matches.size} roms' display names"
                 )
@@ -100,15 +73,6 @@ class GuidesKeyMigration(
         return mergeInto(tag, sourceDir, targetDir, baseName)
     }
 
-    // A duplicate filename means the target already holds this guide, so the target's copy (with
-    // its own existing position key) is the surviving canonical one. The source's copy is never
-    // deleted: it's renamed aside to "<name>.superseded" in the same source dir, an inert file
-    // GuideManager ignores (not a supported extension), so nothing is ever lost from live user
-    // data even though the position key for that filename is dropped (see rewritePositionKeys) -
-    // the target's own key is what stays authoritative, not a transferred one. A file that fails
-    // to move, or fails to rename aside, is neither moved nor discarded: it stays physically at
-    // the old location under its original name, so its position key is left alone too, and the
-    // dir isn't removed.
     private fun mergeInto(tag: String, sourceDir: File, targetDir: File, baseName: String): Boolean {
         val oldName = sourceDir.name
         val moved = mutableSetOf<String>()
@@ -143,13 +107,6 @@ class GuidesKeyMigration(
         return allHandled
     }
 
-    // moved == null rewrites every key under the old dir (plain rename, every file came along).
-    // Otherwise this is the merge case: a filename in moved is rewritten to the new dir, a
-    // filename in discarded (a duplicate renamed aside to "<name>.superseded") has its key
-    // dropped - the target's own existing key for that filename is what stays authoritative, not
-    // a transferred one - and any other filename - one that failed to move or rename aside -
-    // keeps its original key untouched, since the file it points at is still sitting at the old
-    // location under its original name.
     private fun rewritePositionKeys(
         tag: String,
         oldDirName: String,

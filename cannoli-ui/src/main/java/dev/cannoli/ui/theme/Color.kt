@@ -35,11 +35,8 @@ val LocalCannoliFont = staticCompositionLocalOf<FontFamily> { FontFamily.Default
 val LocalCannoliIconFont = staticCompositionLocalOf<FontFamily> { FontFamily.Default }
 val LocalScaleFactor = staticCompositionLocalOf { 1f }
 
-// Pill geometry scales down with the text size but never up, so sizes below the default
-// keep the default's proportions instead of drowning small text in fixed padding.
 val LocalPillScale = staticCompositionLocalOf { 1f }
 
-/** [nameRes] rather than a name: the picker draws it, so it has to be translatable. */
 data class ColorPreset(@androidx.annotation.StringRes val nameRes: Int, val color: Long)
 
 val COLOR_PRESETS = listOf(
@@ -71,7 +68,6 @@ fun hexToColor(hex: String): Color? {
     }
 }
 
-/** For the hosts that carry the theme as hex strings, where an absent or unparseable one is the default. */
 fun cannoliColorsFromHex(
     highlight: String?,
     text: String?,

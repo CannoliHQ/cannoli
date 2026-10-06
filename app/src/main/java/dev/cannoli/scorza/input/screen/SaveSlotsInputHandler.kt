@@ -24,7 +24,6 @@ class SaveSlotsInputHandler @Inject constructor(
     @IoScope private val ioScope: CoroutineScope,
 ) : ScreenInputHandler {
 
-    // Wired by InputRouter to reopen the game's context menu after popping this screen.
     var onBackToContextMenu: (() -> Unit)? = null
 
     private fun current(): LauncherScreen.SaveSlots? =

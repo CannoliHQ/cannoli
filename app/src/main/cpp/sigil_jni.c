@@ -1,20 +1,3 @@
-/* Native game id extraction for the launcher.
- *
- * sigil_extract_from_path does the whole job: it routes CHD, CSO, raw CD tracks, ZArchive and zip
- * containers itself, so this shim is one call and never opens a file of its own.
- *
- * The platform is always passed explicitly, never SIGIL_PLATFORM_AUTO, because the rom's tag
- * already says what the game is and sigil refuses to guess between PSX, PS2, PSP, Wii, GameCube,
- * Dreamcast and Xbox for the .iso, .bin and .chd they share. The switch below maps Cannoli's own
- * ordinals onto named constants, so a renumbering upstream is a compile error here rather than a
- * platform silently becoming another one.
- *
- * Every call returns seven strings. Index 0 is the status, "OK" or sigil's own message for the
- * failure, and the six after it are the result, empty when there is nothing to report. One shape
- * for both outcomes means the Kotlin side never branches on the array's length, and it keeps the
- * reason a failure happened, which the SD log wants and which a bare null would throw away.
- */
-
 #include <jni.h>
 #include <string.h>
 

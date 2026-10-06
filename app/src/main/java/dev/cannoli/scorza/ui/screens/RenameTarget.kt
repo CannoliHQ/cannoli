@@ -1,8 +1,6 @@
 package dev.cannoli.scorza.ui.screens
 
-/** What a keyboard dialog's text is for, named by the subsystem that consumes it. */
 sealed interface RenameTarget {
-    /** A search whose dialog title names the list being searched. */
     sealed interface ScopedSearch : RenameTarget {
         val scope: String
     }

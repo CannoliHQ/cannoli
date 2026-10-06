@@ -67,11 +67,9 @@ class RomDirectoryWalkerTest {
 
     @Test
     fun `merges a late loose disc into an already-organized bundle`() {
-        // State after a mid-upload scan already bundled discs 1 and 2.
         write("PS/Cool Game/Cool Game (Disc 1).chd")
         write("PS/Cool Game/Cool Game (Disc 2).chd")
         write("PS/Cool Game/Cool Game.m3u", "Cool Game (Disc 1).chd\nCool Game (Disc 2).chd\n")
-        // Disc 3 arrives loose afterwards.
         write("PS/Cool Game (Disc 3).chd")
 
         val result = walker.walk("PS", isArcade = false)!!

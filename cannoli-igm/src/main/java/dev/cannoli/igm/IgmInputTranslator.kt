@@ -1,13 +1,5 @@
 package dev.cannoli.igm
 
-/**
- * Turns a host's raw Android keycode into what the press means on this pad, using a Cannoli device
- * mapping.
- *
- * Null for a key this pad has no meaning for, which the screen handlers ignore. That used to be the
- * raw keycode passed through unchanged, so any unrecognised id could land on a handler branch that
- * happened to share its number.
- */
 class IgmInputTranslator(private val mapping: IgmInputMapping?) {
 
     private val rawToCanonical: Map<Int, CanonicalButton> =
@@ -22,30 +14,14 @@ class IgmInputTranslator(private val mapping: IgmInputMapping?) {
         if (m != null && canonical != null) {
             menuActionFor(canonical, m.menuConfirm, m.menuBack)?.let { return it }
         }
-        // Reached only where the device's mapping said nothing about this key. A handheld whose
-        // menu button reports KEYCODE_BACK has said something, and letting the fallback answer
-        // first made menu and back the same button once you were inside the menu.
         return PASS_THROUGH[rawKeycode]
     }
 
-    /**
-     * Whether this raw keycode is the button that opens and closes the menu on this device.
-     *
-     * A mapping names BTN_MENU, so it answers for whatever button this pad calls menu. Without one
-     * there is nothing to ask, and the platform's own menu keys are all that can be assumed.
-     */
     fun isMenuKey(rawKeycode: Int): Boolean =
         if (mapping == null) rawKeycode in MENU_DEFAULTS else normalize(rawKeycode) == MenuAction.MENU
 
-    /** Where a press sits on the pad, for a screen binding a button rather than reading a meaning. */
     fun canonicalFor(rawKeycode: Int): CanonicalButton? {
         rawToCanonical[rawKeycode]?.let { return it }
-        // A profile only ever comes from buttonKeycodes, which the factory builds from digital
-        // button events, so a D-pad wired as a hat or a trigger read as an analog axis never gets an
-        // entry there. Without this fallback those presses vanish while a row is listening: they
-        // neither bind nor cancel, and the row is left listening with the game paused. Gated on the
-        // pad having a mapping at all, so an unprofiled pad still returns null here and keeps BACK as
-        // its way out of a listening row.
         return if (mapping != null) HAT_AND_AXIS_FALLBACK[rawKeycode] else null
     }
 
@@ -58,9 +34,6 @@ class IgmInputTranslator(private val mapping: IgmInputMapping?) {
             104 to CanonicalButton.BTN_L2, 105 to CanonicalButton.BTN_R2,
         )
 
-        // What a pad means with no profile behind it, and the reason this table is spelled out
-        // rather than passing the keycode through: an id absent from here now means nothing at all,
-        // where before it reached the handlers and could match a branch by sharing its number.
         private val PASS_THROUGH = mapOf(
             19 to MenuAction.UP, 20 to MenuAction.DOWN,
             21 to MenuAction.LEFT, 22 to MenuAction.RIGHT,

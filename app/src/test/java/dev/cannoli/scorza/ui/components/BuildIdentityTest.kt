@@ -7,10 +7,8 @@ import java.util.TimeZone
 
 class BuildIdentityTest {
 
-    // 2026-08-08 18:41 UTC
     private val stamp = 1786214460000L
 
-    // 2026-08-08 02:30 UTC, which is still 2026-08-07 in every zone behind UTC.
     private val nearMidnightUtc = 1786156200000L
 
     private fun lines(
@@ -43,8 +41,6 @@ class BuildIdentityTest {
         assertNull(l.detail)
     }
 
-    // The date names when the build was cut. Derived in the viewer's zone instead, a build cut just
-    // after midnight UTC would show the previous day to everyone west of it.
     @Test fun the_release_date_is_utc_whatever_zone_the_device_is_in() {
         val expected = "v1.0.0  •  2026-08-08  •  abc1234"
         assertEquals(expected, lines(debug = false, millis = nearMidnightUtc).version)

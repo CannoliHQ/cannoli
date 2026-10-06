@@ -74,13 +74,10 @@ class AtomicRenameContentTest {
 
         assertFalse("collision must fail the whole rename", result.success)
         assertEquals(AtomicRename.RenameError.ALREADY_EXISTS, result.error)
-        // Nothing lost or moved: rom stays put, both cheats dirs remain exactly as they were.
         assertTrue("rom must roll back to its old name", rom.exists())
         assertFalse(File(root, "Roms/$tag/$newBase.bin").exists())
         assertEquals("old-cheat", File(paths.cheatDir(tag, oldBase), "cheats.cht").readText())
         assertEquals("target-cheat", File(paths.cheatDir(tag, newBase), "existing.cht").readText())
-        // Neither side was ever moved, so there's nothing to back up: no delete-then-recopy
-        // window for rollback to lose content in.
         assertTrue(
             "collision must be detected before anything is backed up",
             File(root, "Backup/$tag").listFiles()?.isEmpty() ?: true

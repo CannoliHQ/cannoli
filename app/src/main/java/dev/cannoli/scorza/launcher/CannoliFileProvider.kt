@@ -9,16 +9,6 @@ import android.webkit.MimeTypeMap
 import androidx.core.content.FileProvider
 import java.io.File
 
-// FileProvider that also answers DocumentsContract-style projections
-// (mime_type, _size, last_modified, document_id, flags) in addition to OpenableColumns.
-//
-// NetherSX2's FileHelper.statFile queries content URIs with a DocumentsContract
-// projection and expects rows in that shape. The stock androidx FileProvider
-// silently drops unknown columns, producing a cursor with fewer columns than
-// the caller expects and crashing on index access. Without this, NetherSX2
-// fails to resolve our bootPath URI and shows a "Requested filename" toast
-// then black-screens.
-//
 // Pattern adapted from Argosy's ArgosyFileProvider (GPLv3, rommapp/argosy-launcher).
 class CannoliFileProvider : FileProvider() {
 
@@ -37,11 +27,6 @@ class CannoliFileProvider : FileProvider() {
         return MatrixCursor(projection, 1).apply { addRow(row) }
     }
 
-    // Reverse the FileProvider path mapping declared in res/xml/file_paths.xml.
-    // The androidx FileProvider strips the on-disk prefix and exposes paths as
-    // <name>/<relative>, where <name> is the path element's `name` attribute.
-    // Stock androidx doesn't expose a public way to invert this, so we hardcode
-    // the two entries we ship: "root" -> "/", "external_files" -> external storage root.
     private fun resolveFile(uri: Uri): File? {
         val rawPath = uri.encodedPath ?: return null
         val decoded = Uri.decode(rawPath) ?: return null

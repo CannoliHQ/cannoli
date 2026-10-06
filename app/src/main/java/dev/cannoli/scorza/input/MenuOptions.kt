@@ -1,14 +1,5 @@
 package dev.cannoli.scorza.input
 
-/**
- * Identity for a context menu row, not its label.
- *
- * These used to be the English text and were compared against the rendered string, so the menu could
- * not be translated without breaking selection. The value is a stable key now and the label is looked
- * up when the row is drawn, which leaves every comparison in the handlers working untouched.
- *
- * The key is what crosses into a saved value too, so changing one is a migration, not a rename.
- */
 internal const val MENU_RENAME = "menu_rename"
 internal const val MENU_DELETE = "menu_delete"
 internal const val MENU_DELETE_GAME = "menu_delete_game"
@@ -31,7 +22,6 @@ internal const val MENU_RESTORE_BACKUP = "menu_restore_backup"
 internal const val MENU_ROMM_SAVES = "menu_romm_saves"
 internal const val MENU_GUIDES = "menu_guides"
 
-/** Key to string resource, for the two places a menu row is drawn. */
 internal val MENU_LABELS: Map<String, Int> = mapOf(
     MENU_RENAME to dev.cannoli.ui.R.string.menu_rename,
     MENU_DELETE to dev.cannoli.ui.R.string.menu_delete,

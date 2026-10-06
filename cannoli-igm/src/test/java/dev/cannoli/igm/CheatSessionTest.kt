@@ -12,7 +12,6 @@ import java.io.File
 class CheatSessionTest {
     @get:Rule val tmp = TemporaryFolder()
 
-    /** Writes land before the call returns, so every assertion below stays synchronous. */
     private fun manager() =
         CheatManager(tmp.root.absolutePath, "snes", "Game", writer = { it.run() })
 
@@ -25,7 +24,6 @@ class CheatSessionTest {
     private fun retro(desc: String) =
         CheatEntry(desc = desc, handler = CheatEntry.HANDLER_RETRO, address = 100, value = 9)
 
-    /** What the bridge reports back after a load: same order, all disabled, given support. */
     private fun observed(file: CheatFile, supported: (Int) -> Boolean = { true }) =
         file.cheats.mapIndexed { i, c ->
             RetroArchBridge.CheatRow(i, c.desc, c.code, enabled = false, supported = supported(i))

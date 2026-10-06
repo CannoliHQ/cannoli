@@ -65,8 +65,6 @@ class ControllerBridgeTest {
         keyboardType = android.view.InputDevice.KEYBOARD_TYPE_ALPHABETIC,
     )
 
-    // AVDs enumerate this alongside the host keyboard. It is what `adb shell input` injects under,
-    // and its id is negative because Android marks virtual devices with id < 0.
     private val virtualKeyboardFacts = ControllerBridge.DeviceFacts(
         androidDeviceId = ControllerBridge.VIRTUAL_KEYBOARD_ID,
         descriptor = "a718a782d34bc767f4689c232d64d527998ea7fd",
@@ -77,7 +75,6 @@ class ControllerBridgeTest {
         keyboardType = android.view.InputDevice.KEYBOARD_TYPE_ALPHABETIC,
     )
 
-    // The AVD's host keyboard, which really does land on device id 0.
     private val hostKeyboardFacts = ControllerBridge.DeviceFacts(
         androidDeviceId = 0,
         descriptor = "qwerty2-desc",
@@ -180,8 +177,6 @@ class ControllerBridgeTest {
 
     @Test
     fun internal_pad_with_faked_nonzero_vid_pid_is_still_built_in() {
-        // Retroid handhelds fake VID/PID on the internal pad; the old zero-VID/PID heuristic mis-
-        // tagged this as external. Trust Android's isExternal flag instead.
         val portRouter = PortRouter()
         val bridge = makeBridge(portRouter = portRouter)
         val retroidInternal = ControllerBridge.DeviceFacts(
@@ -200,9 +195,6 @@ class ControllerBridgeTest {
 
     @Test
     fun internal_pad_detected_via_buildmodel_name_prefix_when_isexternal_lies() {
-        // Retroid kernel lies about isExternal (reports true for the internal pad). Fall back to
-        // name-vs-Build.MODEL prefix: device name 'Retroid Pocket Controller' matches the brand
-        // 'Retroid' from Build.MODEL='Retroid Pocket Classic', so it's still treated as built-in.
         val portRouter = PortRouter()
         val bridge = makeBridge(portRouter = portRouter, buildModel = "Retroid Pocket Classic")
         val retroidInternal = ControllerBridge.DeviceFacts(
@@ -221,8 +213,6 @@ class ControllerBridgeTest {
 
     @Test
     fun external_pad_on_same_handheld_is_not_built_in_via_name_heuristic() {
-        // The Pro pad on a Retroid still reads as external because its name does not start with
-        // the Build.MODEL brand prefix.
         val portRouter = PortRouter()
         val bridge = makeBridge(portRouter = portRouter, buildModel = "Retroid Pocket Classic")
         val proPad = ControllerBridge.DeviceFacts(
@@ -241,7 +231,6 @@ class ControllerBridgeTest {
 
     @Test
     fun external_pad_with_zero_vid_pid_is_not_built_in() {
-        // Inverse: some quirky externals report 0/0; trust isExternal=true over the old heuristic.
         val portRouter = PortRouter()
         val bridge = makeBridge(portRouter = portRouter)
         val external = ControllerBridge.DeviceFacts(
@@ -303,10 +292,6 @@ class ControllerBridgeTest {
 
     @Test
     fun saved_mapping_that_appears_after_first_settle_is_picked_up_on_resettle() {
-        // Boot order on a fresh install: the bridge enumerates before MANAGE_EXTERNAL_STORAGE is
-        // granted, so the autoconfig directory reads empty and the pad falls back to the bundled
-        // cfg. The re-settle that runs once storage is available has to pick up the user's file,
-        // which means the settle has to drop the empty listing the store cached before the grant.
         val portRouter = PortRouter()
         val active = ActiveMappingHolder()
         val bridge = makeBridge(portRouter = portRouter, activeMappingHolder = active)
@@ -344,7 +329,6 @@ class ControllerBridgeTest {
             clock = { ticks },
             buildModel = "Pixel",
         )
-        // Non-adjacent device IDs ensure SiblingFolder treats them as separate clusters.
         val second = stadiaFacts.copy(androidDeviceId = 12, descriptor = "stadia-2")
         bridge.settleSyncForTest(listOf(stadiaFacts))
         portRouter.activate(7, 1_000L)
@@ -366,29 +350,23 @@ class ControllerBridgeTest {
         bridge.onDeviceAdded = { d -> added.add(d.androidDeviceId) }
         bridge.onDeviceRemoved = { departed -> removed.add(departed.androidDeviceId) }
 
-        // Enumeration alone never fires onDeviceAdded; the device is still pending.
         bridge.settleSyncForTest(listOf(stadiaFacts))
         assertTrue(added.isEmpty())
 
-        // A hot-plugged pad is also silent until it produces input.
         val second = stadiaFacts.copy(androidDeviceId = 12, descriptor = "stadia-2")
         bridge.settleSyncForTest(listOf(stadiaFacts, second))
         assertTrue(added.isEmpty())
 
-        // Activating either pad fires the callback in activation order.
         portRouter.activate(12, 2_000L)
         portRouter.activate(stadiaFacts.androidDeviceId, 3_000L)
         assertEquals(listOf(12, stadiaFacts.androidDeviceId), added)
 
-        // Removing an activated device still fires onDeviceRemoved.
         bridge.settleSyncForTest(listOf(stadiaFacts))
         assertEquals(listOf(12), removed)
     }
 
     @Test
     fun activation_writes_nothing_to_the_autoconfig_database() {
-        // Only a deliberate user edit authors a cfg. A mapping the bridge derived is cheap to
-        // derive again on the next boot, and writing it would leave a file the user never made.
         val portRouter = PortRouter()
         val bridge = makeBridge(portRouter = portRouter)
 
@@ -401,8 +379,6 @@ class ControllerBridgeTest {
 
     @Test
     fun activation_leaves_a_user_authored_cfg_byte_identical() {
-        // Mapping ids come from device identity, so anything the bridge wrote back would land on
-        // the very file the user authored for that pad.
         val portRouter = PortRouter()
         val bridge = makeBridge(portRouter = portRouter)
         autoconfigDir.mkdirs()
@@ -426,11 +402,6 @@ class ControllerBridgeTest {
 
     @Test
     fun phantom_rewrite_pad_keeps_the_cfg_derived_glyph_not_the_device_reported_vid() {
-        // Retroid-family hosts rewrite a paired BT pad's gamepad endpoint to report the built-in's
-        // VID/PID while keeping the pad's real name. The bundled cfg still matches by name and
-        // carries the pad's true (Sony) VID, so the resolver correctly yields SHAPES. The bridge
-        // must enroll that verbatim -- re-deriving a glyph from the device's rewritten VID would
-        // silently clobber it back to REDMOND, undoing what the resolver got right.
         val portRouter = PortRouter()
         val ra = listOf(
             RetroArchCfgEntry(
@@ -453,7 +424,6 @@ class ControllerBridgeTest {
             androidDeviceId = 30,
             descriptor = "phantom-bt",
             name = "DualSense Wireless Controller",
-            // Phantom-rewritten to the Retroid built-in's VID/PID instead of Sony's.
             vendorId = 8226,
             productId = 12289,
             sourceMask = ControllerBridge.SOURCE_GAMEPAD,
@@ -514,8 +484,6 @@ class ControllerBridgeTest {
 
     @Test
     fun retroid_phantom_endpoints_fold_to_single_port() {
-        // Mirrors the DualSense-on-Retroid case: gamepad endpoint has Retroid vid/pid and empty
-        // descriptor; siblings have real Sony vid/pid and populated descriptors (MAC-derived hashes).
         val portRouter = PortRouter()
         val active = ActiveMappingHolder()
         val bridge = makeBridge(portRouter = portRouter, activeMappingHolder = active)
@@ -549,11 +517,9 @@ class ControllerBridgeTest {
         portRouter.activate(12, 1_000L)
         bridge.markLaunchTrigger(12)
 
-        // Only the gamepad endpoint gets a port; the siblings alias onto it.
         assertEquals(0, portRouter.portFor(12))
         assertEquals(0, portRouter.portFor(11))
         assertEquals(0, portRouter.portFor(10))
-        // The persisted mapping id is scoped to the pad's model (its name), not to any one unit.
         val saved = active.active.value
         assertNotNull(saved)
         assertEquals("android_default_dualsense_wireless_controller", saved?.id)
@@ -561,8 +527,6 @@ class ControllerBridgeTest {
 
     @Test
     fun two_same_model_phantom_clusters_get_separate_ports() {
-        // Two DualSenses on Retroid: ids {10,11,12} and {13,14,15}. ID-adjacency keeps clusters
-        // separated even though all six InputDevices share name prefix "DualSense Wireless Controller".
         val portRouter = PortRouter()
         val bridge = makeBridge(portRouter = portRouter)
 
@@ -584,10 +548,8 @@ class ControllerBridgeTest {
 
         assertEquals(0, portRouter.portFor(12))
         assertEquals(1, portRouter.portFor(15))
-        // Siblings of pad A route to pad A's gamepad.
         assertEquals(0, portRouter.portFor(10))
         assertEquals(0, portRouter.portFor(11))
-        // Siblings of pad B route to pad B's gamepad.
         assertEquals(1, portRouter.portFor(13))
         assertEquals(1, portRouter.portFor(14))
     }
@@ -613,7 +575,6 @@ class ControllerBridgeTest {
         val mapping = portRouter.mappingFor(keyboardFacts.androidDeviceId)
         assertNotNull(mapping)
         assertEquals(DevKeyboardMapping.ID, mapping?.id)
-        // Enter, not the AndroidDefault BTN_A keycode 96, proves the resolver was bypassed.
         assertEquals(
             listOf(dev.cannoli.scorza.input.InputBinding.Button(android.view.KeyEvent.KEYCODE_ENTER)),
             mapping?.bindings?.get(dev.cannoli.scorza.input.CanonicalButton.BTN_SOUTH)?.take(1),
@@ -638,8 +599,6 @@ class ControllerBridgeTest {
 
         bridge.settleSyncForTest(listOf(keyboardFacts))
 
-        // Events injected by `adb shell input` arrive under VIRTUAL_KEYBOARD_ID and must resolve
-        // to the same evaluator and mapping as the physical keyboard.
         assertEquals(
             DevKeyboardMapping.ID,
             portRouter.mappingFor(ControllerBridge.VIRTUAL_KEYBOARD_ID)?.id,
@@ -681,15 +640,12 @@ class ControllerBridgeTest {
         val portRouter = PortRouter()
         val bridge = makeBridge(portRouter = portRouter, devKeyboardEnabled = true)
 
-        // Both enumerate on a real AVD. Selecting the numerically lowest id picked 'Virtual' at
-        // -1, leaving everything typed on the host keyboard unrouted.
         bridge.settleSyncForTest(listOf(virtualKeyboardFacts, hostKeyboardFacts))
 
         assertEquals(DevKeyboardMapping.ID, portRouter.mappingFor(0)?.id)
         assertTrue(
             portRouter.aliasesFor(0).contains(ControllerBridge.VIRTUAL_KEYBOARD_ID)
         )
-        // Both paths must reach the same evaluator: host typing and `adb shell input`.
         assertEquals(
             DevKeyboardMapping.ID,
             portRouter.mappingFor(ControllerBridge.VIRTUAL_KEYBOARD_ID)?.id,
@@ -713,9 +669,6 @@ class ControllerBridgeTest {
         val portRouter = PortRouter()
         val bridge = makeBridge(portRouter = portRouter, devKeyboardEnabled = true)
 
-        // A handheld's GPIO menu button is keyboard-sourced but non-alphabetic, so the bridge
-        // never enrolls it. MainActivity's BACK shim keys off this, and must keep treating it as
-        // an ordinary device even while the feature is switched on.
         val gpioMenuButton = ControllerBridge.DeviceFacts(
             androidDeviceId = 7,
             descriptor = "gpio-keys-desc",

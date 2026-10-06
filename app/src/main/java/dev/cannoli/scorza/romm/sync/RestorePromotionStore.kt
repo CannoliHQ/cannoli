@@ -5,9 +5,6 @@ import dev.cannoli.scorza.db.execute
 import dev.cannoli.scorza.db.queryAll
 import dev.cannoli.scorza.db.queryOne
 
-// A deferred "make my restored save the head" intent, recorded when a backup restore could not
-// promote to the server immediately (offline). The next sync applies it: force-upload if the
-// server head still equals baseHead, else escalate as a conflict.
 data class RestorePromotion(
     val gameKey: String,
     val slot: String,

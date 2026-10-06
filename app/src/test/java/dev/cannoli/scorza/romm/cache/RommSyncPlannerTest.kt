@@ -25,7 +25,6 @@ class RommSyncPlannerTest {
     @Test fun `platformsNeedingReconcile finds count mismatches and missing platforms`() {
         val cached = mapOf(1 to 10, 2 to 5, 3 to 0)
         val server = mapOf(1 to 10, 2 to 7, 3 to 0)
-        // platform 2 differs (5 != 7); 1 and 3 match.
         assertEquals(listOf(2), RommSyncPlanner.platformsNeedingReconcile(cached, server))
     }
 

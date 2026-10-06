@@ -35,7 +35,6 @@ class PortDeviceApplyTest {
         assertEquals(1, EmbeddedRetroArchBridge.resolvePortDevice(517, offered, afterReset = true))
     }
 
-    // Literal paths from ricotta_ra_save_override in ricotta_bridge.c, which writes these files.
     @Test fun `the core-keyed files are the ones the native writer uses`() {
         assertEquals(
             listOf(

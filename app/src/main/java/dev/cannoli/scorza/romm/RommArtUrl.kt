@@ -2,18 +2,6 @@ package dev.cannoli.scorza.romm
 
 import java.net.URI
 
-/**
- * Art and manuals are only ever read back from the RomM instance. RomM scrapes the provider
- * server-side and serves its own copy, so anything that does not resolve to a path on the configured
- * RomM host is refused: a game whose media RomM has not stored renders nothing rather than reaching
- * out to ScreenScraper.
- *
- * RomM serves stored media under [RESOURCES_PREFIX]. It bakes that prefix into some fields server
- * side (path_cover_large, merged_screenshots, which arrive already rooted at "/assets/...") but not
- * others (path_manual and the ss_metadata *_path fields, which arrive relative to the resources
- * base, e.g. "roms/12/1/..."). A leading slash marks a path RomM already resolved; a relative one
- * gets the prefix added here, the same way RomM's own frontend does.
- */
 object RommArtUrl {
     const val RESOURCES_PREFIX = "/assets/romm/resources"
 

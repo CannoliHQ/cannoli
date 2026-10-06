@@ -35,9 +35,6 @@ class RommDtosTest {
     }
 
     @Test fun `takes the RomM-hosted media and ignores the provider urls beside it`() {
-        // Wire shapes as RomM actually sends them: path_cover_large and merged_screenshots arrive
-        // already rooted at /assets/..., while path_manual and the ss_metadata *_path fields are
-        // relative to the resources base (roms/...).
         val json = """
             {"id":1,"platform_id":12,"fs_name":"G.sfc","name":"G",
              "path_cover_large":"/assets/romm/resources/roms/12/1/cover/big.png?ts=9",
@@ -65,7 +62,6 @@ class RommDtosTest {
         assertEquals("roms/12/1/title/title.png", game.ssMedia?.titleScreenPath)
         assertEquals("roms/12/1/marquee/marquee.png", game.ssMedia?.marqueePath)
 
-        // And they resolve to real RomM urls under the resources mount.
         val host = "https://romm.local"
         assertEquals("$host/assets/romm/resources/roms/12/1/box-3D/box3d.png",
             RommArtUrl.forType(host, game, RommArtType.BOX3D))

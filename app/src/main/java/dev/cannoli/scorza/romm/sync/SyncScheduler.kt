@@ -65,8 +65,6 @@ class SyncScheduler(
         val underlyingCb = object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {
                 dev.cannoli.scorza.util.RommLog.write("scheduler: underlying network available -> sync")
-                // The pool can hold sockets to a network that is gone; reusing one stalls the next
-                // request until its timeout instead of failing fast onto a fresh connection.
                 evictStaleConnections()
                 triggerFromCallback()
             }
@@ -82,8 +80,6 @@ class SyncScheduler(
             .build()
         runCatching { cm.registerNetworkCallback(underlyingRequest, underlyingCb) }
         underlyingCallback = underlyingCb
-        // Poll on a short tick: retry every offlineRetryMs while OFFLINE (a safety net when the
-        // callbacks miss a reconnect), otherwise fall back to the normal interval sweep.
         loop = scope.launch {
             while (true) {
                 delay(offlineRetryMs)
@@ -111,12 +107,8 @@ class SyncScheduler(
         dev.cannoli.scorza.util.RommLog.write("scheduler: stopped")
     }
 
-    /** Force an immediate sweep (e.g. on returning from a game), bypassing the debounce window. */
     fun syncNow() = trigger(force = true)
 
-    // Registering the network callbacks makes them fire straight away, so every screen unlock used
-    // to force several full sweeps. Callback- and start-driven sweeps wait out a cooldown; the
-    // game-exit sync does not, because the save just changed.
     private fun triggerFromCallback() = trigger(force = true, cooldown = true)
 
     private fun evictStaleConnections() = runCatching { http.evictConnections() }
@@ -140,8 +132,6 @@ class SyncScheduler(
             return
         }
         if (!sweeping.compareAndSet(false, true)) {
-            // A forced request (network reconnect, game exit) that lands mid-sweep would
-            // otherwise be lost; queue exactly one re-sweep for when the current one ends.
             if (force) resweepRequested.set(true)
             dev.cannoli.scorza.util.RommLog.write("scheduler: trigger ${if (force) "queued" else "skipped"}, a sweep is already running")
             return
@@ -170,11 +160,6 @@ class SyncScheduler(
     }
 
     companion object {
-        /**
-         * Counting pending conflicts opens the save database, so it is only ever asked for when
-         * sync is on. A user who never configured RomM would otherwise have `cannoli.db` created
-         * and opened every time the network drops.
-         */
         fun conflictsToReport(enabled: Boolean, count: () -> Int): Int = if (enabled) count() else 0
 
         fun shouldSweep(now: Long, lastSweepAt: Long, intervalMs: Long): Boolean = now - lastSweepAt >= intervalMs

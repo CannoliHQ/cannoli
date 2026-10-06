@@ -118,8 +118,6 @@ class IniWriterTest {
         val dir = File(tempFolder.root, "norename").apply { mkdirs() }
         val file = File(dir, "state.ini")
         IniWriter.write(file, mapOf("s" to mapOf("k" to "old")))
-        // The tmp has to exist before the directory closes, since creating it is what a
-        // non-writable directory forbids. Writing to a file already in it is not.
         File(dir, "${file.name}.tmp").writeText("")
         dir.setWritable(false)
         assumeTrue("this user can create files in a non-writable directory", !dir.canWrite())
@@ -144,7 +142,6 @@ class IniWriterTest {
     }
 
     @Test fun `output is platform-line-ending agnostic when re-parsed`() {
-        // We don't care which line-ending IniWriter emits; we care that it round-trips.
         val file = File(tempFolder.root, "endings.ini")
         IniWriter.write(file, mapOf("s" to mapOf("k1" to "v1", "k2" to "v2")))
         val parsed = IniParser.parse(file)
@@ -171,8 +168,6 @@ class IniWriterTest {
     @Test fun `mergeWrite into nonexistent file with empty target section yields a written file`() {
         val file = File(tempFolder.root, "empty.ini")
         IniWriter.mergeWrite(file, "section", emptyMap())
-        // Empty section is skipped on write, so the resulting file may have no
-        // section header but still exist as zero-length output.
         assertTrue(file.exists())
         val parsed = IniParser.parse(file)
         assertNull(parsed.get("section", "anything"))

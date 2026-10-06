@@ -13,7 +13,6 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
 
-/** The measured platform shape the cover grid's uniform mode draws every card at. */
 class GamesResponseAspectTest {
 
     @get:Rule val tmp = TemporaryFolder()
@@ -57,8 +56,6 @@ class GamesResponseAspectTest {
         assertEquals(1.5, aspect!!, 0.0001)
     }
 
-    // One screenshot scraped in among the box art would drag a mean off the shape every other
-    // cover shares, which is the whole reason this is a median.
     @Test fun `one odd cover does not move the platform shape`() {
         val wide = mapOf("d" to 4.0f)
         val aspect = aspectOf(listOf("a", "b", "c", "d")) { wide[it.nameWithoutExtension] ?: 0.75f }
@@ -80,16 +77,12 @@ class GamesResponseAspectTest {
         assertEquals(null, aspectOf(listOf("a", "b")) { null })
     }
 
-    // Twenty-five covers answer the question as well as a thousand, and a large platform must not
-    // pay a decode per game to build its list.
     @Test fun `only a sample of the covers is opened`() {
         val opened = mutableListOf<String>()
         aspectOf((1..80).map { "game$it" }) { opened.add(it.name); 1f }
         assertEquals(25, opened.size)
     }
 
-    // Directory order is not stable across filesystems, so neither the sample nor the answer may
-    // depend on it.
     @Test fun `the sample does not depend on directory order`() {
         val opened = mutableListOf<String>()
         aspectOf((1..40).map { "game$it" }) { opened.add(it.nameWithoutExtension); 1f }

@@ -6,10 +6,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 
-/**
- * A pass-through chord, START held on its own to open the menu, must leave START with the game.
- * These pin the native branch that does that, since nothing on the Kotlin side can see it.
- */
 class ShortcutPassThroughParityTest {
     private val bridge = File("jni/ricotta_bridge.c").readText()
 

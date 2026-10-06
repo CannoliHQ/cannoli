@@ -28,8 +28,6 @@ class RommDatabase(private val dbFileProvider: () -> File) {
         val dbFile = dbFileProvider()
         val path = dbFile.absolutePath
         val existing = openConn
-        // An early touch can open the database at the fallback root before setup resolves the real
-        // one, so follow the current path instead of staying pinned to the first one opened.
         if (existing != null && openPath == path) return@synchronized existing
         existing?.close()
         openConn = null
@@ -224,7 +222,6 @@ class RommDatabase(private val dbFileProvider: () -> File) {
         screenshotPath = if (stmt.isNull(20)) null else stmt.getText(20),
     )
 
-    // rowToGame reads columns 0..20; folded window queries append variant_count, member_ids, member_fs, member_base at 21..24.
     private fun rowToFolded(stmt: androidx.sqlite.SQLiteStatement) = RommFoldedGame(
         game = rowToGame(stmt),
         variantCount = stmt.getInt(21),
@@ -246,8 +243,6 @@ class RommDatabase(private val dbFileProvider: () -> File) {
 
     fun foldedGamesForCollection(collectionId: String, search: String?): List<RommFoldedGame> = withConn { c ->
         val like = search?.let { TextNormalizer.normalize(it) }?.takeIf { it.isNotEmpty() }?.let { "%$it%" }
-        // Membership via IN-subquery rather than a JOIN: the bundled SQLite optimizer rejects the folded
-        // window query when a JOIN feeds it, but accepts the same shape over an id IN (...) filter.
         val filter = if (like != null) "AND name_normalized LIKE ?" else ""
         val sql = foldedSql("id IN (SELECT rom_id FROM collection_roms WHERE collection_id = ?) $filter")
         val args: Array<Any?> = if (like != null) arrayOf(collectionId, like) else arrayOf(collectionId)
@@ -476,11 +471,8 @@ class RommDatabase(private val dbFileProvider: () -> File) {
 
         const val REPRESENTATIVE_ORDER = "is_main_sibling DESC, region_rank ASC, sort_key ASC"
 
-        // Window over PARTITION BY group_key, keep the representative row (rn = 1), carry group aggregates.
         fun foldedSql(where: String, limit: Int? = null): String {
             val outer = if (limit != null) " LIMIT $limit" else ""
-            // sort_key must be projected out of the subquery: the bundled SQLite optimizer rejects an outer
-            // ORDER BY over an unprojected column when the inner query mixes COUNT and group_concat windows.
             return """
                 SELECT $GAME_COLUMNS, variant_count, member_ids, member_fs, member_base FROM (
                   SELECT $GAME_COLUMNS, sort_key,

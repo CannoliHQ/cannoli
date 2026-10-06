@@ -61,9 +61,6 @@ class DeviceTypeTest {
 
     @Test
     fun handheld_with_unset_build_props_is_not_an_avd() {
-        // Build.getString returns "unknown" for any unset property, and deriveFingerprint composes
-        // brand/name/device from those when ro.build.fingerprint is empty. Handhelds running
-        // hacked ROMs land here, and must not be mistaken for an emulator.
         assertFalse(
             DeviceType.isAvd(
                 fingerprint = "unknown/unknown/unknown:13/TQ3A.230901.001/eng.root:user/release-keys",

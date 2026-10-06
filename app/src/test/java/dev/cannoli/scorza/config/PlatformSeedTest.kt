@@ -40,8 +40,6 @@ class PlatformSeedTest {
         assertNull(pc.getPlatformChoice("PS2"))
     }
 
-    // The invariant. Seeding must never touch an existing choice, including one whose target
-    // is not installed, which is the case a "repair on boot" implementation would get wrong.
     @Test fun `seeding never overwrites an explicit choice`() {
         val pc = config("seed-keep", bundled = listOf("mgba_libretro"))
         pc.setPlatformChoice("GBA", EmulatorChoice(EmulatorSource.Standalone, appPackage = "com.not.installed"))
@@ -71,8 +69,6 @@ class PlatformSeedTest {
         assertEquals(0, pc.seedUnsetPlatforms(pm()))
     }
 
-    // Reset resolves the default immediately, so what the user sees after confirming is final
-    // rather than something a later boot fills in.
     @Test fun `reset restores the bundled core straight away`() {
         val pc = config("seed-reset", bundled = listOf("mgba_libretro"))
         pc.setPlatformChoice("GBA", EmulatorChoice(EmulatorSource.Standalone, appPackage = "com.picked.emu"))

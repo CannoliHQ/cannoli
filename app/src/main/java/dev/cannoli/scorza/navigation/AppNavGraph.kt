@@ -73,7 +73,6 @@ import dev.cannoli.ui.theme.buildCannoliTypography
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
 
-// RomM brand purple; the screen-edge border shown while browsing RomM.
 private val ROMM_BORDER_COLOR = Color(0xFF553E98)
 private val ROMM_BORDER_WIDTH = 2.dp
 
@@ -85,12 +84,6 @@ private fun RommBorderFrame() {
 private const val CACHE_SYNC_INDICATOR_DELAY_MS = 1200L
 private const val CACHE_SYNC_INDICATOR_MIN_VISIBLE_MS = 800L
 
-/**
- * Status-bar state for the RomM cache mirror, shown only while browsing RomM. A stale mirror
- * outranks an in-flight sync so a failing retry cannot blink the alert off and back on, and the
- * syncing glyph is withheld until the sync has run long enough to be worth mentioning. Once shown
- * it stays up for a minimum span, so a sync that finishes just past the threshold does not flash.
- */
 @Composable
 private fun rommCacheSyncIndicator(
     status: dev.cannoli.scorza.romm.cache.RommSyncCoordinator.SyncStatus,
@@ -210,21 +203,12 @@ fun AppNavGraph(
     val listVerticalPadding = pillVerticalPadding()
     val itemHeight = pillItemHeight(listLineHeight, listVerticalPadding)
     val settingsState = settingsViewModel.state.collectAsState().value
-    // The margin preview marks the band the game will NOT draw into, so it has to measure the whole
-    // screen. Drawn inside the padded box below it would measure an area the margin has already been
-    // subtracted from, and at a large margin the band collapses to cover everything.
     val onPortraitMarginRow = currentScreen is LauncherScreen.Settings
         && settingsState.activeCategory == SettingsCategory.DISPLAY
         && settingsState.items.getOrNull(settingsState.selectedIndex)?.key == SettingsKey.PORTRAIT_MARGIN.id
     Box(modifier = Modifier.fillMaxSize()) {
-    // The display cutout is handled once, above this graph, on the Surface in MainActivity that
-    // every boot state (including this one) renders under; padding for it again here would double it.
     BoxWithConstraints(modifier = Modifier.fillMaxSize().padding(effectiveViewportPadding())) {
-    // Solved once here so the title spacer, the row spacing and the footer reservation all come from
-    // the same division of the screen; every list screen lays out inside these same bounds.
     val insets = screenInsets()
-    // Every fixed height below is laid out as whole pixels, so the solve has to round the same way
-    // or its row count drifts from the one Compose actually places.
     val density = LocalDensity.current
     fun Dp.snap(): Dp = with(density) { roundToPx().toDp() }
     val available = (maxHeight - insets.calculateTopPadding() - insets.calculateBottomPadding()).snap()
@@ -233,9 +217,6 @@ fun AppNavGraph(
     val rowHeight = itemHeight.snap()
     val pixel = with(density) { 1.toDp() }
     val titleHeight = titleMetrics.height.snap()
-    // What each end needs beyond the shared row spacing for the gaps to read alike: under the title,
-    // the row's own below-ink space less the title's deeper descent; over the footer, the row's
-    // above-ink leading, which the legend pill's solid edge has no counterpart for.
     val edge = pillNominalGap() / 2
     val topExtra = titleMetrics.rowBelowInk + edge - titleMetrics.titleBelowInk
     val bottomExtra = titleMetrics.rowAboveInk + edge
@@ -402,8 +383,6 @@ fun AppNavGraph(
             listVerticalPadding = listVerticalPadding,
         )
 
-        // Hoisted full-screen dialog rendering: every screen gets the keyboard / full-screen
-        // overlays for free, so a new screen can never silently capture input with nothing drawn.
         val overlayDownloads = rommDownloader?.state?.collectAsState()?.value ?: emptyList()
         if (dialog is DialogState.RommDownloads && overlayDownloads.isEmpty()) {
             androidx.compose.runtime.LaunchedEffect(Unit) { nav?.dialogState?.value = DialogState.None }
@@ -415,9 +394,6 @@ fun AppNavGraph(
                 nav?.dialogState?.value = DialogState.RommArtResults(finished.results)
             }
         }
-        // No allowlist gate here on purpose: DialogOverlay's own when decides what it draws and
-        // falls through to nothing for states a screen renders itself. A second list to keep in
-        // sync is how a dialog ends up set and consuming input while drawing nothing.
         DialogOverlay(
             dialogState = dialog,
             backgroundImagePath = appSettings.backgroundImagePath,

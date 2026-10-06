@@ -69,8 +69,6 @@ class IntentAuditor @Inject constructor(
                 sb.appendLine("    extras:   ${if (cfg.extras.isEmpty()) "<none>" else cfg.extras.joinToString { "${it.key} (${it.kind})" }}")
                 sb.appendLine("    method:   ${cfg.launchMethod}")
 
-                // An entry whose extras will not resolve is a finding, not a reason to abandon
-                // the run: without this the first bad entry aborts every platform after it.
                 val intent = try {
                     val resolvedIntent = EmulatorIntentBuilder.resolve(context, cfg, sample)
                     EmulatorIntentBuilder.toAndroidIntent(context, resolvedIntent, cfg)
@@ -111,9 +109,6 @@ class IntentAuditor @Inject constructor(
     private fun reportFile(): File =
         File(CannoliPaths(File(settings.sdCardRoot)).logsDir, "intent_audit.txt")
 
-    // Named and filled like a Steam shortcut so the PC entries, the only ones whose extras read
-    // the file's name and contents, resolve against something they recognise. Every other entry
-    // binds the path or a URI and does not care.
     private fun sampleRom(): File {
         val dir = File(context.cacheDir, "intent_audit").apply { mkdirs() }
         val f = File(dir, "sample.steamappid")

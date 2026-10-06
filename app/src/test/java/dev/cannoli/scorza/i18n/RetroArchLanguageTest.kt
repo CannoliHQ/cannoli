@@ -22,8 +22,6 @@ class RetroArchLanguageTest {
         assertEquals(8, RetroArchLanguage.forTag("pt-PT"))
     }
 
-    // RetroArch has no Latin American Spanish, so it collapses onto Spanish rather than falling
-    // back to English.
     @Test
     fun `latin american spanish falls back to spanish`() {
         assertEquals(3, RetroArchLanguage.forTag("es-419"))
@@ -48,8 +46,6 @@ class RetroArchLanguageTest {
         assertEquals(11, RetroArchLanguage.forTag("zh-TW"))
     }
 
-    // The repository never returns an empty tag, but a blank one carries no information, so it is
-    // left to RetroArch rather than guessed at.
     @Test
     fun `a blank tag is left to RetroArch`() {
         assertNull(RetroArchLanguage.forTag(""))

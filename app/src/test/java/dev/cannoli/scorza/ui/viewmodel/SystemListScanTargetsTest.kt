@@ -26,8 +26,6 @@ import java.io.File
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
-/** Which platforms a disk scan visits. A platform that still holds rows but has lost its folder is
- *  only reachable through the reconcile, and only [RomScanner.scanPlatform] clears it. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class SystemListScanTargetsTest {
 
@@ -78,7 +76,6 @@ class SystemListScanTargetsTest {
         ).also { created.add(it) }
     }
 
-    /** The tags handed to the scanner, in call order. */
     private fun scannedTags(vm: SystemListViewModel, reconcileOrphans: Boolean): List<String> {
         val tags = mutableListOf<String>()
         val tag = slot<String>()

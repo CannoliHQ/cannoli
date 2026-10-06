@@ -4,15 +4,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 
-/**
- * A refusal that no longer matches anything is a screen quietly coming back.
- *
- * All Settings defers to RetroArch for structure, so the only thing Cannoli still names is what it
- * refuses to show, keyed by RetroArch's label strings. Those are not ours: a bump can rename or
- * remove a screen, and the refusal then silently stops applying. Nothing about that fails loudly,
- * the menu just grows a screen we decided not to have. This checks every entry still matches
- * something RetroArch actually has.
- */
 class HiddenScreensExistTest {
 
     private val repoRoot: File = generateSequence(File(".").absoluteFile) { it.parentFile }
@@ -38,8 +29,6 @@ class HiddenScreensExistTest {
         )
     }
 
-    // A promoted key that no longer exists is worse than a refusal that no longer matches: the row
-    // simply never renders, and the setting we cut its screen to keep is gone with no trace.
     @Test
     fun `every promoted key is still a setting RetroArch registers`() {
         val gone = PROMOTED_KEYS.values.flatten().filterNot { it in censusKeys }

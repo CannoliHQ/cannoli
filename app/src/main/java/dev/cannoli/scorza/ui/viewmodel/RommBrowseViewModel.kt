@@ -215,7 +215,6 @@ class RommBrowseViewModel(
         val platform = current ?: return
         val loaded = _games.value ?: return
         if (loaded.rows.isEmpty()) return
-        // Re-fold so folded-group present state reflects the just-completed download.
         _games.value = loaded.copy(rows = foldRows(platform, searchTerm))
     }
 
@@ -304,8 +303,6 @@ class RommBrowseViewModel(
             anyPresent = anyPresent(folded, linkedIds, present),
         )
 
-    // The whole group shares the representative's platform (RomM siblings are per-platform), so
-    // present detection uses that platform's linked ids + present filenames for every member.
     private fun anyPresent(folded: RommFoldedGame, linkedIds: Set<Int>, present: Set<String>): Boolean =
         folded.memberIds.any { it in linkedIds } ||
             folded.memberFsNames.any { RommLocalState.of(it, present) == LocalState.PRESENT } ||

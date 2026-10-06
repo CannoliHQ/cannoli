@@ -74,9 +74,6 @@ internal fun EmulatorScreens(
                 },
                 buttonStyle = labels
             ) {
-                // Headers are rows, so the highlight is translated from the selectable-only
-                // index the screen state carries, the same way PlatformMapping does it. Nothing
-                // in the input path has to know grouping exists.
                 val mappingRows = remember(currentScreen.mappings, currentScreen.alphabetical) {
                     if (currentScreen.alphabetical)
                         currentScreen.mappings.map { dev.cannoli.scorza.ui.screens.MappingListRow.Platform(it) }
@@ -105,9 +102,6 @@ internal fun EmulatorScreens(
                         return@List
                     }
                     val entry = (row as dev.cannoli.scorza.ui.screens.MappingListRow.Platform).entry
-                    // Only the standalone case is worth naming. A core running in Cannoli is the
-                    // ordinary answer, so "(Internal)" on every row said nothing and only made the
-                    // one row that is different harder to spot.
                     val internalLabel = stringResource(R.string.value_emulator_source_internal)
                     val value = when {
                         entry.status == dev.cannoli.scorza.ui.screens.EmulatorMappingStatus.NEEDS_SETUP -> stringResource(R.string.value_unmapped)
@@ -272,9 +266,6 @@ internal fun EmulatorScreens(
                         )
                     } else {
                         List(
-                            // Scrolling follows the selection, so -1 pinned the list to the top and
-                            // a core with 23 firmware entries could not be read past the first few.
-                            // The row builder ignores isSelected, so nothing is highlighted by this.
                             selectedIndex = currentScreen.selectedIndex,
                             items = currentScreen.firmware,
                             itemHeight = itemHeight,
@@ -282,8 +273,6 @@ internal fun EmulatorScreens(
                             onListStateChanged = onListStateChanged,
                             modifier = Modifier.weight(1f)
                         ) { _, fw, isSelected ->
-                            // A choose-one row is only wanting when nothing in its group was found,
-                            // so twelve unheld alternatives do not read as twelve missing files.
                             val required = if (fw.anyOf) !fw.groupSatisfied else !fw.entry.optional
                             val tag = stringResource(
                                 when {
@@ -294,8 +283,6 @@ internal fun EmulatorScreens(
                             )
                             val statusText = stringResource(if (fw.present) R.string.bios_present else R.string.bios_missing)
                             val requiredMissing = required && !fw.present
-                            // On the highlight every colour comes from highlightText, or the row
-                            // keeps its unselected palette and goes unreadable on the pill.
                             val baseColor = if (isSelected) cannoliColors.highlightText else cannoliColors.text
                             val accentColor = if (isSelected) cannoliColors.highlightText else cannoliColors.accent
                             val rowColor = if (!fw.present && !required) baseColor.copy(alpha = 0.5f) else baseColor
@@ -375,8 +362,6 @@ internal fun EmulatorScreens(
                 if (currentScreen.overrides.isEmpty()) {
                     Text(
                         text = stringResource(R.string.value_no_overrides),
-                        // bodyLarge carries a fixed 22sp, so an empty state left on it ignored
-                        // the text size the user chose and sat dimmer than every row around it.
                         style = MaterialTheme.typography.bodyLarge.copy(
                             fontSize = listFontSize,
                             lineHeight = listLineHeight,
@@ -422,8 +407,6 @@ internal fun EmulatorScreens(
                 listLineHeight = listLineHeight,
                 fullWidth = true,
                 rightBottomItems = buildList {
-                    // Only offered on a row it can act on: a core something still names has no
-                    // uninstall, so the legend does not advertise an action that would refuse.
                     if (highlighted != null && !highlighted.inUse) {
                         add(labels.confirm to stringResource(R.string.label_uninstall))
                     }
@@ -436,8 +419,6 @@ internal fun EmulatorScreens(
                 if (currentScreen.rows.isEmpty()) {
                     Text(
                         text = stringResource(R.string.value_no_installed_cores),
-                        // bodyLarge carries a fixed 22sp, so an empty state left on it ignored
-                        // the text size the user chose and sat dimmer than every row around it.
                         style = MaterialTheme.typography.bodyLarge.copy(
                             fontSize = listFontSize,
                             lineHeight = listLineHeight,

@@ -52,8 +52,6 @@ class RommBrowseViewModelMatchTest {
         assertEquals(LocalState.REMOTE, byId[11])
     }
 
-    // The picker (InputRouter.onNorth, Android-only) fetches members via groupMembers and marks
-    // present ones via presentIdsForTag; assert the reachable VM pieces build the right data.
     @Test fun `groupMembers plus presentIdsForTag drive the variant picker data`() = runBlocking {
         val usa = game(10, "zelda-usa.sfc", 1L).copy(name = "Zelda", groupKey = 10, regions = listOf("USA"))
         val jpn = game(11, "zelda-jp.sfc", 1L).copy(name = "Zelda", groupKey = 10, regions = listOf("Japan"))

@@ -80,7 +80,6 @@ class GameIdRepositoryTest {
         assertTrue(repo.pending(emptyList(), 10).isEmpty())
     }
 
-    /** The three states the overlay draws, and the reader has to tell them apart. */
     @Test fun `an unprobed row reads as pending`() {
         assertEquals(GameIdStatus.Pending, repo.read(seed("PS2", "PS2/Game.iso")))
     }
@@ -105,7 +104,6 @@ class GameIdRepositoryTest {
         assertEquals(false, (repo.read(id) as GameIdStatus.Found).id.experimental)
     }
 
-    /** Re-probing overwrites rather than accumulating, so a corrected id replaces the wrong one. */
     @Test fun `recording again replaces what was there`() {
         val id = seed("PS2", "PS2/Game.iso")
         repo.record(id, "1:2", anId)

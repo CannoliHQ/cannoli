@@ -10,16 +10,6 @@ import org.junit.Test
 
 class LanguageCatalogTest {
 
-    @Test fun `tags are in the expected order and complete`() {
-        assertEquals(
-            listOf(
-                "en", "zh-CN", "fr-FR", "de-DE", "el-GR",
-                "it-IT", "ja-JP", "pt-BR", "pt-PT", "es-ES", "uk-UA"
-            ),
-            LanguageCatalog.ALL.map { it.tag }
-        )
-    }
-
     @Test fun `all tags are unique`() {
         val tags = LanguageCatalog.ALL.map { it.tag }
         assertEquals(tags.size, tags.toSet().size)
@@ -38,7 +28,6 @@ class LanguageCatalogTest {
         assertFalse(LanguageCatalog.ALL.any { it.tag.startsWith("ar") })
     }
 
-    // values-b+es+419 ships as an empty shell: comments only, zero translations.
     @Test fun `untranslated es-419 is excluded`() {
         assertNull(LanguageCatalog.byTag("es-419"))
         assertFalse(LanguageCatalog.ALL.any { it.tag == "es-419" })

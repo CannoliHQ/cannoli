@@ -29,8 +29,6 @@ annotation class BundledRetroArchAutoconfig
 @InstallIn(SingletonComponent::class)
 object ControllerBindingsModule {
 
-    // Only Cannoli's curated database is bundled (fetched from CannoliHQ/input-db into cannoli/).
-    // Pads without a curated entry fall to the setup wizard and the Android default at resolve time.
     private fun bundledCfgSource(context: Context): CfgSource =
         AssetCfgSource(context, "autoconfig/cannoli")
 

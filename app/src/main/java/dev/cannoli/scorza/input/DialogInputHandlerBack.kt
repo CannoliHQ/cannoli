@@ -77,8 +77,6 @@ internal fun DialogInputHandler.backDialog(): Boolean {
         }
         is DialogState.Kitchen -> {
             if (ds.fromQuickMenu) {
-                // Rebuild already in flight from a held Back key-repeat: swallow this
-                // re-entry so rescanSystemList() below does not double-run.
                 if (quickMenuRebuild.get()) return true
                 openQuickMenu(dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.KITCHEN)
             } else {
@@ -116,14 +114,10 @@ internal fun DialogInputHandler.backDialog(): Boolean {
         is DialogState.PlatformResetConfirm -> {
             nav.dialogState.value = DialogState.None
         }
-        // Back is not a decline here: it returns to setup so the mapping can be redone, which is
-        // the only reason someone would refuse to test the one they just made.
         is DialogState.InputTesterOffer -> {
             nav.dialogState.value = DialogState.None
             onRestartControllerWizard?.invoke(ds.deviceId)
         }
-        // Said no. The button they mean is on the mapping just built, so go straight to editing it
-        // rather than making them find it.
         is DialogState.InputTesterResult -> {
             nav.dialogState.value = DialogState.None
             nav.push(LauncherScreen.EditButtons(mappingId = ds.mappingId))
@@ -186,8 +180,6 @@ internal fun DialogInputHandler.backDialog(): Boolean {
             }
         }
         is DialogState.RAPreloadResult -> {
-            // Preload is reachable from a list as well as from the Achievements group, so this
-            // asks rather than assuming: a pending return means somewhere to go back to.
             if (pendingContextReturn != null) restoreContextMenu()
             else nav.dialogState.value = DialogState.None
         }

@@ -31,8 +31,6 @@ class SiblingFolderTest {
     }
 
     @Test fun one35_pattern_gamepad_is_one_of_several_siblings() {
-        // None of the names is a prefix of the others; they share "One35 Virtual" as a common
-        // prefix root. The gamepad is "One35 Virtual Gamepad", not the shortest name.
         val out = SiblingFolder.fold(listOf(
             sib(3, "One35 Virtual Keyboard"),
             sib(4, "One35 Virtual Mouse"),
@@ -59,9 +57,6 @@ class SiblingFolderTest {
     }
 
     @Test fun non_adjacent_devices_with_same_prefix_are_not_merged() {
-        // Two distinct same-model pads with a large id gap (one is e.g. the only DualSense
-        // currently attached; the other was attached, disconnected, and re-attached much later
-        // taking a far-away id). They should stay as two clusters.
         val out = SiblingFolder.fold(listOf(
             gp(5, "DualSense Wireless Controller"),
             gp(20, "DualSense Wireless Controller"),
@@ -70,7 +65,6 @@ class SiblingFolderTest {
     }
 
     @Test fun candidates_without_gamepad_sibling_are_dropped() {
-        // Only the keyboard + mouse arrive (no gamepad endpoint). Nothing useful for port routing.
         val out = SiblingFolder.fold(listOf(
             sib(3, "One35 Virtual Keyboard"),
             sib(4, "One35 Virtual Mouse"),

@@ -11,8 +11,6 @@ class RomKeyTest {
     }
 
     @Test fun `normalizes a non-precomposed filename to its precomposed form`() {
-        // "e" (U+0065) followed by a combining acute accent (U+0301) is NFD; the single
-        // "e with acute" codepoint (U+00E9) is NFC.
         val decomposed = "Poke\u0301mon Red (USA)"
         val precomposed = "Pok\u00e9mon Red (USA)"
         assertEquals(precomposed, RomKey.baseName(File("/roms/GB/$decomposed.gb")))

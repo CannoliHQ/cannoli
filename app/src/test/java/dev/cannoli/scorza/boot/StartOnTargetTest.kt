@@ -22,13 +22,11 @@ class StartOnTargetTest {
         assertEquals(gba, startOnTarget("GBA", ContentMode.PLATFORMS, listOf(gba, snes)))
     }
 
-    // The other two modes build a different system list, so a platform target does not apply.
     @Test fun `the other content modes ignore the choice`() {
         assertNull(startOnTarget("GBA", ContentMode.COLLECTIONS, listOf(gba, snes)))
         assertNull(startOnTarget("GBA", ContentMode.FIVE_GAME_HANDHELD, listOf(gba, snes)))
     }
 
-    // A card that has not mounted at boot, which is the case this is built around.
     @Test fun `a platform that no longer resolves opens the system list`() {
         assertNull(startOnTarget("GBA", ContentMode.PLATFORMS, listOf(snes)))
     }
@@ -37,7 +35,6 @@ class StartOnTargetTest {
         assertNull(startOnTarget("GBA", ContentMode.PLATFORMS, listOf(platform("GBA", games = 0))))
     }
 
-    // Matching the group rather than the tag is what opens all of its games, not half.
     @Test fun `a merged platform is matched by either of its tags`() {
         val merged = platform("GB", "Game Boy", games = 20, tags = listOf("GB", "GBC"))
         assertEquals(merged, startOnTarget("GBC", ContentMode.PLATFORMS, listOf(merged)))

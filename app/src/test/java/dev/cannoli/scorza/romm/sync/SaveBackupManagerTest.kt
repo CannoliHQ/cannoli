@@ -66,16 +66,15 @@ class SaveBackupManagerTest {
     }
 
     @Test fun restore_overwrites_current_and_backs_it_up() {
-        writeSave() // "LOCAL"
+        writeSave()
         val m = manager()
-        m.backup("SNES", "Mario", keepCount = 5, stamp = 1000L) // snapshot of "LOCAL"
+        m.backup("SNES", "Mario", keepCount = 5, stamp = 1000L)
         File(tmp.root, "Saves/SNES/Mario.srm").writeBytes("CHANGED".toByteArray())
 
         val ok = m.restore("SNES", "Mario", stamp = 1000L, keepCount = 5)
 
         assertTrue(ok)
         assertEquals("LOCAL", File(tmp.root, "Saves/SNES/Mario/Mario.srm").readText())
-        // the pre-restore "CHANGED" save was backed up, so we now have two snapshots + none lost
         assertTrue(m.list("SNES", "Mario").size >= 2)
     }
 

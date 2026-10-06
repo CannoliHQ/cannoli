@@ -3,8 +3,6 @@ package dev.cannoli.scorza.input.autoconfig
 import dev.cannoli.scorza.input.AnalogRole
 import dev.cannoli.scorza.input.CanonicalButton
 
-// RetroArch names the face buttons by their SNES positions, so a_btn is the right-hand button and
-// b_btn the bottom one: they cross against the canonical east/south naming.
 enum class RaButtonKey(val cfgKey: String, val canonical: CanonicalButton) {
     A("a_btn", CanonicalButton.BTN_EAST),
     B("b_btn", CanonicalButton.BTN_SOUTH),
@@ -40,8 +38,6 @@ enum class RaAxisKey(
     val cfgKey: String,
     val canonical: CanonicalButton,
     val analogRole: AnalogRole,
-    // Null on the trigger and d-pad keys: they name no direction and carry the sign in the value
-    // instead, so one key serves a binding of either sign.
     private val positive: Boolean? = null,
 ) {
     L2("l2_axis", CanonicalButton.BTN_L2, AnalogRole.DIGITAL_BUTTON),

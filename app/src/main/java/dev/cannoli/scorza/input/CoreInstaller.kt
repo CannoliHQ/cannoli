@@ -25,18 +25,6 @@ class CoreInstaller @Inject constructor(
     private val downloader: Downloader,
     private val osdController: OsdController,
 ) {
-    /**
-     * Queues a core and reports when it lands.
-     *
-     * This used to run the download itself behind a two minute OSD, which said only that something
-     * was happening: several at once left the pill fighting over which to describe, and a slow one
-     * looked stuck. It goes through the shared queue now, so it gets progress, ordering and a row
-     * on the Downloads screen like anything else, and this only has to wait for the outcome.
-     *
-     * [onFailed] runs when the download does not land. A caller that was mid-launch needs to say so
-     * in something that persists: an OSD is transient, so a user who looks away sees a game that
-     * simply never started.
-     */
     fun downloadCore(
         pkg: String,
         coreId: String,
@@ -52,8 +40,6 @@ class CoreInstaller @Inject constructor(
         osdController.show(context.getString(R.string.osd_core_queued, coreName))
 
         ioScope.launch {
-            // Settled means Done, Failed, or gone: the queue drops a cancelled item outright, and
-            // waiting for a terminal status it will never publish would hang this forever.
             val settled = downloader.state.first { items ->
                 val row = items.firstOrNull { it.key == key }
                 row == null || row.status == DownloadStatus.Done || row.status is DownloadStatus.Failed
@@ -62,10 +48,7 @@ class CoreInstaller @Inject constructor(
             withContext(Dispatchers.Main) {
                 when {
                     row?.status == DownloadStatus.Done -> onInstalled()
-                    row == null -> Unit // cancelled by the user, who does not need telling
-                    // The failure OSD is DownloadOutcomeReporter's now, for every kind at once.
-                    // This only has to run the caller's recovery, which for a launch is a message
-                    // that persists rather than a pill that fades.
+                    row == null -> Unit
                     else -> onFailed()
                 }
             }

@@ -26,8 +26,6 @@ fun OnboardingStorageScreen(
     listVerticalPadding: Dp = 8.dp,
     buttonStyle: ButtonStyle = ButtonStyle(),
 ) {
-    // Ending setup is a deliberate act, so it sits on START; confirm belongs to the custom row,
-    // which is the only one with somewhere to go.
     val rightItems = buildList {
         if (screen.isCustomVolume) {
             add(buttonStyle.confirm to stringResource(R.string.onboarding_select_folder))
@@ -60,7 +58,6 @@ fun OnboardingStorageScreen(
     }
 }
 
-// The custom row has no volume path of its own, so it shows whatever the browser picked.
 @Composable
 private fun volumeTarget(volumePath: String, customPath: String?): String = when {
     volumePath.isNotEmpty() -> volumePath + "Cannoli/"

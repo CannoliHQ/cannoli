@@ -16,10 +16,6 @@ private class DiscardHost : RaSettingsHost {
 
     override fun raGetSetting(key: String): RaSetting? = settings[key]
     override fun raScreenRows(label: String): List<RaScreenRow> = screens[label].orEmpty()
-    /**
-     * RetroArch runs the written setting's change handler, and a handler moves other settings.
-     * Keyed on what was written, so restoring the setting it moved does not move it straight back.
-     */
     var changeHandler: ((String) -> Unit)? = null
 
     fun force(key: String, value: String) {
@@ -67,11 +63,6 @@ private class DiscardHost : RaSettingsHost {
     }
 }
 
-/**
- * Discard used to drop only the pending write, leaving every edit live until the next launch
- * recomposed the config from tiers it had never reached. These pin that it now puts the running
- * game back as it was.
- */
 class RaIgmSettingsDiscardTest {
 
     private fun provider(host: DiscardHost) =
@@ -95,7 +86,6 @@ class RaIgmSettingsDiscardTest {
         assertEquals("false", host.settings["rewind_enable"]?.machineValue?.raw)
     }
 
-    // First capture wins, so several moves still return to the value held on the way in.
     @Test fun `discard restores the value from before the first edit`() {
         val host = DiscardHost().apply { put("k", "a", listOf(RaOption(MachineValue("a"), "a".uppercase()), RaOption(MachineValue("b"), "b".uppercase()), RaOption(MachineValue("c"), "c".uppercase()))) }
         val p = provider(host)
@@ -122,7 +112,6 @@ class RaIgmSettingsDiscardTest {
         assertEquals(setOf("k"), host.savedKeys.single())
     }
 
-    // A change applied outside the tree stages before it writes, so the snapshot is the old value.
     @Test fun `discard restores a change staged from outside the tree`() {
         val host = DiscardHost().apply { put("input_overlay_enable", "false", listOf(RaOption(MachineValue("false"), "false".uppercase()), RaOption(MachineValue("true"), "true".uppercase()))) }
         val p = provider(host)
@@ -136,9 +125,6 @@ class RaIgmSettingsDiscardTest {
         assertEquals("false", host.settings["input_overlay_enable"]?.machineValue?.raw)
     }
 
-    // A host writes its own value only when this visit touched it. Without the changed set it would
-    // copy a game-scoped overlay onto the whole platform whenever any unrelated setting was saved
-    // for the platform, which is a choice the user never made.
     @Test fun `a cannoli value is offered only the keys this visit changed`() {
         val host = DiscardHost().apply { put("k", "a", listOf(RaOption(MachineValue("a"), "a".uppercase()), RaOption(MachineValue("b"), "b".uppercase()))) }
         val p = provider(host)
@@ -153,9 +139,6 @@ class RaIgmSettingsDiscardTest {
         assertFalse(changed.contains("cannoli_overlay"))
     }
 
-    // Found on a device: turning on black frame insertion made RetroArch rewrite the swap
-    // interval from its change handler, Discard put back only the key the user had touched, and
-    // the game was left running with a setting nobody chose and nobody could see they had changed.
     @Test fun `discard puts back what a change handler moved, not just what was cycled`() {
         val host = DiscardHost().apply {
             put("bfi", "0", listOf(RaOption(MachineValue("0"), "OFF"), RaOption(MachineValue("1"), "ON")))
@@ -173,8 +156,6 @@ class RaIgmSettingsDiscardTest {
         assertEquals("0", host.settings["bfi"]?.machineValue?.raw)
     }
 
-    // A value RetroArch moved on its own is not a choice the player made, so saving must not
-    // record it as one.
     @Test fun `a value a handler moved is not written into the override`() {
         val host = DiscardHost().apply {
             put("bfi", "0", listOf(RaOption(MachineValue("0"), "OFF"), RaOption(MachineValue("1"), "ON")))

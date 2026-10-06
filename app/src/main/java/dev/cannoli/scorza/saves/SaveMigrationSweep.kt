@@ -12,14 +12,6 @@ import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Moves every game's loose saves into its own folder, once, in the background.
- *
- * Attribution comes from the rom rows rather than from the file names in the save directory: a
- * save whose game is in the library moves, and anything else is left exactly where it is. The
- * launch path migrates the game about to run regardless, so this is a catch-up pass for the rest
- * of the library rather than the mechanism the correctness of a launch depends on.
- */
 @Singleton
 class SaveMigrationSweep @Inject constructor(
     private val pathsProvider: CannoliPathsProvider,
@@ -44,8 +36,6 @@ class SaveMigrationSweep @Inject constructor(
             if (outcome.outcome == SaveMigration.Outcome.MOVED) migrated++
         }
 
-        // Written only after a full pass. A run cut short by the launcher going away resumes from
-        // the top next time, which costs a directory listing per game and moves nothing twice.
         try {
             marker.parentFile?.mkdirs()
             marker.writeText("1")

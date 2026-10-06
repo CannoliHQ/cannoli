@@ -58,17 +58,9 @@ class IgmDisplaySettingsTest {
         }
     }
 
-    /**
-     * The sender is a separate build, so it can name a value this one has never heard of.
-     *
-     * Falling back to the default is what keeps a newer launcher from taking the IGM down inside
-     * createFromParcel, and naming the values at all is what stops an inserted enum constant from
-     * silently retargeting a shipped setting.
-     */
     @Test
     fun `an unknown enum name decodes to the default`() {
         val parcel = Parcel.obtain()
-        // The six geometry values then the four status bar flags, all ahead of the enums.
         repeat(10) { parcel.writeInt(0) }
         parcel.writeString("SOLAR")
         parcel.writeString("DECIMAL")

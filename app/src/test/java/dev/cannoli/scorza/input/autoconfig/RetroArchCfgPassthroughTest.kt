@@ -9,12 +9,8 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-// Fixtures are copied verbatim from app/src/main/assets/autoconfig/android/. The bundled database
-// carries keys the model does not own (axis directionals, alt identity blocks, device type, labels)
-// and RetroArch reads the same files the launcher rewrites, so a user edit must not drop them.
 class RetroArchCfgPassthroughTest {
 
-    // app/src/main/assets/autoconfig/android/8Bitdo_SN30_GP_BT.cfg
     private val axisDpadCfg = """
         # 8Bitdo SN30 GP              - https://www.8bitdo.com/     - https://www.8bitdo.com/sn30-gp/
         # Firmware v6.14              - https://support.8bitdo.com/ - https://support.8bitdo.com/firmware-updater.html
@@ -57,7 +53,6 @@ class RetroArchCfgPassthroughTest {
         input_right_axis_label = "Dpad Right"
     """.trimIndent()
 
-    // app/src/main/assets/autoconfig/android/8BitDo_Pro2.cfg
     private val altIdentityCfg = """
         # 8BitDo Pro 2        - https://www.8bitdo.com/        - https://www.8bitdo.com/pro2/
         # Firmware v1.05        - https://support.8bitdo.com/        - https://support.8bitdo.com/firmware-updater.html
@@ -139,7 +134,6 @@ class RetroArchCfgPassthroughTest {
         input_menu_toggle_btn_label = "Home"
     """.trimIndent()
 
-    // app/src/main/assets/autoconfig/android/NVIDIA_SHIELD_2019_Remote.cfg
     private val deviceTypeCfg = """
         # This controller is intended for menu navigation only
         # it will work fine with an upcoming version that will bind remotes
@@ -191,7 +185,6 @@ class RetroArchCfgPassthroughTest {
             device,
         )
 
-    // A cosmetic edit: the user flipped the confirm button and nothing else.
     private fun cosmeticEdit(mapping: DeviceMapping) = mapping.copy(
         menuConfirm = CanonicalButton.BTN_SOUTH,
         menuBack = CanonicalButton.BTN_EAST,
@@ -227,7 +220,6 @@ class RetroArchCfgPassthroughTest {
         assertTrue(output.contains("""input_r_btn_label = "R""""))
         assertUnmanagedLinesPreserved(axisDpadCfg, output)
 
-        // The managed rewrites still happen.
         assertTrue(output.contains("""input_driver = "android""""))
         assertTrue(output.contains("""input_device = "8BitDo SN30 gamepad""""))
         assertTrue(output.contains("""input_device_display_name = "8BitDo SN30 GP""""))
@@ -294,8 +286,6 @@ class RetroArchCfgPassthroughTest {
 
     @Test
     fun `an unquoted managed key is not passed through alongside the rewritten one`() {
-        // Onn-Remote.cfg leaves the vendor and product ids unquoted, so the parser cannot read
-        // them; they must still not survive as a second line for a key the writer owns.
         val unquoted = """
             input_driver = "android"
             input_device = "Onn-Remote"

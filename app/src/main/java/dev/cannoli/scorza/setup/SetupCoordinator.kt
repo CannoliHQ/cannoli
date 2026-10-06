@@ -144,12 +144,6 @@ class SetupCoordinator @Inject constructor(
 
     fun isVolumeRoot(path: String): Boolean = detectStorageVolumes().any { it.second == path }
 
-    /**
-     * Invokes [onChange] when removable storage mounts/unmounts, so boot can re-evaluate setup once
-     * a card the user already configured finishes mounting (vold delays the SD scan behind the
-     * secure keyguard, so it can appear several seconds after the launcher starts). Returns a handle
-     * whose [StorageWatch.stop] unregisters; safe to call stop more than once.
-     */
     fun watchStorage(onChange: () -> Unit): StorageWatch {
         val sm = context.getSystemService(StorageManager::class.java)
         if (Build.VERSION.SDK_INT >= 30) {

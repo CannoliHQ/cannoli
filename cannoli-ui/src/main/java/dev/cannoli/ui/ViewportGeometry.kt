@@ -6,18 +6,12 @@ enum class ScalingMode { CORE_REPORTED, INTEGER, FULLSCREEN }
 
 data class ViewportRect(val x: Int, val y: Int, val w: Int, val h: Int)
 
-/**
- * Screen Geometry gives the region, Portrait Margin shrinks it from the bottom in portrait, and the
- * game is fitted inside what remains. Restored from v1, where the internal runner did the same job.
- * Returns a top-left rect, matching computeScreenGeometryRect.
- */
 fun computeViewport(
     surfaceWidth: Int,
     surfaceHeight: Int,
     frameWidth: Int,
     frameHeight: Int,
     coreAspectRatio: Float,
-    /** The aspect the user asked for, or 0 to use the core's own. */
     requestedAspect: Float,
     rotation: Int,
     scalingMode: ScalingMode,
@@ -57,8 +51,6 @@ fun computeViewport(
 
     val vpW: Int
     val vpH: Int
-    // A whole multiple below 1x still overflows the region, so a scale that thin abandons
-    // integer scaling and falls through to the aspect fit below instead.
     if (scalingMode == ScalingMode.INTEGER && integerScale >= 1) {
         vpW = dimW * integerScale
         vpH = dimH * integerScale

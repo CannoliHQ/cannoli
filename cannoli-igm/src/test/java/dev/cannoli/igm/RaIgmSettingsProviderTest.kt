@@ -15,10 +15,8 @@ private class FakeRaHost : RaSettingsHost {
 
     override fun raGetSetting(key: String): RaSetting? = settings[key]
     override fun raScreenRows(label: String): List<RaScreenRow> = screens[label].orEmpty()
-    // Mirrors the native contract: null means the key resolves to nothing, so nothing was written.
     var setSucceeds = true
 
-    /** RetroArch runs a setting's change handler on the write, and handlers move other settings. */
     var changeHandler: ((String) -> Unit)? = null
 
     fun applyNow(key: String, value: MachineValue, watch: Collection<String>): RaApplyResult? {
@@ -52,7 +50,6 @@ private class FakeRaHost : RaSettingsHost {
         savedKeys.add(keys)
     }
 
-    /** Presets the browser can hand back, by the path the provider will ask for. */
     val presetFiles = mutableMapOf<String, String>()
     var appliedPreset: String? = null
     var chain: dev.cannoli.core.shader.ShaderPreset? = null
@@ -60,7 +57,6 @@ private class FakeRaHost : RaSettingsHost {
 
     override fun appliedShaderPreset(): String? = appliedPreset
 
-    /** What a shortcut turned off, mirroring the bridge: switching on restores exactly this. */
     var shaderStashed: String? = null
     override fun shaderToRestore(): String? = shaderStashed ?: appliedPreset
     override fun toggleShader() {
@@ -109,8 +105,6 @@ private fun host(): FakeRaHost = FakeRaHost().apply {
     )
     settings["run_ahead_frames"] =
         RaSetting("run_ahead_frames", "Run-Ahead Frames", RaSettingType.INT, MachineValue("1"), "1", min = 0f, max = 4f, step = 1f)
-    // A boolean that is still menu-registered. run_ahead_enabled was the fixture until RetroArch
-    // stopped registering it in favour of the runahead_mode enum.
     settings["run_ahead_hide_warnings"] =
         RaSetting("run_ahead_hide_warnings", "Hide Run-Ahead Warnings", RaSettingType.BOOL, MachineValue("false"), "false")
 }
@@ -129,9 +123,6 @@ class RaIgmSettingsProviderTest {
         val p = provider(host())
         val items = p.screen(emptyList())
         val labels = items.items.map { it.label }
-        // midi_settings is refused here because RetroArch has no settings_show_ flag for it;
-        // the screens that do are turned off in the launch config and never reach this list.
-        // Input is Cannoli's own and sits ahead of RetroArch's list, like Overlay and Shaders.
         assertEquals(listOf("Input", "Latency"), labels)
         assertTrue(items.items.all { it is GenericIgmSettingsItem.Category })
     }
@@ -157,9 +148,6 @@ class RaIgmSettingsProviderTest {
                 .first { it.key == "run_ahead_hide_warnings" }.value)
     }
 
-    // The reported bug: RetroArch's rows are conditional, so cycling one setting reveals another on
-    // a screen already open. Keying the cache on the screen alone left the new key out of
-    // currentSettings and the row was dropped, so it never appeared.
     @Test
     fun `a row RetroArch reveals mid-screen appears`() {
         val h = host()
@@ -176,7 +164,6 @@ class RaIgmSettingsProviderTest {
             p.screen(listOf("video_scaling_settings")).items.map { it.key },
         )
 
-        // RetroArch now lists the dependent row, as it does once the index reaches Config.
         h.screens["video_scaling_settings"] = listOf(
             RaScreenRow("aspect_ratio_index", "Aspect Ratio", isMenu = false),
             RaScreenRow("video_aspect_ratio", "Config Aspect Ratio", isMenu = false),
@@ -187,8 +174,6 @@ class RaIgmSettingsProviderTest {
         )
     }
 
-    // A revealed row makes the screen re-read every key on it, and the value just written has to
-    // survive that. It does because the write already landed: nothing here is waiting on a queue.
     @Test
     fun `revealing a row keeps the value just set on its neighbour`() {
         val h = host()
@@ -209,8 +194,6 @@ class RaIgmSettingsProviderTest {
         assertEquals(listOf("run_ahead_hide_warnings", "run_ahead_frames"), rows.map { it.key })
     }
 
-    // Something moved it behind the menu's back. Reading every row on every render would cost a
-    // walk of the running game's settings per keypress, so the screen picks it up on the way in.
     @Test
     fun `a value that moved behind the menu shows on the next visit to the screen`() {
         val h = host()
@@ -225,8 +208,6 @@ class RaIgmSettingsProviderTest {
                 .first { it.key == "run_ahead_frames" }.value)
     }
 
-    // The row is what RetroArch says it is afterwards, never the value the menu asked for. They
-    // differ for everything RetroArch renders through its own repr.
     @Test
     fun `a cycle shows the text RetroArch renders, not the value it was asked for`() {
         val h = host()
@@ -253,8 +234,6 @@ class RaIgmSettingsProviderTest {
         assertEquals(listOf("aspect_ratio_index" to "22"), h.setCalls)
     }
 
-    // A write that reached no setting must not be recorded as a change, or exiting prompts to save
-    // something that never happened and the override comes out without it.
     @Test
     fun `a write that never queued leaves the menu clean`() {
         val h = host()
@@ -289,13 +268,6 @@ class RaIgmSettingsProviderTest {
         assertEquals(listOf(RaOverrideScope.SYSTEM), h.savedScopes)
     }
 
-    /**
-     * An answer means what its label says, not what its position says.
-     *
-     * The options used to be plain strings answered by cursor index, so inserting one or putting
-     * Discard first silently retargeted every answer after it: the user picked Save and the
-     * provider discarded, with nothing to catch it at compile time.
-     */
     @Test
     fun `a save option keeps its action wherever it sits in the list`() {
         val expected = mapOf(
@@ -349,7 +321,6 @@ class RaIgmSettingsProviderTest {
         (p.exitPrompt() as IgmSettingsExit.Prompt).choose(SaveAnswer.game)
         assertEquals(listOf(setOf("run_ahead_hide_warnings", "run_ahead_frames")), h.savedKeys)
 
-        // The set is cleared on save, so a later change saves only itself.
         p.screen(listOf(LATENCY))
         p.cycle("run_ahead_frames", 1)
         (p.exitPrompt() as IgmSettingsExit.Prompt).choose(SaveAnswer.platform)
@@ -368,8 +339,6 @@ class RaIgmSettingsProviderTest {
         assertEquals(listOf(setOf("run_ahead_frames")), h.savedKeys)
     }
 
-    // video_threaded lives under Video > Output, so this also covers a subcategory row carrying the
-    // hint rather than only a top-level one.
     @Test
     fun `a restart-required setting carries the restart hint`() {
         val h = host()
@@ -383,8 +352,6 @@ class RaIgmSettingsProviderTest {
         assertEquals(RaOptionStrings().restartHint, row?.hint)
     }
 
-    // The offer is the answer to where the shader came from, so it must appear only where the game
-    // is the one deciding, and nowhere outside the shader tree.
     @Test
     fun `dropping the game's shader is offered only where there is one to drop`() {
         val h = host()
@@ -407,7 +374,6 @@ class RaIgmSettingsProviderTest {
         assertEquals(1, h.shaderRestored)
         assertTrue(p.exitPrompt() is IgmSettingsExit.Prompt)
 
-        // Already dropped, so a second press is not an offer any more.
         assertEquals(emptySet<String>(), p.restoreDefault(listOf(CuratedCatalog.CATEGORY_SHADER)))
         assertEquals(1, h.shaderRestored)
     }
@@ -424,7 +390,6 @@ class RaIgmSettingsProviderTest {
 
     @get:org.junit.Rule val shaderFolder = org.junit.rules.TemporaryFolder()
 
-    /** A preset on disk, because the chain is parsed from files rather than asked of RetroArch. */
     private fun writePreset(name: String, vararg shaders: String): String {
         val dir = java.io.File(shaderFolder.root, "presets").apply { mkdirs() }
         val f = java.io.File(dir, "$name.slangp")
@@ -456,13 +421,6 @@ class RaIgmSettingsProviderTest {
     private fun rowKeys(p: RaIgmSettingsProvider) =
         p.screen(listOf(SHADERS)).items.map { it.key }
 
-    // The enable flag is not a row: turning shaders off is what an empty chain means, and a second
-    // way to say it is a second thing to disagree with the first.
-    /**
-     * RetroArch decides which rows a screen has from the values on it, so a write has to re-render
-     * even when it landed on exactly the value asked for. Black frame insertion and sub-frame
-     * shaders both reveal rows, and without this they arrive a keypress late.
-     */
     @Test
     fun `a write re-renders even when it landed on the value asked for`() {
         val h = host()
@@ -476,11 +434,6 @@ class RaIgmSettingsProviderTest {
         assertTrue("the write must trigger a render", renders > 0)
     }
 
-    /**
-     * A change handler moves its neighbours: setting sub frame shaders above one zeroes black
-     * frame insertion and the swap interval. Refreshing only the written key left those rows
-     * showing what they held before, until the screen was left and re-entered.
-     */
     @Test
     fun `a write refreshes the neighbours its change handler moved`() {
         val h = host()
@@ -514,12 +467,9 @@ class RaIgmSettingsProviderTest {
         assertTrue(keys.contains("params"))
         assertFalse(keys.contains("video_shader_enable"))
         assertFalse(keys.contains("shader_passes"))
-        // Applying is a footer action, not a row to walk past on every trip down the list.
         assertFalse(keys.contains("shader_apply"))
     }
 
-    // The chain is seeded from what is running, so entering the tree shows it rather than looking
-    // as though nothing is loaded.
     @Test
     fun `the chain starts as the preset in force`() {
         val h = pipelineHost()
@@ -534,8 +484,6 @@ class RaIgmSettingsProviderTest {
         assertEquals("Pass 0: a", p.screen(listOf(SHADERS)).items.first { it.key == "pass_0" }.label)
     }
 
-    // Nothing reaches RetroArch until the chain is applied, which is what lets the list be edited
-    // freely without any of it showing or half-showing.
     @Test
     fun `editing the chain touches only the model`() {
         val h = pipelineHost()
@@ -559,7 +507,6 @@ class RaIgmSettingsProviderTest {
         assertEquals(first + 1, p.reorder(listOf(SHADERS), first, 1))
         assertEquals(listOf("b", "a"), h.chain!!.passes.map { it.shader.substringAfterLast('/').removeSuffix(".slang") })
 
-        // Pass 0 cannot go above itself, so nothing moves and the highlight stays put.
         assertEquals(first, p.reorder(listOf(SHADERS), first, -1))
     }
 
@@ -593,7 +540,6 @@ class RaIgmSettingsProviderTest {
         assertEquals(3, h.chain!!.passes.size)
     }
 
-    // With no chain there is nothing to add to, and Load Preset is the row that covers it.
     @Test
     fun `adding to the chain is offered only once there is one`() {
         val h = pipelineHost()
@@ -605,8 +551,6 @@ class RaIgmSettingsProviderTest {
         assertFalse(keys.contains("prepend"))
     }
 
-    // Read from the shader sources, so a chain describes what it can tune before RetroArch has
-    // ever seen it.
     @Test
     fun `parameters come from the shaders and step by their author's range`() {
         val h = pipelineHost()
@@ -619,7 +563,6 @@ class RaIgmSettingsProviderTest {
         p.cycle("shader_param:warp", 1)
         assertEquals("0.75", h.chain!!.parameters["warp"])
 
-        // Stops at the end its author gave it.
         p.cycle("shader_param:warp", 1)
         p.cycle("shader_param:warp", 1)
         assertEquals("1", h.chain!!.parameters["warp"])
@@ -639,7 +582,6 @@ class RaIgmSettingsProviderTest {
         assertNull(h.chain!!.passes[0].settings["filter_linear"])
     }
 
-    // A size means nothing without saying what it is relative to, so scale is four keys or none.
     @Test
     fun `a pass scale writes its type alongside its size`() {
         val h = pipelineHost()
@@ -656,10 +598,6 @@ class RaIgmSettingsProviderTest {
         assertNull(h.chain!!.passes[0].settings["scale_type_x"])
     }
 
-    /**
-     * Every chain change has to reach the save prompt, or editing one and leaving runs it for the
-     * session and loses it on the next launch with nothing said.
-     */
     @Test
     fun `every chain change offers to be kept`() {
         for (edit in listOf<(RaIgmSettingsProvider) -> Unit>(
@@ -688,8 +626,6 @@ class RaIgmSettingsProviderTest {
         assertTrue(p.exitPrompt() is IgmSettingsExit.Prompt)
     }
 
-    // The browser answers one question. Staying three folders deep after it is answered means a
-    // walk back up before anything else can be done.
     @Test
     fun `picking in the chain tree returns to the chain root, and the picker stays put`() {
         val h = pipelineHost()
@@ -706,8 +642,6 @@ class RaIgmSettingsProviderTest {
         )
     }
 
-    // The picker's list is the answer and has to say which is in force. The chain tree's browser is
-    // left the moment it is answered, so a mark there is never seen and would be wrong anyway.
     @Test
     fun `only the picker marks the applied preset`() {
         val h = pipelineHost()
@@ -722,8 +656,6 @@ class RaIgmSettingsProviderTest {
         assertTrue(pickerRow is GenericIgmSettingsItem.Choice)
     }
 
-    // A shader turned off by the shortcut leaves an empty chain, and this screen used to offer
-    // nothing but Load Preset: the preset the user already had was unreachable from the menu.
     @Test
     fun `the shader can be switched back on from the menu after a shortcut turned it off`() {
         val h = pipelineHost()
@@ -759,8 +691,6 @@ class RaIgmSettingsProviderTest {
         )
     }
 
-    // Everything else on this screen edits the chain, and while the shader is off the game is not
-    // running that chain, so those rows would be changing nothing the user can see.
     @Test
     fun `switched off, the toggle is the only row on the screen`() {
         val h = pipelineHost()
@@ -769,7 +699,6 @@ class RaIgmSettingsProviderTest {
         assertEquals(listOf("enabled"), p.screen(listOf(SHADERS)).items.map { it.key })
     }
 
-    // Otherwise the row is a switch that cannot be thrown.
     @Test
     fun `no toggle row is offered when there is no shader at all`() {
         val h = host()
@@ -777,7 +706,6 @@ class RaIgmSettingsProviderTest {
         assertTrue(p.screen(listOf(SHADERS)).items.none { it.key == "enabled" })
     }
 
-    // The picker has no compile-on-leave, so there it must still apply outright.
     @Test
     fun `the picker still applies on selection`() {
         val h = pipelineHost()

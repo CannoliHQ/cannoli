@@ -3,7 +3,6 @@ package dev.cannoli.igm
 data class PortDeviceType(val id: Int, val label: String)
 
 data class PortDevices(val current: Int, val types: List<PortDeviceType>) {
-    // None silently kills that player's input, so it is never offered.
     val choices: List<PortDeviceType> get() = types.filter { it.id != RETRO_DEVICE_NONE }
 
     val hasChoice: Boolean get() = choices.size > 1
@@ -30,8 +29,6 @@ data class PlayerSlot(val player: Int, val padIndex: Int, val name: String?, val
     val hasPad: Boolean get() = name != null
 }
 
-// RetroArch never lets Player 1 end up without a pad, and the native swap refuses the same thing,
-// so the menu never offers a swap it would refuse.
 fun swapAllowed(slots: List<PlayerSlot>, a: Int, b: Int): Boolean {
     if (a == b) return false
     val first = slots.getOrNull(a) ?: return false

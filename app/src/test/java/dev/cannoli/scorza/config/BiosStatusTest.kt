@@ -15,14 +15,6 @@ import java.io.File
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
-/**
- * Two things a core's `.info` cannot state correctly, both hit on Neo Geo.
- *
- * FBNeo declares `fbneo/neogeo.zip` and searches three locations, the system directory last, so a
- * file at the root is found and must not read as missing. And it marks all 23 of its entries
- * optional, which is right for arcade romsets and wrong for Neo Geo, where that archive carries the
- * mandatory MVS BIOS.
- */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class BiosStatusTest {
@@ -76,8 +68,6 @@ class BiosStatusTest {
     private fun threeDo(dir: File) =
         config().getFirmwareStatus("3DO", "opera_libretro", dir)
 
-    // opera accepts any one of thirteen regional dumps. Asked file by file, a user holding one
-    // correct BIOS reads as missing the other twelve, which is the whole reason anyOf exists.
     @Test fun `interchangeable BIOS dumps are one requirement, not thirteen`() {
         val groups = threeDo(biosDir("3do-none")).filterIsInstance<FirmwareRequirement.AnyOf>()
         assertEquals("the thirteen dumps collapse to one choice", 1, groups.size)
@@ -97,8 +87,6 @@ class BiosStatusTest {
         assertEquals("only the file actually held is present", 1, group.options.count { it.second })
     }
 
-    // The correction only ever tightens: a platform with no rule keeps whatever the core declared,
-    // so nothing here can invent a requirement for a core that named none.
     @Test fun `a platform with no rule has no anyOf groups`() {
         val reqs = config().getFirmwareStatus("ATARI5200", "atari800_libretro", biosDir("atari800"))
         assertTrue(reqs.none { it is FirmwareRequirement.AnyOf })
@@ -114,8 +102,6 @@ class BiosStatusTest {
         return out.toByteArray()
     }
 
-    // ARMSX2's system files are a separate remote download from its BIOS dump: installing the
-    // former must not make the gate think the latter arrived too.
     @Test fun `a missing PS2 BIOS is still reported after the resources download lands`() {
         val dir = biosDir("ps2")
         SystemFiles.install(ByteArrayInputStream(resourcesZip()), dir)

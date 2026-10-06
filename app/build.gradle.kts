@@ -15,14 +15,10 @@ fun git(vararg args: String): String = try {
 
 val gitCommitHash: String = git("rev-parse", "--short", "HEAD").ifEmpty { "unknown" }
 
-// Tracked modifications only, matching `git describe --dirty`, so untracked scratch files in a
-// dev tree do not permanently brand every build.
 val gitDirty: Boolean = git("status", "--porcelain", "--untracked-files=no").isNotEmpty()
 
 val buildTimeMillis: Long = System.currentTimeMillis()
 
-// Read from the vendored tree rather than restated here, because RetroAchievements identifies the
-// client by this version and a stale copy would claim a RetroArch that is not the one playing the set.
 val retroArchVersion: String = rootProject.file("retroarch/version.all").let { versionAll ->
     if (!versionAll.isFile) error("$versionAll not found. Run git submodule update --init.")
     versionAll.readLines().firstNotNullOfOrNull { line ->
@@ -30,9 +26,6 @@ val retroArchVersion: String = rootProject.file("retroarch/version.all").let { v
     } ?: error("$versionAll no longer declares PACKAGE_VERSION.")
 }
 
-// Reads the cfg directory inside obtain() rather than at plain configuration time, so the
-// configuration cache tracks these files as an input instead of freezing the digest -- mirrors
-// how git() above wraps process output for the same reason.
 abstract class AutoconfigDigestValueSource : ValueSource<String, AutoconfigDigestValueSource.Parameters> {
     interface Parameters : ValueSourceParameters {
         val cfgDir: DirectoryProperty
@@ -55,8 +48,6 @@ abstract class AutoconfigDigestValueSource : ValueSource<String, AutoconfigDiges
     }
 }
 
-// Version code cannot invalidate the autoconfig seed: it is 1 for every debug build, so a rebuild
-// with changed cfgs would keep serving the previously seeded set. Digest the content instead.
 val autoconfigDigest: String = providers.of(AutoconfigDigestValueSource::class) {
     parameters.cfgDir.set(layout.projectDirectory.dir("src/main/assets/autoconfig/cannoli"))
 }.get()
@@ -111,8 +102,6 @@ android {
 
     buildTypes {
         debug {
-            // Its own package so a dev build sits beside an installed release instead of
-            // replacing it. Both still read the same Cannoli directory on the SD card.
             applicationIdSuffix = ".debug"
             buildConfigField("boolean", "DEV_BUILD", "true")
             if (keystorePropertiesFile.exists()) {
@@ -130,9 +119,6 @@ android {
                 "proguard-rules.pro"
             )
         }
-        // Debug, but not debuggable, so ART compiles it ahead of time and launch timings are real.
-        // Turning that flag off also turns off BuildConfig.DEBUG, which is why the developer
-        // surface asks DEV_BUILD instead: this is still a build only we run.
         create("profiling") {
             initWith(getByName("debug"))
             isDebuggable = false
@@ -141,16 +127,12 @@ android {
         }
     }
 
-    // initWith copies the package suffix but not the source set, so profiling would install
-    // over the debug build under the release name.
     sourceSets.getByName("profiling").res.srcDir("src/debug/res")
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
-    // Only rc_hash. RetroAchievements identifies a game by hashing the ROM, and preload needs that
-    // in the launcher, before any game is running.
     externalNativeBuild {
         cmake {
             path = file("src/main/cpp/CMakeLists.txt")
@@ -164,11 +146,6 @@ android {
     testOptions {
         unitTests.isIncludeAndroidResources = true
         unitTests.all {
-            // The Compose/Robolectric tests never reach idle once enough other classes have run in
-            // the same JVM, and every one of them then burns Espresso's full 60s timeout. No single
-            // test is responsible: any half of the suite passes, unions fail. Restarting the JVM
-            // periodically keeps that accumulation bounded. Full suite: 9m18s red without this, 1m
-            // green with it. Raising the value trades reliability for a few seconds.
             it.forkEvery = 10
         }
     }
@@ -185,7 +162,6 @@ dependencies {
     implementation(project(":ricotta"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.core.splashscreen)
-    // Sideloaded APKs never get the profile handed to the installer, so it is applied at runtime.
     implementation(libs.androidx.profileinstaller)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -225,6 +201,5 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 }
 
-// Lint-vital runs for any non-debuggable variant and is most of this one's build time.
 tasks.matching { it.name.startsWith("lintVital") && it.name.endsWith("Profiling") }
     .configureEach { enabled = false }

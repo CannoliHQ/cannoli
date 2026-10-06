@@ -15,8 +15,6 @@ class CannoliApp : Application() {
         installLogFlushOnCrash()
     }
 
-    // Log writes are queued, so a crash would otherwise take the tail of every log with it,
-    // which is the part worth reading. Native crashes still bypass this; tombstones cover those.
     private fun installLogFlushOnCrash() {
         val previous = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, error ->

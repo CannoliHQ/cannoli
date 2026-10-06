@@ -136,11 +136,9 @@ class RaPreloadEngineTest {
 
     @Test fun preloadAll_countsSuccessesAndSurvivesFailures() = runBlocking {
         val server = MockWebServer()
-        // rom 1 (game 55): full success
         server.enqueue(MockResponse().setBody("""{"Success":true}"""))
         server.enqueue(MockResponse().setBody(setsBody))
         server.enqueue(MockResponse().setBody("""{"Success":true}"""))
-        // rom 2 (game 77): login ok, achievementsets errors -> failure, batch continues
         server.enqueue(MockResponse().setBody("""{"Success":true}"""))
         server.enqueue(MockResponse().setResponseCode(500))
         server.start()

@@ -1,34 +1,18 @@
 package dev.cannoli.igm
 
 interface RaSettingsHost {
-    /** Options the running core exposes, in the order the core declares them. */
     fun coreOptions(): List<CoreOptionRef> = emptyList()
 
-    /** Label and value pairs describing the running core, in display order. Empty when unavailable. */
     fun systemInfo(): List<Pair<String, String>> = emptyList()
 
-    /** The controller types the core offers on [port], or null before RetroArch is running. */
     fun portDeviceTypes(port: Int): PortDevices? = null
 
-    /** Queues a controller type onto the running core. */
     fun setPortDevice(port: Int, id: Int) {}
 
-    /** Same method as [RetroArchBridge.players]: the one class implements both interfaces. */
     fun players(): List<PlayerSlot> = emptyList()
 
     fun raGetSetting(key: String): RaSetting?
 
-    /**
-     * Queues [value] for RetroArch and returns whether it was queued. When it was, [onDone] is
-     * called once on the main thread with what RetroArch holds afterwards, which is not always what
-     * was asked for: it clamps, refuses, and rewrites neighbours from change handlers.
-     *
-     * [watch] are keys to report in [RaApplyResult.moved] if the write moved them, each with the
-     * value it held before. Pass what is on screen.
-     *
-     * Nothing times out. The run loop answers every write it takes, and a write it could not take
-     * returns false here.
-     */
     fun raApply(
         key: String,
         value: MachineValue,
@@ -36,122 +20,43 @@ interface RaSettingsHost {
         onDone: (RaApplyResult?) -> Unit = {},
     ): Boolean
 
-    /** Runs the commands RetroArch fired during menu writes and has been holding. */
     fun flushHeldCommands() {}
 
     fun raSaveOverride(scope: RaOverrideScope, keys: Set<String>)
 
-    /**
-     * Persists values Cannoli owns rather than RetroArch, at the scope the save prompt chose. They
-     * are not RetroArch settings, so the native writer that pulls live values by key cannot reach
-     * them and the host writes its own tier entry.
-     *
-     * [changed] is the same set the RetroArch save is given, so a host writes only what this visit
-     * actually touched. Writing unconditionally copies a value the user never edited into whichever
-     * scope they happened to pick for something else.
-     */
     fun saveCannoliOverride(scope: RaOverrideScope, changed: Set<String>) {}
 
-    /**
-     * Puts back anything the host applied by means other than writing a setting.
-     *
-     * Rewriting a value is not always enough to undo it. A shader is compiled into the render chain
-     * by a separate call, so restoring video_shader leaves the old one still running: the config
-     * would say one thing and the screen show another.
-     */
     fun revertCannoliOverride() {}
 
-    /**
-     * RetroArch settings Cannoli has taken over for its own use, mapped to the value the user actually
-     * chose. The live value belongs to Cannoli, so the menu must read and resolve against these instead,
-     * or it will treat Cannoli's value as unrecognised state and normalise it away.
-     */
     fun shadowedSettings(): Map<String, String> = emptyMap()
 
-    /**
-     * Throws away every override [scope] holds, so whatever is left decides again.
-     *
-     * The whole tier rather than a key at a time. Nothing else can undo a scope: a value is only
-     * ever written, and setting it to something else is still that scope having an opinion.
-     */
     fun resetOverrides(scope: RaOverrideScope) {}
 
-    /** Whether [scope] holds any override worth offering to throw away. */
     fun hasOverrides(scope: RaOverrideScope): Boolean = false
 
-    /**
-     * Overlay folder names for this platform, in display order, empty when it has none. Cannoli
-     * owns these rather than RetroArch, so they are a host question rather than a setting.
-     */
     fun overlays(): List<String> = emptyList()
 
-    /**
-     * One level of the shader browser, folders first then presets, already filtered to what the
-     * running video driver can load. [path] is empty for the root.
-     */
     fun shaderEntries(path: List<String>): List<dev.cannoli.core.shader.ShaderEntry> = emptyList()
 
-    /**
-     * Whether the shader tree has anything the running driver can load. Separate from
-     * [shaderEntries] because the root asks this on every render and the answer must not cost a
-     * walk of the database to produce.
-     */
     fun hasShaders(): Boolean = false
 
-    /**
-     * Applies the preset [name] from [path] and returns the RetroArch keys it wrote, so the caller
-     * can stage them into the save prompt without knowing what a shader is.
-     *
-     * Applied on a press rather than as the highlight moves: a shader compiles when it loads, so
-     * previewing every row on the way past would stall the list.
-     */
     fun applyShaderPreset(path: List<String>, name: String): Set<String> = emptySet()
 
-    /** Absolute path of the preset in force, so the browser can say which row is applied. */
     fun appliedShaderPreset(): String? = null
 
-    /**
-     * Switches the shader off and back on, the same call the shortcut makes.
-     *
-     * Same method as [RetroArchBridge.toggleShader]: the one class implements both interfaces, so
-     * the menu row and the shortcut cannot end up meaning different things.
-     */
     fun toggleShader() {}
 
-    /** What [toggleShader] would turn on, or null when this game has no shader to turn on at all. */
     fun shaderToRestore(): String? = null
 
-    /**
-     * Hands over the chain the menu is building, so a save has something to write.
-     *
-     * Cannoli holds the chain while it is being edited rather than mutating RetroArch's own shader
-     * a step at a time. RetroArch is given the result once, as a preset, because every attempt to
-     * edit its live shader ran into the same wall: the menu's writes are queued, the runloop does
-     * not run while the menu is up, and applying a chain writes a preset and loads it back over the
-     * shader being edited. A list of passes in memory has none of those problems.
-     */
     fun setShaderChain(chain: dev.cannoli.core.shader.ShaderPreset?) {}
 
-    /** Absolute path of a preset the browser listed, so a pick becomes something to load. */
     fun shaderPresetPath(path: List<String>, name: String): String? = null
 
-    /**
-     * Writes the chain and loads it, returning where it landed.
-     *
-     * [saveAs] names a preset to keep in Shaders/Custom; without it the chain goes to a working
-     * file, which is what compiling on the way out of the menu uses.
-     */
     fun applyShaderChain(saveAs: String? = null): String? = null
 
-    /** Whether the shader in force is this game's own choice rather than its platform's. */
     fun shaderOverriddenAtGame(): Boolean = false
 
-    /**
-     * Drops this game's shader override and loads what the platform says instead, returning the
-     * keys it staged. Absent at platform scope, where there is nothing above to fall back to.
-     */
     fun restoreShaderDefault(): Set<String> = emptySet()
 
-    /** One RetroArch settings screen. An empty label is the root. */
     fun raScreenRows(label: String): List<RaScreenRow> = emptyList()
 }

@@ -7,16 +7,6 @@ import dagger.hilt.android.scopes.ActivityScoped
 import dev.cannoli.scorza.input.CanonicalButton
 import javax.inject.Inject
 
-/**
- * Held-state poller that drives navigation auto-repeat. Reads `PortRouter.isCanonicalPressedAt`
- * across all ports for BTN_UP / BTN_DOWN / BTN_LEFT / BTN_RIGHT; on a direction transition from
- * none-held to held, waits [INITIAL_DELAY_MS], then fires the matching dispatcher callback every
- * [REPEAT_INTERVAL_MS]. Source-agnostic: works for keycode-bound, hat-bound, or stick-bound
- * navigation as long as the canonical is tracked in `PortRouter`.
- *
- * Initial press fires synchronously via `InputDispatcher.handleKeyEvent`; the poller only handles
- * auto-repeat (it skips the first fire on transition).
- */
 @ActivityScoped
 class MenuNavigationPoller @Inject constructor(
     private val portRouter: PortRouter,
@@ -40,9 +30,6 @@ class MenuNavigationPoller @Inject constructor(
                 fire(current)
                 nextFireAt = now + REPEAT_INTERVAL_MS
             }
-            // Wake just before the next fire if a direction is held; otherwise idle-poll. This
-            // keeps auto-repeat cadence within a few ms of the configured interval instead of
-            // letting the 33ms poll tick introduce up to a full poll of jitter per fire.
             val next = if (heldDir != null) {
                 (nextFireAt - now).coerceIn(1L, POLL_INTERVAL_MS)
             } else {

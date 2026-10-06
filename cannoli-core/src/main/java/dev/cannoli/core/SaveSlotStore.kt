@@ -4,10 +4,6 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import java.io.File
 
-/**
- * Everything the launcher and the emulator process know about what is on disk for one game's save
- * slots. Both used to carry their own copy of this, decoding thumbnails at different sizes.
- */
 class SaveSlotStore(
     private val stateBasePath: String,
     val slotCount: Int = SLOT_COUNT,
@@ -17,8 +13,6 @@ class SaveSlotStore(
 
     fun thumbnailPath(slot: Int): String = StateSlotPaths.thumbnailPath(stateBasePath, slot)
 
-    // Achievement progress from the retired internal runner. Nothing writes these any more, but
-    // they still sit beside states saved before v2 and have to travel with them.
     private fun progressPath(slot: Int): String = "${statePath(slot)}.ra"
 
     fun exists(slot: Int): Boolean = File(statePath(slot)).exists()
@@ -48,11 +42,6 @@ class SaveSlotStore(
         }.getOrNull()
     }
 
-    /**
-     * Makes room for a new auto save. The auto slot only ever holds the newest state, so writing
-     * one would otherwise discard the previous session outright: this pushes the old auto into the
-     * first manual slot and shifts the rest down, dropping whatever sat in the last slot.
-     */
     fun rotateAutoIntoHistory() {
         if (slotCount < 2) return
         for (slot in slotCount - 1 downTo 2) {
@@ -67,8 +56,6 @@ class SaveSlotStore(
         move(progressPath(from), progressPath(to))
     }
 
-    // An absent source leaves the destination alone, so a gap in the slots does not swallow the
-    // state below it.
     private fun move(from: String, to: String) {
         val source = File(from)
         if (!source.exists()) return

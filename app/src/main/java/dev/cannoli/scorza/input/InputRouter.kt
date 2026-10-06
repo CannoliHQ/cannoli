@@ -86,12 +86,6 @@ class InputRouter @Inject constructor(
         dialogHandler.onRetroAchievementsLogout = ::logOutRetroAchievements
         dialogHandler.onControllerReset = controllerDetailHandler::resetConfirmed
 
-        // Launcher overrides onSelectUp because the select-hold cancel + nav-flag reset is
-        // specific to launcher state; the generic helper cannot know about it.
-        // Resolve dedicated screen handlers synchronously from nav state so input is not lost in
-        // the recompose gap when a screen is pushed off the input cadence (e.g. the save-state
-        // picker from a hold timer). Scrollable screens keep their registry-backed instances. The
-        // IGM wires without a resolver, which resets this so its registry-top dispatch is restored.
         dispatcher.wireToRegistry(
             dialogHandler = dialogHandler,
             onSelectUpOverride = { onSelectUp() },
@@ -114,16 +108,9 @@ class InputRouter @Inject constructor(
         is LauncherScreen.Controllers -> controllersHandler
         is LauncherScreen.ControllerDetail -> controllerDetailHandler
         is LauncherScreen.EditButtons -> editButtonsHandler
-        // Raw key-down capture happens ahead of the normal pipeline in MainActivity.dispatchKeyEvent;
-        // this empty handler only guards stray up/motion events from falling through to whatever
-        // screen's handler was last left on the registry.
         is LauncherScreen.LegendWizard -> object : ScreenInputHandler {}
         is LauncherScreen.LoggingSettings -> loggingSettingsHandler
         is LauncherScreen.Permissions -> permissionsHandler
-        // Every press is read ahead of the pipeline in MainActivity.dispatchKeyEvent, because the
-        // welcome step verifies the raw keycode against the pressing device's own mapping rather
-        // than acting on whatever the mapping resolved it to. This empty handler only stops stray
-        // up/motion events reaching whatever screen's handler the registry last held.
         is LauncherScreen.OnboardingWelcome -> object : ScreenInputHandler {}
         is LauncherScreen.OnboardingPermissions -> onboardingPermissionsHandler
         is LauncherScreen.OnboardingStorage -> onboardingStorageHandler
@@ -182,25 +169,11 @@ class InputRouter @Inject constructor(
         nav.selectHeld = false
     }
 
-    /**
-     * Returns the appropriate handler for a ScrollableScreen instance. Used by [AppNavGraph] to
-     * push a handler via ScreenInput for screens that don't have a dedicated handler class --
-     * the handler is generated inline from the [scrollable] factory each time the screen is
-     * composed. Other screens (with dedicated handler classes like [SystemListInputHandler])
-     * push their handler directly via this router's public fields, bypassing this method.
-     */
     fun currentHandler(): ScreenInputHandler = when (val screen = nav.currentScreen) {
         is LauncherScreen.ScrollableScreen -> scrollableHandlerFor(screen)
         else -> object : ScreenInputHandler {}
     }
 
-    /**
-     * Per-screen handler factory for everything that implements [LauncherScreen.ScrollableScreen].
-     *
-     * The actual logic lives in the named *Handler() methods below; each one is a thin wrapper
-     * around [scrollable], which buries the [nav.currentScreen] cast and the default move/back
-     * boilerplate so each screen only has to spell out the parts that differ.
-     */
     private fun scrollableHandlerFor(screen: LauncherScreen.ScrollableScreen): ScreenInputHandler = when (screen) {
         is LauncherScreen.EmulatorMapping     -> emulatorMappingHandler()
         is LauncherScreen.PlatformMapping     -> platformMappingHandler()
@@ -237,8 +210,6 @@ class InputRouter @Inject constructor(
         dev.cannoli.scorza.config.CannoliPaths(settings.sdCardRoot).configRetroAchievements.resolve("Pending")
     )
 
-    // Both Back and Log Out drop the account screen and, when it was reached by logging in from the
-    // credential sub-list, step back out to Integrations so the user does not land on the login form.
     private fun leaveRetroAchievements() {
         nav.pop()
         if (settingsViewModel.state.value.activeCategory == SettingsCategory.RETROACHIEVEMENTS) settingsViewModel.exitSubList()
@@ -251,9 +222,6 @@ class InputRouter @Inject constructor(
             ) {
                 settings.raHardcore = !settings.raHardcore
                 nav.replaceTop(copy(hardcore = settings.raHardcore))
-                // Hardcore hides resume, because RetroArch refuses to load a state under it, and
-                // the list decides that from a set computed once. Without this the rows keep
-                // offering a resume the launch then quietly ignores.
                 launcherActions.scanResumableGames()
             }
         }
@@ -282,9 +250,6 @@ class InputRouter @Inject constructor(
         settings.raUsername = ""
         settings.raToken = ""
         settings.raPassword = ""
-        // load() rebuilds the rows from the repository but never touches this, so without it
-        // the previous user's password stays masked on the row and re-arms Log In as soon as
-        // a new username is typed.
         settingsViewModel.raPassword = ""
         settingsViewModel.load()
         leaveRetroAchievements()
@@ -351,9 +316,6 @@ class InputRouter @Inject constructor(
         },
     )
 
-    // Drains the whole queue, not just this platform's: the queue has no concept of platform, and
-    // a game the user is not currently browsing should not sit unsent because SYNC NOW was pressed
-    // from a different platform's screen.
     private fun syncPendingUnlocksNow() {
         ioScope.launch {
             raPendingDrainer.drain()
@@ -406,7 +368,6 @@ class InputRouter @Inject constructor(
             ))
         },
         onNorth = {
-            // Skip filter buckets that are currently empty; All (0) is the always-available fallback.
             var newFilter = (filter + 1) % 4
             while (newFilter != 0 && emulatorMappingBuilder.filter(allMappings, newFilter).isEmpty()) {
                 newFilter = (newFilter + 1) % 4
@@ -481,9 +442,6 @@ class InputRouter @Inject constructor(
 
     private fun installedCoresHandler() = scrollable<LauncherScreen.InstalledCores>(
         onConfirm = {
-            // Only a core nothing points at can go. The footer already hides the action on a used
-            // row, so this is the guard rather than the message: a stale screen must not be able
-            // to delete something a platform picked up in the meantime.
             val row = rows.getOrNull(selectedIndex)
             if (row != null && !row.inUse) {
                 nav.dialogState.value = DialogState.UninstallCoreConfirm(
@@ -509,8 +467,6 @@ class InputRouter @Inject constructor(
                 gameOverrideStore.clear(entry.romId)
                 mappingChanged()
                 val refreshed = emulatorMappingBuilder.overrideRows(tag)
-                // The parent screen shows an override count, so it is rebuilt whether or not the
-                // list emptied. Only rebuilding on empty left a stale "N games" behind.
                 val mappingIdx = nav.screenStack.indexOfLast { it is LauncherScreen.PlatformMapping }
                 if (refreshed.isEmpty()) nav.pop()
                 else nav.replaceTop(copy(overrides = refreshed, selectedIndex = selectedIndex.coerceAtMost(refreshed.lastIndex)))
@@ -618,9 +574,6 @@ class InputRouter @Inject constructor(
             }
         },
         onBack = {
-            // The finished rows used to be swept up on the way out of this screen. They are the
-            // record of what happened and there is an explicit action to clear them now, so leaving
-            // a screen no longer throws them away behind the user's back.
             nav.pop()
             launcherActions.refreshLauncherLists()
         },
@@ -799,8 +752,6 @@ class InputRouter @Inject constructor(
     )
 
     private fun downloadCoreThenAssign(screen: LauncherScreen.PlatformMapping, coreId: String) {
-        // Downloads only ever target the embedded RetroArch: cores for a separately installed
-        // RetroArch are the user's own to manage, so that is the source the result is assigned to.
         val pkg = context.packageName
         val coreName = platformConfig.getCoreDisplayName(coreId)
         val romId = screen.romId
@@ -828,9 +779,6 @@ class InputRouter @Inject constructor(
         }
     }
 
-    // Which emulator a game uses decides whether Resume is offered at all, so the resumable
-    // set has to be recomputed on every mapping write. Without this the RESUME legend kept
-    // whatever it was when the list loaded until the user left and re-entered.
     private fun mappingChanged() = launcherActions.scanResumableGames()
 
     private fun refreshEmulatorMappingOnStack() {
@@ -847,8 +795,6 @@ class InputRouter @Inject constructor(
     }
 }
 
-// Credits is pushed from the About dialog, so backing out of it restores About rather than
-// dropping the whole chain, and About keeps knowing whether the quick menu opened it.
 internal fun creditsBack(nav: NavigationController, screen: LauncherScreen.Credits) {
     nav.pop()
     nav.dialogState.value = DialogState.About(fromQuickMenu = screen.fromQuickMenu)

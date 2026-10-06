@@ -5,11 +5,6 @@ import dev.cannoli.scorza.config.EmulatorSource
 
 data class GameOverrideEntry(val romId: Long, val displayName: String, val choice: EmulatorChoice)
 
-/**
- * Per-game emulator overrides, keyed by rom_id rather than by path. The scanner keeps rom_id
- * stable through rename, move and auto-organize, and the foreign key cascades on delete, so an
- * override follows its game instead of being orphaned by any of them.
- */
 class GameOverrideStore(private val db: CannoliDatabase) {
 
     fun get(romId: Long): EmulatorChoice? = db.queryOne(

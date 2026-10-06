@@ -2,17 +2,6 @@ package dev.cannoli.scorza.input
 
 import kotlin.math.abs
 
-/**
- * Watches raw input until a press settles, and reports what was pressed as bindings.
- *
- * Shared by the button editor and the setup wizard so a pad captured during first run and a button
- * re-bound later produce the same shape. Knows nothing about mappings or storage: it answers what
- * the user just pressed and the caller decides what that means.
- *
- * [timeoutMs] is null for a caller that must wait indefinitely. The editor gives up after a while
- * and returns the row to its old binding; the wizard cannot, because there is nothing to return to
- * and the user may be turning the pad over looking for the button.
- */
 class BindingCapture(
     private val timeoutMs: Long? = CAPTURE_TIMEOUT_MS,
     private val settleMs: Long = CAPTURE_WINDOW_MS,
@@ -27,9 +16,6 @@ class BindingCapture(
 
     private var pending: CanonicalButton? = null
 
-    // Axes already deflected when the question began. An analog trigger does not snap back the
-    // instant the previous question was answered, so without this the next question captures the
-    // axis still being held: press L2, and R2 is bound to L2. They are ignored until seen at rest.
     private val carriedOver = mutableSetOf<Int>()
     private var lastAxes: Map<Int, Float> = emptyMap()
     private var startedAtMillis: Long = 0
@@ -40,12 +26,6 @@ class BindingCapture(
     val isListening: Boolean get() = pending != null
     val canonical: CanonicalButton? get() = pending
 
-    /**
-     * Latest axis values, recorded whether or not a question is being asked.
-     *
-     * [start] needs to know what was already held when it began, which is only knowable if the
-     * stream is watched continuously rather than from the moment a question appears.
-     */
     fun observe(axisValues: Map<Int, Float>) {
         lastAxes = axisValues
         if (pending != null) onAxis(axisValues) else carriedOver.removeAll { axis ->
@@ -81,13 +61,9 @@ class BindingCapture(
 
     fun onAxis(axisValues: Map<Int, Float>) {
         val canonical = pending ?: return
-        // A hat or axis on the menu would be written as input_menu_toggle_btn, which RetroArch acts
-        // on in-game because motion events bypass the keycode intercept. Keys only there, and
-        // ignoring the event outright leaves the existing menu binding alone.
         if (canonical == CanonicalButton.BTN_MENU) return
         for ((axis, value) in axisValues) {
             if (abs(value) < AXIS_DETECT_THRESHOLD) {
-                // Back at rest, so a later deflection of it is a real press.
                 carriedOver.remove(axis)
                 continue
             }
@@ -98,7 +74,6 @@ class BindingCapture(
         }
     }
 
-    /** Null while the press has not settled yet. */
     fun tick(): Outcome? {
         val canonical = pending ?: return null
         val now = clock()
@@ -147,9 +122,6 @@ class BindingCapture(
         return bindings
     }
 
-    // A stick row captures the dominant axis only (a diagonal push must not bind two axes), then
-    // reproduces RetroArchAutoconfigImporter's bipolar shape for that axis exactly: one Axis resting
-    // at -1 with active span 0..1, and its mirror resting at 1 with span 0..-1.
     private fun stickAxisBindings(): List<InputBinding> {
         val axis = capturedAxes.maxByOrNull { (_, peak) -> abs(peak) }?.key ?: return emptyList()
         return listOf(
@@ -175,15 +147,10 @@ class BindingCapture(
     companion object {
         const val CAPTURE_WINDOW_MS = 150L
 
-        // The wizard asks a long run of questions, so the settle wait is felt on every one of them.
-        // Events from a single press arrive within a frame or two, so this still groups a button
-        // that reports both a keycode and an axis.
         const val WIZARD_SETTLE_MS = 60L
         const val CAPTURE_TIMEOUT_MS = 5000L
         private const val AXIS_DETECT_THRESHOLD = 0.6f
 
-        // Matches RetroArchAutoconfigImporter.mapAxisKeyToCanonicalAndRole's set of canonicals that
-        // carry stick axes, so a captured stick and an imported one agree on shape.
         private val STICK_CANONICALS: Set<CanonicalButton> = setOf(
             CanonicalButton.BTN_LSTICK_X,
             CanonicalButton.BTN_LSTICK_Y,

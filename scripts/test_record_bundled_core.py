@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-"""Tests for the bundled core recorder. Run: python3 -m unittest discover -s scripts -p 'test_*.py'"""
 
 import pathlib
 import tempfile
@@ -12,8 +11,6 @@ class IsoDateTest(unittest.TestCase):
     def test_parses_the_servers_rfc_1123_date(self):
         self.assertEqual("2026-08-25", iso_date("Tue, 25 Aug 2026 13:02:02 GMT"))
 
-    # Only the day is shown, so a late-evening GMT build must not be pulled back a day by a local
-    # zone. Parsing keeps the server's own date rather than converting.
     def test_keeps_the_servers_day(self):
         self.assertEqual("2026-08-25", iso_date("Tue, 25 Aug 2026 23:59:59 GMT"))
 
@@ -40,8 +37,6 @@ class UpsertTest(unittest.TestCase):
         upsert(self.path, "arm64-v8a", "snes9x_libretro", '"t1"', "2026-08-25")
         self.assertEqual([["arm64-v8a", "snes9x_libretro", '"t1"', "2026-08-25"]], self.rows())
 
-    # The two ABIs are different binaries with different etags. Recording one must not touch the
-    # other, or a 32-bit device would be told it holds the 64-bit build.
     def test_the_two_abis_are_separate_entries(self):
         upsert(self.path, "arm64-v8a", "snes9x_libretro", '"t64"', "2026-08-25")
         upsert(self.path, "armeabi-v7a", "snes9x_libretro", '"t32"', "2026-08-25")
@@ -52,7 +47,6 @@ class UpsertTest(unittest.TestCase):
         upsert(self.path, "arm64-v8a", "snes9x_libretro", '"new"', "2026-08-25")
         self.assertEqual([["arm64-v8a", "snes9x_libretro", '"new"', "2026-08-25"]], self.rows())
 
-    # task cores skips a core already on disk, so its row must survive another core being fetched.
     def test_an_untouched_core_keeps_its_row(self):
         upsert(self.path, "arm64-v8a", "snes9x_libretro", '"s"', "2026-08-25")
         upsert(self.path, "arm64-v8a", "nestopia_libretro", '"n"', "2026-08-20")

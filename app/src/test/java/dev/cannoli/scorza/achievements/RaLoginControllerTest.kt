@@ -59,8 +59,6 @@ class RaLoginControllerTest {
         },
     )
 
-    // The controller lands its result on Dispatchers.Main, and Robolectric's main looper stays
-    // paused until it is idled.
     private fun drainMain() = shadowOf(Looper.getMainLooper()).idle()
 
     @Test fun `a successful login stores the token and clears the password`() {
@@ -185,8 +183,6 @@ class RaLoginControllerTest {
         val s = settings()
 
         controller(s, server).login("bob", "hunter2")
-        // The answer lands on the main looper, which Robolectric holds until drainMain. Backing
-        // out before then is the race: the user is somewhere else when the result arrives.
         nav.dialogState.value = DialogState.None
         drainMain()
 

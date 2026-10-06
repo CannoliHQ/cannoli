@@ -50,10 +50,6 @@ class SaveMigrationSweepTest {
         assertEquals("SAVE", File(root, "Saves/GBA/Pokemon/Pokemon.rtc").readText())
     }
 
-    /**
-     * The whole reason attribution comes from the rom rows. A file we cannot name an owner for is
-     * left alone rather than filed under a guess.
-     */
     @Test fun `a save with no game in the library is not touched`() = runTest {
         save("SNES", "Mario.srm")
         val orphan = save("SNES", "Something Else.srm", "ORPHAN")

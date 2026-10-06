@@ -18,9 +18,6 @@ import androidx.compose.ui.res.stringResource
 import dev.cannoli.ui.ButtonStyle
 import dev.cannoli.ui.R
 
-/**
- * Full-screen dark overlay container with centered content and a bottom bar.
- */
 @Composable
 fun OverlayScrim(
     bottomBar: @Composable () -> Unit = {},
@@ -52,9 +49,6 @@ fun OverlayScrim(
     }
 }
 
-/**
- * Overlay that shows a simple message with a B-to-close bottom bar.
- */
 @Composable
 fun MessageOverlay(
     message: String,
@@ -64,9 +58,6 @@ fun MessageOverlay(
     OverlayScrim(
         bottomBar = { LegendPill(button = buttonStyle.back, label = buttonLabel) }
     ) {
-        // The scrim centres the block, so an unaligned Text left a centred column of ragged
-        // left-aligned lines the moment anything wrapped. Every caller here is one centred
-        // message, so centring is what they all meant.
         Text(
             text = message,
             style = MaterialTheme.typography.bodyLarge,
@@ -76,9 +67,6 @@ fun MessageOverlay(
     }
 }
 
-/**
- * Overlay with a message and A/B confirm/cancel bottom bar.
- */
 @Composable
 fun ConfirmOverlay(
     message: String,

@@ -8,11 +8,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
-/**
- * Identity, name and size used to be computed properties on a RomM-shaped queue item. The queue is
- * generic now and holds them as plain fields, so the RomM knowledge lives here instead: these are
- * the same rules, in the one place that still understands what a RomM transfer is.
- */
 class RommDownloadItemsTest {
 
     private fun game(id: Int) =
@@ -26,8 +21,6 @@ class RommDownloadItemsTest {
         assertEquals("SNES", item.tag)
     }
 
-    // The same game queued as a rom and as its manual are two transfers, so they must not dedupe
-    // against each other.
     @Test fun `a manual of the same game is a different key`() {
         assertEquals("MANUAL-7", rommItem(game(7), "SNES", DownloadKind.MANUAL).key)
     }
@@ -77,8 +70,6 @@ class RommDownloadItemsTest {
         assertNull((item.payload as RommPayload).file)
     }
 
-    // Bulk download (Select, then Start) queues each checked row through rommPickedItem with no
-    // hack file, the same call the picker's base row makes.
     @Test fun `a bulk pick queues a hacks entry's base file and a plain entry whole`() {
         val items = listOf(tecmo, game(7)).map { rommPickedItem(it, "NES") }
         assertEquals(listOf("ROM-1343-1832", "ROM-7"), items.map { it.key })

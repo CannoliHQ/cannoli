@@ -11,6 +11,5 @@ data class AchievementInfo(
     val pendingSync: Boolean = false
 )
 
-/** Newest unlock first; ties (equal unlockTime) keep their existing source order. */
 fun List<AchievementInfo>.sortedByUnlockedNewestFirst(): List<AchievementInfo> =
     sortedByDescending { it.unlockTime }

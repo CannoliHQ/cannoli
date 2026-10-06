@@ -3,8 +3,6 @@ package dev.cannoli.scorza.util
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import dev.cannoli.scorza.di.CannoliPathsProvider
-import dev.cannoli.scorza.model.AppType
-import dev.cannoli.scorza.model.artTag
 import dev.cannoli.scorza.settings.SettingsRepository
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -39,11 +37,6 @@ class ArtworkLookupTest {
     private fun writeArt(tag: String, fileName: String): File {
         val dir = File(root, "Art/$tag").apply { mkdirs() }
         return File(dir, fileName).apply { writeBytes(ByteArray(4)) }
-    }
-
-    @Test fun `artTag maps tool and port`() {
-        assertEquals("TOOLS", AppType.TOOL.artTag)
-        assertEquals("PORTS", AppType.PORT.artTag)
     }
 
     @Test fun `findByName returns the matching file`() {

@@ -17,7 +17,6 @@ class ConfigLayoutMigrationTest {
         file.writeText(text)
     }
 
-    /** A config tree in the pre-Internal layout. */
     private fun legacyTree(root: File) {
         val config = File(root, "Config")
         write(File(config, "cannoli.db"), "db")
@@ -62,8 +61,6 @@ class ConfigLayoutMigrationTest {
         assertEquals("files", paths.ignoreFilesRoms.readText())
     }
 
-    // custom.cfg has to leave RetroArch/ before the rest of that directory moves inward, or it
-    // travels with it and ends up buried again.
     @Test
     fun `custom cfg is lifted to the top of Config, not carried into Internal`() {
         val root = tmp.newFolder()
@@ -77,7 +74,6 @@ class ConfigLayoutMigrationTest {
         assertFalse(File(paths.configRetroArch, "custom.cfg").exists())
     }
 
-    // The shortcut chords were one letter from the unrelated override layer beside them.
     @Test
     fun `shortcuts leave Overrides while the global override layer stays`() {
         val root = tmp.newFolder()
@@ -116,14 +112,11 @@ class ConfigLayoutMigrationTest {
         assertEquals("mine", paths.customCfg.readText())
     }
 
-    // The interrupted case: a previous run moved some entries and died. The next boot has to
-    // finish the job rather than skip it because a destination already exists.
     @Test
     fun `a half-migrated tree is completed by the next run`() {
         val root = tmp.newFolder()
         legacyTree(root)
         val paths = CannoliPaths(root)
-        // Pretend the database moved and the process died before anything else did.
         paths.configInternal.mkdirs()
         File(root, "Config/cannoli.db").renameTo(paths.database)
 
@@ -146,8 +139,6 @@ class ConfigLayoutMigrationTest {
         assertEquals("already here", paths.customCfg.readText())
     }
 
-    // The databases gate their open on runOnce rather than on boot ordering, so it has to stay
-    // cheap and it has to actually migrate the first time it sees a root.
     @Test
     fun `runOnce migrates the first time and is inert after`() {
         val root = tmp.newFolder()
@@ -157,7 +148,6 @@ class ConfigLayoutMigrationTest {
         ConfigLayoutMigration.runOnce(root)
         assertEquals("db", paths.database.readText())
 
-        // A second call must not move anything, including a file the caller put back at an old path.
         write(File(root, "Config/arcade_map.txt"), "put back")
         ConfigLayoutMigration.runOnce(root)
         assertTrue(File(root, "Config/arcade_map.txt").isFile)
@@ -165,8 +155,6 @@ class ConfigLayoutMigrationTest {
 
     private fun backupDir(root: File) = File(root, "Backup/config-pre-layout-migration")
 
-    // The database is the only thing here that cannot be rebuilt, and the only one whose move can
-    // meet a hot -wal left by an unclean shutdown.
     @Test
     fun `the databases are copied aside before anything moves`() {
         val root = tmp.newFolder()
@@ -181,8 +169,6 @@ class ConfigLayoutMigrationTest {
         assertEquals("romm", File(backup, "romm.db").readText())
     }
 
-    // The case that matters: a run died partway, so the tree is half-migrated. The next run must
-    // not replace a good pre-migration copy with that.
     @Test
     fun `a second run never overwrites the backup`() {
         val root = tmp.newFolder()
@@ -191,8 +177,6 @@ class ConfigLayoutMigrationTest {
 
         ConfigLayoutMigration.run(root)
 
-        // A half-migrated tree: the destination is gone and a different database sits at the old
-        // path, so the next run has real work and would take a backup if nothing stopped it.
         paths.database.delete()
         write(File(root, "Config/cannoli.db"), "later and wrong")
         ConfigLayoutMigration.run(root)
@@ -201,8 +185,6 @@ class ConfigLayoutMigrationTest {
         assertEquals("db", File(backupDir(root), "cannoli.db").readText())
     }
 
-    // A backup is a snapshot of one moment. If a partial one exists, topping it up from a tree that
-    // has since half-migrated would produce a mix of two states that never existed together.
     @Test
     fun `an existing backup is never topped up from a later state`() {
         val root = tmp.newFolder()
@@ -250,8 +232,6 @@ class ConfigLayoutMigrationTest {
 
     private fun v1Mappings(root: File) = File(root, "Config/Input/Mappings")
 
-    // Autoconfig sits beside Mappings and holds v2's live cfgs, so deleting one level too high takes
-    // the user's current mappings with it.
     @Test
     fun `v1 input mappings are deleted without touching the autoconfig cfgs beside them`() {
         val root = tmp.newFolder()

@@ -9,10 +9,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/**
- * Watches for removable-storage mount events so boot can re-evaluate setup once a card appears.
- * Platform implementation lives in BootProviders; tests use [None].
- */
 interface MountWatcher {
     fun start(onChange: () -> Unit)
     fun stop()
@@ -34,7 +30,6 @@ class BootSequencer(
     private val now: () -> Long = { System.currentTimeMillis() },
     private val mountWatcher: MountWatcher = MountWatcher.None,
     private val scheduleTimeout: (delayMs: Long, action: () -> Unit) -> Unit = { _, _ -> },
-    // Resolved string passed in because this class is intentionally Android-free; defaulted for tests.
     private val preparingLabel: String = "Preparing",
 ) {
     fun interface InitRunner {
@@ -47,18 +42,11 @@ class BootSequencer(
     private var initJob: Job? = null
     private var storageDependentStarted = false
 
-    // Mount-wait bookkeeping: when setup can't be resolved yet (likely the SD card is still being
-    // mounted, e.g. vold delaying the scan behind the secure keyguard), hold on the splash and wait
-    // for a mount event rather than dropping the user into the storage-select wizard immediately.
-    // The hold only applies while still on the splash (Resolving). Once the user is in the
-    // interactive wizard, granting permission must show setup right away instead of a black wait;
-    // the mount watcher stays armed so a late mount still auto-proceeds.
     private var firstUnresolvedAt = 0L
     private var hasFirstUnresolved = false
     private var mountWatcherStarted = false
     private var timeoutScheduled = false
 
-    /** Idempotent. Call from onCreate, onResume, and every permission/picker/mount result. */
     fun advance() {
         val before = _state.value
         if (before is BootState.Initializing) return
@@ -152,10 +140,6 @@ class BootSequencer(
     }
 
     companion object {
-        // How long to keep the splash up waiting for a removable volume to mount before falling
-        // through to the storage-select wizard. A genuine no-SD first run waits this long once; a
-        // mount event resolves it instantly, and the watcher stays armed afterwards so a late
-        // (keyguard-gated) mount still recovers automatically.
         const val MOUNT_WAIT_TIMEOUT_MS = 6_000L
 
         fun nextState(

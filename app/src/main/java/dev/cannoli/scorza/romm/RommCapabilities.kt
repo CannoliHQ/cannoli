@@ -6,7 +6,6 @@ object RommCapabilities {
 
     fun isKnownUnsupported(version: String?): Boolean = atLeastFloor(version) == false
 
-    // null means the version is unknown or unparseable; callers decide whether that blocks.
     private fun atLeastFloor(version: String?): Boolean? {
         if (version.isNullOrEmpty()) return null
         val core = version.trim().removePrefix("v").removePrefix("V").substringBefore('+')
@@ -25,7 +24,6 @@ object RommCapabilities {
         if (major != 5) return major > 5
         if (minor != 0) return minor > 0
         if (patch > 0) return true
-        // Pre-releases of 5.0.0 itself predate the device auth API, so they sort below the floor.
         return !prerelease
     }
 }

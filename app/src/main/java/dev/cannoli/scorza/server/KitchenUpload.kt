@@ -28,7 +28,6 @@ object KitchenUpload {
         override fun getItemIterator(request: RequestContext): FileItemInputIterator =
             super.getItemIterator(request)
 
-        // Required abstract overrides; unused because only the streaming getItemIterator path is used.
         override fun parseRequest(request: RequestContext): List<Nothing> = emptyList()
 
         override fun parseParameterMap(request: RequestContext): Map<String, List<Nothing>> = emptyMap()
@@ -62,7 +61,6 @@ object KitchenUpload {
         return written
     }
 
-    /** The sibling of [streamTo] for a body that is the file itself rather than a multipart envelope. */
     fun streamRawBody(input: InputStream, contentLength: Long, dest: File) {
         BufferedOutputStream(dest.outputStream(), BUFFER).use { out ->
             val buf = ByteArray(BUFFER)

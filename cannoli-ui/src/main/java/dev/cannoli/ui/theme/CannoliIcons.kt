@@ -1,14 +1,5 @@
 package dev.cannoli.ui.theme
 
-/**
- * Every Nerd Font glyph the launcher draws, in one place.
- *
- * [glyphName] is resolved out of the cmap of app/src/main/assets/fonts/MPlus-1c-NerdFont-Bold.ttf,
- * not copied from an MDI listing. Nerd Fonts remap Material Design Icons into the private use
- * area at whatever MDI version they bundled, and those assignments move between releases, so a
- * codepoint taken from a cheat sheet usually still renders something and is usually the wrong
- * glyph. The debug icon gallery renders [all], so what you see there is what the app draws.
- */
 data class CannoliIcon(
     val glyph: String,
     val constantName: String,
@@ -19,7 +10,6 @@ data class CannoliIcon(
 
 object CannoliIcons {
 
-    // Status bar
     val Wifi = CannoliIcon("\uDB81\uDDA9", "Wifi", "md-wifi", "Wi-Fi is connected", "Status bar")
     val Bluetooth = CannoliIcon("\uDB80\uDCAF", "Bluetooth", "md-bluetooth", "A Bluetooth device is connected", "Status bar")
     val Vpn = CannoliIcon("\uDB82\uDFC4", "Vpn", "md-shield_key", "A VPN is active", "Status bar")
@@ -39,12 +29,10 @@ object CannoliIcons {
     val Battery10 = CannoliIcon("\uDB80\uDC7A", "Battery10", "md-battery_10", "Battery at 10 percent", "Status bar")
     val BatteryAlert = CannoliIcon("\uDB80\uDC83", "BatteryAlert", "md-battery_alert", "Battery critically low", "Status bar")
 
-    // Over the game. Sized by OsdPillStyle.Icon, which a Material glyph needs to carry weight.
     val FastForward = CannoliIcon("\uDB80\uDE11", "FastForward", "md-fast_forward", "Fast forward is on", "Over the game")
     val Rewind = CannoliIcon("\uDB81\uDC5F", "Rewind", "md-rewind", "Rewind is running", "Over the game")
     val RewindEnd = CannoliIcon("\uDB81\uDCAB", "RewindEnd", "md-skip_backward", "Rewind has reached the start of its buffer", "Over the game")
 
-    // Status bar sync
     val CloudSync = CannoliIcon("\uDB81\uDE3F", "CloudSync", "md-cloud_sync", "Save sync in progress", "Status bar sync")
     val CloudCheck = CannoliIcon("\uDB80\uDD60", "CloudCheck", "md-cloud_check", "Saves are in sync", "Status bar sync")
     val CloudAlert = CannoliIcon("\uDB82\uDDE0", "CloudAlert", "md-cloud_alert", "Save sync hit a conflict", "Status bar sync")
@@ -53,7 +41,6 @@ object CannoliIcons {
     val DatabaseSync = CannoliIcon("\uDB83\uDCFF", "DatabaseSync", "md-database_sync", "RomM library cache is syncing", "Status bar sync")
     val DatabaseAlert = CannoliIcon("\uDB85\uDE3A", "DatabaseAlert", "md-database_alert", "RomM library cache sync failed", "Status bar sync")
 
-    // Dialogs
     val Primary = CannoliIcon("\u2605", "Primary", "uni2605", "Multi-disc picker: the primary disc", "Dialogs")
     val CheckCircle = CannoliIcon("\uF058", "CheckCircle", "fa-ok_sign", "Download list: this download finished", "Dialogs")
     val SyncDownload = CannoliIcon("\uF063", "SyncDownload", "fa-arrow_down", "Save sync: pulling from the server", "Dialogs")
@@ -61,14 +48,11 @@ object CannoliIcons {
     val SyncAlert = CannoliIcon("\uF071", "SyncAlert", "fa-warning", "Save sync: conflict or error on this save", "Dialogs")
     val SwapMarked = CannoliIcon("\uF061", "SwapMarked", "fa-arrow_right", "Reassign Players: the player picked up to swap", "Dialogs")
 
-    // Emulator mapping
     val NotInstalled = CannoliIcon("\uDB80\uDC26", "NotInstalled", "md-alert", "Core or app confirmed absent", "Emulator mapping")
     val Unknown = CannoliIcon("\uDB81\uDE25", "Unknown", "md-help_circle_outline", "Cannot tell whether the core is installed", "Emulator mapping")
 
-    // RomM lists
     val Variants = CannoliIcon("\uDB85\uDFF2", "Variants", "md-card_multiple_outline", "This row folds multiple versions", "RomM lists")
 
-    /** Declaration order, which the gallery groups by [CannoliIcon.category]. */
     val all: List<CannoliIcon> = listOf(
         Wifi, Bluetooth, Vpn, Update,
         Kitchen, Download, Charging, BatteryFull,

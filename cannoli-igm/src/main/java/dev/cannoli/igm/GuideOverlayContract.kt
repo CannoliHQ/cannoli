@@ -5,11 +5,6 @@ import android.content.Context
 import android.content.Intent
 import android.provider.Settings
 
-/**
- * Meeting point for the second-display guide overlay. The service itself lives in the app module,
- * which the in-game menu's host cannot depend on, so both sides build the same intent from here and
- * a key can never drift between producer and consumer.
- */
 object GuideOverlayContract {
     const val SERVICE_CLASS = "dev.cannoli.scorza.launcher.GuideOverlayService"
 
@@ -24,8 +19,6 @@ object GuideOverlayContract {
     const val EXTRA_TEXT_ZOOM = "textZoom"
     const val EXTRA_PAGE_COUNT = "pageCount"
 
-    // SYSTEM_ALERT_WINDOW is not granted by a runtime request dialog, so an ungranted install has
-    // to fall back to the main screen rather than showing nothing.
     fun canShow(context: Context): Boolean = Settings.canDrawOverlays(context)
 
     fun start(
@@ -71,9 +64,6 @@ object GuideOverlayContract {
         textZoom: Int,
         pageCount: Int,
     ): Intent = Intent().apply {
-        // Named, not referenced: the emulator process cannot see the service class at compile time.
-        // Every caller is the same app and uid, so an explicit component starts it even though the
-        // service is not exported.
         component = ComponentName(context.packageName, SERVICE_CLASS)
         putExtra(EXTRA_DISPLAY_ID, displayId)
         putExtra(EXTRA_FILE_PATH, filePath)

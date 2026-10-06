@@ -43,7 +43,6 @@ class LaunchSourceRoutingTest {
         pick(platformSource = EmulatorSource.Standalone, ra = true),
     )
 
-    // A stored choice decides on its own, so the filesystem and package probes must not run.
     @Test fun `a stored choice does not evaluate the availability probes`() {
         var probed = false
         LaunchManager.pickSource(

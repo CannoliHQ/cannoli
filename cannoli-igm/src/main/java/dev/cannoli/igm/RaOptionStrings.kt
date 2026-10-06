@@ -11,14 +11,11 @@ data class RaOptionStrings(
     val resetTitle: String = "Reset Settings",
     val resetPlatform: String = "Reset Platform",
     val resetGame: String = "Reset this game",
-    // The core options row. Every other All Settings title comes from RetroArch itself.
     val emulator: String = "Emulator",
     val custom: String = "Custom",
-    /** Cannoli's own screen inside the Input category, so not a curated row label. */
     val shortcuts: String = "Shortcuts",
     val buttonOverrides: String = "Button Overrides",
     val controllerType: String = "Controller Type",
-    /** Formats a Controller Type row when several players have pads. The argument counts from one. */
     val playerController: (Int) -> String = { "Player $it Controller" },
     val shaderApplied: String = "Applied",
     val shaderEnabled: String = "Shader",
@@ -26,9 +23,7 @@ data class RaOptionStrings(
     val shaderAddStart: String = "Add to Start",
     val shaderAddEnd: String = "Add to End",
     val shaderSave: String = "Save Preset",
-    /** Formats one pass row. The argument is the pass number, counted from zero. */
     val shaderPass: (Int) -> String = { "Pass $it" },
-    /** Formats a pass row that already knows which shader it holds. */
     val shaderPassNamed: (Int, String) -> String = { i, name -> "Pass $i: $name" },
     val shaderParameters: String = "Parameters",
     val shaderPreset: String = "Shader",
@@ -37,7 +32,6 @@ data class RaOptionStrings(
     val shaderUnspecified: String = "Unspecified",
     val shaderFilterLinear: String = "Linear",
     val shaderFilterNearest: String = "Nearest",
-    /** Formats a scale row. The argument is a whole-number multiple of the input size. */
     val shaderScaleX: (Int) -> String = { "${it}x" },
     val shaderNone: String = "None",
     val infoCore: String = "Core",
@@ -51,8 +45,6 @@ data class RaOptionStrings(
     val achievementsUnrecognised: String = "Inactive (Game not recognized)",
     val achievementsNone: String = "Inactive (No achievements)",
     val achievementsOffline: String = "Inactive (Could not reach server)",
-    /** Formats the achievements screen's status line when the set came from the offline cache. The
-     *  argument is the cache's relative age, such as "3 days ago". */
     val achievementsOfflineCached: (String) -> String = { "Offline - cached $it" },
     val infoGameId: String = "RA Game ID",
     val infoHash: String = "RA Hash",

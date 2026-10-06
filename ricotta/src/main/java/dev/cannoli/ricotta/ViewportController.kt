@@ -11,11 +11,6 @@ data class ViewportSettings(
     val geometryYPct: Int,
 )
 
-/**
- * Places the game inside the region Screen Geometry defines, less whatever Portrait Margin reserves.
- * The scaling row owns aspect_ratio_index, so the fit obeys it rather than overriding it, and the
- * index is only taken to custom once a setting actually asks for a viewport.
- */
 class ViewportController(
     private val coreGeometry: () -> IntArray?,
     private val applyViewport: (Int, Int, Int, Int) -> Boolean,
@@ -27,35 +22,16 @@ class ViewportController(
 ) {
     private var active = false
 
-    // The apply below forces aspect_ratio_index to ASPECT_RATIO_CUSTOM, so once a viewport is
-    // live the index no longer tells us what the user chose. Remember the last mode and requested
-    // aspect derived while the index still reflected their choice, and fall back to them on later
-    // refreshes.
     private var rememberedMode: ScalingMode? = null
     private var rememberedAspect: Float = 0f
 
-    // The raw aspect_ratio_index and video_scale_integer RetroArch held the moment before that
-    // same apply overwrote them, so shadowedSettings() can hand the in-game menu the value the
-    // user actually picked instead of Cannoli's takeover value.
     private var shadowedAspectIdx: String? = null
     private var shadowedIntegerScale: String? = null
 
-    /** Test seam: declares a viewport already applied, as it would be after a prior refresh. */
     fun markActive() { active = true }
 
-    /**
-     * DECLINED means there is nothing to do (defaults) or the apply itself failed; a caller has
-     * no reason to try again. NOT_READY means the core hasn't reported its geometry yet, which
-     * happens transiently right after the surface is created, before content has loaded - a
-     * caller that wants the viewport to eventually apply should retry.
-     */
     enum class RefreshResult { APPLIED, DECLINED, NOT_READY }
 
-    /**
-     * aspect_ratio_index and video_scale_integer as the user had them just before Cannoli's own
-     * apply overwrote them with its takeover values. Empty while Cannoli does not own the
-     * viewport, so a caller with nothing shadowed reads RetroArch as-is.
-     */
     fun shadowedSettings(): Map<String, String> {
         if (!active) return emptyMap()
         val idx = shadowedAspectIdx ?: return emptyMap()
@@ -76,10 +52,6 @@ class ViewportController(
 
         if (!marginWanted && !geometryWanted) {
             if (active) {
-                // The live index and integer-scale flag are Cannoli's own takeover values by now
-                // (the apply below forces both); restore what shadowedSettings() captured before
-                // that apply instead, falling back to the live read only for the corner case
-                // where nothing was ever captured.
                 val restoreIdx = shadowedAspectIdx?.toIntOrNull() ?: readAspectIdx()
                 val restoreIntegerScale = shadowedIntegerScale?.toBoolean() ?: readIntegerScale()
                 clearViewport(restoreIdx, restoreIntegerScale)
@@ -105,9 +77,6 @@ class ViewportController(
                 readIntegerScale() -> ScalingMode.INTEGER
                 else -> ScalingMode.CORE_REPORTED
             }
-            // 24 fills the region outright and 22 defers to the core's own aspect below; every
-            // other index is a deliberate ratio (e.g. 4:3), read from RetroArch's own LUT rather
-            // than discarded the way falling through to CORE_REPORTED/INTEGER used to discard it.
             requestedAspect = if (aspectIdx == ASPECT_RATIO_FULL || aspectIdx == ASPECT_RATIO_CORE) {
                 0f
             } else {
@@ -140,7 +109,6 @@ class ViewportController(
     }
 
     private companion object {
-        // retroarch/gfx/video_defines.h
         const val ASPECT_RATIO_CORE = 22
         const val ASPECT_RATIO_CUSTOM = 23
         const val ASPECT_RATIO_FULL = 24

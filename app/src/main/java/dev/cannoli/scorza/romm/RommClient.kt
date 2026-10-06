@@ -29,15 +29,6 @@ class RommException(val statusCode: Int?, message: String, cause: Throwable? = n
 
 class RommDownloadCancelled : Exception("download cancelled")
 
-/**
- * How many saves the rolling autosave bucket keeps on the server. Argosy uses ten; this is fifteen,
- * because the autosave is the copy nobody chose to make and therefore the one whose history gets
- * reached for when something goes wrong.
- *
- * Only the autosave slot is ever pruned. A named slot is a save the user made deliberately, so it
- * is never auto-deleted however many of them accumulate; this is a bound on the bucket that
- * rewrites itself on every launch, not on anything anyone chose to keep.
- */
 const val AUTOSAVE_HISTORY_LIMIT = 15
 
 class RommClient(
@@ -123,7 +114,6 @@ class RommClient(
         execute(request, HeartbeatResponse.serializer()).system.version.ifEmpty { null }
     }.getOrNull()
 
-    /** Media types the instance scrapes and stores (SCAN_MEDIA); empty if the config is unreachable. */
     fun scanMedia(): List<String> = runCatching {
         val request = Request.Builder().url(endpoint("/api/config")).get().build()
         execute(request, RommConfigDto.serializer()).scanMedia
@@ -152,13 +142,11 @@ class RommClient(
         return execute(request, RomsPageDto.serializer())
     }
 
-    /** All rom IDs currently on the server, used to purge cached games that were deleted server-side. */
     fun getRomIdentifiers(): List<Int> {
         val request = Request.Builder().url(endpoint("/api/roms/identifiers")).get().build()
         return execute(request, ListSerializer(Int.serializer()))
     }
 
-    /** All platform IDs currently on the server, used to purge cached platforms deleted server-side. */
     fun getPlatformIdentifiers(): List<Int> {
         val request = Request.Builder().url(endpoint("/api/platforms/identifiers")).get().build()
         return execute(request, ListSerializer(Int.serializer()))
@@ -272,8 +260,6 @@ class RommClient(
         val url = endpoint("/api/saves").newBuilder()
             .addQueryParameter("rom_id", romId.toString())
             .addQueryParameter("device_id", deviceId)
-            // The server filters by slot, so asking for one costs less than fetching a rom's whole
-            // save history and dropping most of it here.
             .apply { if (slot != null) addQueryParameter("slot", slot) }
             .build()
         val request = Request.Builder().url(url).get().build()
@@ -297,17 +283,12 @@ class RommClient(
             .addQueryParameter("slot", slot)
             .addQueryParameter("device_id", deviceId)
             .addQueryParameter("overwrite", overwrite.toString())
-            // Every sync added a row and nothing ever removed one. Pruning is confined to the
-            // autosave bucket, which rewrites itself on every launch; a named slot is a save
-            // somebody chose to keep and is never auto-deleted.
             .apply {
                 if (pruneHistory) {
                     addQueryParameter("autocleanup", "true")
                     addQueryParameter("autocleanup_limit", AUTOSAVE_HISTORY_LIMIT.toString())
                 }
             }
-            // Lets the server account for what actually happened in the session it opened, instead
-            // of taking our word for it at complete time.
             .apply { if (sessionId != null) addQueryParameter("session_id", sessionId.toString()) }
             .build()
         val multipart = MultipartBody.Builder().setType(MultipartBody.FORM)

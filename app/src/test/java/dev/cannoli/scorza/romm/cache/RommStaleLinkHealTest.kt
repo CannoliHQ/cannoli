@@ -71,7 +71,6 @@ class RommStaleLinkHealTest {
 
     private fun json(body: String) = MockResponse().setBody(body)
 
-    // Tecmo moved from id 10 to id 11 on the server; Kept is untouched.
     private fun serve(romIdentifiers: MockResponse = json("[11,20]")) {
         server.dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest): MockResponse {

@@ -15,12 +15,10 @@
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
-/* Bridge functions from libretro_bridge.cpp */
 extern void *bridge_get_memory_data(unsigned id);
 extern size_t bridge_get_memory_size(unsigned id);
 extern const struct retro_memory_map *bridge_get_memory_map(void);
 
-/* ---- state ---- */
 static rc_client_t *g_client = NULL;
 static JavaVM *g_jvm = NULL;
 static jobject g_manager = NULL;
@@ -90,8 +88,6 @@ static PendingResponse *g_response_tail = NULL;
 
 static void ra_award_response(const rc_api_server_response_t *response, void *userdata);
 
-/* ---- rcheevos callbacks ---- */
-
 static void ra_get_core_memory(unsigned id, rc_libretro_core_memory_info_t *info) {
     info->data = (uint8_t *)bridge_get_memory_data(id);
     info->size = bridge_get_memory_size(id);
@@ -114,10 +110,8 @@ static void ra_server_call(const rc_api_request_t *request,
                            rc_client_t *client) {
     (void)client;
 
-    /* Intercept game data fetch when we have a game ID override — replace fake hash with game ID */
     if (g_pending_game_id && request->post_data && strstr(request->post_data, "CANNOLI_")) {
         LOGI("Intercepting request, replacing hash with game ID %u", g_pending_game_id);
-        /* Rebuild post data: replace m=CANNOLI_xxx with g=GAMEID */
         char new_post[512];
         const char *p = request->post_data;
         size_t pos = 0;
@@ -167,7 +161,6 @@ static void ra_server_call(const rc_api_request_t *request,
     }
 
     LOGI("server_call: %s", request->url);
-    /* Call Kotlin to execute HTTP */
     JNIEnv *env;
     int attached = 0;
     if ((*g_jvm)->GetEnv(g_jvm, (void **)&env, JNI_VERSION_1_6) != JNI_OK) {
@@ -177,7 +170,6 @@ static void ra_server_call(const rc_api_request_t *request,
 
     jstring jUrl = (*env)->NewStringUTF(env, request->url);
     if (!jUrl) {
-        /* OOM — deliver error response to avoid stalling rcheevos */
         rc_api_server_response_t response;
         memset(&response, 0, sizeof(response));
         response.http_status_code = RC_API_SERVER_RESPONSE_CLIENT_ERROR;
@@ -246,14 +238,10 @@ static void ra_log(const char *message, const rc_client_t *client) {
     ra_log_to_kotlin("rcheevos: %s", message);
 }
 
-/* ---- JNI functions ---- */
-
 JNIEXPORT void JNICALL
 Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeInit(JNIEnv *env, jobject thiz) {
     (*env)->GetJavaVM(env, &g_jvm);
 
-    // Full reset of all module state so each init starts from a clean slate,
-    // regardless of whether the previous session's nativeDestroy ran.
     ra_drain_response_queue();
     if (g_client) {
         rc_client_destroy(g_client);
@@ -392,7 +380,6 @@ static void ra_login_callback(int result, const char *error_message, rc_client_t
                 LOGI("Loading game by ID: %u (console %u)", g_pending_game_id, g_pending_console_id);
                 char hash[33];
                 snprintf(hash, sizeof(hash), "CANNOLI_%010u", g_pending_game_id);
-                /* Register a fake hash→gameID mapping so rc_client can load by "hash" */
                 rc_client_begin_load_game(g_client, hash, ra_load_game_callback, NULL);
                 g_pending_game_id = 0;
             } else {
@@ -748,7 +735,6 @@ Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeHttpResponse(JNI
     pthread_mutex_unlock(&g_queue_mutex);
 }
 
-/* Returns pipe-delimited flat string: id|title|description|points|unlocked|state|unlockTime\n per achievement */
 JNIEXPORT jstring JNICALL
 Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeGetAchievementData(JNIEnv *env, jobject thiz) {
     (void)thiz;

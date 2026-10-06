@@ -1,19 +1,4 @@
 #!/bin/sh
-# Print the controller table for an attached device: what Android reports for each
-# pad, what the kernel actually has, and whether a real evdev node is being hidden.
-#
-# Why the three-way comparison matters: Moorechip based handhelds (Retroid, AYN)
-# republish ONE external pad at a time through uinput carrying the host's own
-# vendor/product id, and suppress that pad's real evdev node. Which pad gets taken
-# depends on connection order and moves when a controller disconnects, so the same
-# controller reports different ids from one session to the next. A pad whose node
-# appears in /proc/bus/input/devices but has no entry in /dev/input is the one
-# currently taken.
-#
-# Usage:
-#   scripts/controller-table.sh [serial]
-#   DEVICE=<serial> scripts/controller-table.sh
-# With several devices attached and no serial given, prompts for one.
 
 set -e
 
@@ -52,11 +37,8 @@ trap 'rm -rf "$TMP"' EXIT
 
 adb -s "$SERIAL" shell 'ls /dev/input/' 2>/dev/null | tr -d '\r' > "$TMP/nodes"
 adb -s "$SERIAL" shell 'dumpsys input' 2>/dev/null | tr -d '\r' > "$TMP/dumpsys"
-# SELinux denies this on some handhelds; the table degrades rather than failing.
 adb -s "$SERIAL" shell 'cat /proc/bus/input/devices' 2>/dev/null | tr -d '\r' > "$TMP/proc" || true
 
-# Nodes Android actually exposes, so a kernel device missing from here is hidden
-# from apps even when its /dev entry exists.
 grep -oE 'Path: /dev/input/event[0-9]+' "$TMP/dumpsys" 2>/dev/null \
     | sed 's|.*/||' | sort -u > "$TMP/android_nodes" || true
 
@@ -77,12 +59,8 @@ if [ ! -s "$TMP/proc" ]; then
     exit 0
 fi
 
-# One row per kernel input device, carrying whether the node exists and whether
-# Android can see it.
 awk -v nodes="$TMP/nodes" -v android="$TMP/android_nodes" '
     BEGIN {
-        # Read the lookups under the default line-based RS, then switch to
-        # paragraph mode for the records this script actually parses.
         while ((getline line < nodes) > 0) have[line] = 1
         while ((getline line < android) > 0) exposed[line] = 1
         RS = ""
@@ -105,13 +83,9 @@ awk -v nodes="$TMP/nodes" -v android="$TMP/android_nodes" '
                 else node = ""
             }
         }
-        # Skip the board own buttons, jacks and sensors; they carry no vendor id.
         if (vend == "0000" || node == "") next
 
         vidpid = vend ":" prod
-        # Bus 0003 claims USB. A Bluetooth pad reporting it is a uinput clone, so
-        # counting only these finds the host virtual id without tripping over a
-        # real pad whose several endpoints legitimately share one id.
         if (bus == "0003") virtual[vidpid]++
         rows[++r] = node "\t" vidpid "\t" name "\t" bus
     }
@@ -125,8 +99,6 @@ awk -v nodes="$TMP/nodes" -v android="$TMP/android_nodes" '
             app = (node in exposed) ? "yes" : "no"
 
             note = ""
-            # In the kernel but with no device node: taken by the vendor layer and
-            # replaced by a uinput clone carrying the host id.
             if (!(node in have)) note = "  <- SUPPRESSED, real node hidden"
             else if (bus == "0003" && virtual[vidpid] > 1) note = "  <- uinput clone"
 

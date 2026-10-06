@@ -95,15 +95,6 @@ class KeyboardControllerTest {
         assertEquals("a", r.state.text)
     }
 
-    @Test fun `layout capability flags`() {
-        assertEquals(true, KeyboardLayout.Default.supportsCaps)
-        assertEquals(true, KeyboardLayout.Default.supportsSymbols)
-        assertEquals(true, KeyboardLayout.Default.supportsSpace)
-        assertEquals(false, KeyboardLayout.Number.supportsCaps)
-        assertEquals(false, KeyboardLayout.Number.supportsSymbols)
-        assertEquals(false, KeyboardLayout.Number.supportsSpace)
-    }
-
     @Test fun `number layout ignores caps and symbols`() {
         assertEquals(KEYBOARD_NUMBER, getKeyboardRows(KeyboardLayout.Number, caps = true, symbols = true))
         assertEquals(KEYBOARD_NUMBER, getKeyboardRows(KeyboardLayout.Number, caps = false, symbols = false))

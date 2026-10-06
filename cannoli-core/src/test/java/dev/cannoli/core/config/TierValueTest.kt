@@ -6,8 +6,6 @@ import org.junit.Test
 
 class TierValueTest {
 
-    // The three states these bugs kept collapsing: a missing key is silence, an empty one is a
-    // deliberate no, and neither is the other.
     @Test fun `a missing key means no opinion and an empty one means deliberately nothing`() {
         assertEquals(TierValue.Inherit, TierValue.of(null))
         assertEquals(TierValue.Off, TierValue.of(""))
@@ -27,7 +25,6 @@ class TierValueTest {
         }
     }
 
-    // Callers that only want the choice should not have to know which of the other two they have.
     @Test fun `only a chosen value reads as one`() {
         assertEquals("x", TierValue.Set("x").chosen)
         assertNull(TierValue.Off.chosen)

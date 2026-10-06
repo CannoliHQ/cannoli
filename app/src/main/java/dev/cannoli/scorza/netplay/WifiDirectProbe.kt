@@ -16,15 +16,6 @@ import java.net.InetSocketAddress
 import java.net.ServerSocket
 import java.net.Socket
 
-/**
- * Throwaway exercise of [WifiDirectGroup], run from the Debug menu.
- *
- * The group owner sends numbers and the other side prints them, which is the whole question netplay
- * asks of a transport: a socket to the host that stays up. It runs on RetroArch's own netplay port
- * so the answer is about the port netplay would use.
- *
- * Delete once the netplay design is settled. Nothing in the launcher depends on it.
- */
 class WifiDirectProbe(context: Context) {
 
     private val log = RotatingLogFile("wifidirect.log", 256L * 1024, "HH:mm:ss.SSS")
@@ -35,13 +26,10 @@ class WifiDirectProbe(context: Context) {
     private val numbers = ArrayDeque<Int>()
     private var link: Job? = null
 
-    /** Fired on the main thread with what is visible now. */
     var onPeers: ((List<WifiDirectGroup.Peer>) -> Unit)? = null
 
-    /** Fired on the main thread with a one-line state and the numbers seen so far. */
     var onLink: ((String, List<Int>) -> Unit)? = null
 
-    /** True once this side has claimed group ownership, so the screen can offer the other action. */
     var hosting = false
         private set
 
@@ -121,7 +109,6 @@ class WifiDirectProbe(context: Context) {
     private fun receive(owner: InetAddress) {
         log.write("client, connecting to ${owner.hostAddress}:$LINK_PORT")
         report("connecting to the host")
-        // The owner's socket is not listening the instant the group forms.
         Thread.sleep(1_500)
         Socket().use { socket ->
             socket.connect(InetSocketAddress(owner, LINK_PORT), 10_000)
@@ -149,10 +136,8 @@ class WifiDirectProbe(context: Context) {
     }
 
     private companion object {
-        /** RetroArch's default netplay port, so this measures the port netplay would use. */
         const val LINK_PORT = 55435
 
-        /** The record the design would carry, so the probe measures the real payload. */
         val TXT = mapOf(
             "nick" to "ProbeHost",
             "game" to "Super Mario Kart (USA)",

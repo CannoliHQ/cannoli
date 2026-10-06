@@ -52,7 +52,6 @@ class RomsRepositoryAchievementsModeTest {
         assertNull(repo.gameById(seedRom())!!.raHardcore)
     }
 
-    /** All three, including the way back: a game must be able to stop overriding. */
     @Test fun `every mode survives a round trip`() {
         val id = seedRom()
         repo.setRaHardcore(id, true)
@@ -63,7 +62,6 @@ class RomsRepositoryAchievementsModeTest {
         assertNull(repo.gameById(id)!!.raHardcore)
     }
 
-    /** The new column widens BASE_SELECT, so every other mapped column has to keep its index. */
     @Test fun `the surrounding columns still map to the right fields`() {
         val id = seedRom()
         repo.setRaHardcore(id, true)

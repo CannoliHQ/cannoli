@@ -19,7 +19,6 @@ import dev.cannoli.scorza.download.DownloadItem
 import dev.cannoli.scorza.download.DownloadKind
 import dev.cannoli.scorza.download.DownloadStaging
 
-/** What a RomM transfer needs that the queue has no business knowing. */
 data class RommPayload(
     val rommId: Int,
     val game: RommGame? = null,
@@ -27,11 +26,6 @@ data class RommPayload(
     val file: dev.cannoli.scorza.romm.RommFile? = null,
 )
 
-/**
- * The RomM half of the download queue: roms, their manuals and firmware. Scheduling, progress,
- * cancellation and the terminal state belong to the queue now, so these bodies only fetch, install
- * and clean up after themselves.
- */
 class RommDownloadHandler(
     override val kind: DownloadKind,
     private val client: RommClient,
@@ -97,7 +91,6 @@ class RommDownloadHandler(
                 )
             }.onFailure { RommLog.write("ERROR romm guide adopt ${p.rommId} failed: ${it.message}") }
             artDownloader.download(store.host, game.coverPath, item.tag, result.artBaseName)
-            // A hack shares its entry's id, which the base game's link already owns.
             if (file == null || !dev.cannoli.scorza.romm.RommHacks.isHack(file)) {
                 links.upsertLink(p.rommId, result.linkRelativePath, "download")
             }

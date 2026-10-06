@@ -143,9 +143,6 @@ class InputTesterViewModelTest {
 
     @Test
     fun triggerAxisDoesNotAffectPressedButtonsInOnMotion() {
-        // Trigger button state is now managed via synthetic key events from the controller, not
-        // motion events. The motion event still records the analog leftTrigger value but does not
-        // toggle btn_l2 / btn_r2 in pressedButtons.
         val vm = vm()
         vm.onMotion(0, 10, "Test Pad", 0f, 0f, 0f, 0f, leftTrigger = 0.9f, rightTrigger = 0f, hatButtons = emptySet())
         val pressed = vm.state.value.portStates[0]?.pressedButtons ?: emptySet()

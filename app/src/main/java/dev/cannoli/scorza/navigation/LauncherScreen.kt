@@ -18,32 +18,19 @@ sealed class LauncherScreen {
         val scrollTarget: Int
         val itemCount: Int
 
-        /**
-         * Where each selectable row is drawn, when that differs from its position in selection.
-         *
-         * Selection counts only rows you can land on, while the list renders headers and dividers
-         * too, so on such a screen the two index spaces drift apart. A page jump reads the viewport
-         * in rendered space and has no way back without this. Null, the default, means every row is
-         * selectable and the two are the same.
-         */
         val selectableRows: List<Int>? get() = null
 
         fun withScroll(selectedIndex: Int, scrollTarget: Int): LauncherScreen
     }
 
-    /** Every step of the first-run wizard, so callers can gate on the wizard as a whole. */
     interface OnboardingScreen
 
     data object SystemList : LauncherScreen()
     data object GameList : LauncherScreen()
-    /** [quickMenuRow] names the row Back returns to, [quickMenuCategory] the category the quick menu
-     *  landed on (null being the category list), so Back only leaves at the level it arrived at. */
     data class Settings(
         val quickMenuRow: dev.cannoli.scorza.ui.quickmenu.QuickMenuRow? = null,
         val quickMenuCategory: SettingsCategory? = null,
     ) : LauncherScreen()
-    // [followUpMappingId] is set when the tester was opened to check a mapping that was just
-    // built, and is what gets edited if the user says it did not work.
     data class InputTester(val followUpMappingId: String? = null) : LauncherScreen()
     data class SaveStatePicker(
         val rom: dev.cannoli.scorza.model.Rom,
@@ -83,8 +70,6 @@ sealed class LauncherScreen {
         val items: List<dev.cannoli.scorza.ui.screens.MappingItem>,
         val overridesCount: Int = 0,
         val resettable: Boolean = false,
-        // Non-null scopes the screen to a single game: it edits that game's override instead
-        // of the platform mapping, and drops the platform-wide actions.
         val romId: Long? = null,
         val gameName: String? = null,
         override val selectedIndex: Int = 0,
@@ -93,8 +78,6 @@ sealed class LauncherScreen {
         val selectableItems: List<dev.cannoli.scorza.ui.screens.MappingItem>
             get() = items.filter { it.isSelectable }
         override val itemCount: Int get() = selectableItems.size
-        // The same list the renderer builds to place the highlight, so a page jump measures the
-        // viewport against the rows actually on screen.
         override val selectableRows: List<Int>
             get() = items.mapIndexedNotNull { idx, it -> idx.takeIf { _ -> it.isSelectable } }
         override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
@@ -108,8 +91,6 @@ sealed class LauncherScreen {
         override val selectedIndex: Int = 0,
         override val scrollTarget: Int = 0,
     ) : LauncherScreen(), ScrollableScreen {
-        // Was hardcoded to 0, so the list never scrolled and cores with long firmware lists
-        // (fbneo declares 23 entries) had most of them unreachable.
         override val itemCount: Int get() = firmware.size
         override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
     }
@@ -176,9 +157,6 @@ sealed class LauncherScreen {
         override val itemCount: Int get() = dev.cannoli.scorza.input.CanonicalButton.entries.size
         override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
     }
-    // Shown full-screen, unskippable, when a pad connects that Cannoli cannot identify. No
-    // selectedIndex/scrollTarget: there is nothing to navigate, only raw key capture.
-    // The step counter belongs to first run, so the wizard has to know which way it was entered.
     data class LegendWizard(val deviceId: Int, val duringFirstRun: Boolean = false) : LauncherScreen()
     data class LoggingSettings(
         override val selectedIndex: Int = 0,
@@ -320,8 +298,6 @@ sealed class LauncherScreen {
         override val itemCount: Int get() = entries.size
         override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
     }
-    // Debug builds only. Renders CannoliIcons.all so what you see is what the app draws, rather
-    // than a second hand-maintained list that could disagree with it.
     data class IconGallery(override val selectedIndex: Int = 0, override val scrollTarget: Int = 0) : LauncherScreen(), ScrollableScreen {
         override val itemCount: Int get() = dev.cannoli.ui.theme.CannoliIcons.all.size
         override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
@@ -343,8 +319,6 @@ sealed class LauncherScreen {
         val granted: Set<OnboardingPermission> = emptySet(),
         val selectedIndex: Int = 0,
     ) : LauncherScreen(), OnboardingScreen {
-        // Every row is a permission and continue lives in the footer, so focus is a plain lookup
-        // into the list. Adding a permission shifts nothing.
         val focusedPermission: OnboardingPermission? get() = permissions.getOrNull(selectedIndex)
         val isFocusedGranted: Boolean get() = focusedPermission?.let { it in granted } == true
         val canContinue: Boolean get() = permissions.none { it.required && it !in granted }
@@ -367,7 +341,6 @@ sealed class LauncherScreen {
         val existingInstallVolumeIndex: Int? = null,
     ) : LauncherScreen(), OnboardingScreen {
         val selectedVolume: Pair<String, String>? get() = volumes.getOrNull(volumeIndex)
-        // The custom entry is the one with no path of its own, which is what makes it custom.
         val isCustomVolume: Boolean get() = selectedVolume?.second?.isEmpty() == true
         val canContinue: Boolean
             get() = volumes.isNotEmpty() && (!isCustomVolume || customPath != null)

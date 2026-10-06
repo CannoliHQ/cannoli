@@ -12,10 +12,6 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.io.File
 
-/**
- * Box art lives on shared storage, so without a marker every cover Cannoli downloads turns up in
- * the user's gallery beside their photos.
- */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class ArtNoMediaTest {
@@ -42,7 +38,6 @@ class ArtNoMediaTest {
         assertTrue("not hidden: $bare", bare.isEmpty())
     }
 
-    // Nothing else on the card should gain one: these hold files the user put there on purpose.
     @Test fun `only Art is hidden`() {
         val root = seeded("nomedia-scope")
         for (dir in listOf("Roms", "Saves", "Save States", "BIOS", "Guides", "Wallpapers", "Media")) {
@@ -61,11 +56,6 @@ class ArtNoMediaTest {
         assertTrue(marker.isFile)
     }
 
-    /**
-     * The marker only stops the next scan. A library scraped before it existed is already in
-     * MediaStore, so the rescan is what actually clears the gallery, and it must run once rather
-     * than on every boot: it walks the whole art tree.
-     */
     @Test fun `the rescan is marked so it runs once, not every boot`() {
         val root = seeded("nomedia-rescan")
         val marker = File(root, "Art/.rescanned_for_nomedia")
@@ -80,7 +70,6 @@ class ArtNoMediaTest {
         assertEquals("the rescan ran again", stamp, marker.lastModified())
     }
 
-    // Nothing should be scanned when no context is supplied, which is how the tests above run.
     @Test fun `seeding without a context leaves no rescan marker`() {
         val root = File(ctx.cacheDir, "nomedia-nocontext").apply { deleteRecursively(); mkdirs() }
         val coreInfo = CoreInfoRepository(ctx.assets).also { it.load() }
@@ -91,7 +80,6 @@ class ArtNoMediaTest {
         assertFalse(File(root, "Art/.rescanned_for_nomedia").exists())
     }
 
-    // A folder can outlive the marker above it, so the root alone is not enough.
     @Test fun `a platform folder created later is hidden on its own`() {
         val root = File(ctx.cacheDir, "nomedia-later").apply { deleteRecursively(); mkdirs() }
         val late = File(root, "Art/SNES")

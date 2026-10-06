@@ -10,11 +10,6 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.io.File
 
-/**
- * scripts/curated-cores.txt decides what ships. The CI sync copies from it, so the asset directory
- * and the list drift apart silently if nobody checks: a rename upstream stops a core being copied,
- * and the platform quietly loses an option.
- */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class CuratedCatalogueTest {
@@ -23,7 +18,6 @@ class CuratedCatalogueTest {
         .getApplicationContext<android.content.Context>().assets
 
     private fun repoFile(rel: String): File {
-        // Unit tests run with the module dir as the working directory.
         val here = File(rel)
         return if (here.exists()) here else File("../$rel")
     }
@@ -63,9 +57,6 @@ class CuratedCatalogueTest {
                 line.substringBefore(' ') to line.substringAfter(' ').split(',').map { it.trim() }.toSet()
             }
 
-    // The reason mamemess and ymir were dropped. A core with only one ABI would silently vanish on
-    // half the devices, so it fails here instead. Arm64OnlyCores is the one exception: it hides
-    // those cores from armeabi-v7a devices at runtime rather than shipping a broken option.
     @Test
     fun `every curated core has a build for both ABIs, except the declared arm64-only set`() {
         val abis = abis()
@@ -77,9 +68,6 @@ class CuratedCatalogueTest {
         )
     }
 
-    // Arm64OnlyCores exists to hide cores that were never built for armeabi-v7a. Nothing stops the
-    // set from being misused to hide a core that simply lost a build it used to have, or one that
-    // is not even curated, so both are asserted here rather than trusted.
     @Test
     fun `every arm64-only core is really arm64-only and curated`() {
         val abis = abis()
@@ -98,7 +86,6 @@ class CuratedCatalogueTest {
         )
     }
 
-    // A platform whose declared core is not curated can never offer its own default.
     @Test
     fun `every platform default core is curated`() {
         val curated = curated()

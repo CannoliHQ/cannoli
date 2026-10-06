@@ -11,8 +11,6 @@ class InputTesterInputHandler @Inject constructor(
     private val nav: NavigationController,
     private val controller: InputTesterController,
 ) : ScreenInputHandler {
-    // Back leaves the tester as surely as the start + select hold does, so it has to tear down the
-    // same things. Popping on its own left the evaluators holding whatever the tester put in them.
     override fun onBack() {
         controller.exit()
         nav.pop()

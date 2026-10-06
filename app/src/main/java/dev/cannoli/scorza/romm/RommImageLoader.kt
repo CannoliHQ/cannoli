@@ -15,8 +15,6 @@ object RommImageLoader {
         ImageLoader.Builder(context)
             .okHttpClient { http.client() }
             .respectCacheHeaders(false)
-            // Lazy: the loader is built while first run is still on screen, before the storage step
-            // has said where the cache belongs. Coil resolves this when it first loads an image.
             .diskCache {
                 DiskCache.Builder()
                     .directory(cacheDir())

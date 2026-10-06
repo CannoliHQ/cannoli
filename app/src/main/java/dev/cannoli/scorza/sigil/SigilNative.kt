@@ -1,14 +1,5 @@
 package dev.cannoli.scorza.sigil
 
-/**
- * The platform's own id for a game, read out of the rom, or null when this build cannot read one.
- *
- * The library loads into a flag rather than an init block, for the reason RaHasher records: an init
- * block throws at whatever first touches the object, outside any try this object owns.
- *
- * The shim answers with seven strings whether it succeeded or not, status first, so a failure keeps
- * its reason for the log instead of collapsing into a bare null.
- */
 object SigilNative {
     val isAvailable: Boolean = try {
         System.loadLibrary("sigil_jni")

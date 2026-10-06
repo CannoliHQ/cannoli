@@ -12,15 +12,6 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.io.File
 
-/**
- * A core is installed when it can run, which for two of them means more than the `.so` being on
- * disk: blueMSX and ScummVM need system files that are a separate download, so a core with one and
- * not the other has not arrived. Reporting it installed sends the user to a launch that cannot work
- * and offers nothing to fix it.
- *
- * Bundled sets deliberately do not count. The APK carries them and the launch lays them down, so
- * their absence is never something downloading the core would repair.
- */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class CoreCompletenessTest {
@@ -70,7 +61,6 @@ class CoreCompletenessTest {
         )
     }
 
-    // blueMSX unpacks two folders and needs both, so half an extraction is not an install.
     @Test fun `half the folders is still not installed`() {
         val root = root("complete-half")
         deliver(root, "COLECOVISION", "Databases")
@@ -93,8 +83,6 @@ class CoreCompletenessTest {
         )
     }
 
-    // The guard on the whole design: a core with a bundled set must never read as not installed,
-    // or the user is sent to download something the APK is already carrying.
     @Test fun `a core with only bundled system files is installed without them on disk`() {
         val root = root("complete-bundled")
         assertEquals(

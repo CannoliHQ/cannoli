@@ -32,7 +32,5 @@ class RotatingLogFile(
         LogWriter.write(sink, "${stamp()}  $message\n")
     }
 
-    // SimpleDateFormat is not thread safe and these logs are written from several threads.
-    // The lock guards formatting only, never IO, so it cannot stall the caller.
     private fun stamp(): String = synchronized(timestampFmt) { timestampFmt.format(Date()) }
 }

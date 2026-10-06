@@ -14,7 +14,6 @@ import java.util.concurrent.Executor
 class CheatManagerTest {
     @get:Rule val tmp = TemporaryFolder()
 
-    /** Writes land before the call returns, so every assertion below stays synchronous. */
     private val direct = Executor { it.run() }
 
     private fun manager(tag: String, game: String) =

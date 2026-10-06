@@ -8,12 +8,6 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/**
- * A bridge holding this visit's edits apart from the table they layer over, as the real one does.
- *
- * Absent from [staged] is a row this visit never touched, so [inherited] answers for it; present
- * and empty is a row it cleared, which is this scope saying the action is off and not deferring.
- */
 private class StagingBridge : FakeRetroArchBridge() {
     val staged = LinkedHashMap<ShortcutAction, Set<Int>>()
     val inherited = mutableMapOf<ShortcutAction, Set<Int>>()
@@ -40,7 +34,6 @@ class IGMControllerShortcutsTest {
         CoroutineScope(Dispatchers.Unconfined), Dispatchers.Unconfined,
     ).also { it.binding.useTickerForTest(NoTicker) }
 
-    /** No thread behind the hold, so a test can commit it directly. */
     private object NoTicker : BindingTicker {
         override fun post(delayMs: Long, action: Runnable) {}
         override fun cancel(action: Runnable) {}
@@ -58,7 +51,6 @@ class IGMControllerShortcutsTest {
     private val first = ShortcutAction.entries[0]
     private val second = ShortcutAction.entries[1]
 
-    // The defect that started this: binding one row and then another lost the first.
     @Test fun `binding several rows keeps every one of them`() {
         val bridge = StagingBridge()
         val c = controller(bridge)
@@ -97,7 +89,6 @@ class IGMControllerShortcutsTest {
         assertEquals(setOf(102, 103), c.row(0).chord)
     }
 
-    // The defect this design settles: a chord coming from the global table would not clear.
     @Test fun `clear takes away a chord the row only inherited`() {
         val bridge = StagingBridge().apply { inherited[first] = setOf(104) }
         val c = controller(bridge)
@@ -119,7 +110,6 @@ class IGMControllerShortcutsTest {
         assertTrue(c.row(0).chord.isEmpty())
     }
 
-    // Otherwise leaving Settings asks where to save a change that changes nothing.
     @Test fun `clear on a row that already shows nothing stages no change`() {
         val bridge = StagingBridge()
         val c = controller(bridge)
@@ -140,7 +130,6 @@ class IGMControllerShortcutsTest {
         assertEquals(setOf(104), c.row(1).chord)
     }
 
-    // A pad repeats key downs while held, so the tail of a chord must not become navigation.
     @Test fun `keys held through a commit do not reach the list`() {
         val bridge = StagingBridge().apply { inherited[first] = setOf(104) }
         val c = controller(bridge)
@@ -150,7 +139,6 @@ class IGMControllerShortcutsTest {
         c.handleKeyDown(102)
         c.handleKeyDown(NORTH)
         c.binding.forceCommitForTest()
-        // Still held, still repeating.
         c.handleKeyDown(NORTH)
 
         assertEquals("the chord must not have cleared itself", setOf(102, NORTH), bridge.staged[first])

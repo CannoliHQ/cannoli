@@ -39,9 +39,6 @@ class AutoconfigSeeder(
         return pin.isNullOrEmpty() || pin.equals(buildModel.trim(), ignoreCase = true)
     }
 
-    // Prunable only if explicitly INPUT_DB, or unkeyed under a name we currently ship: an unkeyed
-    // cfg under any other name may be one RetroArch itself wrote into this directory, or one the
-    // user hand-dropped in, and neither carries a cannoli_ key to tell it apart.
     private fun prune(seeded: Set<String>, bundledNames: Set<String>) {
         val files = targetDir.listFiles { f: File -> f.isFile && f.extension.equals("cfg", true) } ?: return
         for (file in files) {
@@ -54,13 +51,9 @@ class AutoconfigSeeder(
         }
     }
 
-    // A file that cannot be read or parsed must be treated as user owned, so a transient read
-    // failure skips the overwrite instead of silently clobbering a hand-tuned cfg.
     private fun isUserOwned(file: File): Boolean =
         runCatching { RetroArchCfgParser.parse(file.readText()).isUserOwned }.getOrDefault(true)
 
-    // Reset restores the bundled cfg instead of only dropping the user's, because an edit is saved
-    // over the file it was resolved from and RetroArch reads the same directory.
     fun reseedSingle(fileName: String): Boolean = runCatching {
         val asset = source.listCfgFiles().firstOrNull { it.substringAfterLast('/') == fileName }
             ?: return false

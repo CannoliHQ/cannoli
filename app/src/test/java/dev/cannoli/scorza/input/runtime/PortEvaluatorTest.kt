@@ -65,8 +65,6 @@ class PortEvaluatorTest {
 
     @Test
     fun second_source_asserting_held_canonical_does_not_duplicate_pressed() {
-        // BTN_L2 bound to BOTH a key (104) and an axis (17). Both pressed in turn,
-        // only the first should emit Pressed.
         val e = PortEvaluator(
             template(mapOf(
                 CanonicalButton.BTN_L2 to listOf(
@@ -79,9 +77,6 @@ class PortEvaluatorTest {
             ))
         )
         val first = e.evaluateKeyDown(104, isAndroidRepeat = false)
-        // Simulate the axis binding asserting via evaluateAxis (Task 3 lands the impl).
-        // For Task 2, we only verify the duplicate-Pressed avoidance via the key path:
-        // pressing the same key twice does not duplicate.
         val secondPressOfSameKey = e.evaluateKeyDown(104, isAndroidRepeat = false)
         assertEquals(listOf(CanonicalEvent.Pressed(CanonicalButton.BTN_L2)), first)
         assertTrue(secondPressOfSameKey.isEmpty())
@@ -124,7 +119,6 @@ class PortEvaluatorTest {
 
     @Test
     fun axis_trigger_with_negative_resting_value_handles_issue_151() {
-        // Stadia LTRIGGER: rests at -1.0, active 0..1.
         val e = PortEvaluator(
             template(mapOf(
                 CanonicalButton.BTN_L2 to listOf(InputBinding.Axis(
@@ -137,9 +131,7 @@ class PortEvaluatorTest {
         val partial = e.evaluateAxis(mapOf(17 to 0f))
         val full = e.evaluateAxis(mapOf(17 to 1f))
         assertTrue(resting.isEmpty())
-        // At raw=0, normalized=0.5, exactly at threshold -> pressed.
         assertEquals(listOf(CanonicalEvent.Pressed(CanonicalButton.BTN_L2)), partial)
-        // At raw=1, still pressed; no duplicate event.
         assertTrue(full.isEmpty())
     }
 
@@ -211,13 +203,11 @@ class PortEvaluatorTest {
             ))
         )
         e.evaluateAxis(mapOf(0 to 0.7f))
-        // normalize: (0.7 - 0) / (1 - 0) = 0.7, clamped to [0,1]
         assertEquals(0.7f, e.analogValue(CanonicalButton.BTN_L3), 0.001f)
     }
 
     @Test
     fun two_axis_bindings_for_same_canonical_button_are_independent() {
-        // BTN_L2 bound to both axis-17-positive and axis-18-positive (unusual but legal).
         val e = PortEvaluator(
             template(mapOf(
                 CanonicalButton.BTN_L2 to listOf(

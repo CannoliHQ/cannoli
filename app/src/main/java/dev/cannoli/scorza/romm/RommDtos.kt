@@ -82,8 +82,6 @@ data class SimpleRomDto(
     @SerialName("full_path") val fullPath: String = "",
 )
 
-// Only the resources RomM stores and serves itself. The provider urls in ss_metadata (box3d_url and
-// friends) point straight at ScreenScraper and are intentionally left unparsed.
 @Serializable
 data class SsMetadataDto(
     @SerialName("box3d_path") val box3dPath: String? = null,

@@ -9,8 +9,6 @@ object RaSetMetadata {
         val obj = try { JSONObject(body) } catch (_: Exception) { return null }
         if (!obj.optBoolean("Success", false)) return null
         val title = obj.optString("Title", "")
-        // The top-level GameId, not a subset's: the first sets request asks by ROM hash and carries
-        // no id, so this body is the only place the game the answer belongs to is named.
         val gameId = obj.optInt("GameId", 0)
         var count = 0
         var points = 0

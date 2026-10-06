@@ -24,8 +24,6 @@ class AppsRepository(
         )
     }
 
-    // Deliberately not all(type).map { ... }: rowToApp resolves artwork, which would build and cache
-    // the tag's art map on the singleton ArtworkLookup before the Kitchen has uploaded anything.
     fun artBasenames(type: AppType): List<String> = db.queryAll(
         "SELECT display_name FROM apps WHERE type = ? ORDER BY sort_order, display_name COLLATE NOCASE",
         type.name,

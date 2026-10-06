@@ -3,14 +3,6 @@ package dev.cannoli.scorza.config
 import java.io.File
 import java.security.MessageDigest
 
-/**
- * Moves a pre-Internal config tree onto the current layout: the top of Config/ is what a user may
- * edit, and Config/Internal holds what Cannoli owns.
- *
- * Every move is decided from the filesystem alone, never from a "done" flag. A run that dies
- * halfway leaves each entry either at its old path or its new one, and the next boot moves
- * whatever is still behind. That matters more than speed here: the tree holds the user's library.
- */
 object ConfigLayoutMigration {
 
     private val DATABASES = listOf("cannoli.db", "romm.db")
@@ -44,8 +36,6 @@ object ConfigLayoutMigration {
         return pending.count { (from, to) -> move(from, to) }
     }
 
-    // v2 never creates this folder, so finding one means a 1.x install left it. File.delete refuses
-    // a non-empty directory, so anything v1 did not write keeps the folder.
     private fun deleteV1InputMappings(paths: CannoliPaths) {
         val dir = paths.configInputMappings
         val files = dir.listFiles() ?: return
@@ -83,17 +73,6 @@ object ConfigLayoutMigration {
         return md.digest().joinToString("") { "%02x".format(it) }
     }
 
-    /**
-     * Copies the databases aside before the first move.
-     *
-     * Only the databases, because they are the only thing here that cannot be rebuilt: the rest is
-     * config text or regenerable cache, and a rename inside one filesystem is atomic anyway. The
-     * database is different in kind, since a previous process can leave a hot -wal behind, so the
-     * three files travel together and a copy taken after an unclean shutdown stays recoverable.
-     *
-     * Never overwritten. A second run must not replace a good pre-migration copy with a
-     * half-migrated one, which is exactly the state a run that died partway leaves behind.
-     */
     private fun backupDatabases(paths: CannoliPaths) {
         val dest = File(paths.backupDir, BACKUP_DIR_NAME)
         if (dest.exists()) return
@@ -107,13 +86,9 @@ object ConfigLayoutMigration {
         }
     }
 
-    // Old path to new. Anything absent is skipped, so this doubles as the list of what a fresh
-    // install simply never has.
     private fun moves(paths: CannoliPaths): List<Pair<File, File>> {
         val config = paths.configDir
         return buildList {
-            // SQLite keeps its -wal and -shm beside the database. Moving one without the others
-            // strands committed transactions still sitting in the log, so the set travels together.
             for (name in DATABASES) {
                 for (suffix in SIDECARS) {
                     add(File(config, "$name$suffix") to File(paths.configInternal, "$name$suffix"))
@@ -124,7 +99,6 @@ object ConfigLayoutMigration {
             add(File(config, "Assets") to paths.configAssets)
             add(File(config, "RetroAchievements") to paths.configRetroAchievements)
 
-            // custom.cfg is the user's, so it leaves RetroArch/ before the rest of it moves inward.
             add(File(File(config, "RetroArch"), "custom.cfg") to paths.customCfg)
             add(File(config, "RetroArch") to paths.configRetroArch)
 
@@ -138,12 +112,9 @@ object ConfigLayoutMigration {
 
     private fun move(from: File, to: File): Boolean {
         if (!from.exists()) return false
-        // Already migrated, or the user wrote their own: never clobber the destination.
         if (to.exists()) return false
         to.parentFile?.mkdirs()
         if (from.renameTo(to)) return true
-        // A rename across mount points fails. Copy instead, and only drop the source once the
-        // copy is actually on disk.
         return runCatching {
             if (from.isDirectory) {
                 from.copyRecursively(to, overwrite = false)

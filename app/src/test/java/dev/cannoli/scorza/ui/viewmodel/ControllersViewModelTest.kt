@@ -159,8 +159,6 @@ class ControllersViewModelTest {
         assertTrue(model.state.value.savedMappings.isEmpty())
     }
 
-    // An edit overwrites the bundled cfg it came from, so deleting it would leave RetroArch a hole
-    // where its own database entry used to be.
     @Test
     fun `reset puts the pristine bundled cfg back on disk`() {
         writeStadiaBundled()
@@ -176,14 +174,6 @@ class ControllersViewModelTest {
         assertEquals("Stadia Controller", portRouter.mappingFor(7)?.displayName)
     }
 
-    // Mirrors the scenario in the failure branch: the delete succeeds but the restore write fails
-    // (a flaky SD card). The pad must not silently keep looking reset, it falls to the runtime
-    // default instead of the curated cfg.
-    //
-    // The ErrorLog.write side effect is deliberately not asserted. ErrorLog is a process-global
-    // async singleton with no seam for tests, so pinning it would mean waiting on a flush and
-    // trading a real flake for coverage the UNIDENTIFIED assertion already provides: that
-    // assertion only holds if the failure branch ran.
     @Test
     fun `reset does not present success when the restore write fails`() {
         writeStadiaBundled()

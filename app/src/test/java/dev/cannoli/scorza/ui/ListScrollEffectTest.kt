@@ -18,11 +18,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/**
- * SectionedList draws the section header inside the list item, so a row carrying a header is twice
- * as tall as a plain one. These tests pin the invariant that survives that: whatever the row
- * heights, moving the selection must leave the selected row fully inside the viewport.
- */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class ListScrollEffectTest {
@@ -94,10 +89,6 @@ class ListScrollEffectTest {
         walkUp(20)
     }
 
-    /**
-     * The Credits localization list: nine contributors, six of them opening a language section.
-     * Counting rows back from the selection used to overshoot here and leave it clipped.
-     */
     @Test fun `header rows stay visible walking down`() {
         render(count = 9, tallRows = setOf(0, 1, 3, 4, 5, 8))
         walkDown(9)
@@ -114,20 +105,6 @@ class ListScrollEffectTest {
         walkDown(12)
     }
 
-    /**
-     * A plain row sitting at the top of the viewport used to be sampled as the whole list's row
-     * height, doubling the estimated capacity, so a list that does not fit was treated as one that
-     * does and snapped back to the top with the selection left off-screen.
-     */
-    /**
-     * A plain row sitting at the top of the viewport used to be sampled as the whole list's row
-     * height, doubling the estimated capacity, so a list that does not fit was treated as one that
-     * does and snapped back to the top with the selection left off-screen.
-     *
-     * Five rows totalling 180dp against a 100dp viewport: enough rows that the short row's height
-     * makes `itemCount <= capacity` read true, and a layout where scrolling down does park that
-     * short row at the top.
-     */
     @Test fun `list that does not fit is not snapped to the top`() {
         render(count = 5, tallRows = setOf(0, 2, 3, 4))
         walkDown(5)

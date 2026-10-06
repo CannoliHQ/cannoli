@@ -22,14 +22,6 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @AndroidEntryPoint
-/**
- * Keeps the process alive while the queue has work, and reports it in a notification.
- *
- * Two things are deliberately still RomM's. It also watches the art fetcher, because that runs
- * alongside a RomM download and has to hold the same notification: abstracting it would be
- * inventing an interface for one caller. And the notification strings keep their romm_ keys, since
- * those are translated through Crowdin and renaming a key orphans every translation of it.
- */
 class DownloadService : Service() {
 
     @Inject lateinit var downloader: Downloader

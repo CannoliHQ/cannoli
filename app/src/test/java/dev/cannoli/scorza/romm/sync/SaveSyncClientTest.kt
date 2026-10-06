@@ -45,7 +45,6 @@ class SaveSyncClientTest {
         assertEquals("/api/sync/negotiate", server.takeRequest().path)
     }
 
-    /** Every sync added a row and nothing removed one, so the server grew without bound. */
     @Test fun upload_prunes_the_autosave_bucket() {
         server.enqueue(MockResponse().setBody("""{"id":100,"slot":"autosave"}"""))
         val f = tmp.newFile("A.srm").apply { writeBytes("S".toByteArray()) }
@@ -57,10 +56,6 @@ class SaveSyncClientTest {
         assertTrue(path, path.contains("autocleanup_limit=15"))
     }
 
-    /**
-     * A named slot is a save somebody chose to keep. Pruning is for the bucket that rewrites itself
-     * on every launch, which is what Argosy does too.
-     */
     @Test fun upload_never_prunes_a_named_slot() {
         server.enqueue(MockResponse().setBody("""{"id":100,"slot":"before boss"}"""))
         val f = tmp.newFile("D.srm").apply { writeBytes("S".toByteArray()) }
@@ -71,7 +66,6 @@ class SaveSyncClientTest {
         assertTrue(path, !path.contains("autocleanup"))
     }
 
-    /** A folder save is zipped into a temp file, and RomM stores whatever name the part carries. */
     @Test fun upload_names_the_part_as_asked_rather_than_after_the_file_on_disk() {
         server.enqueue(MockResponse().setBody("""{"id":100,"slot":"autosave"}"""))
         val f = tmp.newFile("romm-up123.zip").apply { writeBytes("S".toByteArray()) }
@@ -82,7 +76,6 @@ class SaveSyncClientTest {
         assertTrue(body, body.contains("filename=\"God of War [UCUS98653].zip\""))
     }
 
-    /** The server counts what a session actually did, but only if the upload names the session. */
     @Test fun upload_names_the_sync_session_when_it_has_one() {
         server.enqueue(MockResponse().setBody("""{"id":100,"slot":"autosave"}"""))
         val f = tmp.newFile("B.srm").apply { writeBytes("S".toByteArray()) }
@@ -101,7 +94,6 @@ class SaveSyncClientTest {
         assertTrue(!server.takeRequest().path!!.contains("session_id"))
     }
 
-    /** The server filters by slot, so a rom's whole save history need not come back to be dropped. */
     @Test fun getSaves_scopes_to_a_slot_when_one_is_named() {
         server.enqueue(MockResponse().setBody("[]"))
         client.getSaves(42, "dev-1", "autosave")
@@ -112,7 +104,6 @@ class SaveSyncClientTest {
         assertTrue(!server.takeRequest().path!!.contains("slot="))
     }
 
-    /** Server-side sync state was written on every download and never read back. */
     @Test fun a_save_carries_the_server_record_of_this_device() {
         server.enqueue(MockResponse().setBody("""[{"id":100,"rom_id":42,"slot":"autosave","origin_device_id":"deck",
             "device_syncs":[{"device_id":"deck","device_name":"Steam Deck","last_synced_at":"2026-09-01T10:00:00+00:00","is_untracked":false,"is_current":false},

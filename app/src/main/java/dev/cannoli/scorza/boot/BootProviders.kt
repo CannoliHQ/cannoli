@@ -35,9 +35,6 @@ object BootProviders {
         preparingLabel = context.getString(R.string.boot_preparing),
         permissionStatus = permissionStatus,
         isSetupResolved = {
-            // Answered from app storage alone. This used to probe settings.json at the root, which
-            // meant resolving a path before the storage step had chosen one. A stored root is the
-            // same evidence and needs no filesystem: reaching the storage step is what writes it.
             if (!settings.setupCompleted && settings.sdCardRootOrNull != null) {
                 settings.setupCompleted = true
             }
@@ -67,11 +64,6 @@ object BootProviders {
     )
 }
 
-/**
- * Lets MainActivity register its `startStorageDependent()` (controller bridge, blacklist,
- * input log) so BootSequencer can invoke it on the NeedsPermission -> Initializing edge,
- * without BootSequencer depending on the Activity.
- */
 @ActivityScoped
 class StartStorageDependentHolder @Inject constructor() {
     private var action: () -> Unit = {}

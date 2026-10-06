@@ -13,7 +13,6 @@ class RaOfflinePreloader(
         data class Success(val gameName: String, val achievementCount: Int, val totalPoints: Int) : Result
         data object NoAchievements : Result
 
-        /** Nothing resolved this rom to a game, so there is no set to ask for. */
         data object Unidentified : Result
         data class Failure(val reason: String) : Result
     }
@@ -47,6 +46,5 @@ class RaOfflinePreloader(
     }
 
     private fun RaConnectClient.RawResponse.isOk() = code in 200..299
-    // Preload has one outcome for "not a yes", so an unreadable body folds into false here.
     private fun String.looksSuccessful(): Boolean = RaConnectClient.successFlag(this) == true
 }

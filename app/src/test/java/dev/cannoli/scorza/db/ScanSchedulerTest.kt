@@ -31,8 +31,6 @@ class ScanSchedulerTest {
         return cfg
     }
 
-    // SharedFlow drops what it emits before anyone subscribes, so the collector has to be
-    // registered before the first enqueue rather than given a head start.
     private fun <T> ScanScheduler.subscribe(
         collect: suspend Flow<ScanScheduler.ScanResult>.() -> T,
     ): Deferred<T> {
@@ -87,7 +85,6 @@ class ScanSchedulerTest {
         every { scanner.consumeLauncherMutation(any()) } returns false
         val scheduler = ScanScheduler(scanner, newPlatformConfig())
 
-        // GB scans after NES and does emit, so if NES had emitted it would arrive first.
         val deferred = scheduler.subscribe { first() }
         scheduler.enqueue("NES")
         scheduler.enqueue("GB")
@@ -115,9 +112,6 @@ class ScanSchedulerTest {
         every { scanner.consumeLauncherMutation(any()) } returns false
         val scheduler = ScanScheduler(scanner, newPlatformConfig())
 
-        // Holding the worker on another platform keeps every NES request queued. Otherwise the
-        // worker can pick up the first one between enqueues, and the rest then correctly ask for
-        // a rerun. GB queues behind NES, so once it scans the NES scan has finished.
         scheduler.enqueue("SNES")
         assertTrue(busyStarted.await(2, TimeUnit.SECONDS))
         repeat(5) { scheduler.enqueue("NES") }

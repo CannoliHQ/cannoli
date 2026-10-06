@@ -33,8 +33,6 @@ enum class HousekeepingKind(@StringRes val titleRes: Int, @StringRes val subtitl
     LIBRARY_REFRESH(R.string.housekeeping_refresh_title),
 }
 
-// progress is null for phases with no determinate measure (the pre-mount resolve), which draws an
-// indeterminate bar in place of the determinate one.
 @Composable
 fun HousekeepingScreen(
     kind: HousekeepingKind,

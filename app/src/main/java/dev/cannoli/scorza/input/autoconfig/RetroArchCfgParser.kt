@@ -33,9 +33,6 @@ object RetroArchCfgParser {
             val line = rawLine.trim()
             if (line.isEmpty() || line.startsWith("#")) continue
             val match = LINE_REGEX.matchEntire(line)
-            // Managed keys always come back from the model, including the ones written in a form
-            // this parser cannot read (some bundled cfgs leave the value unquoted); passing those
-            // through would leave the file with two lines for the same key.
             val fullKey = if (match != null) {
                 "${match.groupValues[1]}_${match.groupValues[2]}"
             } else {
@@ -55,9 +52,6 @@ object RetroArchCfgParser {
                 prefix == "input" && key == "vendor_id" -> vendorId = value.toIntOrNull()
                 prefix == "input" && key == "product_id" -> productId = value.toIntOrNull()
                 prefix == "input" && key in RaButtonKey.CFG_KEYS -> {
-                    // Hat and axis notation are checked before the plain keycode parse: a
-                    // signed axis value like "-1" is also a valid (negative) Int, so parsing it
-                    // as a keycode first would swallow it before the axis branch ever runs.
                     val hatMatch = HAT_VALUE_REGEX.matchEntire(value)
                     if (hatMatch != null) {
                         val hat = hatMatch.groupValues[1].toIntOrNull() ?: continue
@@ -71,12 +65,6 @@ object RetroArchCfgParser {
                         hats[key] = HatRef(hat, direction)
                         continue
                     }
-                    // A signed value on a _btn key (e.g. input_up_btn = "-1") is accepted for
-                    // reading only. RetroArch's own parser cannot read it -- input_up_btn only
-                    // ever accepts "nul", a hat, or an unsigned keycode -- Cannoli briefly wrote
-                    // this form for an axis-reported d-pad and the writer now emits the _axis key
-                    // instead. Normalize the key here so this legacy form imports to the same
-                    // canonical binding a native _axis key produces.
                     val axisMatch = AXIS_VALUE_REGEX.matchEntire(value)
                     if (axisMatch != null) {
                         val sign = if (axisMatch.groupValues[1] == "+") 1 else -1

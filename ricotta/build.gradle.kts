@@ -3,8 +3,6 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
-// kotlin.android may already be registered transitively by AGP in this setup.
-// Apply it only if the kotlin extension is not already present.
 if (extensions.findByName("kotlin") == null) {
     apply(plugin = "org.jetbrains.kotlin.android")
 }

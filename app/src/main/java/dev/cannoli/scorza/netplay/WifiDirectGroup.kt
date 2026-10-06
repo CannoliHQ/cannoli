@@ -16,36 +16,20 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.net.InetAddress
 
-/**
- * A Wi-Fi Direct group, from advertising to teardown.
- *
- * Two handhelds in the same room with no network between them: each advertises what it is playing,
- * sees what the other is playing without joining anything, and one of them forms a group. The
- * group is a real interface with its own subnet, so anything above this can just open a socket.
- *
- * Depends on nothing but [Context] on purpose. Hosting is driven from the in-game menu, which runs
- * in the :retroarch process, and the channel belongs to whichever process opens it, so this has to
- * be able to live there rather than in the launcher.
- */
 class WifiDirectGroup(private val context: Context) {
 
-    /** What another handheld is advertising. [address] is the only part connect() can use. */
     data class Peer(
         val deviceName: String,
         val address: String,
         val record: Map<String, String>,
     )
 
-    /** What this handheld advertises. Kept as a map because the record is the wire format. */
     data class Advert(val record: Map<String, String>)
 
     sealed interface State {
-        /** Nothing claimed: no channel, no advertisement, no group. */
         data object Idle : State
-        /** Advertising and listening. [peers] grows as other handhelds answer. */
         data class Looking(val peers: List<Peer>) : State
         data class Joining(val peer: Peer) : State
-        /** A group exists. [owner] is the address to connect a socket to, whichever side you are. */
         data class Grouped(val isOwner: Boolean, val owner: InetAddress) : State
         data class Failed(val reason: String) : State
     }
@@ -53,7 +37,6 @@ class WifiDirectGroup(private val context: Context) {
     private val _state = MutableStateFlow<State>(State.Idle)
     val state: StateFlow<State> = _state.asStateFlow()
 
-    /** Optional trace, so a caller can log without this owning a log file. */
     var onTrace: ((String) -> Unit)? = null
 
     private var manager: WifiP2pManager? = null
@@ -65,12 +48,10 @@ class WifiDirectGroup(private val context: Context) {
     private var firstPeerReported = false
     private var discoveryRunning = false
 
-    /** Whether this device can do any of it, before anything is claimed. */
     fun isSupported(): Boolean =
         context.packageManager.hasSystemFeature(PackageManager.FEATURE_WIFI_DIRECT) &&
             context.getSystemService(Context.WIFI_P2P_SERVICE) != null
 
-    /** The permission discovery needs, which changed name at API 33. Null when it is already held. */
     fun missingPermission(): String? {
         val needed = if (Build.VERSION.SDK_INT >= 33) {
             "android.permission.NEARBY_WIFI_DEVICES"
@@ -80,13 +61,6 @@ class WifiDirectGroup(private val context: Context) {
         return needed.takeIf { context.checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED }
     }
 
-    /**
-     * Claims the radio: advertise [advert] and listen for others.
-     *
-     * Any group left behind is removed first. A channel dying without a teardown leaves its group
-     * up, and the next attempt then joins nothing and reports no error, which is the hardest
-     * version of this to diagnose.
-     */
     fun start(advert: Advert) {
         if (started) stop()
         val mgr = context.getSystemService(Context.WIFI_P2P_SERVICE) as? WifiP2pManager
@@ -106,11 +80,7 @@ class WifiDirectGroup(private val context: Context) {
         _state.value = State.Looking(emptyList())
         registerReceiver()
 
-        // BUSY here is the normal answer when there is no group to remove, and is not a problem.
-        // It is issued anyway because a channel that died without a teardown leaves its group up.
         act("removeGroup") { mgr.removeGroup(ch, it) }
-        // Cleared before advertising, or a second start leaves the first advertisement up and one
-        // handheld arrives twice on the other's list.
         act("clearLocalServices") { mgr.clearLocalServices(ch, it) }
         act("clearServiceRequests") { mgr.clearServiceRequests(ch, it) }
 
@@ -126,8 +96,6 @@ class WifiDirectGroup(private val context: Context) {
                     address = device.deviceAddress.orEmpty(),
                     record = record.orEmpty().mapValues { (_, v) -> v.orEmpty() },
                 )
-                // Keyed by device: one handheld answers repeatedly within a pass, and once per
-                // service it still advertises.
                 if (!firstPeerReported) {
                     firstPeerReported = true
                     trace("first peer after ${android.os.SystemClock.elapsedRealtime() - discoveryStartedAt}ms")
@@ -142,15 +110,6 @@ class WifiDirectGroup(private val context: Context) {
 
     }
 
-    /**
-     * Joins [peer], asking to be the client rather than the owner.
-     *
-     * The netplay server binds on the host and the client dials the group owner's address, so the
-     * host has to win ownership. groupOwnerIntent is how that is asked for without forming a group
-     * in advance: 0 says this side does not want to own it, which leaves the other side to. It is
-     * a bias in the negotiation rather than a guarantee, so callers still read isOwner afterwards
-     * rather than assuming.
-     */
     fun connect(peer: Peer) {
         val mgr = manager ?: return
         val ch = channel ?: return
@@ -162,12 +121,6 @@ class WifiDirectGroup(private val context: Context) {
         act("connect") { mgr.connect(ch, config, it) }
     }
 
-    /**
-     * Gives the radio back.
-     *
-     * Every step is attempted even if an earlier one fails: a half-released channel is what makes
-     * the next start come back BUSY, and there is nothing useful to do with an error here anyway.
-     */
     fun stop() {
         val mgr = manager
         val ch = channel
@@ -205,7 +158,6 @@ class WifiDirectGroup(private val context: Context) {
                         if (started && !on) {
                             fail("Wi-Fi Direct switched off")
                         } else if (started && on && _state.value is State.Failed) {
-                            // It came back, most likely from the idle shutdown above.
                             trace("p2p back, restarting")
                             restartDiscovery()
                         }
@@ -223,12 +175,6 @@ class WifiDirectGroup(private val context: Context) {
         context.registerReceiver(r, filter, Context.RECEIVER_NOT_EXPORTED)
     }
 
-    /**
-     * Discovery is not a subscription. Android runs it for two minutes and stops, and then shuts
-     * the whole P2P stack down as idle, so a list left open longer than that goes quietly deaf and
-     * a retry lands on a disabled stack. Re-arming is what makes an open list keep meaning
-     * something; nothing else restarts it.
-     */
     private fun onDiscoveryStopped() {
         if (!started) return
         if (_state.value !is State.Looking) return
@@ -255,7 +201,6 @@ class WifiDirectGroup(private val context: Context) {
                 if (info.groupFormed && owner != null) {
                     _state.value = State.Grouped(info.isGroupOwner, owner)
                 } else if (_state.value is State.Grouped) {
-                    // The group went away under us; back to looking rather than pretending.
                     _state.value = State.Looking(peers.values.toList())
                 }
             }

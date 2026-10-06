@@ -48,8 +48,6 @@ class LaunchManagerStandalonePickTest {
         every { gameOverrides.get(any()) } returns null
         every { platformConfig.getPlatformChoice("3DS") } returns
             dev.cannoli.scorza.config.EmulatorChoice(dev.cannoli.scorza.config.EmulatorSource.Standalone)
-        // GC has no bundled core and no stored runner, so launch falls through to the
-        // standalone app list.
         every { platformConfig.getCoreName("GC") } returns null
         every { platformConfig.getPlatformChoice("GC") } returns null
         every { apkLauncher.launchWithRom(any(), any(), any()) } returns LaunchResult.Success
@@ -141,8 +139,6 @@ class LaunchManagerStandalonePickTest {
         assertEquals(DELFINO, delfinoPackage())
     }
 
-    // Play reported the missing app but Resume fell through to the RetroArch path and ran the
-    // platform default core, so one button launched an emulator the user had not chosen.
     @Test fun `resume routes a standalone mapping to the same launcher as play`() {
         val root = tmp.newFolder()
         val mgr = manager(root)

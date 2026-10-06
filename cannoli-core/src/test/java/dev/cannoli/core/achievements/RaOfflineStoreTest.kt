@@ -55,7 +55,7 @@ class RaOfflineStoreTest {
         val store = RaOfflineStore(tmp.root)
         store.writeGame(1, sets("Zelda", 5), "s", "NES", "/z.nes", null)
         store.writeGame(2, sets("Castlevania", 5), "s", "NES", "/c.nes", null)
-        File(tmp.root, "3").apply { mkdirs() } // no achievementsets.json -> skipped
+        File(tmp.root, "3").apply { mkdirs() }
         assertEquals(listOf("Castlevania", "Zelda"), store.entries().map { it.gameName })
     }
 
@@ -65,7 +65,6 @@ class RaOfflineStoreTest {
         store.writeGame(1, sets("Zelda", 5), "s", "NES", "/z.nes", null)
         store.writeGame(2, sets("Sonic", 5), "s", "MD", "/s.md", null)
         store.writeGame(3, sets("Castlevania", 5), "s", "NES", "/c.nes", null)
-        // MD before NES (platform), then name within platform
         assertEquals(listOf("Sonic", "Castlevania", "Zelda"), store.entries().map { it.gameName })
     }
 
@@ -124,8 +123,6 @@ class RaOfflineStoreTest {
         val dir = tmp.newFolder("Offline")
         val store = RaOfflineStore(dir, writerTag = "w")
         store.writeLogin2("good")
-        // A directory where the temporary file must go, so the write cannot get that far. A writer
-        // that wrote straight to the target would sail past this and replace a good body.
         File(dir, "login2.json.w.tmp").mkdirs()
         assertFalse(store.writeLogin2("new"))
         assertEquals("good", File(dir, "login2.json").readText())

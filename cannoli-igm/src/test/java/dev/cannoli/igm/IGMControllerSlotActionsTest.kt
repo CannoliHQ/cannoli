@@ -24,7 +24,6 @@ class IGMControllerSlotActionsTest {
 
     private fun menu(c: IGMController) = c.currentScreen as IGMScreen.Menu
 
-    /** Opens on the Save State row with [slot] selected, which is where the legend offers delete. */
     private fun openOnSlotRow(c: IGMController, slot: Int) {
         c.selectedSlotIndex.intValue = slot
         c.openMenu()
@@ -94,8 +93,6 @@ class IGMControllerSlotActionsTest {
         assertNull("one undo per save, or the legend outlives what it undoes", c.undoAction.value)
     }
 
-    // RetroArch fills the undo buffer with what the write displaces, so there is nothing to put
-    // back and the legend would be a lie.
     @Test fun `saving into an empty slot offers no undo`() {
         val c = testController(FakeRetroArchBridge(), slots = store())
         openOnSlotRow(c, 1)
@@ -160,8 +157,6 @@ class IGMControllerSlotActionsTest {
         assertEquals(1, closed)
     }
 
-    // dropHeldCommands must land before onClose, since onClose resolves to hide(), which
-    // unpauses and would otherwise flush the very hold the Quit row is trying to discard.
     @Test fun `quitGame drops held commands before closing and quitting`() {
         val bridge = FakeRetroArchBridge()
         val c = testController(bridge, slots = store())

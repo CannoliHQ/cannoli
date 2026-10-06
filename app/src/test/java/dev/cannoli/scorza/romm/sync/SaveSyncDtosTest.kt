@@ -41,10 +41,6 @@ class SaveSyncDtosTest {
         assertEquals("dev-9", s.originDeviceId)
     }
 
-    /**
-     * An unrecognised verdict is not a no-op. Collapsing the two launched the game against a save
-     * the server may consider stale, and reported the session as zero completed and zero failed.
-     */
     @Test
     fun `an unknown action is distinct from no_op`() {
         assertEquals(SyncAction.Download, SyncAction.of("download"))

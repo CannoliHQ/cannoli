@@ -143,7 +143,6 @@ class AtomicRenameTest {
 
     @Test fun `rename succeeds even with no save or state files present`() {
         val rom = File(romsDir("NES"), "Lone.nes").writeWith("rom")
-        // no art, saves, or states
 
         val result = renamer.rename(rom, "Solo", "NES")
         assertTrue(result.success)
@@ -159,7 +158,6 @@ class AtomicRenameTest {
         val result = renamer.rename(rom, "Target", "PS")
         assertFalse("must refuse to clobber an existing rom", result.success)
 
-        // Neither file is moved or overwritten.
         assertEquals("source-content", File(romsDir("PS"), "Source.bin").readText())
         assertEquals("target-content", File(romsDir("PS"), "Target.bin").readText())
     }
@@ -168,7 +166,6 @@ class AtomicRenameTest {
         val rom = File(romsDir("PS"), "Source.bin").writeWith("rom")
         File(savesDir("PS"), "Source.srm").writeWith("source-save")
         File(statesDir("PS"), "Source.state").writeWith("source-state")
-        // Files already at the target name that would be silently clobbered:
         File(savesDir("PS"), "Target.srm").writeWith("target-save")
         File(statesDir("PS"), "Target.state").writeWith("target-state")
 

@@ -34,11 +34,6 @@ class RommSyncCoordinator(
     private val _progress = MutableStateFlow(SyncProgress(0, 0))
     val progress: StateFlow<SyncProgress> = _progress
 
-    /**
-     * The last completed sync failed and none has succeeded since, so the mirror may be out of
-     * date. Deliberately untouched when a sync starts: [status] flips to SYNCING on every run, so
-     * a retry would otherwise clear this and restore it moments later on a fast failure.
-     */
     private val _stale = MutableStateFlow(false)
     val stale: StateFlow<Boolean> = _stale
 
@@ -58,11 +53,6 @@ class RommSyncCoordinator(
                 val ingested = mutableListOf<String?>()
                 RommLog.write("cache sync start full=$full cursor=$cursor")
 
-                // Always pull the whole platform list, even on a delta. RomM does not bump a
-                // platform's updated_at when a rom under it changes, so an updated_after-filtered
-                // list omits the platforms owning the changed roms: the sweep below would then
-                // discard every one of them, and the rom_count reconcile would have nothing to
-                // compare against.
                 val platformDtos = client.getPlatforms()
                 val supported = platformMap.toDomain(platformDtos)
                 val supportedIds = supported.map { it.id }.toSet()
@@ -92,13 +82,8 @@ class RommSyncCoordinator(
                     }
                 }
 
-                // Everything past the platform pull is the "finishing up" phase (deletion
-                // reconcile + collection sync); label it so the screen never blanks out.
                 _progress.value = _progress.value.copy(platform = collectionsLabel())
 
-                // Reconcile server-side deletions: drop any cached platform/game whose id is no
-                // longer on the server. Deltas only carry updated rows, never deletes, so without
-                // this a deleted platform or game lingers in the cache.
                 runCatching {
                     val validPlatformIds = client.getPlatformIdentifiers().toSet()
                     val stale = db.allPlatformIds() - validPlatformIds
@@ -123,8 +108,6 @@ class RommSyncCoordinator(
                     if (stale.isNotEmpty()) db.deleteCollections(stale)
                 }.onFailure { RommLog.write("romm collection sync failed: ${it.message}") }
 
-                // Only rom timestamps feed the cursor: it filters roms, and platform rows can be
-                // stamped later than any rom, which would skip the gap between them for good.
                 val next = RommSyncPlanner.nextCursor(cursor, ingested)
                 next?.let { db.setSyncState(KEY_CURSOR, it) }
                 _status.value = SyncStatus.IDLE
@@ -142,9 +125,6 @@ class RommSyncCoordinator(
         }
     }
 
-    // A link to a rom the server no longer has (reorganised under a new id) pins save sync and art
-    // to a dead id and hides the filename match. Only a link under a tag the cache holds games for
-    // is judged, so a platform the refresh did not cover never loses its links.
     private fun healLinks(serverRomIds: Set<Int>) {
         val repo = links ?: return
         runCatching {
@@ -156,7 +136,6 @@ class RommSyncCoordinator(
         }.onFailure { RommLog.write("romm link heal failed: ${it.message}") }
     }
 
-    /** Returns the roms the server returned paired with the subset actually cached. */
     private fun deltaSweep(cursor: String?, supportedIds: Set<Int>, ingested: MutableList<String?>): Pair<Int, Int> {
         var pulled = 0
         var stored = 0

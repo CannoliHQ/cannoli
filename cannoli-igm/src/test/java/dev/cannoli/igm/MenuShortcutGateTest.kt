@@ -83,7 +83,6 @@ class MenuShortcutGateTest {
         assertEquals(pass, g.onKeyUp(SELECT))
     }
 
-    // Select already reached the screen, so its release belongs to the screen too.
     @Test fun `a chord completed after the wait claims only the key that never acted`() {
         val g = chordGate()
         g.onKeyDown(SELECT, 0)

@@ -15,8 +15,6 @@ class WelcomePressTest {
 
     private val counter = ConfirmPressCounter()
 
-    // The welcome step's rule, in the order MainActivity applies it: a system key is not seen at
-    // all, everything else is a press in the run.
     private fun feed(keyCode: Int, deviceId: Int = PAD): Boolean =
         if (isSystemKey(keyCode)) false else counter.press(deviceId, keyCode)
 
@@ -66,8 +64,6 @@ class WelcomePressTest {
         ).forEach { assertTrue("$it should be ignored", isSystemKey(it)) }
     }
 
-    // The bug this replaced: the d-pad failed the old inclusion gate, so it never reached the
-    // counter and a run it should have broken completed anyway.
     @Test fun aDpadPressBetweenConfirmsBreaksTheRun() {
         assertFalse(feed(KeyEvent.KEYCODE_BUTTON_A))
         assertFalse(feed(KeyEvent.KEYCODE_DPAD_DOWN))
@@ -78,8 +74,6 @@ class WelcomePressTest {
         assertTrue(feed(KeyEvent.KEYCODE_BUTTON_A))
     }
 
-    // The pads that actually shipped the bug report the D-pad as hat axes and never send a
-    // KEYCODE_DPAD_*, so the direction has to reach the run through the hat sync instead.
     @Test fun aHatDirectionBetweenConfirmsBreaksTheRun() {
         val hats = HatKeySync()
         feed(KeyEvent.KEYCODE_BUTTON_A)

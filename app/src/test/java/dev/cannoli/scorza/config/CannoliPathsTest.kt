@@ -14,7 +14,6 @@ class CannoliPathsTest {
     }
 
     @Test
-    // Every override file we write tells the user to edit this one, so it sits at the top.
     fun customCfg_isAtTheTopOfConfig() {
         assertEquals(File("/sd/Config/custom.cfg"), paths.customCfg)
     }
@@ -55,7 +54,6 @@ class CannoliPathsTest {
         )
     }
 
-    // The directory is what AtomicRename moves, so it has to be the cfg's parent exactly.
     @Test
     fun gameOverrideDir_isTheParentOfEveryCoreCfgForThatGame() {
         val dir = paths.gameOverrideDir("NES", "Super Mario Bros")
@@ -63,7 +61,6 @@ class CannoliPathsTest {
         assertEquals(dir, paths.gameOverrideCfg("NES", "Super Mario Bros", "fceumm").parentFile)
     }
 
-    // One game on two cores keeps two files, which is the whole point of the tier.
     @Test
     fun gameOverrideCfg_differsPerCore() {
         assertNotEquals(

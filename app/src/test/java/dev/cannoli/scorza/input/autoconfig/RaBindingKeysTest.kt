@@ -112,7 +112,6 @@ class RaBindingKeysTest {
         assertNull(RaAxisKey.forBinding(CanonicalButton.BTN_SOUTH, AnalogRole.DIGITAL_BUTTON, positive = true))
     }
 
-    // A writer-only key would survive the parser as an unmodeled line and then be written twice.
     @Test fun `every key the writer can emit is a managed key`() {
         for (key in RaButtonKey.CFG_KEYS + RaAxisKey.CFG_KEYS) {
             assertEquals(true, "input_$key" in RetroArchCfgEntry.MANAGED_KEYS)

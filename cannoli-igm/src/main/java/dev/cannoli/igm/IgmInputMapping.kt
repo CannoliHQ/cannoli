@@ -3,11 +3,6 @@ package dev.cannoli.igm
 import android.os.Parcel
 import android.os.Parcelable
 
-/**
- * The slice of a Cannoli device mapping the IGM needs to translate raw Android keycodes
- * to actions. Only button bindings are carried; the dpad arrives as standard DPAD keycodes
- * (Android converts the controller hat) and the IGM uses no analog input.
- */
 data class IgmInputMapping(
     val buttonKeycodes: Map<CanonicalButton, List<Int>>,
     val menuConfirm: CanonicalButton,

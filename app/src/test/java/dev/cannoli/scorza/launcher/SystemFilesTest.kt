@@ -15,11 +15,6 @@ import java.io.File
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
-/**
- * The manifest carries archive names with spaces and parentheses, and the destination is a
- * directory cores read by path, so both the parse and the extraction have to keep what they are
- * given intact.
- */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class SystemFilesTest {
@@ -49,7 +44,6 @@ class SystemFilesTest {
         val fbneo = SystemFiles.manifest(assets).filter { it.core == "fbneo_libretro" }
         assertEquals(2, fbneo.size)
         assertTrue(fbneo.all { it.archive == "FinalBurn Neo (hiscore).zip" })
-        // The bare name is a 404 on the buildbot; the parenthesised one is the real asset.
         assertTrue(fbneo.all { it.assetPath == "system/FinalBurn Neo (hiscore).zip" })
     }
 
@@ -112,23 +106,14 @@ class SystemFilesTest {
         val planted = File(dest, "mame2003-plus/cheat.dat")
         assertTrue(planted.exists())
 
-        // A second launch on the same build must not re-extract: prove it by deleting a file the
-        // archive supplies and showing the marker keeps it deleted.
         planted.delete()
         SystemFiles.ensureBundled(assets, "MAME", dest, "build-1")
         assertFalse(planted.exists())
 
-        // A new build re-lays what it ships.
         SystemFiles.ensureBundled(assets, "MAME", dest, "build-2")
         assertTrue(planted.exists())
     }
 
-    /**
-     * The gate that blocks a launch on absent required firmware runs before the launch config is
-     * built, so a bundled set has to satisfy its own core's required entries. PSP is the live case:
-     * `PPSSPP/ppge_atlas.zim` is declared required and ships inside `PPSSPP.zip`, so a bundle that
-     * stopped carrying it would block the platform rather than degrade it.
-     */
     @Test
     fun `every required firmware of a bundled core ships inside its archive`() {
         val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
@@ -158,10 +143,6 @@ class SystemFilesTest {
         assertTrue("no bundled core declares required firmware", checked > 0)
     }
 
-    /**
-     * The folders column is what decides whether a core reads as installed, so a remote set has to
-     * name the folders its archive really unpacks. Verified against the archives themselves.
-     */
     @Test
     fun `remote sets name the folders their archives unpack`() {
         val folders = SystemFiles.manifest(assets)
@@ -177,11 +158,6 @@ class SystemFilesTest {
         )
     }
 
-    /**
-     * A console BIOS is the user's to supply, so no remote set may claim a platform whose gate is
-     * about one. Claiming it would make a missing BIOS read as a core that is not installed and
-     * send the user to download something that would never contain it.
-     */
     @Test
     fun `platforms gated on real console BIOS are claimed by no remote set`() {
         for (tag in listOf("SATURN", "NEOGEO", "PSX", "DREAMCAST")) {
@@ -192,11 +168,6 @@ class SystemFilesTest {
         }
     }
 
-    /**
-     * The marker alone is not enough. A user who deletes a bundled folder keeps a marker claiming
-     * this build already delivered it, and without the folder check the platform would stay broken
-     * with the fix sitting in the APK.
-     */
     @Test
     fun `a deleted bundled folder is laid down again despite a matching marker`() {
         val dest = tempDir("sysfiles-selfheal")
@@ -228,7 +199,6 @@ class SystemFilesTest {
     @Test
     fun `a nested folder check is not satisfied by its own parent`() {
         val dest = tempDir("sysfiles-nested")
-        // The user's own BIOS folder, with no resources installed yet.
         File(dest, "pcsx2/bios").mkdirs()
         val entry = SystemFiles.remoteFor(assets, "armsx2_libretro").single()
         assertFalse(entry.foldersPresent(dest))
@@ -242,7 +212,6 @@ class SystemFilesTest {
         val dest = tempDir("sysfiles-merge")
         val bios = File(dest, "pcsx2/bios/scph39001.bin").apply { parentFile?.mkdirs(); writeText("dump") }
 
-        // LRPS2.zip's real shape: an empty bios/ directory entry plus a resources file.
         SystemFiles.install(
             ByteArrayInputStream(
                 zip("pcsx2/bios/" to "", "pcsx2/resources/GameIndex.yaml" to "y")

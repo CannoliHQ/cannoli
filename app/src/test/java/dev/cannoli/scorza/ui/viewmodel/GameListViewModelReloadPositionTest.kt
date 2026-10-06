@@ -17,10 +17,6 @@ class GameListViewModelReloadPositionTest {
     )
 
     @Test fun `rename re-sorts list and selection follows the renamed item without forcing scroll`() {
-        // Before: [Alpha(1), Mango(2), Zelda(3)], user had Zelda selected at index 2.
-        // Rename Zelda -> "Apple": new natural-sorted list is [Alpha(1), Apple(3), Mango(2)].
-        // The old index-based logic kept index 2 (Mango) selected. We must follow the renamed
-        // item (index 1) but NOT force a scroll target, or the list slams the item to the top.
         val newItems = listOf(rom(1, "Alpha"), rom(3, "Apple"), rom(2, "Mango"))
         val (idx, scroll) = reloadPosition(
             items = newItems,

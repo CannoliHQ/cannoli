@@ -68,7 +68,6 @@ class OnboardingStorageTest {
     }
 
     @Test fun theFooterOffersBrowsingOnCustomAndFinishOnlyWithAPath() {
-        // The footer reads these two directly: confirm browses on the custom row, START finishes.
         assertFalse(screen(volumeIndex = 0).isCustomVolume)
         assertTrue(screen(volumeIndex = 0).canContinue)
         assertTrue(screen(volumeIndex = 2).isCustomVolume)

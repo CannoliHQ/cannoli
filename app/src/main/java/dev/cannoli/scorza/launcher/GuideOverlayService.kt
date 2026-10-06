@@ -78,12 +78,6 @@ private data class GuideRequest(
 )
 
 /**
- * Guide viewer on the second display, hosted in an overlay window this service owns.
- *
- * An Activity cannot be placed on the second display by a normally installed app: the launch
- * display id is silently ignored and the guide lands on the main screen. An overlay window added
- * through a display context is the only unprivileged way onto that panel.
- *
  * The window is FLAG_NOT_FOCUSABLE, so it receives touch but never takes key focus: the controller
  * keeps driving whatever owns the main display. That flag is load-bearing. Without it a touch here
  * moves mTopFocusedDisplayId to this display and the game stops responding until the main screen
@@ -95,9 +89,6 @@ class GuideOverlayService : Service() {
     @Inject lateinit var settings: SettingsRepository
     @Inject lateinit var appFonts: AppFonts
 
-    // Write-only sinks seeded from the request and fed by the composition's callbacks, read only in
-    // savePosition.
-    // Never read these during composition: GuideScreen owns scroll position via its own ScrollState.
     private var scrollY = 0
     private var scrollX = 0
     private var currentPage = 0
@@ -113,8 +104,6 @@ class GuideOverlayService : Service() {
     private var owners: OverlayViewOwners? = null
     private var overlayDisplayId = Display.INVALID_DISPLAY
 
-    // The panel can be pulled out from under a live window, which leaves the service running with
-    // nothing on screen and no callback of its own to notice.
     private val displayListener = object : DisplayManager.DisplayListener {
         override fun onDisplayAdded(displayId: Int) {}
         override fun onDisplayChanged(displayId: Int) {}
@@ -135,8 +124,6 @@ class GuideOverlayService : Service() {
         val displayId = intent?.getIntExtra(EXTRA_DISPLAY_ID, Display.INVALID_DISPLAY)
             ?: Display.INVALID_DISPLAY
         val incoming = intent?.let { parseRequest(it) }
-        // Nothing persisted is touched until there is a window to show it in: a failure here must
-        // leave the guide that was already open, and its stored position, exactly as they were.
         if (incoming == null || !showOverlay(displayId)) {
             stopSelf()
             return START_NOT_STICKY
@@ -165,8 +152,6 @@ class GuideOverlayService : Service() {
         )
     }
 
-    // Saving before the swap keeps the outgoing guide's position. An identical request is a re-show
-    // of what is already up, where reseeding the sinks would stomp scroll not yet written to disk.
     private fun publish(incoming: GuideRequest) {
         if (incoming == request) return
 
@@ -187,17 +172,11 @@ class GuideOverlayService : Service() {
     private fun showOverlay(displayId: Int): Boolean {
         val existing = overlay
         if (existing != null) {
-            // The window's root becomes the view's parent inside addView and is nulled when the
-            // system tears the window down. isAttachedToWindow only catches up on the next
-            // traversal, so it reads false for a window that was just added.
             if (displayId == overlayDisplayId && existing.parent != null) return true
             removeOverlay()
         }
         val display = getSystemService(DisplayManager::class.java)?.getDisplay(displayId) ?: return false
         val displayContext = createDisplayContext(display)
-        // A window context ties the window to this display and to the overlay type it will be added
-        // as, which is what the window manager checks from R on. Before R the display context alone
-        // is the whole story.
         val windowContext = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             displayContext.createWindowContext(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY, null)
         } else {
@@ -205,8 +184,6 @@ class GuideOverlayService : Service() {
         }
         val manager = windowContext.getSystemService(WindowManager::class.java) ?: return false
 
-        // A ComposeView outside an Activity composes only if its root view carries these three
-        // owners; the recomposer also stays parked until the lifecycle is at least STARTED.
         val viewOwners = OverlayViewOwners()
         val view = ComposeView(windowContext).apply {
             setViewTreeLifecycleOwner(viewOwners)
@@ -238,8 +215,6 @@ class GuideOverlayService : Service() {
         PixelFormat.TRANSLUCENT,
     )
 
-    // Leaves the request and its sinks alone: a caller that removes the window to re-add it on
-    // another display still owes the outgoing guide a save.
     private fun removeOverlay() {
         val view = overlay
         if (view != null) {
@@ -279,9 +254,6 @@ class GuideOverlayService : Service() {
         ) {
             Surface(modifier = Modifier.fillMaxSize()) {
                 request?.let { req ->
-                    // Keying on the request tears down and rebuilds the whole subtree (GuideScreen
-                    // included) on a new request, so its internal ScrollState is not inherited from
-                    // whatever guide was showing before.
                     key(req) {
                         GuideContent(
                             request = req,
@@ -298,16 +270,12 @@ class GuideOverlayService : Service() {
 
     companion object {
 
-        // The sidecar must never outlive what it accompanies, and nothing else tears this service
-        // down, so teardown is explicit. Stopping a service that is not running is a no-op.
         fun hide(context: Context) {
             context.stopService(Intent(context, GuideOverlayService::class.java))
         }
     }
 }
 
-// Minimal owner set for a ComposeView with no Activity behind it. There is no state to persist
-// across process death here, so the saved-state registry is restored from nothing.
 private class OverlayViewOwners : LifecycleOwner, SavedStateRegistryOwner, ViewModelStoreOwner {
 
     private val lifecycleRegistry = LifecycleRegistry(this)
@@ -340,8 +308,6 @@ private fun GuideContent(
     var chromeVisible by remember { mutableStateOf(false) }
     var page by remember { mutableIntStateOf(request.page) }
     var zoom by remember { mutableIntStateOf(request.textZoom) }
-    // Seeded once per request: GuideScreen re-keys its ScrollState whenever these change, so a value
-    // that moved with the live scroll position would rebuild the scroller on every recomposition.
     val initialScrollY = remember { request.scrollY }
     val initialScrollX = remember { request.scrollX }
 

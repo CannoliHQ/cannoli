@@ -132,8 +132,6 @@ object RommModule {
         gameIds: dev.cannoli.scorza.db.GameIdRepository,
     ): LocalSaveResolver = LocalSaveResolver(
         { paths.root },
-        // Only consulted for a platform whose core shares one save root, which is where a game has
-        // to be told apart from its neighbours by disc id.
         gameIdFor = { tag, base -> runCatching { gameIds.readByBaseName(tag, base) }.getOrNull() },
     )
 
@@ -277,8 +275,6 @@ object RommModule {
         @ApplicationContext context: Context,
         @IoScope ioScope: CoroutineScope,
     ): Downloader {
-        // The three RomM kinds share every dependency and differ only in which body runs, so they
-        // are one class parameterised by kind rather than three near-identical ones.
         fun romm(kind: DownloadKind) = RommDownloadHandler(
             kind = kind,
             client = client,
@@ -302,16 +298,7 @@ object RommModule {
                 dev.cannoli.scorza.launcher.ShaderDownloadHandler(settings),
             ),
             lanes = listOf(
-                // Cores get their own lane rather than a share of the RomM one: installing a core
-                // is what stands between the user and launching a game, so it must not wait behind
-                // a rom that may be gigabytes. Two workers, because picking several cores in a row
-                // is the normal way to use the picker and they are small enough to overlap.
                 Downloader.Lane(setOf(DownloadKind.CORE)) { 2 },
-                // Its own lane and a single worker. Tens of megabytes must not crowd out a core
-                // someone needs to launch, and one at a time keeps the extraction to one writer:
-                // two of them hammering a FUSE-mounted card at once is what makes the launcher
-                // stutter, and the download finishing sooner is worth less than the menu staying
-                // responsive while it runs.
                 Downloader.Lane(setOf(DownloadKind.SHADER)) { 1 },
                 Downloader.Lane(
                     setOf(DownloadKind.ROM, DownloadKind.MANUAL, DownloadKind.FIRMWARE)

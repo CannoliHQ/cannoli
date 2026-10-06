@@ -39,8 +39,6 @@ class ContextMenuAchievementsModeTest {
         glvm = mockk(relaxed = true)
         romsRepository = mockk(relaxed = true)
         every { glvm.state } returns MutableStateFlow(GameListViewModel.State())
-        // Relaxed mocks swallow the callback, and the reopen that keeps the menu on screen
-        // happens inside it, so the cycle would look like it closed the dialog.
         every { glvm.reload(any()) } answers { firstArg<() -> Unit>().invoke() }
         handler = testDialogInputHandler(
             nav = nav,
@@ -48,7 +46,6 @@ class ContextMenuAchievementsModeTest {
             context = context,
             gameListViewModel = glvm,
             romsRepository = romsRepository,
-            // These rows only exist for a connected account, so the handler under test is one.
             raToken = "token",
         )
     }
@@ -70,14 +67,11 @@ class ContextMenuAchievementsModeTest {
     private fun selectRom(rom: Rom) {
         nav.screenStack.add(LauncherScreen.GameList)
         every { glvm.getSelectedItem() } returns ListItem.RomItem(rom)
-        // The group resolves its rom by id out of the list, never from the selection, so the
-        // list has to actually contain it.
         every { glvm.state } returns MutableStateFlow(
             GameListViewModel.State(items = listOf(ListItem.RomItem(rom)))
         )
     }
 
-    // The whole group is meaningless without an account, so it goes rather than sitting inert.
     @Test fun `the achievements row is absent when logged out`() {
         val loggedOut = testDialogInputHandler(
             nav = NavigationController(),
@@ -95,7 +89,6 @@ class ContextMenuAchievementsModeTest {
         assertTrue(options.any { it.substringBefore('\t') == MENU_ACHIEVEMENTS })
     }
 
-    /** Everything achievements moved inside, so none of it may remain on the parent menu. */
     @Test fun `the parent menu carries no achievement rows of its own`() {
         val keys = handler.buildGameContextOptions(ListItem.RomItem(rom()), GameListViewModel.State())
             .map { it.substringBefore('\t') }
@@ -111,7 +104,6 @@ class ContextMenuAchievementsModeTest {
         )
     }
 
-    /** All three, so a game stating softcore reads differently from one that has not chosen. */
     @Test fun `the mode row shows what this game states`() {
         assertEquals(context.getString(dev.cannoli.ui.R.string.achievos_mode_hardcore), modeValue(rom(raHardcore = true)))
         assertEquals(context.getString(dev.cannoli.ui.R.string.achievos_mode_softcore), modeValue(rom(raHardcore = false)))
@@ -124,7 +116,6 @@ class ContextMenuAchievementsModeTest {
         )
     }
 
-    /** The whole point of naming it: deferring has to say what it is deferring to. */
     @Test fun `the default row names the global mode it follows`() {
         val hardcoreGlobal = testDialogInputHandler(
             nav = nav,
@@ -145,14 +136,12 @@ class ContextMenuAchievementsModeTest {
         )
     }
 
-    /** Default steps to hardcore first, so the two modes a game can state come before the way back. */
     @Test fun `right steps the mode on`() {
         selectRom(rom(raHardcore = null))
         handler.cycleAchievementsMode(7L, 1)
         verify { romsRepository.setRaHardcore(7L, true) }
     }
 
-    /** The way back has to be reachable, or a game could never stop overriding the global. */
     @Test fun `right from softcore returns to using the default`() {
         selectRom(rom(raHardcore = false))
         handler.cycleAchievementsMode(7L, 1)
@@ -171,7 +160,6 @@ class ContextMenuAchievementsModeTest {
         verify(exactly = 0) { romsRepository.setRaHardcore(any(), any()) }
     }
 
-    /** North on the id row puts the game back on hash detection without opening the keyboard. */
     @Test fun `north clears a manual game id`() {
         selectRom(rom(raGameId = 788))
         handler.openAchievementsMenu(7L)
@@ -181,14 +169,9 @@ class ContextMenuAchievementsModeTest {
         nav.dialogState.value = picker.copy(selectedIndex = idx)
         handler.onNorth()
         verify { romsRepository.setRaGameId(7L, null) }
-        // Otherwise the row keeps reading Cached off a set filed under the id just given up.
         verify { romsRepository.setRaCachedGameId(7L, null) }
     }
 
-    /**
-     * A recorded id with no override used to be unreachable: the row offered no clear, so it
-     * reported a cache forever with nothing able to give it up.
-     */
     @Test fun `north clears a recorded id with no override`() {
         selectRom(rom().copy(raCachedGameId = 2014))
         handler.openAchievementsMenu(7L)
@@ -200,20 +183,13 @@ class ContextMenuAchievementsModeTest {
         verify { romsRepository.setRaCachedGameId(7L, null) }
     }
 
-    /**
-     * The defect this binding exists for: the group used to re-derive its rom from the current
-     * selection, and a reload can move that, so it rebound to a different game and acted on it.
-     * Opening for one rom while another is selected must still act on the one it was opened for.
-     */
     @Test fun `the group stays bound to the rom it was opened for`() {
-        // Neither carries an override, which would lock the mode row and hide the difference.
         val tecmo = rom(raHardcore = false).copy(id = 7L, displayName = "Tecmo")
         val pokemon = rom(raHardcore = true).copy(id = 31L, displayName = "Pokemon")
         nav.screenStack.add(LauncherScreen.GameList)
         every { glvm.state } returns MutableStateFlow(
             GameListViewModel.State(items = listOf(ListItem.RomItem(tecmo), ListItem.RomItem(pokemon)))
         )
-        // The selection has drifted to the other game, as a reload can make it.
         every { glvm.getSelectedItem() } returns ListItem.RomItem(pokemon)
 
         handler.openAchievementsMenu(7L)
@@ -225,7 +201,6 @@ class ContextMenuAchievementsModeTest {
         verify(exactly = 0) { romsRepository.setRaHardcore(31L, any()) }
     }
 
-    /** Nothing else in the group is clearable, so north there must do nothing at all. */
     @Test fun `north on the mode row clears nothing`() {
         selectRom(rom(raHardcore = false))
         handler.openAchievementsMenu(7L)
@@ -236,7 +211,6 @@ class ContextMenuAchievementsModeTest {
         verify(exactly = 0) { romsRepository.setRaGameId(any(), any()) }
     }
 
-    /** Both rows leave the group to do their work, so both have to come back to it. */
     @Test fun `entering a row records a return to the group`() {
         selectRom(rom())
         handler.pendingContextReturn = ContextReturn.Single("Game", listOf(MENU_ACHIEVEMENTS), 0)
@@ -246,10 +220,6 @@ class ContextMenuAchievementsModeTest {
         assertEquals(MENU_RA_GAME_ID, ret.selectRow)
     }
 
-    /**
-     * The return has to be consumed. Leaving it in place made the group's own back reopen the
-     * group, so there was no way out of it once a row had been entered.
-     */
     @Test fun `returning to the group hands the parent menu back`() {
         selectRom(rom())
         val parent = ContextReturn.Single("Game", listOf(MENU_ACHIEVEMENTS), 0)
@@ -259,7 +229,6 @@ class ContextMenuAchievementsModeTest {
         assertTrue(nav.dialogState.value is DialogState.Picker)
     }
 
-    /** The override names the directory just as well as a recorded id, and takes precedence. */
     @Test fun `the effective game id prefers the manual override`() {
         assertEquals(2014, effectiveRaGameId(rom(raGameId = 2014)))
         assertEquals(788, effectiveRaGameId(rom(raHardcore = null).copy(raCachedGameId = 788)))
@@ -267,13 +236,7 @@ class ContextMenuAchievementsModeTest {
         assertEquals(null, effectiveRaGameId(rom()))
     }
 
-    /**
-     * A successful preload writes raCachedGameId, and the row reads it off the in-memory rom. The
-     * list has to be rebuilt or a game that cached fine still reads uncached.
-     */
     @Test fun `preloading rebuilds the list so the row can read the new cache`() {
-        // Stands in for the controller finishing: it is the completion callback that has to
-        // rebuild, so a mock that never runs it would pass whatever we wired.
         val preloader = mockk<dev.cannoli.scorza.achievements.RaPreloadController>(relaxed = true)
         every { preloader.preloadRom(any(), any()) } answers { secondArg<() -> Unit>().invoke() }
         val h = testDialogInputHandler(
@@ -291,10 +254,6 @@ class ContextMenuAchievementsModeTest {
         verify { glvm.reload(any()) }
     }
 
-    /**
-     * Preload leaves the group for a progress and a result dialog, and the result used to close
-     * outright, landing on the game list rather than back where it was started from.
-     */
     @Test fun `dismissing the preload result returns to the group`() {
         selectRom(rom())
         handler.pendingContextReturn = ContextReturn.Achievements(
@@ -307,7 +266,6 @@ class ContextMenuAchievementsModeTest {
         assertTrue(nav.dialogState.value is DialogState.Picker)
     }
 
-    /** Started from anywhere else there is nothing to return to, so it closes as it always did. */
     @Test fun `dismissing the preload result closes when nothing is pending`() {
         selectRom(rom())
         handler.pendingContextReturn = null
@@ -316,7 +274,6 @@ class ContextMenuAchievementsModeTest {
         assertEquals(DialogState.None, nav.dialogState.value)
     }
 
-    /** And with the parent back, backing out of the group reaches the context menu. */
     @Test fun `back from the group reaches the context menu`() {
         selectRom(rom())
         handler.pendingContextReturn = ContextReturn.Single("Game", listOf(MENU_ACHIEVEMENTS), 0)
@@ -325,7 +282,6 @@ class ContextMenuAchievementsModeTest {
         assertTrue(nav.dialogState.value is DialogState.ContextMenu)
     }
 
-    /** Cycling reopens the group rather than restoring the menu behind it, which used to close it. */
     @Test fun `cycling leaves the achievements menu open`() {
         selectRom(rom(raHardcore = null))
         handler.cycleAchievementsMode(7L, 1)

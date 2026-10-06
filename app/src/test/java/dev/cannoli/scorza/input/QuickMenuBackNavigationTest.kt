@@ -114,7 +114,6 @@ class QuickMenuBackNavigationTest {
         assertNull(settingsViewModel.state.value.activeCategory)
     }
 
-    // Unwinding before the menu is built flashes the screen underneath for the frames in between.
     @Test fun the_settings_screen_stays_up_until_the_quick_menu_is_ready() = runTest(dispatcher) {
         confirmQuickRow(QuickMenuRow.SETTINGS)
         settingsHandler.onBack()

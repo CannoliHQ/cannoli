@@ -1,22 +1,4 @@
 #!/usr/bin/env python3
-"""Generate the list of libretro cores that actually have an Android build.
-
-The bundled core_info/ set is upstream's whole catalogue, which describes every core libretro
-knows about regardless of platform. Offering it verbatim in the emulator picker lists cores that
-cannot run here: 105 of the 312 bundled .info files have no Android build at all, which is 64 dead
-options spread across 23 platforms once tag matching is applied.
-
-The buildbot's Android index is the only authority on what is actually built, so the list comes
-from there rather than from a hand-kept exclusion list that would rot on the next core addition.
-
-ABIs are recorded per core because they genuinely differ: at the time of writing citra, cemu,
-panda3ds and six others are arm64 only, and offering them on a 32-bit device would trade one
-unrunnable option for another.
-
-Usage:
-    scripts/android-cores.py                 # rewrite the asset
-    scripts/android-cores.py --check         # exit 1 if the asset is out of date
-"""
 import pathlib
 import re
 import sys
@@ -24,7 +6,6 @@ import urllib.request
 
 BUILDBOT = "https://buildbot.libretro.com/nightly/android/latest"
 
-# Value is the flag written to the asset, not the ABI name: the runtime maps its own ABI onto it.
 ABIS = {"arm64-v8a": "64", "armeabi-v7a": "32"}
 
 ASSET = pathlib.Path(__file__).resolve().parent / "data/android_cores.txt"
@@ -42,12 +23,6 @@ HEADER = """\
 
 
 def fetch(abi):
-    """Core ids present in one ABI's index.
-
-    The index is an h5ai page with no href attributes to anchor on, so the filenames are read out
-    of the document text. The name pattern is anchored on the full _android.so.zip suffix and
-    requires a non-empty id, which is what keeps partial matches out.
-    """
     url = f"{BUILDBOT}/{abi}/"
     with urllib.request.urlopen(url, timeout=60) as response:
         page = response.read().decode("utf-8", "ignore")

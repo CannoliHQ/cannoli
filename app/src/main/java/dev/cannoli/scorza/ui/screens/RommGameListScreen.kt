@@ -78,7 +78,6 @@ fun RommGameListScreen(
                 )
                 Spacer(modifier = Modifier.height(listTitleSpacing()))
                 if (loading) {
-                    // Blank during the load gap so a freshly-entered list never flashes "No results".
                     Box(modifier = Modifier.fillMaxSize()) {}
                 } else if (games.isEmpty()) {
                     Box(

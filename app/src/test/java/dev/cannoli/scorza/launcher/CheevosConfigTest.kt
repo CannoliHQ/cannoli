@@ -6,10 +6,6 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/**
- * RetroArch defaults cheevos_hardcore_mode_enable to true, so enabling cheevos without stating
- * hardcore silently turns it on. Every enabled emission pins it.
- */
 class CheevosConfigTest {
 
     private fun keys(
@@ -28,8 +24,6 @@ class CheevosConfigTest {
         assertEquals("false", k["cheevos_badges_enable"])
     }
 
-    // Stated empty rather than omitted: Cannoli never launches with a password, and an inherited
-    // base config can carry one, so the launch has to say so instead of leaving it alone.
     @Test fun `the password is always emitted empty`() {
         assertEquals("", keys()["cheevos_password"])
         assertEquals("", keys(token = "")["cheevos_password"])
@@ -80,9 +74,6 @@ class CheevosConfigTest {
         assertNull(off["savestate_auto_load"])
     }
 
-    // No account means every session key is stated blank, not skipped. Skipping them is what let an
-    // inherited base config keep a stranger's account, token and hardcore live for a logged out
-    // player: an unstated key leaves the inherited value untouched in the launch config.
     @Test fun `no token scrubs cheevos rather than emitting nothing`() {
         for (k in listOf(keys(token = "", hardcore = true), keys(username = "", hardcore = true))) {
             assertEquals("false", k["cheevos_enable"])
@@ -93,8 +84,6 @@ class CheevosConfigTest {
         }
     }
 
-    // The five session/account/mode keys are the whole denylist the security fix guards, so every
-    // emission has to state all five whatever the account state.
     @Test fun `every session key is stated in both account states`() {
         val sessionKeys = listOf(
             "cheevos_enable",

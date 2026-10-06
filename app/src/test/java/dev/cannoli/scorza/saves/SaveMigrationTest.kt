@@ -37,7 +37,6 @@ class SaveMigrationTest {
         assertEquals("SAVE", File(paths.saveDirFor("GBA", "Pokemon"), "Pokemon.srm").readText())
     }
 
-    /** VBA-M writes the real-time clock beside the save; both belong to the game. */
     @Test fun `sibling files move together`() {
         loose("GBA", "Pokemon.srm", "SAVE")
         loose("GBA", "Pokemon.rtc", "RTC")
@@ -49,7 +48,6 @@ class SaveMigrationTest {
         assertEquals("RTC", File(dir, "Pokemon.rtc").readText())
     }
 
-    /** mupen writes each save type as its own file sharing the rom's base name. */
     @Test fun `every n64 save type moves`() {
         listOf("sra", "eep", "fla", "mpk").forEach { loose("N64", "Zelda.$it") }
 
@@ -73,15 +71,12 @@ class SaveMigrationTest {
 
         migration.migrateGame("GBA", "Pokemon")
 
-        // Located rather than named: the stamp is formatted in the device's zone, so hardcoding it
-        // would pass only where the test was written.
         val root = paths.backupDir.listFiles()!!.single { it.name.startsWith("save-migration-") }
         val backup = File(root, "GBA/Pokemon")
         assertEquals("SAVE", File(backup, "Pokemon.srm").readText())
         assertEquals("RTC", File(backup, "Pokemon.rtc").readText())
     }
 
-    /** A collision is something the migration did not predict, so it stops rather than guessing. */
     @Test fun `a name already at the destination moves nothing`() {
         loose("GBA", "Pokemon.srm", "LOOSE")
         File(paths.saveDirFor("GBA", "Pokemon").apply { mkdirs() }, "Pokemon.srm").writeText("EXISTING")
@@ -115,10 +110,6 @@ class SaveMigrationTest {
         assertEquals("SAVE", File(dir, "data.bin").readText())
     }
 
-    /**
-     * PPSSPP keeps one memory stick for the platform and files a game inside SAVEDATA by disc id.
-     * Moving that into a per-game folder is what stranded it, so the migration leaves it alone.
-     */
     @Test fun `a shared save root is left exactly as it is`() {
         val savedata = File(paths.savesFor("PSP"), "SAVEDATA/UCUS98653").apply { mkdirs() }
         File(savedata, "DATA.BIN").writeText("SAVE")

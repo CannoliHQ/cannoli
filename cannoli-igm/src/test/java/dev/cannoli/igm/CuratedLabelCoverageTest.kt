@@ -3,11 +3,6 @@ package dev.cannoli.igm
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-/**
- * A row's label is `curatedRowLabels[row.key] ?: row.key`, so a key the map does not carry ships the
- * raw identifier as the label instead of failing. The catalogue and the labels are written in
- * separate files and nothing else makes them agree.
- */
 class CuratedLabelCoverageTest {
 
     private val rows = CuratedCatalog.categories.flatMap { it.rows }

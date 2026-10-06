@@ -14,7 +14,6 @@ import org.junit.Test
 
 class ButtonLabelTest {
 
-    /** Start and Select swapped, the way a user who wants Start on top would configure it. */
     private fun flippedStartSelect() = DeviceMapping(
         id = "flipped",
         displayName = "Retroid Pocket Classic",
@@ -56,8 +55,6 @@ class ButtonLabelTest {
 
     @Test
     fun `a key the mapping does not bind as a button has no canonical`() {
-        // The D-pad here is a hat, so its synthesized keycode is not a Button binding and keeps
-        // its hardware name.
         assertNull(canonicalForKeyCode(KeyEvent.KEYCODE_DPAD_UP, flippedStartSelect()))
         assertNull(canonicalForKeyCode(KeyEvent.KEYCODE_BUTTON_L2, flippedStartSelect()))
     }

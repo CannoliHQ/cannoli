@@ -28,15 +28,11 @@ class PlatformConfigStandaloneDisplayTest {
 
     @Test fun `a mapped core confirmed missing is flagged NOT_INSTALLED`() {
         val pc = config()
-        // No installedRaCores and no unresponsive packages: coreStatus is "Missing" (confirmed absent).
         val entry = pc.getDetailedMappings().first { it.tag == "NES" }
         assertEquals(pc.getCoreDisplayName("nestopia_libretro"), entry.coreDisplayName)
         assertEquals(EmulatorMappingStatus.NOT_INSTALLED, entry.status)
     }
 
-    // A pick now persists as part of making it, so there is no uncommitted window in which a
-    // reload could discard it. The old two-step set-then-save was the source of the "who forgot
-    // to call saveCoreMappings" bug class.
     @Test fun `a pick persists immediately and survives a reload`() {
         val pc = config()
         assertFalse(pc.hasUserMapping("NES"))

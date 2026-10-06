@@ -9,9 +9,6 @@ import java.util.concurrent.Executors
 object CheatIdentity {
     fun of(desc: String, code: String): String = "$desc|$code"
 
-    // String.hashCode is specified by the JLS, so this value is stable across processes and
-    // devices. It only has to survive a .cht file being reordered or re-edited, which the v1
-    // index format did not.
     fun hash(desc: String, code: String): String = "%08x".format(of(desc, code).hashCode())
 }
 
@@ -31,7 +28,6 @@ class CheatManager(
         "$gameBaseName.ini",
     )
 
-    /** A game has one cheat file. A folder holding several is a mistake; the first one wins. */
     fun findCheatFile(): CheatFile? {
         if (!cheatsDir.isDirectory) return null
         val files = cheatsDir.listFiles() ?: return null
@@ -54,8 +50,6 @@ class CheatManager(
             }
     }
 
-    // The store is read once and then owned in memory. Every toggle persists, and re-reading the
-    // file it just wrote costs a FUSE read on the thread the game is drawing from.
     private var cache: MutableMap<String, MutableMap<String, String>>? = null
 
     private fun sections(): MutableMap<String, MutableMap<String, String>> =
@@ -80,8 +74,6 @@ class CheatManager(
         val stored = sections.getOrPut(SECTION) { mutableMapOf() }
         stored[FILE_KEY] = fileName
         stored[HASHES_KEY] = hashes.sorted().joinToString(",")
-        // The writer thread only ever sees this copy, so it cannot read a map the next toggle is
-        // editing, and the queue's order is what makes the last save the one that lands.
         val snapshot = sections.mapValues { it.value.toMap() }
         writer.execute { IniWriter.write(stateFile, snapshot) }
     }

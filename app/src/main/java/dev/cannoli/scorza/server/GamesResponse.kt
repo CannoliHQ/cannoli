@@ -11,24 +11,14 @@ object GamesResponse {
 
     private val SAVE_EXTENSIONS = setOf("srm", "sav", "fla", "rtc", "mcr", "mcd", "psm", "eep")
 
-    // Checking costs a short blocking socket read, so it is worth doing per batch, not per game.
     private const val CANCEL_CHECK_INTERVAL = 128
 
-    // One entry per art directory, replaced whenever that directory's timestamp moves.
     private val artIndexCache = java.util.concurrent.ConcurrentHashMap<String, Pair<String, Map<String, File>>>()
 
-    // The measured shape of a platform's art, cached against the same stamp as the index above.
     private val artAspectCache = java.util.concurrent.ConcurrentHashMap<String, Pair<String, Float?>>()
 
-    /** How many covers are opened to decide a platform's shape. */
     private const val ASPECT_SAMPLE = 25
 
-    /**
-     * Width over height of an image, without decoding the pixels.
-     *
-     * Injected so the games list can be tested without an Android runtime, the same way [listDir]
-     * lets it be tested without a filesystem.
-     */
     private val decodeAspect: (File) -> Float? = { file ->
         try {
             val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
@@ -39,13 +29,6 @@ object GamesResponse {
         } catch (_: Throwable) { null }
     }
 
-    /**
-     * The shape to draw a whole platform at, from a sample of its covers.
-     *
-     * The lower median rather than the mean, because one screenshot scraped in among the box art
-     * would drag an average off the shape every other cover shares, and the lower of two middles
-     * errs toward the taller shape, which crops nothing when it is wrong.
-     */
     internal fun medianAspect(ratios: List<Float>): Float? {
         if (ratios.isEmpty()) return null
         return ratios.sorted()[(ratios.size - 1) / 2]
@@ -76,7 +59,6 @@ object GamesResponse {
         val displayName: String,
         val games: List<GameJson>,
         val folders: List<String>,
-        /** Width over height the platform's covers share, for the grid's uniform mode. */
         val artAspect: Float? = null,
     )
 
@@ -166,9 +148,6 @@ object GamesResponse {
                 sortKey = game.sortKey,
                 path = game.path,
                 folder = game.folder,
-                // Stat'd here rather than in GameJson: the list drops these two fields because
-                // nothing renders them and they cost a syscall per game, but a single game detail
-                // does show them and pays for exactly one file.
                 size = try { rom.path.length() } catch (_: Throwable) { 0L },
                 modified = try { rom.path.lastModified() } catch (_: Throwable) { 0L },
                 hasArt = game.hasArt,
@@ -235,13 +214,9 @@ object GamesResponse {
         )
     }
 
-    // URLEncoder targets form encoding, so its "+" for space has to become %20 to survive as a path.
     private fun encodePathSegment(segment: String): String =
         java.net.URLEncoder.encode(segment, "UTF-8").replace("+", "%20")
 
-    /** Art and save files for one platform, listed once and keyed by ROM base name. Resolving these
-     *  per game instead costs a full directory listing per game, which is quadratic over the library
-     *  and unusable on a FUSE-mounted SD card. */
     private class PlatformIndex(
         cannoliRoot: File,
         platformTag: String,
@@ -250,17 +225,10 @@ object GamesResponse {
     ) {
         private val artDir = File(cannoliRoot, "Art/$platformTag")
 
-        /** Cache-busting token for every art url on this platform. Taken from the directory rather
-         *  than each file, which would cost a stat per game; adding, replacing or removing art all
-         *  touch the directory. Coarser than per-file, so one art change re-fetches the platform's
-         *  covers, which is a fair trade for keeping the list request free of extra syscalls. */
         val artVersion: String by lazy {
             (if (artDir.isDirectory) artDir.lastModified() else 0L).toString(36)
         }
 
-        // Building this means a stat per art file to tell files from directories, which on a large
-        // platform costs as much as everything else in the request put together. It is cached
-        // against the directory's timestamp, so only the first request after a change pays.
         private val art: Map<String, File> by lazy {
             val stamp = artVersion
             artIndexCache[artDir.absolutePath]?.let { if (it.first == stamp) return@lazy it.second }
@@ -273,15 +241,6 @@ object GamesResponse {
             built
         }
 
-        /**
-         * One shape for the platform, or null when nothing could be measured.
-         *
-         * Sampled rather than measured in full: a bounds decode is cheap but not free, and a
-         * platform's covers are the same shape as each other or they are not, which twenty-five
-         * of them answer as well as a thousand. Sorted before sampling so the answer does not
-         * depend on directory order, and cached against the art stamp so only the first request
-         * after an art change pays for it.
-         */
         val artAspect: Float? by lazy {
             val stamp = artVersion
             artAspectCache[artDir.absolutePath]?.let { if (it.first == stamp) return@lazy it.second }
@@ -302,9 +261,6 @@ object GamesResponse {
             }
         }
 
-        // Save States, Guides and Cheats each hold one directory per game. Listing that parent once
-        // replaces an isDirectory stat per game, and only games that actually have a directory pay
-        // to look inside it.
         private val stateDirs: Map<String, File> by lazy {
             gameDirs(File(cannoliRoot, "Save States/$platformTag"), listDir)
         }

@@ -67,7 +67,6 @@ class RetroArchCfgWriterTest {
         assertTrue(cfg.contains("input_b_btn = \"96\""))
         assertTrue(cfg.contains("input_a_btn = \"97\""))
         assertTrue(cfg.contains("input_up_btn = \"h0up\""))
-        // BTN_L2 carries android axis 23 (AXIS_BRAKE), which is RA slot 8.
         assertTrue(cfg.contains("input_l2_axis = \"+8\""))
         assertTrue(cfg.contains("input_l3_btn = \"106\""))
         assertTrue(cfg.contains("input_l_x_plus_axis = \"+0\""))
@@ -191,9 +190,6 @@ class RetroArchCfgWriterTest {
         assertEquals(listOf(InputBinding.Button(318)), imported.bindings[CanonicalButton.BTN_MENU])
     }
 
-    // A pad that reports its triggers as axes emits no keycode for them, so both the button and
-    // the axis have to reach RetroArch, and the axis has to be named as RA's compacted slot rather
-    // than the raw Android id. Axis 23 (AXIS_BRAKE) is slot 8 and 22 (AXIS_GAS) is slot 9.
     @Test
     fun `a trigger bound to both a button and an axis writes both, with RA slot numbers`() {
         val (resting, activeMin, activeMax) =
@@ -244,7 +240,6 @@ class RetroArchCfgWriterTest {
                 )
             )
         )
-        // The first binding wins: android axis 17 (AXIS_LTRIGGER) is RA slot 6.
         val lines = cfg.lineSequence().filter { it.startsWith("input_l2_axis") }.toList()
         assertEquals(listOf("input_l2_axis = \"+6\""), lines)
     }
@@ -303,7 +298,6 @@ class RetroArchCfgWriterTest {
         val imported = RetroArchAutoconfigImporter.import(entry, device)
         val written = RetroArchCfgWriter.write(imported)
 
-        // Proves slot -> android -> slot is a clean identity for every stick and trigger key.
         assertTrue(written.contains("input_l_x_plus_axis = \"+0\""))
         assertTrue(written.contains("input_l_x_minus_axis = \"-0\""))
         assertTrue(written.contains("input_l_y_plus_axis = \"+1\""))
@@ -349,8 +343,6 @@ class RetroArchCfgWriterTest {
     fun `a canonical carrying both a digital and an axis binding writes each key once`() {
         val mapping = sampleMapping().copy(
             bindings = sampleMapping().bindings + (
-                // Axis listed before the Hat, to prove the digital binding wins the btn key
-                // regardless of order, while the axis key still writes alongside it.
                 CanonicalButton.BTN_UP to listOf(
                     InputBinding.Axis(
                         axis = 1, restingValue = 0f, activeMin = 0f, activeMax = -1f,

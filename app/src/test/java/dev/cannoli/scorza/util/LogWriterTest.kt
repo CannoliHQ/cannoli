@@ -21,7 +21,6 @@ class LogWriterTest {
         @Synchronized fun snapshot(): List<String> = lines.toList()
     }
 
-    /** Stalls the writer thread the way a busy SD card does. */
     private inner class Blocking : LogTarget {
         val lines = mutableListOf<String>()
         @Synchronized override fun append(line: String) {
@@ -76,8 +75,6 @@ class LogWriterTest {
         gate.countDown()
         assertTrue(LogWriter.flush(10_000))
 
-        // The notice lands on the next line written to the same log, so it reports against
-        // the log that actually lost lines rather than whichever one wrote next.
         LogWriter.write(slow, "after\n")
         assertTrue(LogWriter.flush(5000))
 
@@ -85,7 +82,6 @@ class LogWriterTest {
         val notice = written.firstOrNull { it.contains("log lines dropped") }
         assertNotNull("expected a drop notice on the overflowing log", notice)
 
-        // Every submitted line is either written or counted as dropped; none vanish quietly.
         val reportedDrops = Regex("\\.\\.\\. (\\d+) log lines dropped").find(notice!!)!!
             .groupValues[1].toInt()
         val dataLines = written.count { it.startsWith("line ") }

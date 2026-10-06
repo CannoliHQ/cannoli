@@ -90,8 +90,6 @@ internal fun RommScreens(
                 dev.cannoli.scorza.input.screen.compose.ScreenInput(handler)
             }
             val loaded = rommBrowseViewModel?.games?.collectAsState()?.value
-            // null (not loaded), a different platform's id, or a stale search term means the rows are not
-            // ours yet, so we render a loading blank rather than flashing the previous list/art or "No results".
             val loading = loaded?.id != currentScreen.platform.id ||
                 loaded?.search != currentScreen.search.ifBlank { null }
             val games = if (loading) emptyList() else loaded?.rows ?: emptyList()

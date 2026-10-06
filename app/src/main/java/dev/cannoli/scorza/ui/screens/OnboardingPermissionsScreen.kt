@@ -28,7 +28,6 @@ fun OnboardingPermissionsScreen(
     listVerticalPadding: Dp = 8.dp,
     buttonStyle: ButtonStyle = ButtonStyle(),
 ) {
-    // One contextual action, read from the same value the handler runs.
     val actionLabel = when (screen.action) {
         OnboardingPermissionsAction.GRANT -> stringResource(R.string.label_grant)
         OnboardingPermissionsAction.CONTINUE -> stringResource(R.string.label_continue)

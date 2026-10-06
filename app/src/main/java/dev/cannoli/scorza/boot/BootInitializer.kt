@@ -45,11 +45,6 @@ sealed interface BootResult {
     data class Failure(val message: String) : BootResult
 }
 
-/**
- * Matched against the grouped rows rather than raw tags, so a platform merged with another under one
- * display name opens with both. Null where the tag no longer resolves, which on a handheld whose card
- * mounts after boot is the ordinary case, so the caller lands on the system list and keeps the choice.
- */
 internal fun startOnTarget(
     tag: String,
     mode: ContentMode,
@@ -105,35 +100,22 @@ class BootInitializer @Inject constructor(
         withContext(Dispatchers.IO) { dev.cannoli.scorza.download.DownloadStaging.sweepOnce(root) }
         setupCoordinator.logStorageDiagnostics()
         platformConfig.load()
-        // Backfill only. Fills platforms that have no stored choice and never touches one the
-        // user made, so it is safe to run on every boot rather than only on first run.
         platformConfig.seedUnsetPlatforms(context.packageManager)
         ioScope.launch {
-            // ErrorLog is initialised above and is not gated behind a logging pref, unlike InputLog,
-            // which no-ops until its sink opens. A silent seed failure leaves the device with no
-            // controller profiles and no explanation.
             try {
                 autoconfigSeeder.seedIfNeeded()
             } catch (e: Exception) {
                 dev.cannoli.scorza.util.ErrorLog.write("autoconfig seed failed: ${e::class.java.simpleName} ${e.message}")
             }
-            // A resolve that lands between the seed and the next controller settle would otherwise
-            // be served the listing taken before any cfg was on disk.
             autoconfigRepository.invalidate()
             launchManager.syncRetroArchAssets(root)
             launchManager.syncBundledShaders(root)
             launchManager.ensureShaderIndex(root)
             launchManager.writeRunnerConfig(root)
-            // Strip any RetroAchievements session key left in a persisted config by an old build, so
-            // the fresh per-launch injection is the only copy on disk and nothing stale layers back.
             cheevosOverrideMigration.scrubIfNeeded()
         }
         ioScope.launch {
             dev.cannoli.scorza.util.DirectoryLayout.ensure(root, romDir, context.assets, platformConfig, context)
-            // A v1 install's states are shared across a platform's cores, which is what handed a
-            // mupen64plus-next state to a sibling core and crashed it. Runs here rather than at
-            // launch because it is a one-time upgrade, and it needs no disk scan: the roms and
-            // their overrides are already in the database from the previous run.
             migrateSaveStatesByCore(root)
         }
 
@@ -157,7 +139,6 @@ class BootInitializer @Inject constructor(
             return BootResult.Failure(result.cause.message ?: context.getString(R.string.boot_import_failed))
         }
 
-        // Runs after import so the rom list it disambiguates against reflects the current library.
         ioScope.launch {
             guidesKeyMigration.migrateIfNeeded()
         }
@@ -216,7 +197,6 @@ class BootInitializer @Inject constructor(
         }
     }
 
-    /** On top of the system list, not instead of it, so Back still walks out to it. */
     private fun landOnStartPlatform(done: () -> Unit) {
         val platform = startOnTarget(
             settings.startOnPlatform,
@@ -230,12 +210,6 @@ class BootInitializer @Inject constructor(
         }
     }
 
-    /**
-     * Adopt loose save states into the folder of the core that will load them. The effective core
-     * is the game's own override first, then the platform's mapping: sending an overridden game's
-     * state to the platform's core would move a working state away from the only core that can
-     * load it.
-     */
     private fun migrateSaveStatesByCore(root: java.io.File) {
         val paths = dev.cannoli.scorza.config.CannoliPaths(root)
         val overrides = runCatching {

@@ -68,8 +68,6 @@ class ScrollListInputHandler @AssistedInject constructor(
         if (newIdx != selectedIndex()) onMove(newIdx)
     }
 
-    // Read from the screen rather than passed in: this handler is built for a dozen screens and
-    // only the ones that render non-selectable rows have anything to say here.
     private fun selectableRows(): List<Int>? =
         (nav.currentScreen as? dev.cannoli.scorza.navigation.LauncherScreen.ScrollableScreen)?.selectableRows
 

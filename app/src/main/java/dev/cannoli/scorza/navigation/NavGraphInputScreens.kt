@@ -185,12 +185,8 @@ internal fun InputScreens(
             )
         }
         is LauncherScreen.LegendWizard -> {
-            // The capture engine settles a press after a quiet window, so something has to ask it
-            // whether that window has passed. The button editor drives its own the same way.
             androidx.compose.runtime.LaunchedEffect(legendWizardState.step, legendWizardState.capturing) {
                 while (legendWizardState.step == dev.cannoli.scorza.input.legend.WizardStep.Capture) {
-                    // A frame, not 50ms: the poll interval lands on top of the settle wait and is
-                    // felt on every one of the wizard's questions.
                     kotlinx.coroutines.delay(16)
                     legendWizardController?.tickCapture()
                 }

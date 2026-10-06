@@ -4,10 +4,6 @@ import dev.cannoli.igm.RetroArchBridge
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-/**
- * Pins the wire format ricotta_sb_escaped produces. Every literal below is the exact output of
- * that C function, so changing the escaping means consciously rewriting these bytes.
- */
 class CheatPayloadDecodeTest {
 
     @Test

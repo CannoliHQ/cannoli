@@ -40,8 +40,6 @@ class PlatformConfigSourcesTest {
         val biosDir = File(ctx.cacheDir, "fw-bios").apply { mkdirs() }
         val missing = pc.getFirmwareStatus("ATARI5200", coreId, biosDir)
         assertTrue(missing.isNotEmpty())
-        // Presence, not satisfaction: atari800's entries are optional, so an absent one is satisfied
-        // while still being absent, and asking the wrong question passed an empty BIOS folder.
         assertTrue(
             "no firmware files present yet",
             missing.filterIsInstance<FirmwareRequirement.Single>().none { it.present },

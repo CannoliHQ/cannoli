@@ -9,11 +9,6 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
 
-/**
- * Migration 12 rewrites game_overrides, which for a user who ran the SQLite cutover and has not
- * edited an override since holds the only surviving copy of their per-game picks. It converts the
- * legacy runner caption into an EmulatorSource name, so every caption shape needs a pinned result.
- */
 class GameOverridesMigrationTest {
 
     @get:Rule val tmp = TemporaryFolder()

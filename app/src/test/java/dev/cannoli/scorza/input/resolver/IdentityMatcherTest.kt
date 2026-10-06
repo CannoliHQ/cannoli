@@ -42,7 +42,6 @@ class IdentityMatcherTest {
         deviceAliases = aliases,
     )
 
-    // A DS4 on a Retroid Pocket Classic reports the host's phantom 0x2022:0x3001.
     private val phantomDs4 = device("Wireless Controller", 8226, 12289, "Retroid Pocket Classic")
 
     @Test fun `name contradiction is disqualifying even when vid pid match`() {
@@ -97,8 +96,6 @@ class IdentityMatcherTest {
         assertEquals(false, IdentityMatcher.builtinAgrees(builtInEntry, phantomDs4))
     }
 
-    // Android merges this pad's three HID nodes into one InputDevice and names it after whichever
-    // node enumerated first, so the same pad reports either name across reconnects.
     private val mergedAsKeyboard = device("GameSir-Pocket 1 Keyboard", 13623, 4402, "moto g play - 2024")
 
     @Test fun `a collected alias matches the pad`() {

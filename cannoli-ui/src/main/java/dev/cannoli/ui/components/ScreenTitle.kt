@@ -37,19 +37,6 @@ val LocalStatusBarLeftEdge = staticCompositionLocalOf<MutableIntState> { mutable
 
 const val TitleFontScale = 1.3f
 
-/**
- * What a [ScreenTitle] occupies and where the ink sits inside the boxes a list screen is built from,
- * measured rather than assumed.
- *
- * [height] is what it lays out at: the title draws larger than the row font it shares a line height
- * with, so this has to come from the same measurement Compose will make.
- *
- * The gaps a reader judges run ink to ink, but layout places boxes, and a row's box is not
- * symmetric about its text: the space above the glyphs (ascent and leading) exceeds the space
- * below. Equal boxes therefore do not read as equal gaps. These let the solve convert between the
- * two - [rowAboveInk] and [rowBelowInk] are measured from the row's own baseline, and
- * [titleBelowInk] from the title's, which sits lower because the title draws larger.
- */
 data class ScreenTitleMetrics(
     val height: Dp,
     val titleBelowInk: Dp,
@@ -57,13 +44,6 @@ data class ScreenTitleMetrics(
     val rowBelowInk: Dp,
 )
 
-/**
- * Height of a capital above the baseline, for the font actually in use.
- *
- * Compose reports baselines but not ink extents, and Cannoli ships two fonts the user switches
- * between, so a fixed ratio would be wrong for one of them. Resolving the family to a [Typeface] and
- * asking for real glyph bounds costs one measurement and is correct for whichever font is loaded.
- */
 @Composable
 private fun capHeightPx(style: TextStyle, fontSizePx: Float): Float {
     val resolver = LocalFontFamilyResolver.current
@@ -79,7 +59,6 @@ private fun capHeightPx(style: TextStyle, fontSizePx: Float): Float {
         }
         val bounds = Rect()
         paint.getTextBounds("H", 0, 1, bounds)
-        // getTextBounds is relative to the baseline origin, so the ink top is negative.
         (-bounds.top).toFloat()
     }
 }

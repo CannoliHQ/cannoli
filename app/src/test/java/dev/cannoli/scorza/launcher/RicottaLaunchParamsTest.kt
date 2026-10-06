@@ -81,8 +81,6 @@ class RicottaLaunchParamsTest {
         }
     }
 
-    // The chords are matched in the emulator process, so the parcel is the only way they get
-    // there. A chord that does not survive it is a shortcut that silently does nothing.
     @Test fun `chords survive the trip to the emulator process`() {
         assertEquals(sample().shortcuts, roundTrip(sample()).shortcuts)
     }
@@ -92,8 +90,6 @@ class RicottaLaunchParamsTest {
         assertEquals(emptyMap<dev.cannoli.igm.ShortcutAction, Set<Int>>(), roundTrip(bare).shortcuts)
     }
 
-    // An empty chord means deliberately unbound; carrying it would hand the matcher something that
-    // can never match, and the ini reader drops these on the way in for the same reason.
     @Test fun `an unbound action is not carried`() {
         val unbound = sample().copy(
             shortcuts = mapOf(dev.cannoli.igm.ShortcutAction.RESET_GAME to emptySet()),
@@ -119,8 +115,6 @@ class RicottaLaunchParamsTest {
         assertEquals(original, roundTrip(original))
     }
 
-    // localeTag is the last field precisely so this degrades instead of corrupting the ones before
-    // it. Sender and receiver ship together, so this only covers a stale install.
     @Test fun `an older parcel that omits the trailing locale tag reads as no override`() {
         val params = sample()
         val parcel = Parcel.obtain()
@@ -182,9 +176,6 @@ class RicottaLaunchParamsTest {
         }
     }
 
-    // hardcoreInEffect is now the last field, for the same reason localeTag and romBaseName were: a
-    // stale sender's parcel must degrade to false (save state rows shown, the safe default) here
-    // rather than shift every field before it.
     @Test fun `an older parcel that omits the trailing hardcore flag reads as softcore`() {
         val params = sample()
         val parcel = Parcel.obtain()
@@ -236,8 +227,6 @@ class RicottaLaunchParamsTest {
         }
     }
 
-    // curatedSettings is now the trailing field. A stale sender's parcel must degrade to the
-    // launcher default, Curated, rather than shift every field before it.
     @Test fun `an older parcel that omits the trailing settings mode reads as curated`() {
         val params = sample().copy(curatedSettings = false)
         val parcel = Parcel.obtain()

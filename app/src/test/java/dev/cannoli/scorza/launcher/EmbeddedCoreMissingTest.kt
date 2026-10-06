@@ -18,14 +18,6 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
 
-/**
- * The embedded runner had no core-presence check before launch: only a separately installed
- * RetroArch was ever asked whether it held the core. So a mapping naming a core that is not in
- * filesDir/cores launched RetroArch anyway and failed inside it, with nothing said in the launcher.
- *
- * That gap becomes load-bearing once mappings migrate off external RetroArch, since a migrated
- * choice names a core the embedded runner has very likely never downloaded.
- */
 class EmbeddedCoreMissingTest {
 
     @get:Rule val tmp = TemporaryFolder()

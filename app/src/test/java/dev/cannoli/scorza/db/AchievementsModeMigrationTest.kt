@@ -10,10 +10,6 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
 
-/**
- * ra_hardcore rides on the roms row and is nullable, because a game saying nothing is a third
- * answer rather than a default: it follows the global mode, and has to be able to go back to that.
- */
 class AchievementsModeMigrationTest {
 
     @get:Rule val tmp = TemporaryFolder()
@@ -37,7 +33,6 @@ class AchievementsModeMigrationTest {
         return conn
     }
 
-    /** Null and 0 are different answers here, so the reader has to be able to tell them apart. */
     private fun modeOf(conn: SQLiteConnection, romId: Long): Int? =
         conn.prepare("SELECT ra_hardcore FROM roms WHERE id = ?").use { stmt ->
             stmt.bindLong(1, romId)
@@ -64,11 +59,6 @@ class AchievementsModeMigrationTest {
         conn.close()
     }
 
-    /**
-     * A database that ran the first version of migration 13, which added force_softcore rather than
-     * ra_hardcore, and was then carried forward by later migrations. Its user_version is 13, so the
-     * rewritten 13 never runs again and the column the game list selects is simply absent.
-     */
     private fun oldThirteenConnection(name: String): SQLiteConnection {
         val file = File(tmp.root, "$name.db")
         val conn = BundledSQLiteDriver().open(file.absolutePath)
@@ -102,7 +92,6 @@ class AchievementsModeMigrationTest {
         val conn = v12Connection("healthy")
         Migrations.applyFrom(conn, 12)
         conn.execSQL("UPDATE roms SET ra_hardcore = 1 WHERE id = 1")
-        // From 14, so the healing migration runs against a database that never needed it.
         Migrations.applyFrom(conn, 14)
         assertEquals(1, modeOf(conn, 1))
         conn.close()

@@ -4,18 +4,12 @@ import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import androidx.sqlite.execSQL
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
 
-/**
- * The sigil columns ride on the roms row, and sigil_probe is the one that has to be nullable: null
- * is the row the drain has still to reach, and anything else is an attempt that will not be made
- * twice whether or not it produced an id.
- */
 class GameIdMigrationTest {
 
     @get:Rule val tmp = TemporaryFolder()
@@ -83,14 +77,6 @@ class GameIdMigrationTest {
             assertEquals(15, stmt.getInt(0))
         }
         assertEquals(15, Migrations.current)
-        conn.close()
-    }
-
-    @Test fun `applying twice is not an error`() {
-        val conn = v13Connection("twice")
-        Migrations.applyFrom(conn, 13)
-        Migrations.applyFrom(conn, 14)
-        assertNull(null)
         conn.close()
     }
 }

@@ -1,19 +1,4 @@
 #!/usr/bin/env python3
-"""Generate the menu-name to config-key aliases the override writer needs.
-
-A RetroArch setting has two names. menu_setting_find() matches the menu label, which is what a
-displaylist row carries and what the IGM therefore holds; config_file reads and writes the config
-key. For most settings they are the same string, and settings_def_*.h is the single source of both.
-For 68 of them they differ, because configuration.c keeps a literal row instead of taking one from
-the def file (those rows sit behind #ifndef SETTINGS_DEF_CONFIG_PASS).
-
-That matters because ricotta_ra_save_override looks a setting up by menu name and then writes the
-override file under that same name. For a divergent setting it writes a key RetroArch never reads
-back, so the override silently does not apply: audio_output_rate saved as "audio_output_rate" when
-RetroArch wants "audio_out_rate", gpu_index saved as "gpu_index" when it wants "vulkan_gpu_index".
-
-Both halves are parsed from source here so a bump regenerates the list rather than leaving it to rot.
-"""
 import pathlib
 import re
 import sys
@@ -23,7 +8,6 @@ RA = pathlib.Path(__file__).resolve().parent.parent / "retroarch"
 S_ROW = re.compile(r'^S_(BOOL|UINT|INT|FLOAT|STRING|PATH|DIR|SIZE|HEX)[A-Z0-9_]*\s*\(', re.M)
 
 
-# settings_t field -> the config key configuration.c binds it to.
 def config_keys():
     text = (RA / "configuration.c").read_text(errors="replace")
     out = {}
@@ -35,7 +19,6 @@ def config_keys():
     return out
 
 
-# settings_t field -> the menu label its def row declares.
 def menu_names():
     out = {}
     for f in sorted((RA / "settings").glob("settings_def_*.h")):
@@ -55,7 +38,6 @@ def menu_names():
                 continue
             pre = body[:km.start()]
             first = pre[pre.index("(") + 1:].split(",")[0].strip()
-            # A viewport row targets a struct member: offsetof(settings_t, video_vp_custom.x).
             if first.startswith("offsetof"):
                 om = re.search(r'offsetof\([^,]+,\s*([\w.]+)\)', pre)
                 first = om.group(1).split(".")[-1] if om else ""

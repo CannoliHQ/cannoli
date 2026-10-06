@@ -114,7 +114,6 @@ class PortRouterTest {
         r.markLaunchTrigger(1)
         r.connectAndActivate(device(2, 1), template())
         r.connectAndActivate(device(3, 2), template())
-        // device 4 connects after; expect port 3.
         r.connectAndActivate(device(4, 3), template())
         assertEquals(3, r.portFor(4))
     }
@@ -152,7 +151,6 @@ class PortRouterTest {
         val r = PortRouter()
         r.onConnect(device(1, 1L), template())
         r.onConnect(device(2, 2L), template())
-        // device 2 activates first
         r.activate(2, 10L)
         r.activate(1, 20L)
         assertEquals(0, r.portFor(2))
@@ -163,7 +161,6 @@ class PortRouterTest {
     fun pending_external_does_not_displace_active_internal() {
         val r = PortRouter()
         r.connectAndActivate(device(99, 0, builtIn = true), template())
-        // External enrolls but does not activate; internal keeps P1.
         r.onConnect(device(1, 1), template())
         assertEquals(0, r.portFor(99))
         assertNull(r.portFor(1))
@@ -183,7 +180,7 @@ class PortRouterTest {
     fun reassign_rejects_pending_entry() {
         val r = PortRouter()
         r.connectAndActivate(device(1, 0), template())
-        r.onConnect(device(2, 1), template()) // pending
+        r.onConnect(device(2, 1), template())
         r.reassign(deviceId = 2, toPort = 0)
         assertEquals(0, r.portFor(1))
         assertNull(r.portFor(2))
@@ -191,7 +188,6 @@ class PortRouterTest {
 
     @Test
     fun activate_listener_sees_assigned_port_inside_callback() {
-        // Regression: listener must run after recompute so portFor() returns the new port.
         val r = PortRouter()
         var seenPort: Int? = -1
         r.onActivatedListener = { device -> seenPort = r.portFor(device.androidDeviceId) }
@@ -244,7 +240,6 @@ class PortRouterTest {
         val r = PortRouter()
         r.connectAndActivate(device(1, 0), template())
         r.markLaunchTrigger(1)
-        // The default template fixture only binds BTN_SOUTH to keycode 96.
         val ev = r.evaluatorFor(1)!!
         ev.evaluateKeyDown(96, isAndroidRepeat = false)
         assertEquals(true, r.isCanonicalPressedAt(0, CanonicalButton.BTN_SOUTH))

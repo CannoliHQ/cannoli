@@ -9,15 +9,6 @@ import dev.cannoli.scorza.input.GlyphStyle
 import dev.cannoli.scorza.input.InputBinding
 import dev.cannoli.scorza.input.MappingSource
 
-/**
- * Mapping for the development-only keyboard controller, used to drive the launcher and the IGM
- * from an Android Virtual Device where no gamepad is attached. Only ever built when
- * `ControllerBridge.devKeyboardEnabled` is set, and never written to the autoconfig database.
- *
- * This is the whole "keyboard keys arrive as button presses" step: a DeviceMapping is already a
- * keycode-to-CanonicalButton table, so binding keyboard keycodes here routes them through the
- * same PortEvaluator / PortRouter / InputDispatcher path a real pad uses.
- */
 object DevKeyboardMapping {
 
     const val ID = "dev_keyboard"
@@ -30,11 +21,7 @@ object DevKeyboardMapping {
         CanonicalButton.BTN_LEFT to listOf(KeyEvent.KEYCODE_DPAD_LEFT),
         CanonicalButton.BTN_RIGHT to listOf(KeyEvent.KEYCODE_DPAD_RIGHT),
         CanonicalButton.BTN_SOUTH to listOf(KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER),
-        // KEYCODE_BACK alongside ESCAPE: some AVD keyboard layouts deliver Esc as BACK.
         CanonicalButton.BTN_EAST to listOf(KeyEvent.KEYCODE_ESCAPE, KeyEvent.KEYCODE_BACK),
-        // Y and X sit on the buttons the PLUMBER glyphs label Y and X, so the key pressed matches
-        // the letter the BottomBar shows. Tab and Backspace were tried here first and never
-        // arrived: the view hierarchy consumes them for focus traversal before onKeyDown runs.
         CanonicalButton.BTN_WEST to listOf(KeyEvent.KEYCODE_Y),
         CanonicalButton.BTN_NORTH to listOf(KeyEvent.KEYCODE_X),
         CanonicalButton.BTN_L to listOf(KeyEvent.KEYCODE_L),

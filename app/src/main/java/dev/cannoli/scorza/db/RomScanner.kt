@@ -6,11 +6,6 @@ import dev.cannoli.scorza.util.RomDirectoryWalker
 import dev.cannoli.scorza.util.ScanLog
 import dev.cannoli.scorza.util.TextNormalizer
 
-/**
- * Bridges the file-system view of a platform (via [RomDirectoryWalker]) into the roms table.
- * Always walks and syncs; [sync] is idempotent and writes nothing when the walk output matches
- * the existing rows.
- */
 class RomScanner(
     private val db: CannoliDatabase,
     private val walker: RomDirectoryWalker,
@@ -18,9 +13,6 @@ class RomScanner(
 ) {
     data class SyncCounts(val inserted: Int, val updated: Int, val removed: Int)
 
-    // Tags the launcher itself just mutated (rename, delete, organize). The next scan of such a
-    // tag reconciles a change the user already saw happen in the UI, so it must not raise the
-    // "Game list updated" OSD the way a background/external change does.
     private val launcherMutatedTags = java.util.Collections.synchronizedSet(mutableSetOf<String>())
 
     fun markLauncherMutation(platformTag: String) {
@@ -33,8 +25,6 @@ class RomScanner(
     fun scanPlatform(platformTag: String, isArcade: Boolean = false): SyncCounts {
         val tag = platformTag.uppercase()
         ensurePlatformRow(tag)
-        // Every path that adds, moves or removes a folder ends up here, so this is the one place
-        // that has to drop the cached folder list.
         walker.invalidateCategoryFolders(tag)
         val result = walker.walk(tag, isArcade) ?: return clearPlatform(tag).also {
             ScanLog.write("scanPlatform $tag: no rom dir, cleared ${it.removed}")

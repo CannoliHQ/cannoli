@@ -31,7 +31,6 @@ class IGMControllerCheatsTest {
         File(dir, name).writeText(body.toString())
     }
 
-    /** Writes land before the call returns, so every assertion below stays synchronous. */
     private fun manager() =
         CheatManager(tmp.root.absolutePath, "nes", "Game", writer = { it.run() })
 
@@ -397,8 +396,6 @@ class IGMControllerCheatsTest {
         c.handleKeyDown(DPAD_RIGHT)
         assertEquals(3, bridge.loadedCheatPaths.size)
 
-        // The loads in flight when the disc changed describe the disc that left. The new disc
-        // reinitializes content state, so RetroArch takes a different set of rows from the file.
         bridge.deliverCheats()
         bridge.deliverCheats()
         bridge.cheatRowsByPath[path] = listOf(
@@ -670,8 +667,6 @@ class IGMControllerCheatsTest {
         assertTrue(c.buildMenuOptions().hasCheats)
     }
 
-    // The cheats row lands during gameplay, so the row count changes between opens. What matters
-    // now is that the rebuilt menu is coherent and opens on Resume, not that a row is remembered.
     @Test fun `the menu opens on Resume when the cheats row comes back`() {
         writeCht("a.cht", "One")
         val bridge = bridgeFor("a.cht" to listOf("One")).apply { discs = 2; deferCheatLoads = true }

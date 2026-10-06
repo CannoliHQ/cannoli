@@ -19,7 +19,6 @@ class SigilPlatformTest {
         assertEquals(9, SigilPlatform.TAGS.size)
     }
 
-    /** Sigil reads all three; Cannoli has nowhere to put a prod.keys and no tag for either Xbox. */
     @Test fun `switch ps3 and xbox stay unmapped`() {
         assertNull(SigilPlatform.fromTag("NSW"))
         assertNull(SigilPlatform.fromTag("PS3"))
@@ -38,7 +37,6 @@ class SigilPlatformTest {
         assertEquals(SigilPlatform.GAMECUBE, SigilPlatform.fromTag("gc"))
     }
 
-    /** The ordinal is the wire format the JNI shim switches on, so it is part of the contract. */
     @Test fun `ordinals are the order the shim expects`() {
         assertEquals(
             listOf("PSX", "PS2", "PSP", "PSVITA", "GAMECUBE", "WII", "WIIU", "THREEDS", "DREAMCAST"),

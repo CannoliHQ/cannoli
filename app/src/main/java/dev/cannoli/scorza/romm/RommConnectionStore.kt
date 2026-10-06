@@ -66,7 +66,6 @@ class RommConnectionStore @Inject constructor(@ApplicationContext context: Conte
         get() = prefs.getString(KEY_SERVER_VERSION, null)?.ifEmpty { null }
         set(value) { prefs.edit().run { if (value.isNullOrEmpty()) remove(KEY_SERVER_VERSION) else putString(KEY_SERVER_VERSION, value); apply() } }
 
-    /** SCAN_MEDIA from the server; empty means unknown and must not restrict the art picker. */
     var scanMedia: Set<String>
         get() = prefs.getStringSet(KEY_SCAN_MEDIA, null)?.toSet() ?: emptySet()
         set(value) { prefs.edit().run { if (value.isEmpty()) remove(KEY_SCAN_MEDIA) else putStringSet(KEY_SCAN_MEDIA, value); apply() } }

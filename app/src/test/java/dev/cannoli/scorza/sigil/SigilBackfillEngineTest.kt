@@ -29,7 +29,6 @@ class SigilBackfillEngineTest {
         extract: (String, SigilPlatform) -> SigilNative.Result = { _, _ -> found("SLUS-20946") },
     ) = SigilBackfillEngine(repository, files, extract)
 
-    /** The walker makes a cue the launch file for a bin/cue game, and sigil cannot read a cue. */
     @Test fun `probes the image beside a cue rather than the cue itself`() {
         val dir = tmp.newFolder("Game")
         val cue = File(dir, "Game.cue").apply { writeText("FILE \"Game.bin\" BINARY") }
@@ -42,7 +41,6 @@ class SigilBackfillEngineTest {
         assertEquals(listOf(bin.absolutePath), probed)
     }
 
-    /** A multi-disc set launches from an m3u, and disc one is what boots. */
     @Test fun `probes disc one of a multi disc set`() {
         val dir = tmp.newFolder("Set")
         val m3u = File(dir, "Set.m3u").apply { writeText("d1.bin\nd2.bin\n") }
@@ -67,7 +65,6 @@ class SigilBackfillEngineTest {
         assertEquals("9:${iso.lastModified()}", probe.captured)
     }
 
-    /** Nothing was read, so marking the library probed would lock a later build out of it. */
     @Test fun `an unavailable library records nothing`() {
         val iso = File(tmp.newFolder("PS2"), "Game.iso").apply { writeBytes(ByteArray(4)) }
 
@@ -76,16 +73,11 @@ class SigilBackfillEngineTest {
         verify(exactly = 0) { repository.record(any(), any(), any()) }
     }
 
-    /**
-     * Recording nothing means the next pending() hands the same row straight back, so a drain that
-     * kept going would ask the same question until the launcher was backgrounded, at full tilt.
-     */
     @Test fun `an unavailable library stops the drain instead of spinning on it`() = runTest {
         val dir = tmp.newFolder("PS2")
         val targets = (1L..3L).map {
             ProbeTarget(it, File(dir, "g$it.iso").apply { writeBytes(ByteArray(2)) }, "PS2")
         }
-        // Always the same unprobed batch, exactly as the real query would answer.
         every { repository.pending(any(), any()) } returns targets
         var calls = 0
 
@@ -126,7 +118,6 @@ class SigilBackfillEngineTest {
         verify(exactly = 3) { repository.record(any(), any(), any()) }
     }
 
-    /** A game starting means the pass stops where it is; the rows it never reached stay pending. */
     @Test fun `the drain gives up as soon as the launcher goes away`() = runTest {
         val dir = tmp.newFolder("PS2")
         val targets = (1L..4L).map {

@@ -5,10 +5,6 @@ import java.util.Collections
 import java.util.concurrent.Executors
 import java.util.concurrent.ThreadFactory
 
-/** NanoHTTPD's stock runner starts an unbounded thread per request and never reclaims one whose
- *  client has gone away, so abandoned work accumulates without limit. This caps how many requests
- *  run at once; the rest queue. Sized for concurrent file transfers, which legitimately hold a
- *  slot for the whole download, not just for the short JSON handlers. */
 internal class KitchenAsyncRunner(
     maxConcurrent: Int = DEFAULT_MAX_CONCURRENT,
     private val onExec: (NanoHTTPD.ClientHandler) -> Unit = {},
@@ -44,8 +40,6 @@ internal class KitchenAsyncRunner(
     }
 
     companion object {
-        // Browsers open ~6 connections per host, and a large ROM download holds its slot for the
-        // whole transfer, so this has to clear a few concurrent downloads plus a browsing client.
         const val DEFAULT_MAX_CONCURRENT = 16
     }
 }

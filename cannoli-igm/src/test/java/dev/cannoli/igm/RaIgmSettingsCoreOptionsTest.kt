@@ -50,7 +50,6 @@ class RaIgmSettingsCoreOptionsTest {
         assertTrue(root.items.any { it is GenericIgmSettingsItem.Category && it.key == "emulator" })
     }
 
-    // Absent rather than empty, so a core with nothing to configure has no dead end.
     @Test fun `a core with no options gets no emulator row`() {
         val (_, p) = provider(emptyList())
         val root = p.screen(emptyList())
@@ -124,7 +123,6 @@ class RaIgmSettingsCoreCategoriesTest {
         assertEquals("Video", screen.title)
     }
 
-    // One menu leading to a single menu is worse than no menu, so a flat core skips the level.
     @Test fun `a core with no categories goes straight to its options`() {
         val p = provider(listOf(CoreOptionRef("${PREFIX}a"), CoreOptionRef("${PREFIX}b")))
         val screen = p.screen(listOf("emulator"))

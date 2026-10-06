@@ -3,7 +3,6 @@ package dev.cannoli.igm
 import android.os.Parcel
 import android.os.Parcelable
 
-// Still used by DelfinoLaunchParams, whose sender and receiver remain separate builds.
 class ProtocolMismatchException(val found: Int, val expected: Int) : RuntimeException(
     "Ricotta launch protocol mismatch: parcel=$found, app=$expected",
 )
@@ -49,24 +48,10 @@ data class RicottaLaunchParams(
     val colors: IgmColors?,
     val displaySettings: IgmDisplaySettings,
     val inputMapping: IgmInputMapping? = null,
-    // BCP-47 tag of the launcher's selected language, empty for the device default.
     val localeTag: String = "",
-    // The ROM file's base name, NFC-normalized: the key every Cannoli side directory uses
-    // (Cheats/<tag>/<romBaseName>/). Not gameTitle, which has (region) and [dump] tags stripped.
     val romBaseName: String = "",
-    // The launcher's authoritative effective-hardcore decision for this launch, with global
-    // hardcore and per-game force-softcore already folded in (LaunchManager.hardcoreInEffect). The
-    // IGM gates its Save/Load State rows on this rather than on the live RetroArch cheevos setting,
-    // which a stale per-game override file can clobber back to hardcore after launch.
-    // Trailing field: a sender that predates it reads back false (rows shown) rather than shifting
-    // every field before it.
     val hardcoreInEffect: Boolean = false,
-    // Which in-game settings list to show: the curated one, or every RetroArch setting Cannoli
-    // exposes. A launcher preference rather than part of the config the game launches with, so it
-    // never reaches an override and no two games can disagree about it.
-    // Trailing field: a sender that predates it reads back true, the launcher's own default.
     val curatedSettings: Boolean = true,
-    /** Chords the launcher has bound, matched in this process because only it sees play input. */
     val shortcuts: Map<ShortcutAction, Set<Int>> = emptyMap(),
 ) : Parcelable {
     override fun describeContents() = 0
@@ -103,7 +88,6 @@ data class RicottaLaunchParams(
     }
 
     companion object {
-        /** Intent extra key carrying the parcelled params. */
         const val EXTRA = "RICOTTA_PARAMS"
 
         fun readFromIntent(intent: android.content.Intent): RicottaLaunchParams? {
@@ -135,17 +119,12 @@ data class RicottaLaunchParams(
                 val localeTag = p.readString().orEmpty()
                 val romBaseName = p.readString().orEmpty()
                 val hardcoreInEffect = p.readInt() != 0
-                // The fields above default to false, so reading past a stale sender's parcel end
-                // returns 0 and degrades correctly on its own. This one defaults to true, so it has
-                // to ask whether the sender wrote it at all.
                 val curatedSettings = if (p.dataAvail() > 0) p.readInt() != 0 else true
                 val shortcuts = mutableMapOf<ShortcutAction, Set<Int>>()
                 if (p.dataAvail() > 0) {
                     repeat(p.readInt()) {
                         val name = p.readString()
                         val chord = (p.createIntArray() ?: IntArray(0)).toSet()
-                        // An action this build no longer has is skipped rather than failing the
-                        // parcel, the same way the ini reader skips a name it does not know.
                         val action = name?.let {
                             runCatching { ShortcutAction.valueOf(it) }.getOrNull()
                         }

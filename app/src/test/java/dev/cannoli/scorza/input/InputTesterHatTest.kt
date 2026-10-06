@@ -32,7 +32,6 @@ class InputTesterHatTest {
         CanonicalButton.BTN_DOWN to hat(HatDirection.DOWN, HAT_Y),
     ))
 
-    // The AYN Thor shipped with exactly this: left bound to hat right and vice versa.
     private val crossed = mapping(mapOf(
         CanonicalButton.BTN_LEFT to hat(HatDirection.RIGHT),
         CanonicalButton.BTN_RIGHT to hat(HatDirection.LEFT),

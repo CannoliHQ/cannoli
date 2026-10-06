@@ -4,13 +4,6 @@ import dev.cannoli.scorza.romm.RommArtUrl
 import dev.cannoli.scorza.romm.RommGame
 import java.io.File
 
-/**
- * Manuals come from the RomM instance only, never from the upstream metadata provider. RomM fetches
- * the manual from ScreenScraper server-side, validates it, and serves its own copy at `path_manual`;
- * the `ss_metadata` manual url is the raw ScreenScraper source, which answers a plain 200 with an
- * error page when the media is missing or the quota is spent. The body is still checked before it
- * lands as a guide, since RomM also accepts Markdown manuals the guide viewer cannot render.
- */
 object RommManual {
 
     private const val HEADER_SCAN_BYTES = 1024
@@ -34,7 +27,6 @@ object RommManual {
         return false
     }
 
-    /** First bytes of a rejected body, so the log says what the server actually sent. */
     fun describeHead(file: File): String {
         if (!file.isFile) return "(no file)"
         val head = ByteArray(64)

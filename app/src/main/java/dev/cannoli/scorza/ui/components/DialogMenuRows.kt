@@ -43,7 +43,6 @@ enum class RommSaveSyncRow {
                     if (pendingConflicts > 0) add(CONFLICTS)
                     if (syncErrors > 0) add(ERRORS)
                 }
-                // Restore is a recovery action, so it stays available even when sync is off.
                 if (hasBackups) add(RESTORE)
             }
     }

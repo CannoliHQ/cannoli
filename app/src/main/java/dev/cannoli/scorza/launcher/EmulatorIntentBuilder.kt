@@ -72,10 +72,6 @@ object EmulatorIntentBuilder {
             is ResolvedExtra.StringArrayExtra ->
                 intent.putExtra(extra.key, extra.values.toTypedArray())
         }
-        // Argosy pattern: when extras carry a content URI, attach it as ClipData
-        // and add the intent-level grant flag. This routes emulators with
-        // VIEW-style intent filters into the working code path even when the URI
-        // itself isn't readable by the receiver.
         clipDataUri?.let { uri ->
             intent.clipData = android.content.ClipData.newRawUri(null, uri)
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
@@ -116,8 +112,6 @@ object EmulatorIntentBuilder {
         }
     }
 
-    // A value that resolves to nothing, or to a lookup the map has no entry for, drops the extra
-    // rather than sending a blank one. Receivers apply their own default for a missing extra.
     private fun resolveValue(spec: ExtraSpec, romFile: File): String? {
         val resolved = substitute(spec.value ?: return null, romFile)
         if (resolved.isEmpty()) return null
@@ -133,8 +127,6 @@ object EmulatorIntentBuilder {
         return out
     }
 
-    // Shortcut files are shared between launchers and may tag the id with its type,
-    // as in `[steamappid] 570`. A bare id is equally valid.
     private fun romId(romFile: File): String {
         val line = firstNonBlankLine(romFile)
         return TAGGED_ID.matchEntire(line)?.groupValues?.get(1)?.trim() ?: line
@@ -154,10 +146,6 @@ object EmulatorIntentBuilder {
     private fun fileProviderUri(context: Context, romFile: File): Uri =
         context.romFileProviderUri(romFile)
 
-    // Synthesize a tree-delegated SAF document URI on com.android.externalstorage.documents
-    // from an absolute path. The tree segment is set to the rom's parent directory so the
-    // framework's permission check picks up any persistent tree grant the receiver holds at
-    // that level or above. A plain document URI would not tap into the receiver's grant.
     private fun externalStorageSafUri(romFile: File): Uri? {
         val path = romFile.absolutePath
         val emulatedPrefix = "/storage/emulated/0/"

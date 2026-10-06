@@ -4,10 +4,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/**
- * A host that answers like RetroArch: values live in a map, and each key can be told to refuse a
- * write, clamp it, or refuse to be put back.
- */
 private class SweepHost(
     initial: Map<String, String>,
     private val type: Map<String, RaSettingType> = emptyMap(),
@@ -36,8 +32,6 @@ private class SweepHost(
         writes += key to value.raw
         val held = values[key] ?: return null
         if (key in refuse) return RaApplyResult(MachineValue(held))
-        // A restore is the write that puts the original back, and a host that clamps an
-        // out-of-range value does not clamp the value it already held.
         val restoring = value.raw == original[key]
         if (restoring && key in refuseRestore) return RaApplyResult(MachineValue(held))
         values[key] = if (restoring) value.raw else clampTo[key] ?: value.raw
@@ -67,8 +61,6 @@ class RaSettingsSweepTest {
         assertEquals("false", host.raGetSetting("a")?.machineValue?.raw)
     }
 
-    // The case this whole sweep exists to count: the menu asked, the write went nowhere, and only
-    // a re-read would ever have shown it.
     @Test fun `a write the host drops is reported as refused`() {
         val host = SweepHost(mapOf("a" to "false"), refuse = setOf("a"))
         val row = sweep(host).run(listOf("a")).rows.single()
@@ -89,18 +81,13 @@ class RaSettingsSweepTest {
         assertEquals("9", row.got)
     }
 
-    // Worse than a refusal: the sweep changed the running game and could not undo it.
     @Test fun `a value that cannot be put back is called out`() {
         val host = SweepHost(mapOf("a" to "false"), refuseRestore = setOf("a"))
         val row = sweep(host).run(listOf("a")).rows.single()
         assertEquals(RaSettingsSweep.Outcome.RESTORE_FAILED, row.outcome)
     }
 
-    // Stepping a float and formatting it back produces a different string for the same number.
-    // Called a clamp, it is the sweep reporting a lie of exactly the kind it exists to catch.
     @Test fun `a float that only changed spelling is not a clamp`() {
-        // Asked for 55.5 and told "55.500000": the same number, and on a device the same thing
-        // happened the other way round, asking 54.599998 and being told 54.6.
         val host = SweepHost(
             mapOf("f" to "54.5"),
             type = mapOf("f" to RaSettingType.FLOAT),
@@ -118,8 +105,6 @@ class RaSettingsSweepTest {
         assertEquals(RaSettingsSweep.Outcome.CLAMPED, sweep(host).run(listOf("f")).rows.single().outcome)
     }
 
-    // The menu refuses these rows, so a sweep that tests them is not testing what a player can
-    // reach. Sixteen audio mixer streams were reported as missing settings on that basis.
     @Test fun `a hidden screen and a hidden key are never walked`() {
         val hiddenScreen = HIDDEN_SCREENS.first()
         val hiddenKey = HIDDEN_KEYS.first()
@@ -146,8 +131,6 @@ class RaSettingsSweepTest {
         assertEquals(RaSettingsSweep.Outcome.MISSING, sweep(SweepHost(emptyMap())).run(listOf("nope")).rows.single().outcome)
     }
 
-    // A write with no answer is not a refusal: the emulator ran out of time to say what it did,
-    // and reporting that as a lying row would be the sweep itself lying.
     @Test fun `a write the host never answers is its own outcome`() {
         val host = object : RaSettingsHost by SweepHost(mapOf("a" to "false")) {
             override fun raApply(
@@ -169,8 +152,6 @@ class RaSettingsSweepTest {
         assertEquals(1, host.flushes)
     }
 
-    // Writing a driver mid-session would take the video or audio away and never give it back, so
-    // the sweep says it did not test them rather than testing them.
     @Test fun `drivers are never written, and the report says so`() {
         val host = SweepHost(mapOf("video_driver" to "gl", "audio_driver" to "opensl"))
         val report = sweep(host).run(listOf("video_driver", "audio_driver"))
@@ -199,8 +180,6 @@ class RaSettingsSweepTest {
         assertTrue(report.text().contains("REFUSED"))
     }
 
-    // The universe is whatever the menu can reach, walked the way All Settings walks it, so the
-    // sweep covers exactly what v2 exposes rather than a list written by hand.
     @Test fun `the keys are discovered by walking the screens the menu shows`() {
         val host = SweepHost(
             mapOf("a" to "false", "b" to "false"),
@@ -209,7 +188,6 @@ class RaSettingsSweepTest {
                 "video" to listOf(RaScreenRow("b", "B", isMenu = false)),
             ),
         )
-        // Depth first in display order: a submenu's rows belong where the submenu sits.
         assertEquals(listOf("b", "a"), RaSettingsSweep.discoverKeys(host))
     }
 

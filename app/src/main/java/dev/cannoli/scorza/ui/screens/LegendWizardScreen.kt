@@ -38,11 +38,6 @@ import dev.cannoli.ui.components.screenInsets
 import dev.cannoli.ui.theme.LocalCannoliTypography
 import dev.cannoli.ui.theme.Spacing
 
-/**
- * The wizard leads with why it appeared and then asks its four questions, laid out like the welcome
- * step it usually follows rather than like a list screen. The step counter is first run's, so it
- * only draws when the wizard was reached from there.
- */
 @Composable
 fun LegendWizardScreen(
     state: LegendWizardState,
@@ -54,10 +49,6 @@ fun LegendWizardScreen(
 ) {
     val typo = LocalCannoliTypography.current
 
-    // Black, like the onboarding screens this sits among, rather than the user's wallpaper and tint.
-    // The whole screen is about reading a printed glyph off the pad and matching it, so the art and
-    // the accent are noise here, and a tint behind a question about buttons is one more thing to
-    // look past.
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -80,8 +71,6 @@ fun LegendWizardScreen(
                     .widthIn(max = 480.dp),
             ) {
                 val question: String? = when (state.step) {
-                    // The same question the welcome step asks, in the same words, because it is
-                    // the same run of presses.
                     WizardStep.PressConfirm -> stringResource(R.string.onboarding_welcome_press_thrice)
                     WizardStep.BackAgain -> stringResource(R.string.controller_wizard_press_back_again)
                     WizardStep.PressBack -> stringResource(R.string.controller_wizard_press_back)
@@ -146,8 +135,6 @@ fun LegendWizardScreen(
                         )
                     }
                 }
-                // Not on the layout question: that one is a pick with three answers, and a hint
-                // about buttons the controller does not have says nothing there.
                 val skipLine = when (state.skipLine) {
                     WizardSkipLine.Generic -> stringResource(R.string.controller_wizard_skip)
                     WizardSkipLine.Menu -> stringResource(R.string.controller_wizard_menu_skip)
@@ -161,9 +148,6 @@ fun LegendWizardScreen(
                         color = Color.White,
                     )
                 }
-                // Only the confirm run draws progress: it is the one question answered by several
-                // presses, so it is the only one where a press with no visible effect reads as a
-                // press that went missing.
                 if (state.step == WizardStep.PressConfirm) {
                     Spacer(modifier = Modifier.height(Spacing.Lg))
                     ProgressPips(
@@ -172,9 +156,6 @@ fun LegendWizardScreen(
                     )
                 }
             }
-            // Undo was invisible until now: nothing on screen said back would step a question
-            // returned. Drawn only once the layout is settled, because before that the glyph
-            // printed on the back button is not yet known.
             val backFace = state.backFace
             val style = state.glyphStyle
             if (backFace != null && style != null) {
@@ -192,8 +173,6 @@ fun LegendWizardScreen(
 
 @Composable
 private fun PromptText(text: String, style: TextStyle, color: Color) {
-    // Balanced rather than greedy: these are one or two lines at a large size in a narrow column,
-    // where greedy wrapping strands a single word on the second line.
     Text(
         text = text,
         style = style.copy(

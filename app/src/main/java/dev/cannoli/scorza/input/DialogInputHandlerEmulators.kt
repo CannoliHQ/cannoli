@@ -16,8 +16,6 @@ private fun DialogInputHandler.openGameEmulatorPicker(tag: String, romId: Long?,
     ))
 }
 
-// A failed launch recovers by editing whichever mapping supplied the emulator that failed:
-// the per-game override when the launch came from one, the platform mapping otherwise.
 internal fun DialogInputHandler.openEmulatorRecovery(platformTag: String?, romId: Long?) {
     val tag = platformTag ?: return
     pendingContextReturn = null
@@ -57,11 +55,6 @@ internal fun DialogInputHandler.onPlatformReset(state: DialogState.PlatformReset
     }
 }
 
-/**
- * Rebuilds the list in place after a removal, so the sizes, the totals and the footer actions
- * all describe what is on disk now. Leaving the screen as it was would keep offering to remove
- * a core that is already gone.
- */
 internal fun DialogInputHandler.refreshInstalledCores() {
     if (nav.currentScreen !is LauncherScreen.InstalledCores) return
     val rebuilt = emulatorMappingBuilder.buildInstalledCores()

@@ -47,9 +47,6 @@ class CheevosOfflineHandlerTest {
         )
     }
 
-    // The shapes rc_client really sends: the first sets request knows only the ROM hash, the session
-    // that follows is the first request that carries the game id the server assigned and always ends
-    // with the client version in `l`, and an unlock always carries its signature in `v`.
     private val setsRequest = "r=achievementsets&u=p&t=a&m=abcdef0123456789abcdef0123456789"
     private val sessionRequest =
         "r=startsession&u=p&t=a&g=42&h=1&m=abcdef0123456789abcdef0123456789&l=12.4.0"
@@ -57,8 +54,6 @@ class CheevosOfflineHandlerTest {
     private val unlockSignature = "0f1e2d3c4b5a69788796a5b4c3d2e1f0"
     private val setsBody =
         """{"Success":true,"GameId":42,"Title":"Game","Sets":[{"Title":"Core","Achievements":[{"ID":1,"Points":5}]}]}"""
-    // The two answers rc_client reads as an unknown game: a refusal coded not_found, and a success
-    // naming a GameId of zero. Everything below them is a failure to answer, not an answer.
     private val unknownGameBody = """{"Success":false,"Error":"Unknown game","Code":"not_found"}"""
     private val serverErrorBody = """{"Success":false,"Error":"Internal error","Code":"api_error"}"""
     private val authFailedBody = """{"Success":false,"Error":"Expired token","Code":"expired_token"}"""
@@ -183,9 +178,6 @@ class CheevosOfflineHandlerTest {
         assertEquals(cachedSets, h.response(setsRequest, unknownGameBody, 404))
     }
 
-    // Without this the cache of an overridden game could only ever be refreshed by preloading it
-    // again: the server refuses to identify the ROM, so write-through never gets a set to pair with
-    // the session, and the unlock state stayed frozen at whatever the last preload saw.
     @Test fun `an overridden game refreshes its cached session by being played online`() {
         val (h, store, _) = handler(gameId = 0)
         seed(store, hash = romHash)
@@ -199,9 +191,6 @@ class CheevosOfflineHandlerTest {
         )
     }
 
-    // The game process is handed content by RetroArch and has no launcher-side path to write, so a
-    // write-through used to blank the path a preload had recorded, which is what the offline
-    // browser re-preloads from.
     @Test fun `a write-through keeps the rom path the preload recorded`() {
         val (h, store, _) = handler(gameId = 0)
         seed(store, hash = romHash)
@@ -226,9 +215,6 @@ class CheevosOfflineHandlerTest {
         assertEquals(cachedSets, h.response(setsRequest, zeroed, 200))
     }
 
-    // A server that failed to answer is not a server saying the game does not exist. Substituting
-    // here would bury a real error under stale definitions the player cannot tell from live ones,
-    // and every one of these three is a case rc_client itself fails the load on.
     @Test fun `a set request the server failed on is not answered from the cache`() {
         val (h, store, _) = handler(gameId = 0)
         seed(store, hash = romHash)
@@ -273,9 +259,6 @@ class CheevosOfflineHandlerTest {
         assertNull(h.response("r=login2&u=p&t=a", unknownGameBody, 404))
     }
 
-    // The bridge builds the handler behind nativeInit, so the gate itself is what a unit test can
-    // reach. Everything below it can put words in the server's mouth, which is what makes a
-    // hardcore session the one this must stay out of entirely.
     @Test fun `a softcore session gets the offline handler`() {
         assertTrue(EmbeddedRetroArchBridge.cheevosOfflineAllowedFor(hardcoreInEffect = false))
     }

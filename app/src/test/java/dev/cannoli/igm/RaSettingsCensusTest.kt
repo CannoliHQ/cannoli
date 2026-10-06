@@ -4,15 +4,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/**
- * Asserts the catalog against a census of what RetroArch actually registers, generated from the
- * vendored source by scripts/ra-settings-census.py.
- *
- * Cannoli reaches a setting by config key through ricotta_ra_find -> menu_setting_find, and a key
- * with no menu registration is dropped silently by mapNotNull. So a wrong key is not an error, it
- * is a row that never appears, which is how video_scale_integer_overscale, run_ahead_enabled and
- * six others sat in the catalog doing nothing. This turns that into a failing test.
- */
 class RaSettingsCensusTest {
 
     private data class Census(val key: String, val type: String, val screen: String, val cppGuard: String)
@@ -26,9 +17,6 @@ class RaSettingsCensusTest {
             .associate { it[0] to Census(it[0], it[1], it[2], it.getOrElse(3) { "" }) }
     }
 
-    // All Settings names no keys any more: RetroArch supplies its rows, so a key that stops existing
-    // simply stops appearing. Curated still names them, and a curated row whose keys RetroArch does
-    // not register is a row that silently never shows, which is what this guards.
     private fun catalogKeys(): List<Pair<String, String>> =
         CuratedCatalog.categories.flatMap { cat ->
             cat.rows.flatMap { row -> row.settingKeys.map { "${cat.key}/${row.key}" to it } }
@@ -40,7 +28,6 @@ class RaSettingsCensusTest {
         assertEquals("aspect_ratio_index", census["aspect_ratio_index"]?.key)
     }
 
-    // The one that would have caught every bad key added this week.
     @Test
     fun `every catalog key is a setting RetroArch registers`() {
         val unknown = catalogKeys()
@@ -53,8 +40,6 @@ class RaSettingsCensusTest {
         )
     }
 
-    // A path or free string renders as STRING_RO, which RaValueCycler cannot cycle, so the row
-    // shows a value and does nothing. audio_dsp_plugin and video_filter both shipped that way.
     @Test
     fun `no catalog key is a setting nothing can change`() {
         val inert = catalogKeys()
@@ -67,7 +52,6 @@ class RaSettingsCensusTest {
         )
     }
 
-    // A setting RetroArch compiles out on Android can never appear, whatever the catalog says.
     @Test
     fun `no catalog key is compiled out on this platform`() {
         val impossible = catalogKeys()

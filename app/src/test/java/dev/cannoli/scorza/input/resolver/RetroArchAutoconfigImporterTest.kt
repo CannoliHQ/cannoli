@@ -86,8 +86,6 @@ class RetroArchAutoconfigImporterTest {
 
     @Test
     fun l2_axis_with_positive_direction_becomes_digital_axis_binding() {
-        // RA slot 6 is AXIS_LTRIGGER (android id 17); the cfg number is a slot index, not the
-        // android axis id itself.
         val entry = RetroArchCfgEntry(
             deviceName = "Stadia Controller", vendorId = 6353, productId = 37888,
             buttonBindings = emptyMap(),
@@ -96,9 +94,6 @@ class RetroArchAutoconfigImporterTest {
         val t = RetroArchAutoconfigImporter.import(entry, device)
         val l2 = t.bindings[CanonicalButton.BTN_L2]!![0] as InputBinding.Axis
         assertEquals(17, l2.axis)
-        // Trigger axes are unipolar: rest at 0, full press at +1 for direction=+1. A bipolar
-        // mapping would normalize axis-at-rest (0) to 0.5, past the 0.5 digital threshold,
-        // which would leave the trigger reading "barely pressed" forever.
         assertEquals(0f, l2.restingValue, 0.001f)
         assertEquals(0f, l2.activeMin, 0.001f)
         assertEquals(1f, l2.activeMax, 0.001f)
@@ -121,10 +116,6 @@ class RetroArchAutoconfigImporterTest {
 
     @Test
     fun legacy_signed_axis_value_on_a_dpad_btn_key_still_imports_to_a_digital_axis_binding() {
-        // Cannoli briefly wrote input_up_btn = "-1" for an axis-reported d-pad before the writer
-        // was fixed to emit input_up_axis. RetroArch never accepted this form, but a user's cfg
-        // may still carry it, so this proves the parser's read-only tolerance imports it to the
-        // same binding a native input_up_axis line produces.
         val entry = RetroArchCfgParser.parse(
             """
             input_device = "M30"
@@ -156,10 +147,6 @@ class RetroArchAutoconfigImporterTest {
         )
         val t = RetroArchAutoconfigImporter.import(entry, device)
 
-        // Sticks key under the stick canonicals now, still bipolar per axisRange: rest at the
-        // opposite extreme, active span crossing 0 to the pressed extreme. RA slots 0/1 (left
-        // stick) coincide with their android axis ids; slots 2/3 (right stick) translate to
-        // android AXIS_Z (11) and AXIS_RZ (14).
         assertEquals(
             listOf(
                 InputBinding.Axis(0, restingValue = -1f, activeMin = 0f, activeMax = 1f, digitalThreshold = 0.5f, analogRole = AnalogRole.ANALOG_STICK),
@@ -189,7 +176,6 @@ class RetroArchAutoconfigImporterTest {
             t.bindings[CanonicalButton.BTN_RSTICK_Y],
         )
 
-        // The click buttons stay on BTN_L3/BTN_R3 -- only their axes moved off.
         assertEquals(listOf(InputBinding.Button(106)), t.bindings[CanonicalButton.BTN_L3])
         assertEquals(listOf(InputBinding.Button(107)), t.bindings[CanonicalButton.BTN_R3])
     }

@@ -23,7 +23,6 @@ class GlobalOverridesManagerShortcutsTest {
         assertEquals(mapOf(ShortcutAction.OPEN_MENU_HOLD to setOf(108)), m.readShortcuts())
     }
 
-    // What the launcher reads is what the game is handed, and native is handed the encoded table.
     @Test fun `the held menu reaches native with its hold and its pass through`() {
         val m = manager()
         m.saveShortcuts(mapOf(ShortcutAction.OPEN_MENU_HOLD to setOf(108)))

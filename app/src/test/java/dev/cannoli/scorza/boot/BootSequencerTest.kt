@@ -109,7 +109,6 @@ class BootSequencerTest {
         s.advance()
         assertEquals(BootState.Resolving, s.state.value)
         assertTrue(watcher.started)
-        // SD card finishes mounting: setup now resolves and the mount callback re-advances.
         resolved = true
         watcher.onChange?.invoke()
         advanceUntilIdle()
@@ -154,16 +153,12 @@ class BootSequencerTest {
             mountWatcher = watcher,
             scheduleTimeout = { _, _ -> scheduledCount++ },
         )
-        // Wizard is showing the permission step.
         s.advance()
         assertTrue(s.state.value is BootState.NeedsPermission)
-        // User grants storage in the system prompt and returns.
         perms.storage = true
         s.advance()
-        // Setup must appear immediately, never a black mount-wait splash.
         assertTrue(s.state.value is BootState.NeedsSetup)
         assertEquals(0, scheduledCount)
-        // The watcher stays armed so a late SD mount can still auto-proceed.
         assertTrue(watcher.started)
     }
 
@@ -189,7 +184,6 @@ class BootSequencerTest {
             mountWatcher = FakeMountWatcher(),
         )
         s.advance()
-        // Past the mount wait with no card: drops to the storage-select wizard.
         nowMs = BootSequencer.MOUNT_WAIT_TIMEOUT_MS + 1
         s.advance()
         assertTrue(s.state.value is BootState.NeedsSetup)

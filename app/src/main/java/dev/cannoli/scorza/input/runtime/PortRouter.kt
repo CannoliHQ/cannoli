@@ -19,7 +19,7 @@ class PortRouter(private val maxPorts: Int = 4) {
     )
 
     private val entries = linkedMapOf<Int, Entry>()
-    private val aliases = mutableMapOf<Int, Int>()  // alias id -> primary id
+    private val aliases = mutableMapOf<Int, Int>()
     private var launcherTriggerDeviceId: Int? = null
 
     private val _routes = MutableStateFlow<Map<Int, Int>>(emptyMap())
@@ -59,7 +59,6 @@ class PortRouter(private val maxPorts: Int = 4) {
     fun onDisconnect(androidDeviceId: Int) {
         if (aliases.remove(androidDeviceId) != null) return
         entries.remove(androidDeviceId)
-        // Drop any aliases that pointed to this primary id.
         aliases.entries.removeAll { it.value == androidDeviceId }
         if (launcherTriggerDeviceId == androidDeviceId) launcherTriggerDeviceId = null
         recompute()
@@ -68,7 +67,6 @@ class PortRouter(private val maxPorts: Int = 4) {
     fun addAlias(primaryId: Int, aliasId: Int) {
         if (primaryId == aliasId) return
         if (!entries.containsKey(primaryId)) return
-        // Clean up any prior entry for the alias id so we don't double-track it.
         if (entries.containsKey(aliasId)) {
             entries.remove(aliasId)
             recompute()
@@ -178,10 +176,6 @@ class PortRouter(private val maxPorts: Int = 4) {
         recompute()
     }
 
-    /**
-     * Swap the mapping bound to one device, keyed by device id rather than mapping id so a
-     * profile with a different id (a saved template replacing a resolver fallback) can take over.
-     */
     fun replaceMapping(androidDeviceId: Int, mapping: DeviceMapping) {
         val entry = entries[resolveId(androidDeviceId)] ?: return
         entry.mapping = mapping

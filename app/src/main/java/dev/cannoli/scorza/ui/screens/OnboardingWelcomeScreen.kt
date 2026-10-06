@@ -40,12 +40,6 @@ import dev.cannoli.ui.theme.LocalCannoliTypography
 import dev.cannoli.ui.theme.Spacing
 import kotlinx.coroutines.delay
 
-/**
- * The one first-run step with no rows, so it centres its content instead of borrowing the list
- * layout the other two need. It keeps [OnboardingStepCounter] so the three steps still read as one
- * flow, and carries no footer: the run of presses the pips count is the only action. The instruction
- * names no button, because the same label sits at a different position on each controller family.
- */
 @Composable
 fun OnboardingWelcomeScreen(
     mapping: DeviceMapping?,
@@ -101,11 +95,6 @@ fun OnboardingWelcomeScreen(
  * The run's progress, and the only place in Cannoli that animates anything beyond the selection pill
  * and artwork: a sanctioned exception, granted 2026-08-16, so the pips drain rather than vanish when
  * a run expires. Do not remove it while enforcing the no-animations rule.
- *
- * Filling stays instant. The run is over the moment the fade starts, so a press arriving during it
- * cancels the fade, restores full opacity and begins a fresh run rather than joining a disappearing
- * one. [pipsFading] is what the tail draws, held separately because the count is already back at
- * zero by then.
  */
 @Composable
 private fun ConfirmPressPips(confirmPresses: Int, onRunExpired: () -> Unit) {
@@ -121,7 +110,6 @@ private fun ConfirmPressPips(confirmPresses: Int, onRunExpired: () -> Unit) {
         onRunExpired()
     }
 
-    // Leaving the step ends the run with it, so returning later never resumes a stale one.
     DisposableEffect(Unit) {
         onDispose { onRunExpired() }
     }

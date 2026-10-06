@@ -32,8 +32,6 @@ class NaturalSortTest {
     }
 
     @Test fun `roman numerals use lexicographic order between letters`() {
-        // Roman numerals have no special handling; they compare as strings.
-        // II < III < IV < V because of normal string ordering of I and V.
         val input = listOf("Final Fantasy V", "Final Fantasy III", "Final Fantasy II", "Final Fantasy IV")
         val sorted = input.sortedWith(NaturalSort)
         assertEquals("Final Fantasy II", sorted[0])
@@ -51,7 +49,6 @@ class NaturalSortTest {
             "Disc 1 of 12"
         )
         val sorted = input.sortedWith(NaturalSort)
-        // "Disc 1 of 3" and "Disc 1 of 12" share prefix "Disc 1 of ", then diverge on 3 vs 12.
         assertEquals("Disc 1 of 3", sorted[0])
         assertEquals("Disc 1 of 12", sorted[1])
         assertEquals("Disc 2 of 3", sorted[2])
@@ -70,9 +67,6 @@ class NaturalSortTest {
     }
 
     @Test fun `digits beat letters when the runs diverge`() {
-        // "abc" vs "ab1": at position 2 the chunks become alphabetic "c" and digit "1".
-        // The algorithm treats them via string compareTo since one is digit and one is not.
-        // We just want the result to be stable and order-independent: a < b iff !(b < a).
         val ab = NaturalSort.compare("abc", "ab1")
         val ba = NaturalSort.compare("ab1", "abc")
         assertTrue(ab != 0)

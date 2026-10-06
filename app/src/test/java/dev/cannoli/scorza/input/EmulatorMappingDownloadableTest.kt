@@ -16,8 +16,6 @@ class EmulatorMappingDownloadableTest {
         assertFalse(EmulatorMappingBuilder.isDownloadable(EmulatorSource.Embedded, CoreAvailability.AVAILABLE))
     }
 
-    // A standalone app is installed from its own store listing, not fetched by Cannoli, so no
-    // download affordance is offered however the availability check came out.
     @Test fun `Standalone sources are never downloadable`() {
         assertFalse(EmulatorMappingBuilder.isDownloadable(EmulatorSource.Standalone, CoreAvailability.UNAVAILABLE))
     }

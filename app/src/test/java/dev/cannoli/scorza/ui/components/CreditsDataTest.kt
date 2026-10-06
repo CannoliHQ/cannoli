@@ -14,7 +14,6 @@ class CreditsDataTest {
         }
     }
 
-    // A typo'd tag would render the raw tag as the section header instead of the endonym.
     @Test fun `every localization tag resolves in the language catalog`() {
         for (credit in CREDITS_LOCALIZATION) {
             assertNotNull(

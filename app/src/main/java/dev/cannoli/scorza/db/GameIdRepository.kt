@@ -24,7 +24,6 @@ class GameIdRepository(
         ) { ProbeTarget(it.getLong(0), File(pathsProvider.romDir, it.getText(1)), it.getText(2)) }
     }
 
-    /** Writes the fingerprint whether or not there is an id, so a failure is never retried. */
     fun record(romId: Long, probe: String, id: GameId?) = db.execute(
         "UPDATE roms SET sigil_probe = ?, sigil_title_id = ?, sigil_save_id = ?, " +
             "sigil_raw_serial = ?, sigil_usage = ?, sigil_source = ?, sigil_experimental = ? " +
@@ -39,13 +38,6 @@ class GameIdRepository(
         romId,
     )
 
-    /**
-     * The id for a game named the way the save layer names it, by platform and rom base name.
-     *
-     * Only a platform whose core shares one save root needs this, so it is asked for rarely: a
-     * shared root files its games by disc id, and without the id one game's save cannot be told
-     * from another's inside it.
-     */
     fun readByBaseName(tag: String, romBaseName: String): GameId? = db.queryAll(
         "SELECT id, path FROM roms WHERE platform_tag = ?",
         tag.uppercase(),

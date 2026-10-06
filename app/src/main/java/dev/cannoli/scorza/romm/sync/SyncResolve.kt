@@ -5,9 +5,6 @@ import dev.cannoli.scorza.model.Rom
 import java.io.File
 import java.text.Normalizer
 
-// overrideFor resolves a per-game emulator override from the relative game key. Overrides are
-// keyed by rom_id, and the Rom built here is synthetic, so the lookup has to go through the
-// caller rather than through the synthetic id.
 fun rommResolveGame(
     platformResolver: PlatformConfig,
     romDir: File,

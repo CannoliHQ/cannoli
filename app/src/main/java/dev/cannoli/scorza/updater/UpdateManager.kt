@@ -76,8 +76,6 @@ class UpdateManager @Inject constructor(
     }
 
     suspend fun checkForUpdate(): UpdateInfo? = withContext(Dispatchers.IO) {
-        // Skip when offline and dedupe concurrent checks (e.g. holding Left/Right on the
-        // release_channel row auto-repeats); otherwise each press would race a network fetch.
         if (!isOnline()) return@withContext _updateAvailable.value
         if (!checking.compareAndSet(false, true)) return@withContext _updateAvailable.value
         try {
@@ -178,7 +176,6 @@ class UpdateManager @Inject constructor(
         }
     }
 
-    // A StatFs failure must not block an update, so an unreadable partition reads as unlimited.
     private fun availableBytes(): Long =
         runCatching { StatFs(context.cacheDir.path).availableBytes }.getOrDefault(Long.MAX_VALUE)
 
@@ -211,13 +208,8 @@ class UpdateManager @Inject constructor(
     companion object {
         private const val INSTALL_HEADROOM_BYTES = 48L * 1024 * 1024
 
-        // The system installer stages its own copy of the APK on the same partition, and the
-        // old version is not released until the new one commits, so the download is only half
-        // of what the install actually needs. Headroom covers dexopt output.
         internal fun requiredFor(contentLength: Long) = contentLength * 2 + INSTALL_HEADROOM_BYTES
 
-        // A server that sends no Content-Length leaves nothing to check against, so the
-        // download proceeds rather than being blocked on a number we do not have.
         internal fun hasRoom(contentLength: Long, available: Long): Boolean =
             contentLength <= 0L || available >= requiredFor(contentLength)
     }

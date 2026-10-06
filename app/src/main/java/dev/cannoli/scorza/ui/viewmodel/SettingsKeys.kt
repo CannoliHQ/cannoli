@@ -1,6 +1,5 @@
 package dev.cannoli.scorza.ui.viewmodel
 
-/** Identity for a settings category. Sub-lists count: they are what `activeCategory` holds. */
 enum class SettingsCategory {
     GENERAL,
     DISPLAY,
@@ -19,7 +18,6 @@ enum class SettingsCategory {
     ROMM,
 }
 
-/** Identity for a settings row, not its label. */
 enum class SettingsKey(val id: String) {
     LANGUAGE("language"),
     TITLE("title"),
@@ -107,12 +105,10 @@ enum class SettingsKey(val id: String) {
     ICON_GALLERY("icon_gallery"),
     DEVELOPER_OPTIONS("developer_options"),
 
-    // Throwaway, with the Wi-Fi Direct netplay spike. Remove with it.
     WIFI_DIRECT_PROBE("wifi_direct_probe"),
     WIFI_DIRECT_HOST("wifi_direct_host");
 
     companion object {
-        /** One row per pickable collection, so the id rides in the key. */
         const val FGH_PICK_PREFIX = "fgh_pick:"
         const val START_ON_PICK_PREFIX = "start_on_pick:"
 

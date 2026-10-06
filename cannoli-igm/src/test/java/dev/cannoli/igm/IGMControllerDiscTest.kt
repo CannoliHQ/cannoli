@@ -67,8 +67,6 @@ class IGMControllerDiscTest {
         assertEquals(1, bridge.disc)
     }
 
-    // Left and right cycle the save slot everywhere else, which is what they did before the disc
-    // row existed.
     @Test fun `left and right still change the save slot off the disc row`() {
         val bridge = twoDiscBridge()
         val c = testController(bridge)
@@ -80,7 +78,6 @@ class IGMControllerDiscTest {
         assertEquals(1, c.selectedSlotIndex.intValue)
     }
 
-    // The row reads its text from string resources, so what the options carry is the index.
     @Test fun `the menu carries the current disc index`() {
         val bridge = twoDiscBridge().apply { disc = 1 }
         val c = testController(bridge)

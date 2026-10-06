@@ -109,8 +109,6 @@ internal fun DialogInputHandler.confirmDialog(): Boolean {
         is DialogState.MissingCore -> openEmulatorRecovery(ds.platformTag, ds.romId)
         is DialogState.UnsupportedContent -> openEmulatorRecovery(ds.platformTag, ds.romId)
         is DialogState.NoEmulatorSet -> openEmulatorRecovery(ds.platformTag, ds.romId)
-        // The one launch issue whose remedy is not the emulator picker: the emulator is right,
-        // the BIOS is not, so confirm goes to the screen that lists which files are absent.
         is DialogState.MissingBios -> {
             val tag = ds.platformTag
             if (tag != null) {
@@ -173,7 +171,6 @@ internal fun DialogInputHandler.confirmDialog(): Boolean {
             nav.dialogState.value = DialogState.None
             nav.push(LauncherScreen.InputTester(followUpMappingId = ds.mappingId))
         }
-        // Yes, it worked. Nothing to do but get out of the way.
         is DialogState.InputTesterResult -> {
             nav.dialogState.value = DialogState.None
         }
@@ -240,8 +237,6 @@ internal fun DialogInputHandler.confirmDialog(): Boolean {
         is DialogState.RommConfirm -> onRommConfirm(ds)
         is DialogState.Picker -> ds.onSelect(ds.selectedIndex)
         is DialogState.RAPreloadResult -> {
-            // Preload is reachable from a list as well as from the Achievements group, so this
-            // asks rather than assuming: a pending return means somewhere to go back to.
             if (pendingContextReturn != null) restoreContextMenu()
             else nav.dialogState.value = DialogState.None
         }
@@ -296,17 +291,9 @@ private fun DialogInputHandler.hasActiveVpn(): Boolean {
     return caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)
 }
 
-/**
- * Sends the unlocks earned offline, without leaving the quick menu.
- *
- * The menu is rebuilt rather than closed, because the row carries the count: it shrinks or leaves
- * on its own when the server takes them, and a drain that reached nothing says so by staying put.
- */
 private fun DialogInputHandler.syncQueuedUnlocks() {
     ioScope.launch {
         val result = raPendingDrainer.drain()
-        // A count cannot say the difference between the server refusing them and never being asked,
-        // and only one of those is the player's to fix.
         osdController.show(
             if (!result.reached) context.getString(dev.cannoli.ui.R.string.achievos_osd_sync_unreachable)
             else context.resources.getQuantityString(

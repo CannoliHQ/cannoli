@@ -103,7 +103,6 @@ fun CannoliIGM(
     menuGlyph: dev.cannoli.ui.theme.MenuGlyph = dev.cannoli.ui.theme.MenuGlyph.Menu,
 ) {
     val isGuideScreen = screen is IGMScreen.Guide
-    // The picker judges what is on screen, so nothing of Cannoli's may sit over the game.
     val isPreviewScreen = screen is IGMScreen.PreviewPicker
     val igmFontSize = config.fontSizeSp.sp
     val igmLineHeight = config.lineHeightSp.sp
@@ -116,9 +115,6 @@ fun CannoliIGM(
 
     val configuration = LocalConfiguration.current
     val density = LocalDensity.current
-    // LocalView.current.width/.height isn't Compose state: a layout pass doesn't invalidate this
-    // composable, so reading it directly sticks at the pre-layout 0x0 forever. onSizeChanged below
-    // hoists the laid-out size into state that recomposition actually observes.
     val surfaceSize = remember { mutableStateOf(IntSize.Zero) }
     val portrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
     val viewportPadding = dev.cannoli.ui.computeScreenGeometryPadding(
@@ -147,21 +143,12 @@ fun CannoliIGM(
                 .fillMaxSize()
                 .onSizeChanged { surfaceSize.value = it }
         ) {
-            // Outside the viewport padding, and outside the when. A bezel frames the whole display
-            // rather than sitting inside the usable area, and it belongs to the game rather than to
-            // any one screen, so it stays put while screens come and go and while none is shown.
-            // Inside the padding it also visibly resized, because that padding derives from a
-            // surface size that is zero until the first layout resolves.
             OverlayLayer(
                 path = overlayImage,
                 widthPx = surfaceSize.value.width,
                 heightPx = surfaceSize.value.height,
             )
 
-            // Every screen here, and the status bar below, keeps clear of the display cutout,
-            // the guide included: a strip of page lost to padding is visible and pannable, where a
-            // strip hidden behind the notch is neither. The guide's full-bleed black background is
-            // unaffected, since that is a reading-mode choice, not a cutout one.
             val menuAreaModifier = Modifier
                 .fillMaxSize()
                 .displayCutoutPadding()
@@ -236,8 +223,6 @@ fun CannoliIGM(
                         }
                     }
                 }
-                // The launcher's keyboard, unchanged: naming a preset here and naming a folder
-                // there are the same act, and it brings its own legend and help with it.
                 is IGMScreen.ShaderSaveName -> {
                     if (screen.help) {
                         KeyboardHelpOverlay(
@@ -282,14 +267,10 @@ fun CannoliIGM(
                             listOf(labels.confirm to stringResource(dev.cannoli.ui.R.string.romm_art_done))
                         description != null -> emptyList()
                         inShaderTree -> buildList {
-                            // Offered only while this game overrides its platform, which is what
-                            // makes the legend also the answer to where the shader came from.
                             if (settingsCanRestore) add(
                                 labels.west to
                                     stringResource(dev.cannoli.ui.R.string.label_use_platform)
                             )
-                            // Only on a row that is a pass, so the button cannot take away
-                            // something the screen never offered.
                             if (settingsCanRemovePass) add(
                                 labels.north to
                                     stringResource(dev.cannoli.ui.R.string.label_remove_pass)
@@ -303,8 +284,6 @@ fun CannoliIGM(
                     }
                     val title = when (screen) {
                         is IGMScreen.ProviderSettings -> screen.title
-                        // A prompt that asked its own question keeps it. Only the one on the way out
-                        // of Settings has none of its own, and that one is about saving.
                         is IGMScreen.SettingsExitPrompt -> screen.title
                             ?: stringResource(dev.cannoli.ui.R.string.igm_save_changes)
                         else -> stringResource(dev.cannoli.ui.R.string.igm_save_changes)
@@ -315,18 +294,12 @@ fun CannoliIGM(
                             return@buildList
                         }
                         add(labels.back to stringResource(dev.cannoli.ui.R.string.label_back))
-                        // Only where something is stored, so the button appearing is also the answer
-                        // to whether this game or its platform has settings of its own.
                         if (settingsCanReset) {
                             add(labels.north to stringResource(dev.cannoli.ui.R.string.label_reset))
                         }
-                        // Only where a row can actually be picked up, so the offer is also the
-                        // answer to which rows have a position that matters.
                         if (settingsCanReorder) {
                             add(dev.cannoli.ui.SELECT_GLYPH to stringResource(dev.cannoli.ui.R.string.label_reorder))
                         }
-                        // The description covers the list, so nothing below it can be cycled. Up
-                        // and Down scroll the text instead.
                         when {
                             description != null ->
                                 add(DPAD_VERTICAL to stringResource(dev.cannoli.ui.R.string.label_scroll))
@@ -351,8 +324,6 @@ fun CannoliIGM(
                     )
                 }
                 is IGMScreen.Shortcuts -> {
-                    // The launcher's capture screen, not a copy of it: one answer to how a chord is
-                    // held, so the two menus cannot drift on the prompt or the wait.
                     if (screen.listening) {
                         ShortcutCaptureOverlay(
                             actionName = shortcutRows.getOrNull(screen.selectedIndex)
@@ -716,7 +687,6 @@ fun CannoliIGM(
     }
 }
 
-/** The pad's own name for where a button sits, so a row reads the way the pad in hand is printed. */
 @Composable
 private fun remapLabel(button: RemapButton, labels: ButtonStyle): String =
     when (button.position) {
@@ -744,8 +714,6 @@ internal fun remapValueText(
 ): String = when {
     listening -> listeningText
     target == ButtonRemap.UNBOUND -> unboundText
-    // A row sending its own button says nothing, so the remapped rows
-    // are the only ones carrying a word.
     target == buttonId -> ""
     names[target] != null -> names.getValue(target)
     else -> fallbackLabel

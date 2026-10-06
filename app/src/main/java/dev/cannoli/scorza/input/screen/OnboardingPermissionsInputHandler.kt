@@ -26,8 +26,6 @@ class OnboardingPermissionsInputHandler @Inject constructor(
         current()?.let { nav.replaceTop(it.moved(1)) }
     }
 
-    // Runs whatever the footer offers for the highlighted row, from the screen's own value, so the
-    // two can never disagree.
     override fun onConfirm() {
         val screen = current() ?: return
         when (screen.action) {

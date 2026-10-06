@@ -73,12 +73,6 @@ class SaveSyncServicePreLaunchTest {
         assertTrue(File(sd, "Saves/SNES/Mario/Mario.srm").readText() == "SERVER")
     }
 
-    /**
-     * The Chrono Trigger regression, 2026-09-07. A device that has lost its anchor launches a game,
-     * the core rewrites a blank save file, the fresh mtime makes the server say upload, and a real
-     * server save is replaced by an empty one. Without an anchor nothing here can claim to be ahead
-     * of the server, so this has to stop and ask.
-     */
     @Test fun `an upload with no anchor never replaces a different server save`() = runTest {
         writeSave()
         every { client.negotiateSync(any()) } returns SyncNegotiateResponse(
@@ -99,7 +93,6 @@ class SaveSyncServicePreLaunchTest {
         verify(exactly = 0) { client.uploadSave(any(), any(), any(), any(), any(), any(), any(), any(), any()) }
     }
 
-    /** Nothing on the server to lose, so a first upload still goes through. */
     @Test fun `an upload with no anchor proceeds when the server has no save`() = runTest {
         writeSave()
         every { client.negotiateSync(any()) } returns SyncNegotiateResponse(
@@ -120,11 +113,6 @@ class SaveSyncServicePreLaunchTest {
         verify { client.uploadSave(any(), any(), any(), any(), any(), any(), any(), any(), any()) }
     }
 
-    /**
-     * The server refusing an upload with 409 means the slot moved on since our last sync, which is
-     * exactly what the sweep escalates. The launch path logged the code and started the game
-     * anyway, against a save the server had just refused.
-     */
     @Test fun `a 409 on the launch path becomes a conflict instead of a log line`() = runTest {
         writeSave()
         every { client.negotiateSync(any()) } returns SyncNegotiateResponse(
@@ -145,10 +133,6 @@ class SaveSyncServicePreLaunchTest {
         assertTrue("expected a conflict, got $outcome", outcome is PreLaunchOutcome.Conflict)
     }
 
-    /**
-     * RomM records what each device last synced, and Cannoli writes that on every download while
-     * never reading it back. A device whose local row is gone is not a new device.
-     */
     @Test fun `a missing anchor is rebuilt from the server's own record`() = runTest {
         writeSave()
         every { client.getSaves(42, "dev-1", any()) } returns listOf(
@@ -168,7 +152,6 @@ class SaveSyncServicePreLaunchTest {
         assertEquals("server-hash", anchor?.lastUploadedHash)
     }
 
-    /** A server copy that moved on since our last sync proves nothing about what we held. */
     @Test fun `an anchor is not invented when the server has moved on`() = runTest {
         writeSave()
         every { client.getSaves(42, "dev-1", any()) } returns listOf(
@@ -187,12 +170,6 @@ class SaveSyncServicePreLaunchTest {
         assertEquals(null, store.get("SNES/Mario.sfc", "autosave"))
     }
 
-    /**
-     * The server short-circuits to no_op when the hash we send matches its own copy, so the hash
-     * has to be the save this device holds now. Sending the last uploaded one instead means every
-     * save changed since that upload is reported as the content already on the server, answered
-     * no_op, and never pushed.
-     */
     @Test fun `negotiate reports the save on disk, not the last uploaded hash`() = runTest {
         writeSave()
         store.upsert(

@@ -24,16 +24,6 @@ import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.Radius
 import dev.cannoli.ui.theme.Spacing
 
-/**
- * The screen shown while a shortcut chord is being held, over whatever list asked for it.
- *
- * Shared so the launcher and the in-game menu capture a chord the same way: the same prompt, the
- * same keys as you hold them, the same bar filling toward the commit. Two of these would be two
- * different answers to how long you have to hold something.
- *
- * Presentation only. [heldText] is already formatted by the caller, which is what keeps this free
- * of any idea of what a shortcut or a keycode is.
- */
 @Composable
 fun ShortcutCaptureOverlay(
     actionName: String,
@@ -68,8 +58,6 @@ fun ShortcutCaptureOverlay(
                 ),
             )
             Spacer(modifier = Modifier.height(Spacing.Lg))
-            // Only once something is held: an empty bar beside the prompt reads as a thing that has
-            // stalled rather than one that has not started.
             if (heldText != null) {
                 Box(
                     modifier = Modifier

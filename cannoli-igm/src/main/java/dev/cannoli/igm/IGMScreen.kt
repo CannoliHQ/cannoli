@@ -8,33 +8,17 @@ sealed class IGMScreen {
         override val selectedIndex: Int = 0,
         val path: List<String> = emptyList(),
         val title: String = "",
-        // RetroArch's explanation of the highlighted row, shown instead of the list while set.
         val description: String? = null,
         val descriptionScroll: Int = 0,
     ) : IGMScreen()
-    // Null is the prompt on the way out of Settings, which is the one the screen is named for and
-    // the only one whose question is implied by having asked to leave.
     data class SettingsExitPrompt(
         override val selectedIndex: Int = 0,
         val title: String? = null,
     ) : IGMScreen()
-    /**
-     * Cannoli's live preview picker. [selectedIndex] indexes the asset list.
-     *
-     * [unwindOnBack] says whether leaving must also step the settings navigator up a level. Entering
-     * through a category pushed one, so it must; arriving from a row that fired an action did not,
-     * and unwinding then would drop the browser above the folder it was showing.
-     */
     data class PreviewPicker(
         override val selectedIndex: Int = 0,
         val unwindOnBack: Boolean = false,
     ) : IGMScreen()
-    /**
-     * Naming a shader preset. [selectedIndex] is unused: the keyboard carries its own cursor.
-     *
-     * [help] shows the keyboard's own button reference, which its legend offers and which would
-     * otherwise advertise something this screen does not answer.
-     */
     data class ShaderSaveName(
         override val selectedIndex: Int = 0,
         val keyboard: dev.cannoli.ui.components.KeyboardState =
@@ -43,12 +27,6 @@ sealed class IGMScreen {
     ) : IGMScreen()
     data class Achievements(override val selectedIndex: Int = 0, val achievements: List<AchievementInfo> = emptyList(), val filter: Int = 0, val status: String = "") : IGMScreen()
     data class AchievementDetail(override val selectedIndex: Int = 0, val achievement: AchievementInfo, val parentIndex: Int = 0) : IGMScreen()
-    /**
-     * The shortcut list, one row per action.
-     *
-     * [listening] is a row waiting for a chord: the keys arriving then are the binding rather than
-     * navigation, which is why the screen has to say so rather than the handler guessing.
-     */
     data class Shortcuts(
         override val selectedIndex: Int = 0,
         val listening: Boolean = false,
@@ -58,7 +36,6 @@ sealed class IGMScreen {
 
     data class GuidePicker(override val selectedIndex: Int = 0) : IGMScreen()
     data class Guide(override val selectedIndex: Int = 0, val filePath: String, val page: Int = 0, val textZoom: Int = 1, val help: Boolean = false) : IGMScreen()
-    /** [selectedIndex] is -1 when the open file has nothing that can be toggled. */
     data class Cheats(override val selectedIndex: Int = 0) : IGMScreen()
     data class CheatsHardcoreWarning(
         override val selectedIndex: Int = 0,
@@ -66,13 +43,6 @@ sealed class IGMScreen {
     ) : IGMScreen()
     data class ReassignPlayers(override val selectedIndex: Int = 0, val marked: Int? = null) : IGMScreen()
 
-    /**
-     * The button remap, one row per RetroPad button.
-     *
-     * [listening] is the row waiting for a press: the keys arriving then name the button that row
-     * should send rather than navigating, which is why the screen says so rather than the handler
-     * guessing.
-     */
     data class ButtonMappings(
         override val selectedIndex: Int = 0,
         val listening: Boolean = false,

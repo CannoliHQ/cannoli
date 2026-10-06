@@ -112,9 +112,6 @@ fun SettingsScreen(
             val isEditableItem = selectedItem?.isEditable == true
             val isFghCollection = selectedKey == SettingsKey.FGH_COLLECTION
             val showChange = selectedItem?.canCycle != false && selectedItem?.disabled != true && (!isEditableItem || isFghCollection)
-            // Rows measured in pixels or percent take a coarse step on the shoulders, so the D-pad
-            // can stay on single units. Advertised only on those rows; elsewhere the shoulders do
-            // nothing and a legend entry would be a lie.
             val takesCoarseStep = selectedKey == SettingsKey.PORTRAIT_MARGIN ||
                 selectedKey in SettingsKey.SCREEN_GEOMETRY_ROWS
             val leftItems = if (showChange) {
@@ -127,8 +124,6 @@ fun SettingsScreen(
                 listOf(buttonStyle.back to stringResource(R.string.label_back))
             }
             val showClear = selectedKey == SettingsKey.ROM_DIRECTORY && selectedItem?.valueText != null
-            // Rows that act rather than cycle or navigate. The two RomM pairing rows were the
-            // only ones when this was a key check; the flag is what the check was really asking.
             val isRommPairAction = selectedItem?.isAction == true ||
                 selectedKey == SettingsKey.ROMM_PAIR || selectedKey == SettingsKey.ROMM_PAIR_CODE
             val isNavInto = selectedItem?.isEditable == true

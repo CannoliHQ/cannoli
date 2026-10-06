@@ -17,8 +17,6 @@ class PlatformConfigResetTest {
         return PlatformConfig(File(ctx.cacheDir, "reset-root").apply { mkdirs() }, ctx.assets)
     }
 
-    // No bundled cores and no installed apps in this fixture, so the default resolves to
-    // nothing and the platform is left unmapped.
     @Test fun `reset with no resolvable default leaves the platform unmapped`() {
         val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
         val pc = config()
@@ -27,9 +25,4 @@ class PlatformConfigResetTest {
         pc.resetPlatformToDefault("NES", ctx.packageManager)
         assertFalse(pc.hasUserMapping("NES"))
     }
-
-    // Per-game overrides moved out of PlatformConfig into the game_overrides table. The clearing
-    // and per-platform listing this file used to cover now live in GameOverrideStoreTest, against
-    // a real database, which additionally covers the delete cascade and the GB/GBA prefix case
-    // this path-keyed version could not reach.
 }

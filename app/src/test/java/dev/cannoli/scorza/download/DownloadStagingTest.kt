@@ -57,8 +57,6 @@ class DownloadStagingTest {
         assertFalse(stage.exists())
     }
 
-    // No second volume in a unit test, so the copy fallback cannot succeed here. A destination
-    // whose parent is a file drives both renames and the copy to fail instead.
     @Test fun `a commit that cannot land leaves nothing staged`() {
         val blocker = file(root, "Roms")
         val stage = staging.file().apply { writeText("rom") }

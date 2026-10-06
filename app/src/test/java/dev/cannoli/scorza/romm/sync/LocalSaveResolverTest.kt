@@ -22,8 +22,6 @@ class LocalSaveResolverTest {
         assertNull(LocalSaveResolver(tmp.root).resolve("SNES", "Mario"))
     }
 
-    // An install that has not migrated yet still resolves, which is what lets the sweep run in the
-    // background instead of having to finish before sync may touch anything.
     @Test fun resolve_single_srm_is_not_bundle() {
         File(saves("SNES"), "Mario.srm").writeBytes("SRAM".toByteArray())
         val s = LocalSaveResolver(tmp.root).resolve("SNES", "Mario")!!
@@ -45,15 +43,6 @@ class LocalSaveResolverTest {
         assertEquals(expected, s.contentHash)
     }
 
-    /**
-     * The migration changes the hash, once, and that is the right trade.
-     *
-     * The hash has to be the hash of the archive the server receives, and a folder save's archive
-     * roots its entries at the folder name where a loose bundle's does not, so the same bytes
-     * genuinely produce a different archive. The cost is one re-upload per folder save after the
-     * migration, after which both sides agree again. Keying on anything stabler would mean a hash
-     * the server can never arrive at, and a negotiate that never sees two copies as identical.
-     */
     @Test fun the_hash_follows_the_archive_across_the_migration() {
         File(saves("GBA"), "Pokemon.srm").writeBytes("SAVE".toByteArray())
         File(saves("GBA"), "Pokemon.rtc").writeBytes("RTC".toByteArray())
@@ -113,7 +102,6 @@ class LocalSaveResolverTest {
         assertEquals("RTC", File(game("GBA", "Pokemon"), "Pokemon.rtc").readText())
     }
 
-    /** A download is verified against the hash negotiation reported, so the zip must hash like the folder. */
     @Test fun a_bundle_zip_hashes_to_the_bundle_content_hash() {
         File(saves("GBA"), "Pokemon.srm").writeBytes("SAVE".toByteArray())
         File(saves("GBA"), "Pokemon.rtc").writeBytes("RTC".toByteArray())
@@ -134,7 +122,6 @@ class LocalSaveResolverTest {
         assertEquals(resolver.resolve("PSP", "God of War")!!.contentHash, SaveHasher.hashZipContents(zip))
     }
 
-    /** Argosy roots a save at the folder it lives in, which for PSP is the save id, not the game. */
     @Test fun a_foreign_root_is_kept_because_the_emulator_reads_it() {
         val zip = tmp.newFile("argosy.zip")
         ZipOutputStream(zip.outputStream()).use { zos ->
@@ -149,7 +136,6 @@ class LocalSaveResolverTest {
         assertEquals("ICON", File(dir, "ULUS10064/ICON0.PNG").readText())
     }
 
-    /** Our own root is dropped, or every round trip would nest the game one level deeper. */
     @Test fun our_own_root_is_dropped_rather_than_nested() {
         val zip = tmp.newFile("ours.zip")
         ZipOutputStream(zip.outputStream()).use { zos ->
@@ -176,7 +162,6 @@ class LocalSaveResolverTest {
         assertEquals("SAVE", File(game("SNES", "Mario"), "Mario.srm").readText())
     }
 
-    /** mupen writes .eep, .sra, .fla and .mpk; calling any of them .srm sends back an unreadable save. */
     @Test fun a_lone_save_uploads_under_the_extension_it_actually_has() {
         File(saves("N64"), "Zelda.eep").writeBytes("SAVE".toByteArray())
 
@@ -199,7 +184,6 @@ class LocalSaveResolverTest {
         assertFalse(File(game("N64", "Zelda"), "Zelda.srm").exists())
     }
 
-    /** No name from the server, but the core already told us which extension it writes. */
     @Test fun a_download_keeps_the_extension_the_save_on_disk_already_has() {
         File(saves("N64"), "Zelda.sra").writeBytes("OLD".toByteArray())
         val single = tmp.newFile("dl5.bin").apply { writeBytes("NEW".toByteArray()) }
@@ -217,12 +201,6 @@ class LocalSaveResolverTest {
         assertEquals("SAVE", File(game("SNES", "Mario"), "Mario.srm").readText())
     }
 
-    /**
-     * The server hashes the archive it receives, so the hash we record has to be the hash of the
-     * archive we send. RomM's hash_zip_contents, Argosy's calculateZipHash and our hashBundle are
-     * the same algorithm; agreeing on the algorithm is worth nothing if the entry names differ,
-     * and a negotiate that cannot see two copies are identical falls back to timestamps.
-     */
     private fun serverStyleHash(zip: File): String {
         val entries = ZipFile(zip).use { zf ->
             zf.entries().toList().filter { !it.isDirectory }.map { e ->
@@ -281,10 +259,6 @@ class LocalSaveResolverTest {
         return d
     }
 
-    /**
-     * PPSSPP shares one memory stick, so a game is the folders inside SAVEDATA whose names begin
-     * with its disc id, not a directory of its own. Sigil supplies the id and says it is a prefix.
-     */
     @Test fun a_shared_root_resolves_the_folders_the_disc_id_owns() {
         savedata("UCUS98653")
         savedata("UCUS98653DATA00", body = "PROFILE")
@@ -297,7 +271,6 @@ class LocalSaveResolverTest {
         assertEquals("God of War [UCUS98653].zip", save.uploadFileName)
     }
 
-    /** Argosy roots each matched folder at its own name, and reads the same shape back. */
     @Test fun a_shared_root_zips_each_folder_at_its_own_name() {
         savedata("UCUS98653")
         savedata("UCUS98653DATA00")
@@ -312,7 +285,6 @@ class LocalSaveResolverTest {
         }
     }
 
-    /** Every other game lives in the same directory, so a restore must not sweep them away. */
     @Test fun a_shared_root_restore_leaves_other_games_alone() {
         savedata("UCUS98653", body = "OLD")
         val other = savedata("ULUS10064", body = "ANOTHER GAME")
@@ -327,7 +299,6 @@ class LocalSaveResolverTest {
         assertEquals("ANOTHER GAME", File(other, "DATA.BIN").readText())
     }
 
-    /** A folder the game owned but the archive does not carry is gone, as Argosy clears them too. */
     @Test fun a_shared_root_restore_clears_the_game_own_stale_folders() {
         savedata("UCUS98653")
         savedata("UCUS98653DATA00")
@@ -341,13 +312,11 @@ class LocalSaveResolverTest {
         assertFalse(File(saves("PSP"), "SAVEDATA/UCUS98653DATA00").exists())
     }
 
-    /** No id means no way to tell one game's folders from another's, so nothing is claimed. */
     @Test fun a_shared_root_without_an_id_resolves_nothing() {
         savedata("UCUS98653")
         assertNull(pspResolver(id = null).resolve("PSP", "God of War"))
     }
 
-    /** The stick's own folders are not any one game's save. */
     @Test fun a_shared_root_ignores_the_memory_stick_own_folders() {
         savedata("UCUS98653")
         File(saves("PSP"), "SYSTEM/CACHE").mkdirs()
@@ -397,8 +366,6 @@ class LocalSaveResolverTest {
         assertEquals("NEW", File(game("SNES", "Mario"), "Mario.srm").readText())
     }
 
-    // Two applies of the same save must not share a staging path: whichever renames first would
-    // otherwise publish the other's half-written bytes.
     @Test fun applyDownload_does_not_stage_through_a_shared_temp_path() {
         val inFlight = File(saves("GBA"), ".part_Pokemon.srm").apply { writeBytes("IN-FLIGHT".toByteArray()) }
         val src = tmp.newFile("dl3.bin").apply { writeBytes("MINE".toByteArray()) }

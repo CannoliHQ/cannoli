@@ -13,7 +13,6 @@ import org.junit.Rule
 import org.junit.rules.TemporaryFolder
 import java.io.File
 
-/** Shared fixture for the tests that launch a ROM and read back the per-launch RetroArch config. */
 abstract class LaunchConfigHarness {
 
     @get:Rule val tmp = TemporaryFolder()
@@ -23,19 +22,12 @@ abstract class LaunchConfigHarness {
     val gameOverrides = mockk<dev.cannoli.scorza.db.GameOverrideStore>(relaxed = true)
     val retroArchLauncher = mockk<RetroArchLauncher>(relaxed = true)
 
-    /**
-     * The core every harness launch resolves to; the override tiers and the save state directory
-     * are keyed by it. Settable so a test can launch the same game on a second core; JUnit builds a
-     * fresh instance per test, so a change cannot reach another one.
-     */
     var launchCore = "mgba_libretro"
 
     fun manager(root: File): LaunchManager {
         every { settings.sdCardRoot } returns root.absolutePath
         every { gameOverrides.get(any()) } returns null
         every { platformConfig.getCoreName(any()) } returns launchCore
-        // Explicitly on the embedded runner, which is the path that writes a Cannoli-authored
-        // config. An external RetroArch is launched by intent and never gets one.
         every { platformConfig.getPlatformChoice(any()) } returns
             dev.cannoli.scorza.config.EmulatorChoice(
                 dev.cannoli.scorza.config.EmulatorSource.Embedded, "mgba_libretro",

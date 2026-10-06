@@ -13,7 +13,6 @@ private const val KEY_WEST = 99
 private const val KEY_NORTH = 100
 private const val KEY_MENU = 82
 
-/** An Input category with only a Button Overrides row, for the screen's own provider-nav test. */
 private class InputCategoryProvider : IgmSettingsProvider {
     override fun screen(path: List<String>): GenericIgmSettingsScreen = when (path) {
         emptyList<String>() -> GenericIgmSettingsScreen(
@@ -197,27 +196,21 @@ class IGMButtonMappingsTest {
         assertEquals(RemapButton.UP.id, bridge.remap[RemapButton.DOWN.id])
     }
 
-    // The regression this screen shares with Shortcuts: entering pushes a level on the provider
-    // navigator, so Back has to step that navigator back too, not just pop the IGM screen. Left
-    // undone, the Input category screen underneath is left one level too deep and the first Back
-    // press on it looks dead.
     @Test fun `back returns the settings tree to the input category, not one level too deep`() {
         val c = testController(InputCategoryBridge())
         c.openMenu()
         val settingsIndex = c.buildMenuOptions().settingsIndex
         repeat(settingsIndex) { c.handleKeyDown(KEY_DOWN) }
-        c.handleKeyDown(KEY_SOUTH) // open Settings
-        c.handleKeyDown(KEY_SOUTH) // descend into Input
-        c.handleKeyDown(KEY_SOUTH) // descend into Button Overrides; the controller intercepts this
+        c.handleKeyDown(KEY_SOUTH)
+        c.handleKeyDown(KEY_SOUTH)
+        c.handleKeyDown(KEY_SOUTH)
         assertTrue(c.currentScreen is IGMScreen.ButtonMappings)
 
-        c.handleKeyDown(KEY_EAST) // back out of Button Overrides
+        c.handleKeyDown(KEY_EAST)
 
         val afterFirstBack = c.currentScreen as IGMScreen.ProviderSettings
         assertEquals(listOf(CuratedCatalog.CATEGORY_INPUT), afterFirstBack.path)
 
-        // A stale provider level left behind by the bug answers this second Back with the same
-        // screen again instead of climbing to the root.
         c.handleKeyDown(KEY_EAST)
         assertEquals(emptyList<String>(), (c.currentScreen as IGMScreen.ProviderSettings).path)
     }

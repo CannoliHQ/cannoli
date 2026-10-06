@@ -28,8 +28,6 @@ class OnboardingStorageInputHandler @Inject constructor(
         current()?.let { nav.replaceTop(it.moved(1)) }
     }
 
-    // The custom row is the only one confirm has anywhere to take: every other row already names
-    // the volume the highlight sits on.
     override fun onConfirm() {
         val screen = current() ?: return
         if (!screen.isCustomVolume) return
@@ -42,8 +40,6 @@ class OnboardingStorageInputHandler @Inject constructor(
         )
     }
 
-    // Finishing setup is deliberate, so it sits on START rather than on the confirm button every
-    // other step advances with.
     override fun onStart() {
         current()?.targetPath?.let { onboarding.finish(it) }
     }

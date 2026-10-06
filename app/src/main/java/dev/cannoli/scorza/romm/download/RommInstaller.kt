@@ -10,7 +10,6 @@ class RommInstaller(private val staging: DownloadStaging) {
 
     fun isMultiPart(game: RommGame): Boolean = game.files.size > 1
 
-    /** Installs [source] for [game] under [romDir]/[tag]. [source] is a downloaded file for single-part games and a staged directory for multi-part games. Deletes [source]. */
     fun install(game: RommGame, tag: String, source: File, romDir: File): InstallResult {
         val tagDir = File(romDir, tag)
         return if (isMultiPart(game)) installMultiPart(game, tag, tagDir, source)

@@ -2,7 +2,6 @@ package dev.cannoli.core.shader
 
 import java.io.File
 
-/** A tunable a shader declares, with the range its author gave it. */
 data class PresetParameter(
     val id: String,
     val desc: String,
@@ -12,10 +11,8 @@ data class PresetParameter(
     val step: Float,
 )
 
-/** Reads `#pragma parameter` out of a chain's shaders, so a chain can be described before it runs. */
 object ShaderPragma {
 
-    /** In pass order, first declaration winning: one name is one value however many passes use it. */
     fun parameters(passes: List<PresetPass>): List<PresetParameter> {
         val found = LinkedHashMap<String, PresetParameter>()
         val read = mutableSetOf<String>()
@@ -23,8 +20,6 @@ object ShaderPragma {
         return found.values.toList()
     }
 
-    // Packs keep their parameter block in an .inc and include it from every pass, so includes are
-    // followed. Each file is read once, so a cycle cannot spin.
     private fun collect(
         file: File,
         found: MutableMap<String, PresetParameter>,
@@ -51,7 +46,6 @@ object ShaderPragma {
         }
     }
 
-    /** `name "Some description" default min max [step]`. A missing step is the range in a hundred. */
     private fun parse(body: String): PresetParameter? {
         val open = body.indexOf('"')
         val close = body.indexOf('"', open + 1)

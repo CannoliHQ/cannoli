@@ -19,8 +19,6 @@ class KitchenServerTest {
 
     private lateinit var root: File
     private var server: KitchenHttpServer? = null
-    // Ephemeral: a fixed port collides with whatever else on the machine happens to
-    // take it, which fails the whole file with a socket error that reads like a bug.
     private var port = 0
 
     @Before fun setUp() {
@@ -105,9 +103,6 @@ class KitchenServerTest {
         File(dir, name).writeText(body)
     }
 
-    // The wizard's cfgs, so a pad the database has never seen can be sent to whoever curates it.
-    // Served verbatim: the capture keys were written when the mapping was built, because neither the
-    // handheld model nor the source mask can be recovered from the file later.
     @Test fun listsAndServesControllerMappings() {
         writeMapping(
             "android_default_some_pad.cfg",
@@ -123,8 +118,6 @@ class KitchenServerTest {
         assertTrue(fileBody.contains("submission_build_model = \"AYN Thor\""))
     }
 
-    // A mapping is named the way a person would recognise it, not by its filename. A curated entry
-    // carries a friendly display name; a wizard capture repeats the pad's reported name.
     @Test fun mappingsAreNamedForReading() {
         writeMapping(
             "retroid_nova.cfg",
@@ -138,8 +131,6 @@ class KitchenServerTest {
         assertTrue(body.contains("\"file\":\"retroid_nova.cfg\""))
     }
 
-    // The directory also holds the seeder's stamp and RetroArch's own autoconfig cache. Neither is a
-    // mapping, and both showed up when this reused the generic file lister.
     @Test fun mappingsListExcludesEverythingThatIsNotAMapping() {
         writeMapping("real.cfg", "input_device = \"Real Pad\"\n")
         writeMapping(".seed_version", "5b4fddaa8e967470|Retroid Pocket Nova")
@@ -156,8 +147,6 @@ class KitchenServerTest {
         assertFalse(body.contains("nameless.cfg"))
     }
 
-    // Found on device: excluding a file from the listing is not enough if it is still fetchable by
-    // name, because then the two halves disagree about what a mapping is.
     @Test fun whatIsNotListedCannotBeDownloaded() {
         writeMapping("real.cfg", "input_device = \"Real Pad\"\n")
         writeMapping(".seed_version", "5b4fddaa8e967470|Retroid Pocket Nova")

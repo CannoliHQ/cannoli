@@ -64,8 +64,6 @@ object RetroArchAutoconfigImporter {
                 )
         }
 
-        // A cfg the user edited states its menu exactly, including an empty one. Otherwise seed
-        // BTN_MENU with KEYCODE_BACK (4) + KEYCODE_BUTTON_MODE (110) on top of whatever the cfg has.
         val menuKeycodes = entry.cannoliMenuKeycodes
         if (menuKeycodes != null) {
             bindings[CanonicalButton.BTN_MENU] =
@@ -80,11 +78,6 @@ object RetroArchAutoconfigImporter {
         }
 
         val safeId = stableIdFor(device, entry)
-        // Phantom-rewrite handling: on hosts that rewrite a paired BT pad's VID/PID to the
-        // built-in's values (Retroid family), the device's reported vid/pid don't match the
-        // pad's real brand. The matched cfg has the right brand vid/pid in its header, so try
-        // the cfg's vid/pid first; only fall through to the device's reported vid/pid when the
-        // cfg doesn't carry one.
         val profile = legendResolver.resolve(
             vendorId = entry.vendorId ?: device.vendorId,
             productId = entry.productId ?: device.productId,
@@ -139,10 +132,6 @@ object RetroArchAutoconfigImporter {
     private const val ANDROID_AXIS_HAT_Y: Int = 16
 
     internal fun axisRange(direction: Int, role: AnalogRole): Triple<Float, Float, Float> {
-        // Trigger axes (DIGITAL_BUTTON) are unipolar: rest at 0, full press at +/-1. Mapping
-        // them as bipolar would normalize axis-at-rest to 0.5 -- past the 0.5 digital
-        // threshold but below the 0 baseline, so a trigger that just sits at rest reads as
-        // "barely pressed" forever. Stick axes stay bipolar.
         if (role == AnalogRole.DIGITAL_BUTTON) {
             return if (direction >= 0) Triple(0f, 0f, 1f) else Triple(0f, 0f, -1f)
         }
@@ -155,9 +144,6 @@ object RetroArchAutoconfigImporter {
     ): String {
         val base = device.name.ifEmpty { entry.deviceName.ifEmpty { "controller" } }
         val slug = "ra_" + slugify(base)
-        // Mappings are scoped per pad model, so no per-unit suffix. Pinned entries append the model
-        // to keep two handhelds' built-in profiles distinct in input-db, even though model-aware
-        // seeding means only one of them is ever on a given device.
         val model = entry.buildModel?.trim()?.takeIf { it.isNotEmpty() }
         return if (model != null) "${slug}_${slugify(model)}" else slug
     }

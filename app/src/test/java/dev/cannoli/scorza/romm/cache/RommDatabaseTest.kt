@@ -151,8 +151,6 @@ class RommDatabaseTest {
         assertEquals(emptyList<String>(), db.searchAllGames(RommSearchQuery("  ")).map { it.name })
     }
 
-    // Files cached by schema 7 lack category and top-level, and a delta sync from the cursor
-    // would never rewrite unchanged rows, so opening an older cache must drop it and its cursor.
     @Test fun `opening a schema 7 cache drops its rows and cursor so the next sync is full`() {
         db.setSyncState("cursor", "2024-09-09T00:00:00")
         db.replacePlatforms(listOf(platform(1, "NES", "NES", 1) to null))

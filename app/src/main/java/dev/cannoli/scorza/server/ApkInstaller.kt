@@ -71,7 +71,6 @@ class ApkInstaller @Inject constructor(
         val intent = Intent(context, ApkInstallReceiver::class.java)
             .setAction(ApkInstallReceiver.ACTION_RESULT)
             .putExtra(ApkInstallReceiver.EXTRA_INSTALL_ID, installId)
-        // FLAG_MUTABLE required on API 31+ so the system can fill in EXTRA_STATUS and the confirmation intent
         val flags = if (Build.VERSION.SDK_INT >= 31) {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
         } else {

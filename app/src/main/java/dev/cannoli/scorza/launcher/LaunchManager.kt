@@ -28,11 +28,7 @@ import java.io.File
 import java.io.IOException
 import java.security.MessageDigest
 
-// Matches the line ricotta_ra_save_override writes on the tiers it owns, so every generated
-// override file says the same thing about who wrote it and where a user's own keys belong.
 private const val ASSET_SHADERS = "shaders"
-// The name Nonna's Kitchen already skips when listing a resource folder, so a stamp does not
-// show up as a file someone put there.
 private const val BUNDLED_STAMP = ".bundled_version"
 
 private const val TIER_BANNER =
@@ -51,19 +47,9 @@ class LaunchManager(
     private val gameOverrides: dev.cannoli.scorza.db.GameOverrideStore? = null,
     private val globalOverrides: dev.cannoli.scorza.settings.GlobalOverridesManager? = null,
 ) {
-    // Per-game overrides are keyed by rom_id, which the scanner keeps stable across renames,
-    // moves and auto-organize, so an override follows its game instead of being orphaned.
     private fun overrideFor(rom: Rom): dev.cannoli.scorza.config.EmulatorChoice? =
         gameOverrides?.get(rom.id)
 
-    /**
-     * This game's mode if it states one, otherwise the global. Either direction: a game can be
-     * hardcore under a softcore global as readily as the reverse.
-     *
-     * A manual RA Game ID is an unofficial association, a ROM hack or a hand match, where hardcore
-     * is invalid. It forces softcore over the top of both rather than editing either, so clearing
-     * the ID gives the game its own choice back untouched.
-     */
     private fun cheevosFor(rom: Rom): Map<String, String> = cheevosOverrides(
         username = settings.raUsername,
         token = settings.raToken,
@@ -88,16 +74,6 @@ class LaunchManager(
         } catch (_: IOException) {}
     }
 
-    /**
-     * Copies Cannoli's own shader presets onto the card.
-     *
-     * Only what Cannoli authored ships in the APK; everything else comes from the libretro shader
-     * database through Update Shaders.
-     *
-     * Keyed on the app's version rather than on the files existing, so an upgrade carrying a fixed
-     * preset actually replaces the old one. It copies rather than syncs: anything downloaded or
-     * hand-placed beside it is left alone, since this owns its own folders and nothing else.
-     */
     fun syncBundledShaders(root: File) {
         val dest = CannoliPaths(root).shadersDir
         val stamp = File(dest, BUNDLED_STAMP)
@@ -110,14 +86,6 @@ class LaunchManager(
         }
     }
 
-    /**
-     * Fingerprint of the shipped shader assets.
-     *
-     * Keyed on the files rather than on the app's version, because the version does not change
-     * between development builds: an edited preset would sit in the APK while the card kept the
-     * copy from the first install, and the card's copy is the one RetroArch loads. A hash notices
-     * any edit, and costs a read of about seventy kilobytes once per boot.
-     */
     private fun assetDigest(assetPath: String): String? = try {
         val md = MessageDigest.getInstance("SHA-256")
         digestAssetTree(assetPath, md)
@@ -139,18 +107,10 @@ class LaunchManager(
                 }
             }
         } else {
-            // Sorted, so the same tree hashes the same however the platform happens to list it.
             children.sorted().forEach { digestAssetTree("$assetPath/$it", md) }
         }
     }
 
-    /**
-     * Builds the shader index if the tree has one to describe and does not already have it.
-     *
-     * Normally an extraction writes it, but a tree that predates the index, or one assembled by
-     * hand, would otherwise make the browser walk thousands of folders on every level. Cheap when
-     * the index exists, which is the usual case, and the walk itself happens once.
-     */
     fun ensureShaderIndex(root: File) {
         val dir = CannoliPaths(root).shadersDir
         if (!dir.isDirectory) return
@@ -158,8 +118,6 @@ class LaunchManager(
         ShaderIndex.build(dir)
     }
 
-    // Returns false on the first failure rather than leaving a half-copied preset stamped as done,
-    // which would then be skipped on every later boot.
     private fun copyAssetTree(assetPath: String, dest: File): Boolean {
         val children = try { context.assets.list(assetPath) } catch (_: IOException) { null }
         return if (children.isNullOrEmpty()) {
@@ -178,15 +136,6 @@ class LaunchManager(
         }
     }
 
-    /**
-     * Writes the config the embedded runner loads, and records its path for [buildGameConfig] to
-     * compose the override tiers onto.
-     *
-     * Regenerated on every launch rather than seeded once, so an install upgraded from an older
-     * build gets today's default keys immediately instead of carrying whatever it had on disk. It
-     * was called syncRetroArchConfig back when it copied from a separately installed RetroArch;
-     * nothing external is involved now, and the old name read as dead code that could be deleted.
-     */
     fun writeRunnerConfig(root: File) {
         val raDir = CannoliPaths(root).configRetroArch
         raDir.mkdirs()
@@ -198,8 +147,6 @@ class LaunchManager(
         raConfigPath = localConfig.absolutePath
     }
 
-    // Optional: a tier the user or Kitchen never wrote contributes nothing rather than failing
-    // the launch. Parse is already lenient about malformed lines within a file that does exist.
     private fun readOverrideLayer(file: File): Map<String, String> =
         if (!file.exists()) emptyMap()
         else try { RetroArchConfigComposer.parse(file.readText()) } catch (_: IOException) { emptyMap() }
@@ -209,16 +156,6 @@ class LaunchManager(
         val baseConfig = try { File(base).readText() } catch (_: IOException) { return null }
         val paths = CannoliPaths(settings.sdCardRoot)
         val romName = normalizedRomName(rom)
-        // The preference stack, weakest to strongest: global, the platform's shipped defaults, this
-        // platform, this one game, then the user's own custom.cfg. The plumbing band applied below
-        // always wins over all of them - see applyOverrides below and #36 in the launch config
-        // design. Each of the two middle scopes is a pair: a core-independent tier under the
-        // core-keyed one. Keying by core is right for values that describe how a core behaves,
-        // since run-ahead compensates a specific core's internal latency, and it is wrong for
-        // values that describe how a platform or game should look - an overlay is the same choice
-        // whichever core runs it, so a core-keyed tier would silently drop it on a remap.
-        // Core-specific sits above core-independent within a scope because it is the narrower
-        // statement of the two.
         writeGlobalDefaults(paths)
         val preferenceBase = RetroArchConfigComposer.compose(
             baseConfig,
@@ -234,13 +171,7 @@ class LaunchManager(
         )
         val stateDir = paths.saveStateDir(rom.platformTag, romName, core)
         stateDir.mkdirs()
-        // Just in time, before the config names the folder: the background sweep may not have
-        // reached this game yet, and a game launched into a folder its save has not moved to would
-        // start with no save at all. Idempotent, so a migrated game costs a directory listing.
         dev.cannoli.scorza.saves.SaveMigration(paths).migrateGame(rom.platformTag, romName)
-        // A platform whose core keeps one memory stick for everything keeps it: PPSSPP files a
-        // game inside SAVEDATA by disc id, games there read each other's saves, and Argosy points
-        // at the same shared root, so a per-game stick would break both.
         val saveDir = if (dev.cannoli.scorza.saves.SharedSaveRoots.isShared(rom.platformTag)) {
             paths.savesFor(rom.platformTag)
         } else {
@@ -256,42 +187,18 @@ class LaunchManager(
             put("savestate_directory", stateDir.absolutePath)
             put("sort_savestates_enable", "false")
             put("sort_savestates_by_content_enable", "false")
-            // Named outright rather than derived. RetroArch's by-content sorting appends the ROM's
-            // parent directory, which is the platform directory only for a loose ROM: a bundled
-            // multi-disc game at Roms/PSX/Game/disc1.cue would land in Saves/Game. Naming the
-            // folder here puts every save for one game in Saves/<tag>/<game>, keyed the way guides,
-            // cheats and states already are, which is where the launcher and save sync both look.
             put("savefile_directory", saveDir.absolutePath)
             put("sort_savefiles_enable", "false")
             put("sort_savefiles_by_content_enable", "false")
             put("save_file_compression", "false")
             put("state_slot", raSlot.toString())
-            // Also in the base config; emitted in the plumbing band too so a tier or custom.cfg
-            // cannot turn it off.
             put("savestate_thumbnail_enable", "true")
             put("joypad_autoconfig_dir", paths.configInputAutoconfig.absolutePath)
-            // Where RetroArch writes the preset that compiling a chain produces, and where it
-            // looks for one by name. Left unset it is empty, and applying a chain built in the
-            // menu silently writes nowhere and shows nothing.
             put("video_shader_dir", paths.shadersDir.absolutePath)
-            // Core options are not RetroArch settings and cannot live in this config, so they are
-            // composed into their own file from the same platform and game tiers. global_core_options
-            // is what makes RetroArch use core_options_path verbatim instead of deriving a per-core
-            // path of its own, which has no platform or game dimension at all.
             put("core_options_path", composeCoreOptions(paths, rom.platformTag, romName, core))
             put("global_core_options", "true")
-            // A core that shuts down must return to Cannoli, not to RetroArch. Left at its own
-            // default, RetroArch loads the dummy core instead of exiting, and a dummy core with no
-            // content has nothing to draw but RetroArch's own menu: that is how pressing a button on
-            // FBNeo's missing-firmware screen landed in Load Core and the Online Updater. The Core
-            // settings screen is already hidden below, but hiding the screen never set the value.
             put("load_dummy_on_core_shutdown", "false")
             putAll(hiddenRaSettingsScreens)
-            // settings.language is what Cannoli actually renders in: it defaults to en, and
-            // ProvideLocalizedResources applies it whether or not the user ever chose. RetroArch
-            // follows the same value so the two never disagree, rather than falling back to its own
-            // device detection and putting the settings menu in a different language from the
-            // launcher around it.
             RetroArchLanguage.forTag(settings.language)?.let { put("user_language", it.toString()) }
             putAll(cheevos)
             putAll(autoStateOverrides(hardcore, resume, settings.alwaysSaveOnQuit))
@@ -303,16 +210,6 @@ class LaunchManager(
     }
 
 
-    /**
-     * Screens the in-game menu does not show, expressed the way RetroArch expresses them.
-     *
-     * DISPLAYLIST_SETTINGS_ALL gates each top-level screen on its own settings_show_ flag, so
-     * setting these false means RetroArch never emits the row and the IGM has nothing to
-     * refuse. Doing it here rather than filtering by label in the menu keeps the decision on
-     * config keys, which are stable, instead of menu label strings, which are not ours and
-     * change without notice. Every one of these is something Cannoli owns outright: it writes
-     * the config, owns input and achievements, and manages saves, playlists and directories.
-     */
     private val hiddenRaSettingsScreens = mapOf(
         "settings_show_saving" to "false",
         "settings_show_configuration" to "false",
@@ -329,22 +226,9 @@ class LaunchManager(
         "settings_show_logging" to "false",
         "settings_show_recording" to "false",
         "settings_show_input" to "false",
-        // Frontend behaviour around cores, most of which fights what the launcher owns:
-        // systemfiles_in_content_dir_enable, core_info_cache_enable, dummy_on_core_shutdown. The
-        // two worth keeping are promoted onto Video. Cutting it also ends the name collision with
-        // Cannoli's own Emulator row, which is core options and a different thing entirely.
         "settings_show_core" to "false",
     )
 
-    /**
-     * Regenerates the weakest override tier from the launcher's own defaults.
-     *
-     * Generated rather than hand-written, the same way retroarch_launch.cfg and the composed core
-     * options file are, so settings.json stays the single source of truth and a stale or
-     * hand-edited global.cfg heals on the next launch. It sits below every tier the in-game menu
-     * writes, so anything chosen for a platform or a game silently wins, which is what makes these
-     * defaults rather than settings.
-     */
     private fun writeGlobalDefaults(paths: CannoliPaths) {
         val defaults = buildMap {
             settings.defaultVideoDriver.takeIf { it.isNotEmpty() }?.let { put("video_driver", it) }
@@ -363,9 +247,6 @@ class LaunchManager(
         }
     }
 
-    // Once a core reads either stick, RetroArch takes the left stick off the D-pad for the session,
-    // and on these platforms the core reads one it never steers with. ANALOG_DPAD_LSTICK_FORCED
-    // (3) keeps the stick on the D-pad and hands the core a centered left stick, on all 16 ports.
     private fun stickDpadDefaults(tag: String): Map<String, String> =
         if (platformConfig.forcesStickDpad(tag)) {
             (1..16).associate { "input_player${it}_analog_dpad_mode" to "3" }
@@ -373,9 +254,6 @@ class LaunchManager(
             emptyMap()
         }
 
-    // Weakest to strongest: what Cannoli ships for this pad, then platform on this core, then this game
-    // on this core. Written out whole every launch, so a key removed from a tier stops applying instead
-    // of lingering in the file RetroArch flushed last time.
     private fun composeCoreOptions(
         paths: CannoliPaths,
         tag: String,
@@ -407,14 +285,9 @@ class LaunchManager(
         return rom.path
     }
 
-    /**
-     * The core this ROM would run on: its own override first, then the platform's mapping. Save
-     * states are keyed by it, so the picker and the launch have to agree on the answer.
-     */
     fun coreForStates(rom: Rom): String? =
         overrideFor(rom)?.coreId?.ifEmpty { null } ?: platformConfig.getCoreName(rom.platformTag)
 
-    /** The stored source that applies to this ROM, game override first. Null means unset. */
     private fun sourceFor(rom: Rom): EmulatorSource? =
         overrideFor(rom)?.source ?: platformConfig.getPlatformChoice(rom.platformTag)?.source
 
@@ -438,7 +311,6 @@ class LaunchManager(
 
     private fun hasSaveState(rom: Rom): Boolean = findMostRecentSlot(rom) != null
 
-    // Nothing stored resolves to the embedded runner, which is the only one always present.
     private fun usesEmbeddedRetroArch(rom: Rom): Boolean =
         (sourceFor(rom) ?: EmulatorSource.Embedded) == EmulatorSource.Embedded
 
@@ -446,14 +318,7 @@ class LaunchManager(
         val result = mutableSetOf<String>()
         for (rom in roms) {
             if (!hasSaveState(rom)) continue
-            // Under hardcore RetroArch refuses to load a state at all, so resume is offering
-            // something it cannot deliver. Hiding it here covers every affordance at once:
-            // nav.resumableGames is the only thing the legend, the North action, the swapped
-            // confirm and the hold-to-pick-a-slot gesture consult.
             if (hardcoreInEffect(cheevosFor(rom))) continue
-            // Slots are a Cannoli and libretro concept. A standalone app manages its own saves,
-            // so offering Resume for one promises something no external emulator can honour. A
-            // separately installed RetroArch manages its own states the same way.
             if (usesEmbeddedRetroArch(rom)) {
                 result.add(rom.path.absolutePath)
             }
@@ -483,8 +348,6 @@ class LaunchManager(
         val source = pickSource(
             gameSource = gameOverride?.source,
             platformSource = platformConfig.getPlatformChoice(rom.platformTag)?.source,
-            // Only decides whether to fall back to a standalone app when nothing is
-            // stored, so it asks the one runner that can load a core.
             raAvailable = {
                 val core = resolvedCore
                 val svc = installedCoreService
@@ -508,10 +371,6 @@ class LaunchManager(
             val core = resolvedCore
             if (core != null) {
                 debugLog("RetroArch target: core=$core source=$source")
-                // The embedded runner was never asked whether it holds the core, so a
-                // mapping naming one it does not have launched RetroArch and failed
-                // inside it. Migrated mappings make that the common case rather than a
-                // corner, since they name cores this runner has never downloaded.
                 if (installedCoreService != null && !coreIsComplete(core, rom.platformTag)) {
                     return errorAndReset(DialogState.MissingCore(
                         platformConfig.getCoreDisplayName(core),
@@ -545,8 +404,6 @@ class LaunchManager(
                 val launchConfig = buildGameConfig(rom, core) ?: raConfigPath
                 retroArchLauncher.launchRicotta(launchFile, core, launchConfig, buildRicottaIgm(rom))
             } else {
-                // App-only platform (no core) that reached here has nothing installed to
-                // run it, so name the app it wants instead of a core it never had.
                 val appPkg = platformConfig.getAppPackage(rom.platformTag)
                 if (appPkg != null && !context.isPackageInstalled(appPkg)) {
                     LaunchResult.AppNotInstalled(appPkg)
@@ -556,8 +413,6 @@ class LaunchManager(
             }
         }
 
-        // Carries the same attribution the early returns above use: a launch that failed on a
-        // per-game override must send recovery to that override, not to the platform mapping.
         return launchResultDialog(result, rom.platformTag, overrideRomId)
     }
 
@@ -578,9 +433,6 @@ class LaunchManager(
         val launchFile = resolveLaunchFile(rom, extractArchives = false)
             ?: run { launchState.launching = false; launchState.lastLaunched = null; return null }
         val gameOverride = overrideFor(rom)
-        // Resume had no standalone branch, so a platform mapped to an uninstalled standalone app
-        // fell straight through to the RetroArch path and launched the platform default core.
-        // Play reported the app as missing; Resume silently ran a different emulator.
         if (sourceFor(rom) == EmulatorSource.Standalone) {
             val cfg = gameOverride?.appPackage?.let { platformConfig.getAppConfig(rom.platformTag, it) }
                 ?: platformConfig.getUserAppMapping(rom.platformTag)
@@ -595,9 +447,6 @@ class LaunchManager(
         val core = gameOverride?.coreId?.ifEmpty { null }
             ?: platformConfig.getCoreName(rom.platformTag)
             ?: run { launchState.launching = false; launchState.lastLaunched = null; return null }
-        // Resume used to fire and forget: it discarded the LaunchResult and returned without
-        // clearing launching, so a failed startActivity never reached onResume and every later
-        // launch became a silent no-op. It now runs the same pre-checks and funnel as launchRom.
         if (installedCoreService != null && !coreIsComplete(core, rom.platformTag)) {
             return errorAndReset(DialogState.MissingCore(
                 platformConfig.getCoreDisplayName(core),
@@ -631,20 +480,9 @@ class LaunchManager(
         return launchResultDialog(result, rom.platformTag, rom.id)
     }
 
-    /**
-     * The file's extension when the resolved core has no parser for it, null when the launch should
-     * go ahead. Runs ahead of the BIOS gate: sending someone to find a BIOS for a pairing that could
-     * never load is worse than saying the pairing is wrong.
-     */
     private fun unsupportedExtension(launchFile: File, core: String): String? =
         ContentSupport.unsupported(launchFile, platformConfig.coreExtensions(core))
 
-    /**
-     * Installed means complete: the `.so` on disk and the system files that download alongside it.
-     * A core missing either cannot run, and both are Cannoli's to deliver, so one screen and one
-     * outlet serve them. Bundled sets are not consulted, since the APK carries them and
-     * [SystemFiles.ensureBundled] lays them down on this same path.
-     */
     private fun coreIsComplete(core: String, tag: String): Boolean {
         val service = installedCoreService ?: return true
         if (core !in service.embeddedCores()) return false
@@ -652,25 +490,12 @@ class LaunchManager(
         return SystemFiles.remoteSetsPresent(context.assets, core, tag, biosDir)
     }
 
-    /**
-     * The BIOS directory as a core will see it. Bundled system files land on first use, and they
-     * have to land before anything reads the directory: the gate runs ahead of the launch config,
-     * and PSP declares `PPSSPP/ppge_atlas.zim` required firmware while shipping it inside
-     * `PPSSPP.zip`. Extracting any later would block a platform on a file the APK is carrying for
-     * it. Every later call is a marker read.
-     */
     private fun prepareBios(tag: String, dir: File): File {
         dir.mkdirs()
         SystemFiles.ensureBundled(context.assets, tag, dir, apkStamp(context))
         return dir
     }
 
-    /**
-     * Required BIOS the platform does not have, so a launch can be stopped before the emulator sits
-     * on a missing file. Requiredness is corrected by `bios_required.txt` where a core's own flags
-     * cannot express it: FBNeo marks every entry optional, which is right for arcade romsets and
-     * wrong for Neo Geo.
-     */
     private fun missingRequiredBios(tag: String, core: String): List<String> {
         val biosDir = prepareBios(tag, CannoliPaths(File(settings.sdCardRoot)).biosFor(tag))
         return platformConfig.getFirmwareStatus(tag, core, biosDir)
@@ -678,8 +503,6 @@ class LaunchManager(
             .map { req ->
                 when (req) {
                     is dev.cannoli.scorza.config.FirmwareRequirement.Single -> File(req.entry.path).name
-                    // Naming one of a dozen interchangeable dumps would read as the only answer, so
-                    // the choice is stated as a choice.
                     is dev.cannoli.scorza.config.FirmwareRequirement.AnyOf ->
                         req.options.joinToString(" or ") { File(it.first.path).name }
                 }
@@ -705,8 +528,6 @@ class LaunchManager(
     private fun toLaunchDialog(result: LaunchResult, platformTag: String? = null, romId: Long? = null): DialogState? {
         return when (result) {
             is LaunchResult.AppNotInstalled -> {
-                // getApplicationLabel cannot resolve a package that is not installed, and this
-                // branch only fires when it is not, so use the curated label like MissingCore does.
                 val appName = InstalledCoreService.getPackageLabel(result.packageName)
                 DialogState.MissingApp(
                     appName, result.packageName, platformTag, romId,
@@ -786,8 +607,6 @@ class LaunchManager(
             dev.cannoli.scorza.settings.TimeFormat.TWENTY_FOUR_HOUR -> TimeFormatMode.TWENTY_FOUR_HOUR
         }
         return RicottaIgm(
-            // Dropped here rather than in the emulator process: an action bound to nothing is one
-            // the matcher can never match, and carrying it only widens the key set native watches.
             shortcuts = globalOverrides?.readShortcuts()?.filterValues { it.isNotEmpty() }.orEmpty(),
             gameTitle = rom.displayName,
             stateBasePath = stateBase.absolutePath,
@@ -825,9 +644,6 @@ class LaunchManager(
         )
     }
 
-    // Keycodes bound to BTN_MENU in the active mapping open the Cannoli IGM in ricotta,
-    // mirroring how the launcher's own in-game menu opens. Falls back to the platform
-    // default (BACK + BUTTON_MODE) when no mapping is active.
     private fun resolveMenuKeycodes(): List<Int> =
         activeMappingHolder.active.value
             ?.bindings
@@ -873,19 +689,9 @@ class LaunchManager(
             )
         }
 
-        // Read from the emission rather than the settings so the launch config, the resume
-        // affordance and the IGM's save state rows can never disagree.
         fun hardcoreInEffect(cheevos: Map<String, String>): Boolean =
             cheevos["cheevos_hardcore_mode_enable"] == "true"
 
-        /**
-         * The auto-slot keys for one launch. They are computed per launch from the resume and
-         * slot state, so they belong in the plumbing band, not the regenerated base config.
-     *
-         * Hardcore writes neither: the auto slot's only consumer is resume, which is hidden
-         * under hardcore. config.def.h defaults both to false, so an absent key is off and
-         * bridge.savesOnQuit reads back false, skipping the IGM's auto-slot rotation too.
-         */
         fun autoStateOverrides(
             hardcore: Boolean,
             resume: Boolean,
@@ -898,57 +704,23 @@ class LaunchManager(
             }
         }
 
-        // Null means no stored preference anywhere, so the caller falls through to its embedded
-        // core probe and then RetroArch, which is what the pre-identity code did implicitly.
-        // The availability probes are lazy because a stored choice decides the answer on its
-        // own, and probing the filesystem to reach a conclusion already known is wasted work.
-        /**
-         * The Cannoli-owned default config, regenerated on every launch as the base the override tiers compose over.
-     *
-         * RetroArch derives its save and state directories by appending to the configured ones,
-         * and both sort flags default to on. Cannoli's layout is one directory per system, so the
-         * content-directory level is wanted and the core level never is: leaving
-         * `sort_savefiles_enable` at its default gives `Saves/GBA/mGBA` instead of `Saves/GBA`.
-         * Both flags are therefore stated outright rather than left to the defaults.
-         */
         fun buildMinimalConfig(rootPath: String) = buildString {
             appendLine("savefile_directory = \"$rootPath/Saves\"")
             appendLine("savestate_directory = \"$rootPath/Save States\"")
             appendLine("sort_savefiles_by_content_enable = \"true\"")
             appendLine("sort_savefiles_enable = \"false\"")
-            // buildGameConfig pins the state directory exactly and turns both of these off. These
-            // only decide where states land if that per-game write fails and the base is launched
-            // on its own, so they mirror the savefile rule rather than contradicting it.
             appendLine("sort_savestates_by_content_enable = \"true\"")
             appendLine("sort_savestates_enable = \"false\"")
             appendLine("savestate_file_compression = \"false\"")
-            // Saves too, and for a reason beyond consistency: a compressed .srm is an rzip
-            // container rather than SRAM, which another launcher restoring it writes to the save
-            // path verbatim and a desktop emulator will not read. The same save also hashes
-            // differently compressed and uncompressed, which is a sync anchor that never settles.
             appendLine("save_file_compression = \"false\"")
-            // RetroArch defaults this off everywhere but x86_64, and the slot thumbnails are the
-            // whole point of the save and load rows.
             appendLine("savestate_thumbnail_enable = \"true\"")
             appendLine("config_save_on_exit = \"false\"")
-            // Android defaults this on, and the config is rewritten every launch, so the
-            // last-extracted version never matches and RetroArch unpacks the APK's assets again on
-            // every run. Its completion callback issues a full driver reinit, which cost a visible
-            // hitch about a second in. Nothing reads the extracted copies: assets_directory below
-            // points elsewhere and the unpack lands in the app data dir.
             appendLine("bundle_assets_extract_enable = \"false\"")
-            // Cannoli composes the override tiers itself; RetroArch's own auto-override loading
-            // would layer a second, uncontrolled copy on top of what was just composed.
             appendLine("auto_overrides_enable = \"false\"")
-            // Cannoli stores button remaps in its own tiers and writes them straight into
-            // RetroArch's remap array. A .rmp loading here would fight that, and the format also
-            // carries the controller type and the analog D-pad mode, which other features own.
             appendLine("auto_remaps_enable = \"false\"")
             appendLine("video_font_enable = \"false\"")
             appendLine("menu_driver = \"rgui\"")
             appendLine("assets_directory = \"$rootPath/Config/Assets\"")
-            // RetroArch appends the joypad driver name to this, so it scans Autoconfig/android,
-            // which is where the seeder writes the cfgs Cannoli and RetroArch now share.
             appendLine("joypad_autoconfig_dir = \"$rootPath/Config/Input/Autoconfig\"")
         }
 
@@ -964,10 +736,6 @@ class LaunchManager(
             return null
         }
 
-        // Identifies the installed build. Both the bundled cores and the bundled system files key
-        // their extraction markers on it, so an upgrade re-lays what it ships and nothing else.
-        // Falls back rather than throwing: this sits on the launch path, and a build we cannot
-        // identify is a reason to skip an extraction, never a reason to fail the launch.
         fun apkStamp(context: Context): String =
             context.applicationInfo?.sourceDir?.let { File(it).lastModified().toString() } ?: ""
 

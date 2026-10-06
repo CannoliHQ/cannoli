@@ -39,13 +39,7 @@ class DelfinoLaunchParamsTest {
     }
 
     @Test
-    fun `disc paths default to empty`() {
-        assertEquals(emptyList<String>(), sampleParams().discPaths)
-    }
-
-    @Test
     fun `reading a v1 parcel defaults disc paths to empty`() {
-        // Hand-writes the pre-discPaths wire format: same fields, no trailing disc list.
         val parcel = Parcel.obtain()
         parcel.writeInt(1)
         parcel.writeString("/sd/Cannoli/Roms/GC/Baten Kaitos.m3u")

@@ -82,15 +82,6 @@ object DirectoryLayout {
         if (context != null) forgetIndexedArt(context, paths.artDir)
     }
 
-    /**
-     * Drop art the gallery already indexed. The marker only stops the next scan; it does not touch
-     * rows MediaStore already holds, and a library scraped before the marker existed is entirely
-     * such rows, so on an upgrade the covers stay in the user's photos until something asks
-     * MediaStore to look again.
-     *
-     * One scan of the root is enough: the scanner walks the tree, finds the marker, and removes the
-     * entries beneath it rather than merely skipping them. Verified on device.
-     */
     private fun forgetIndexedArt(context: Context, artDir: File) {
         val marker = File(artDir, ".rescanned_for_nomedia")
         if (marker.exists() || !artDir.isDirectory) return
@@ -100,14 +91,6 @@ object DirectoryLayout {
         } catch (_: Exception) {}
     }
 
-    /**
-     * Keep box art out of the gallery. Without this every cover Cannoli downloads turns up in the
-     * user's photos, mixed in with their camera roll.
-     *
-     * Written into each platform folder as well as the root, rather than relying on the root alone
-     * to cover the tree, because a folder can outlive the marker above it: a sync tool or a manual
-     * copy that recreates `Art` without it would expose every platform underneath at once.
-     */
     fun hideFromGallery(dir: File) {
         val marker = File(dir, ".nomedia")
         if (marker.exists()) return
@@ -117,12 +100,6 @@ object DirectoryLayout {
         } catch (_: Exception) {}
     }
 
-    /**
-     * A platform added after a user's install was scaffolded never gets a Roms folder, because the
-     * scaffold only runs on an empty Roms directory. Give every tag the record has not seen its
-     * folder, then record all of them, so a new platform arrives once and a folder the user then
-     * deletes stays deleted.
-     */
     fun seedNewRomFolders(
         romDirectory: File,
         stateDir: File,
@@ -138,12 +115,6 @@ object DirectoryLayout {
         return created
     }
 
-    /**
-     * What an install from before the record was scaffolded with. The bundled list covers the
-     * releases up to the record, and the .seeded_<tag> markers it supersedes carry the platforms
-     * seeded after that. Null when the list cannot be read, which leaves the record unwritten so
-     * the next launch migrates instead of seeding every platform at once.
-     */
     private fun legacyBaseline(stateDir: File, assets: AssetManager): Set<String>? {
         val shipped = try {
             assets.open(SEED_BASELINE_ASSET).bufferedReader().use { reader ->

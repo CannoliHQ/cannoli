@@ -18,13 +18,6 @@ class DownloadQueue {
         _state.value = _state.value.filterNot { it.key in freshKeys } + fresh
     }
 
-    /**
-     * Atomically take the first queued item of one of [kinds] and mark it Downloading, so parallel
-     * workers cannot claim the same item.
-     *
-     * The kind filter is what keeps lanes independent: a core worker asks only for cores, so a
-     * queued core is never stuck behind a rom that happens to sit ahead of it in the list.
-     */
     @Synchronized
     fun claimNext(kinds: Set<DownloadKind>): DownloadItem? {
         val item = _state.value.firstOrNull {
@@ -46,11 +39,6 @@ class DownloadQueue {
         _state.value = _state.value.filterNot { it.key == key }
     }
 
-    /**
-     * Drops what has not started. A transfer already running keeps its row, and so does anything
-     * finished: cancelling is about the work still to come, not about tidying up the record of what
-     * already happened, which is [clearFinished]'s job.
-     */
     @Synchronized
     fun cancelAll() {
         _state.value = _state.value.filterNot { it.status == DownloadStatus.Queued }

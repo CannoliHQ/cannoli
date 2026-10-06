@@ -12,16 +12,6 @@ import org.junit.Test
 import java.io.File
 import java.nio.file.Files
 
-/**
- * There is nothing to pin to. The buildbot keeps dated APKs but a single unversioned `latest`
- * directory of cores, its stable releases carry no cores at all, and RetroArch's own updater points
- * at the same place. So Cannoli asks the server whether a build changed rather than deciding from a
- * download date, which only works if the conditional request is actually made and a 304 is actually
- * honoured.
- *
- * Verified against the real buildbot on 2026-08-25: cores and system archives both answer 304 with
- * an empty body, including ScummVM's 76 MB.
- */
 class ConditionalFetchTest {
 
     private lateinit var server: MockWebServer
@@ -62,7 +52,6 @@ class ConditionalFetchTest {
         assertEquals("\"abc\"", server.takeRequest().getHeader("If-None-Match"))
     }
 
-    // The point of the whole design: unchanged means nothing transfers and nothing is overwritten.
     @Test fun `a 304 writes nothing and reports unmodified`() {
         out.writeText("the build already installed")
         server.enqueue(MockResponse().setResponseCode(304))
@@ -74,8 +63,6 @@ class ConditionalFetchTest {
         assertEquals("the installed file was touched", "the build already installed", out.readText())
     }
 
-    // A stamp written before dates were recorded has no date, and its core may not change for
-    // months. The 304 carries the validators, so that is where the date is recovered.
     @Test fun `a 304 still reports the build date, so an old stamp can be backfilled`() {
         server.enqueue(
             MockResponse().setResponseCode(304).setHeader("Last-Modified", "Tue, 25 Aug 2026 13:01:48 GMT")
@@ -104,7 +91,6 @@ class ConditionalFetchTest {
         assertEquals("new", out.readText())
     }
 
-    // A server that sends no validator must not look like "unchanged" on the next pass.
     @Test fun `a response with no etag reports none rather than reusing the old one`() {
         server.enqueue(MockResponse().setResponseCode(200).setBody("payload"))
 

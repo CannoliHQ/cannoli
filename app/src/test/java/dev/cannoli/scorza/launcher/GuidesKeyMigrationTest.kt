@@ -109,16 +109,12 @@ class GuidesKeyMigrationTest {
 
         migration(roms).migrateIfNeeded()
 
-        // (a) the target/new-dir copy survives, untouched, with its own existing position key.
         assertEquals("from kitchen upload", File(baseDir, "manual.pdf").readText())
         val ini = IniParser.parse(pf)
         assertEquals("2", ini.get("positions", "NES/Zelda II - The Adventure of Link (USA)/manual.pdf"))
-        // (b) the old-dir source copy is not deleted - it survives, renamed aside.
         assertFalse("the source copy must not be deleted", File(displayDir, "manual.pdf").exists())
         assertEquals("from display-name dir", File(displayDir, "manual.pdf.superseded").readText())
-        // The non-duplicate file still moved normally.
         assertTrue(File(baseDir, "map.png").exists())
-        // (c) the old dir itself is not removed - it holds the superseded backup.
         assertTrue("the old dir must survive holding the superseded backup", displayDir.exists())
         assertNull(
             "the dropped key must not point at a directory that no longer holds that filename",
@@ -186,7 +182,6 @@ class GuidesKeyMigrationTest {
             rom(1, "NES", "Zelda II - The Adventure of Link (USA).nes", "Zelda II - The Adventure of Link"),
         )
 
-        // Renaming a file aside within the same dir needs write access to that dir.
         displayDir.setWritable(false)
         assumeTrue("this user can create entries in a non-writable directory", !displayDir.canWrite())
         try {
@@ -210,8 +205,6 @@ class GuidesKeyMigrationTest {
         migration.migrateIfNeeded()
         assertTrue(File(guidesRoot(), ".guides_key_version").exists())
 
-        // A dir recreated at the old display-name key after the stamp is written (a restored
-        // backup, e.g.) must not be touched by a later call, since the migration never re-runs.
         val staleDir = File(guidesRoot(), "NES/Zelda II - The Adventure of Link").apply { mkdirs() }
         File(staleDir, "notes.txt").writeText("x")
         migration.migrateIfNeeded()
@@ -228,8 +221,6 @@ class GuidesKeyMigrationTest {
         )
         val migration = migration(roms)
 
-        // Renaming a dir needs write access to its parent, not the dir itself, so blocking the
-        // tag dir is what makes sourceDir.renameTo(targetDir) fail.
         tagDir.setWritable(false)
         assumeTrue("this user can create entries in a non-writable directory", !tagDir.canWrite())
         try {
@@ -262,7 +253,6 @@ class GuidesKeyMigrationTest {
             rom(1, "NES", "Zelda II - The Adventure of Link (USA).nes", "Zelda II - The Adventure of Link"),
         )
 
-        // Moving a file into the target dir needs write access to the target, not the source.
         baseDir.setWritable(false)
         assumeTrue("this user can create entries in a non-writable directory", !baseDir.canWrite())
         try {
@@ -282,8 +272,6 @@ class GuidesKeyMigrationTest {
         val tagDir = File(guidesRoot(), "NES").apply { mkdirs() }
         val displayDir = File(tagDir, "Zelda II - The Adventure of Link").apply { mkdirs() }
         File(displayDir, "manual.pdf").writeText("x")
-        // A stray subdirectory is not a guide file; mergeInto never touches it, so it blocks
-        // sourceDir.delete() even after every real file was successfully moved out.
         File(File(displayDir, "stray").apply { mkdirs() }, "leftover.txt").writeText("x")
         val baseDir = File(tagDir, "Zelda II - The Adventure of Link (USA)").apply { mkdirs() }
         val roms = listOf(

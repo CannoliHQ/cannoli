@@ -21,7 +21,6 @@ class PlatformConfig(
     private val assets: AssetManager,
     private val coreInfo: CoreInfoRepository? = null,
     private val nativeLibDir: String? = null,
-    // Resolved string passed in because this class has no Context; defaulted for tests.
     private val emptyOverrideLabel: String = "(empty override)",
     private val needsSetupLabel: String = "Needs setup",
     private val internalLabel: String = "Internal",
@@ -38,24 +37,14 @@ class PlatformConfig(
     private var defaultCores = mapOf<String, String>()
     private var defaultPlatformNames = mapOf<String, String>()
 
-    /**
-     * Manufacturer per platform, from platforms.json. The launcher is the source of truth so
-     * Kitchen can read it rather than keeping a second list that drifts every time a platform is
-     * added on one side only.
-     */
     private var platformGroups = mapOf<String, String>()
 
-    /**
-     * Group order: A-Z, with "Other" forced last because it is a catch-all rather than a maker.
-     */
     private var platformGroupOrder = listOf<String>()
     private var defaultApps = mapOf<String, List<AppConfig>>()
     private var arcadePlatforms = setOf<String>()
     private var stickDpadPlatforms = setOf<String>()
 
     init {
-        // Bundled asset defaults are always available regardless of storage permission, so seed
-        // them at construction. load() will be called after permission to overlay user INI.
         loadPlatformsAsset()
     }
 
@@ -105,8 +94,6 @@ class PlatformConfig(
 
     private var ini: IniData = IniData(emptyMap())
     private var userChoices: MutableMap<String, EmulatorChoice> = java.util.concurrent.ConcurrentHashMap()
-    // v1 per-game overrides, keyed by absolute path, held only until the boot-time migration
-    // moves them into the game_overrides table where they are keyed by rom_id.
     private var pendingV1Overrides: MutableMap<String, EmulatorChoice> = java.util.concurrent.ConcurrentHashMap()
     private val paths: CannoliPaths get() = CannoliPaths(cannoliRootProvider())
     private val coresFile get() = paths.coresJson
@@ -131,8 +118,6 @@ class PlatformConfig(
         if (!coresFile.exists()) return
         try {
             val json = JSONObject(coresFile.readText())
-            // A v1 file has no version field at all and stores the picker's caption as the runner,
-            // so it needs a different reader rather than a flag.
             val version = json.optInt("v", 1)
             if (version >= 2) loadV2(json) else migrateV1(json)
         } catch (e: java.io.IOException) {
@@ -153,12 +138,8 @@ class PlatformConfig(
         val rawSource = obj.optString("source", "")
         val source = readSource(rawSource) ?: return null
         val coreId = obj.optString("core", "")
-        // A retired external RetroArch choice names a package that no longer runs anything, and an
-        // Embedded choice carrying one would not match itself in the picker's identity comparison.
         val app = obj.optString("app", "").ifEmpty { null }
             ?.takeUnless { rawSource == EmulatorSource.RETIRED_EXTERNAL_RA_SOURCE }
-        // A core source with no core names nothing, so it cannot render or launch. Dropping it
-        // leaves the platform unset, which the boot seed then refills with the built-in default.
         if (source != EmulatorSource.Standalone && coreId.isEmpty()) {
             dev.cannoli.scorza.util.ErrorLog.write("dropping $source choice with no core")
             return null
@@ -167,22 +148,12 @@ class PlatformConfig(
         return EmulatorChoice(source = source, coreId = coreId, appPackage = app)
     }
 
-    /**
-     * Two source names have been retired: "Internal", the built-in libretro runner, and "RetroArch",
-     * a separately installed one. valueOf would fail on either and the whole platform mapping would
-     * be dropped, so both fold onto the embedded RetroArch that is the only runner left. This is a
-     * retired name rather than a format change, which is why it needs no version gate: nothing
-     * writes either name any more, so every occurrence is old data with one meaning.
-     */
     private fun readSource(name: String): EmulatorSource? =
         if (name == EmulatorSource.RETIRED_INTERNAL_SOURCE ||
             name == EmulatorSource.RETIRED_EXTERNAL_RA_SOURCE
         ) EmulatorSource.Embedded
         else runCatching { EmulatorSource.valueOf(name) }.getOrNull()
 
-    // v1 stored the picker's display caption as the runner, so the source has to be recovered
-    // from it. An absent runner means v1 was re-deriving the source from the bundled .so on
-    // every read, so resolve it here the same way getRunnerLabel did.
     private fun migrateV1(json: JSONObject) {
         val cores = json.optJSONObject("cores")
         val runners = json.optJSONObject("runners")
@@ -211,13 +182,6 @@ class PlatformConfig(
         }
     }
 
-    /**
-     * Moves v1 path-keyed overrides into the rom_id keyed table, then drops the section by
-     * rewriting the file as v2.
-     *
-     * These win over whatever the SQLite cutover imported, because every override written since
-     * that import went only to cores.json. Entries whose ROM is no longer indexed are dropped.
-     */
     fun migrateV1GameOverrides(resolveRomId: (String) -> Long?, put: (Long, EmulatorChoice) -> Unit) {
         if (pendingV1Overrides.isEmpty()) return
         var moved = 0
@@ -247,13 +211,8 @@ class PlatformConfig(
             else -> EmulatorSource.Embedded
         }
         if (source == EmulatorSource.Standalone) return EmulatorChoice(source, coreId, app)
-        // v1's setCoreMapping dropped the core when the pick equalled the platform default but
-        // still wrote the runner, so a core entry can arrive with no core at all. That is v1 saying
-        // "the default core", not "no core". Standalone is excluded above: its identity is the
-        // package, and stamping a core on it would misreport the mapping.
         val resolved = coreId.ifEmpty { fallbackCoreId.orEmpty() }
         if (resolved.isEmpty()) return null
-        // Only Standalone identifies by package, and it returned above.
         return EmulatorChoice(source, resolved, appPackage = null)
     }
 
@@ -262,14 +221,10 @@ class PlatformConfig(
     }
 
     fun saveCoreMappings() {
-        // A failed load leaves the maps empty. Writing that out would turn a recoverable parse
-        // error into permanent data loss, so refuse until something loads cleanly.
         if (loadFailed) {
             dev.cannoli.scorza.util.ErrorLog.write("cores.json save skipped: last load failed")
             return
         }
-        // v2 holds platform mappings only. Per-game overrides live in the game_overrides table,
-        // keyed by rom_id so they survive a rename, move or auto-organize.
         val json = JSONObject().put("v", CORES_JSON_VERSION)
         if (userChoices.isNotEmpty()) {
             val platforms = JSONObject()
@@ -300,15 +255,6 @@ class PlatformConfig(
         }
     }
 
-    /**
-     * Gives every platform Cannoli can serve itself an explicit mapping, so no screen has to
-     * fall back to a derived default.
-     *
-     * Only ever writes a platform that has no stored choice. It never overwrites, repairs or
-     * clears one, including when the stored core or app is no longer installed. Being idempotent
-     * it also backfills a platform that gains a bundled core in a later release, and recovers
-     * from a first run that was interrupted part way through.
-     */
     fun seedUnsetPlatforms(pm: PackageManager): Int {
         if (loadFailed) return 0
         var written = 0
@@ -333,8 +279,6 @@ class PlatformConfig(
             candidates.firstOrNull { File(dir, "${it}_android.so").exists() }
                 ?.let { return EmulatorChoice(EmulatorSource.Embedded, it) }
         }
-        // Exactly one, never the first of several. Picking among several installed emulators is
-        // the silent-guess behavior this rework exists to remove.
         val installed = getAppOptions(tag).filter { pm.isPackageInstalled(it.packageName) }
         if (installed.size == 1) {
             return EmulatorChoice(EmulatorSource.Standalone, appPackage = installed.single().packageName)
@@ -344,8 +288,6 @@ class PlatformConfig(
 
     fun getPlatformChoice(tag: String): EmulatorChoice? = userChoices[tag]
 
-    // Writes unconditionally. The old setCoreMapping dropped a pick that equalled the current
-    // default, so a release that changed that default silently changed the user's platform.
     fun setPlatformChoice(tag: String, choice: EmulatorChoice) {
         userChoices[tag] = choice
         saveCoreMappings()
@@ -358,7 +300,6 @@ class PlatformConfig(
         return ini.get("cores", upper) ?: defaultCores[upper] ?: ""
     }
 
-    /** Renders a choice for a list row. Used for per-game override rows and the context menu. */
     fun describeChoice(choice: EmulatorChoice, pm: PackageManager? = null): String =
         when (choice.source) {
             EmulatorSource.Standalone -> {
@@ -370,13 +311,6 @@ class PlatformConfig(
         }
 
 
-    /**
-     * Restores the platform to the same choice a first run would have seeded: the bundled core
-     * when there is one, otherwise the sole installed standalone app, otherwise nothing.
-     *
-     * Resolves immediately rather than clearing and leaving the next boot's backfill to fill it
-     * in, so what the user sees after confirming is the final state.
-     */
     fun resetPlatformToDefault(tag: String, pm: PackageManager): EmulatorChoice? {
         val seeded = seedFor(tag, pm)
         if (seeded == null) userChoices.remove(tag) else userChoices[tag] = seeded
@@ -397,22 +331,17 @@ class PlatformConfig(
 
     fun getAllTags(): Set<String> = defaultPlatformNames.keys + ini.getSection("platforms").keys
 
-    /** Sort key for a group, so a list reads A-Z with the catch-all last. */
     fun groupRank(group: String?): Int =
         if (group == null) Int.MAX_VALUE else platformGroupOrder.indexOf(group).takeIf { it >= 0 } ?: Int.MAX_VALUE
 
-    /** Null for a tag the bundled definitions do not group, which callers show as ungrouped. */
     fun getGroup(tag: String): String? = platformGroups[tag.uppercase(java.util.Locale.ROOT)]
 
-    /** Group per tag, for the tags asked about. Absent tags are simply not in the result. */
     fun getGroups(tags: Collection<String>): Map<String, String> =
         tags.mapNotNull { tag -> getGroup(tag)?.let { tag to it } }.toMap()
 
     fun getAppPackage(tag: String): String? =
         userChoices[tag]?.appPackage ?: defaultApps[tag.uppercase()]?.firstOrNull()?.packageName
 
-    // The explicit standalone pick only, with no fall back to the list default, so launch can
-    // tell "the user chose this app" apart from "this app happens to be listed first".
     fun getUserAppMapping(tag: String): String? =
         userChoices[tag]?.takeIf { it.source == EmulatorSource.Standalone }?.appPackage
 
@@ -436,16 +365,6 @@ class PlatformConfig(
         return coreInfo?.getMissingFirmware(coreId, biosDir) ?: emptyList()
     }
 
-    /**
-     * Firmware for a core, with two corrections the `.info` files cannot make themselves.
-     *
-     * Presence accepts the file at the declared path or at the root of the platform's BIOS folder.
-     * A core searches several locations and the system directory is the last of them, so a file
-     * sitting at the root is found and must not be reported missing.
-     *
-     * Requiredness comes from `bios_required.txt` where a core spans platforms with different
-     * needs, since `firmware*_opt` is declared once per core and cannot vary by platform.
-     */
     fun getFirmwareStatus(tag: String, coreId: String, biosDir: File): List<FirmwareRequirement> {
         val all = coreInfo?.getFirmwareFor(coreId) ?: emptyList()
         val rule = biosRules[tag.uppercase(java.util.Locale.ROOT) to coreId]
@@ -453,8 +372,6 @@ class PlatformConfig(
             val name = File(entry.path).name
             return File(biosDir, entry.path).exists() || File(biosDir, name).exists()
         }
-        // A file can appear in at most one group, so grouping first leaves the singles as whatever
-        // the groups did not claim, in the core's own order.
         val grouped = rule?.anyOf.orEmpty()
         val claimed = grouped.flatten().toSet()
         val byName = all.associateBy { File(it.path).name }
@@ -473,13 +390,10 @@ class PlatformConfig(
         return groups + singles
     }
 
-    /** What the core parses. Empty when its `.info` did not say, which reads as unknown. */
     fun coreExtensions(coreId: String): List<String> = coreInfo?.getExtensionsFor(coreId).orEmpty()
 
-    /** What one platform and core pair genuinely needs, beyond what the core's own flags say. */
     internal data class BiosRule(val required: Set<String>, val anyOf: List<List<String>>)
 
-    /** Platform and core to the BIOS that pair genuinely needs. Hand-maintained. */
     private val biosRules: Map<Pair<String, String>, BiosRule> by lazy {
         val parsed = mutableMapOf<Pair<String, String>, BiosRule>()
         try {
@@ -489,7 +403,6 @@ class PlatformConfig(
                 val obj = arr.optJSONObject(i) ?: continue
                 val tag = obj.optString("tag").uppercase(java.util.Locale.ROOT)
                 val core = obj.optString("core")
-                // The leading object carries the file's own notes and names no pair.
                 if (tag.isEmpty() || core.isEmpty()) continue
                 val required = obj.optJSONArray("required")
                     ?.let { a -> (0 until a.length()).mapNotNull { a.optString(it).takeIf(String::isNotEmpty) } }
@@ -509,8 +422,6 @@ class PlatformConfig(
         parsed
     }
 
-    // The caption is derived, never stored, so a choice that names a different RetroArch package
-    // updates every label instead of leaving stale ones behind.
     fun getRunnerLabel(tag: String, coreId: String): String {
         val choice = userChoices[tag]
         return when (choice?.source ?: EmulatorSource.Embedded) {
@@ -570,8 +481,6 @@ class PlatformConfig(
         } else {
             val resolvedRunner = getRunnerLabel(tag, coreId)
             val status = coreStatus(tag, coreId, resolvedRunner, embeddedCoresDir)
-            // "Missing" is a confirmed absence: a core .so that is not on disk. There is no
-            // longer an unknown case, since presence is a file check rather than a query.
             val mappingStatus =
                 if (status == "Missing") EmulatorMappingStatus.NOT_INSTALLED
                 else EmulatorMappingStatus.READY
@@ -584,8 +493,6 @@ class PlatformConfig(
         }
     }
 
-    // The embedded runner reads a directory, so presence is a file check and never unknown. The
-    // query that could fail belonged to the external RetroArch, which is gone.
     private fun coreStatus(
         tag: String, coreId: String, runner: String,
         embeddedCoresDir: String?,
@@ -604,9 +511,6 @@ class PlatformConfig(
         val hasCoreCandidates = candidateCores.isNotEmpty()
         val hasStandaloneCandidates = getAppOptions(tag).isNotEmpty()
         return buildList {
-            // Embedded is offered whenever the platform has candidate cores, present or not: a
-            // missing core is downloadable into the in-APK RetroArch, so absence is not a reason
-            // to hide the runner that can fix it.
             if (hasCoreCandidates) add(EmulatorSource.Embedded)
             if (hasStandaloneCandidates) add(EmulatorSource.Standalone)
         }
@@ -626,12 +530,7 @@ class PlatformConfig(
         }
         val embeddedDir = embeddedCoresDir ?: nativeLibDir
         return when (source) {
-            // The in-APK RetroArch loads from filesDir/cores, so presence is a file check rather
-            // than a query. It never reports "unknown": the directory is always readable.
             EmulatorSource.Embedded -> candidateCoreIds.mapNotNull { coreId ->
-                // Installed means complete, not merely present: a core whose system files are a
-                // separate download has not arrived until they have. Only remote sets count, since
-                // a bundled set's absence is not something downloading the core would fix.
                 val present = embeddedDir != null &&
                     File(embeddedDir, "${coreId}_android.so").exists() &&
                     dev.cannoli.scorza.launcher.SystemFiles.remoteSetsPresent(
@@ -672,8 +571,6 @@ class PlatformConfig(
         }
     }
 
-    // The curated name wins over the installed app's own label, which is often decorated
-    // (MMJR2 ships as "Dolphin |MMJR2|") or inconsistent with how the app is known.
     private fun resolveAppLabel(pm: PackageManager, packageName: String): String {
         knownAppLabels[packageName]?.let { return it }
         return try {
@@ -745,9 +642,6 @@ class PlatformConfig(
         ini = IniParser.parse(configFile)
     }
 
-    // One resolver. These used to diverge: the UI read user-pick then default while launch read
-    // user-pick then platforms.ini [cores] then default, so a [cores] entry made the mapping
-    // screen describe one core while a different one launched.
     fun getCoreName(tag: String): String? = getCoreMapping(tag).ifEmpty { null }
 
     fun resolvePlatform(tag: String, romsDir: File, gameCount: Int): Platform =
@@ -773,7 +667,6 @@ class PlatformConfig(
     }
 
     companion object {
-        /** v3 added the package to a RetroArch choice, replacing the global package setting. */
         const val CORES_JSON_VERSION = 3
 
         fun parseAppConfigForTest(obj: JSONObject): AppConfig = parseAppConfig(obj)

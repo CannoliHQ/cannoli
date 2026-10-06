@@ -4,11 +4,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/**
- * The buildbot's `.index-extended` is the only published statement about the inner `.so` rather
- * than the zip around it. A wrong reading here skips a real update silently, so anything that is
- * not plainly a `<date> <crc32> <name>` line has to read as "not known" and fall back to the etag.
- */
 class PublishedCrcIndexTest {
 
     private fun parse(vararg lines: String) =
@@ -43,9 +38,6 @@ class PublishedCrcIndexTest {
         assertEquals("00000001", m["core1.so.zip"])
     }
 
-    // The skip compares a locally computed checksum against the buildbot's published one, so the
-    // two have to be the same function over the same bytes. Verified against four real cores on
-    // 2026-08-26; this pins the format so a change in either direction is caught here.
     @Test fun `a local checksum is lowercase hex of the same width the index publishes`() {
         val f = java.io.File.createTempFile("core", ".so")
         f.writeBytes("pokemini".toByteArray())
@@ -59,22 +51,5 @@ class PublishedCrcIndexTest {
 
     @Test fun `a checksum of a missing file reads as unknown rather than throwing`() {
         assertEquals(null, EmbeddedCoreDownloader.crc32Of(java.io.File("/does/not/exist.so")))
-    }
-
-    // The index and the archive it indexes can disagree. Observed 2026-08-26: the index advertised
-    // 3d09e4a1 for nestopia while the zip it served held a .so of c33bbcc0. A CRC comparison alone
-    // then calls that core stale on every check forever, because downloading it records the real
-    // checksum, which still will not match the index. This is why a candidate is confirmed with a
-    // conditional request rather than trusted to the CRC, and why the stamp records the installed
-    // file rather than what the index claimed about it.
-    @Test fun `a published crc that disagrees with the installed one only makes a candidate`() {
-        val published = parse("2026-08-26 3d09e4a1 nestopia_libretro_android.so.zip")
-        val installed = "c33bbcc0"
-        assertTrue(
-            "a disagreement has to be worth asking about",
-            published["nestopia_libretro_android.so.zip"] != installed,
-        )
-        // ...and asking is the conditional request, which is the only thing that settles it.
-        // Nothing here may conclude "stale" from the mismatch alone.
     }
 }

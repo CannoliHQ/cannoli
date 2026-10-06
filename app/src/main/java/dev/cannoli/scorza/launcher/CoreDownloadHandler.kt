@@ -8,14 +8,6 @@ import dev.cannoli.scorza.download.DownloadHandler
 import dev.cannoli.scorza.download.DownloadItem
 import dev.cannoli.scorza.download.DownloadKind
 
-/**
- * A libretro core, fetched through the same queue as everything else.
- *
- * Downloading one used to be its own path: fire and forget behind a two minute OSD that said only
- * that something was happening. Several at once left the pill fighting over which to describe, and
- * a slow one looked stuck. The queue already tracks bytes, order and cancellation for RomM, so a
- * core is another kind rather than another mechanism.
- */
 class CoreDownloadHandler(
     private val fetchCore: (coreId: String, onBytes: (Long, Long) -> Unit) -> CoreDownloadService.Result,
     private val fetchSystemFiles: (coreId: String) -> Unit,
@@ -37,8 +29,6 @@ class CoreDownloadHandler(
     ) {
         val coreId = item.payload as? String ?: throw Exception("not a core item")
         val result = fetchCore(coreId) { read, total ->
-            // Polled here rather than inside the fetch: the transfer has no cancellation hook
-            // of its own, so this is the first point that can notice and stop.
             if (isCancelled()) throw DownloadCancelled()
             onProgress(read, total)
         }
@@ -47,7 +37,6 @@ class CoreDownloadHandler(
     }
 
     companion object {
-        /** Stable per core, so pressing download twice on one core is one queued item, not two. */
         fun keyFor(coreId: String) = "CORE-$coreId"
     }
 }

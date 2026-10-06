@@ -74,8 +74,6 @@ internal fun SaveSyncDialogs(
                         lineHeight = listLineHeight,
                         maxLines = 1,
                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                        // The rows below indent by their own pill padding, so the name has to take
-                        // the same or it hangs off the left of everything it titles.
                         modifier = Modifier.padding(horizontal = pillInternalPadding()),
                     )
                     Spacer(modifier = Modifier.height(Spacing.Sm))
@@ -350,21 +348,12 @@ private fun ConflictTimeLine(
     }
 }
 
-/**
- * The same wording the conflicts list uses, from the ISO instant the launch path carries. An
- * ISO-8601 string is exact and unreadable at a glance, and this screen exists to be read at a
- * glance: the whole question is which of two times is the one you want.
- */
 @Composable
 private fun formatConflictIso(iso: String?, use24hTime: Boolean): String {
     val millis = dev.cannoli.scorza.romm.RommTime.millisOrNull(iso)
     return if (millis == null) stringResource(android.R.string.unknownName) else formatConflictTime(millis, use24hTime)
 }
 
-/**
- * The clock the user chose, as the status bar already honours it. The locale decides the month
- * name; it does not decide the clock, because that is a Cannoli setting rather than a regional one.
- */
 private fun formatConflictTime(millis: Long?, use24hTime: Boolean): String =
     millis?.let {
         val pattern = if (use24hTime) "MMM d, HH:mm" else "MMM d, h:mm a"

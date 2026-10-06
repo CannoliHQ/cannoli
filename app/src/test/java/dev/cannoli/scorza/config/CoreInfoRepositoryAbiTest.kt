@@ -8,11 +8,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/**
- * armsx2_libretro has no armeabi-v7a build, so it must be offered on arm64-v8a and hidden on
- * armeabi-v7a. Unit tests cannot set Build.SUPPORTED_ABIS, so the repository takes the ABI as a
- * provider instead.
- */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class CoreInfoRepositoryAbiTest {
@@ -30,8 +25,6 @@ class CoreInfoRepositoryAbiTest {
     }
 
     @Test fun `a core already mapped is untouched by the filter`() {
-        // getCoresForTag only decides what is offered; a core a user already picked is looked up by
-        // id directly, not re-derived from the tag list the filter narrows.
         val repo = repo("armeabi-v7a")
         assertFalse("armsx2_libretro" in repo.getCoresForTag("PS2").map { it.id })
         assertTrue(repo.getDisplayName("armsx2_libretro").isNotEmpty())

@@ -25,8 +25,6 @@ class KitchenAppsSettingsTest {
 
     private var server: KitchenHttpServer? = null
     private var root: File? = null
-    // Ephemeral: a fixed port collides with whatever else on the machine happens to
-    // take it, which fails the whole file with a socket error that reads like a bug.
     private var port = 0
 
     @After fun tearDown() {

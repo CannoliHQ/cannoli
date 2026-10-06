@@ -17,9 +17,6 @@ enum class PermissionState { GRANTED, NOT_GRANTED, NOT_REQUIRED }
 
 enum class PermissionGroup { ACTIONABLE, VERSION_GATED, ALWAYS_ON }
 
-/**
- * Every permission the manifest declares, in the order the permissions page lists them.
- */
 enum class AppPermission(
     val group: PermissionGroup,
     @param:StringRes val labelRes: Int,
@@ -86,7 +83,6 @@ enum class AppPermission(
         R.string.permission_why_query_all_packages,
     );
 
-    /** Null when this build's Android version has no settings page to send the user to. */
     val settingsAction: String?
         get() = when (this) {
             ALL_FILES_ACCESS ->
@@ -101,10 +97,6 @@ enum class AppPermission(
         }
 }
 
-/**
- * Version gating is answered before the grant is read, so a permission the manifest caps below
- * this device's API level reports as not required rather than as denied.
- */
 fun AppPermission.state(context: Context): PermissionState = when (this) {
     AppPermission.ALL_FILES_ACCESS ->
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -112,8 +104,6 @@ fun AppPermission.state(context: Context): PermissionState = when (this) {
         } else {
             PermissionState.NOT_REQUIRED
         }
-    // Cannoli only draws an overlay to put a guide on a second screen, so on a single-screen device
-    // there is nothing to grant it for. First run hides the row for the same reason.
     AppPermission.DRAW_OVER_APPS ->
         if (GuideDisplays.secondDisplayId(context) == null) {
             PermissionState.NOT_REQUIRED
@@ -123,8 +113,6 @@ fun AppPermission.state(context: Context): PermissionState = when (this) {
     AppPermission.INSTALL_UNKNOWN_APPS -> grantedIf(context.packageManager.canRequestPackageInstalls())
     AppPermission.READ_STORAGE -> when {
         Build.VERSION.SDK_INT > Build.VERSION_CODES.S_V2 -> PermissionState.NOT_REQUIRED
-        // Where both exist, all files access covers everything this would, so it is only worth
-        // reporting as the fallback for a device whose owner has not granted that.
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && Environment.isExternalStorageManager() ->
             PermissionState.NOT_REQUIRED
         else -> heldBy(context, Manifest.permission.READ_EXTERNAL_STORAGE)
@@ -157,11 +145,6 @@ fun AppPermission.state(context: Context): PermissionState = when (this) {
 fun permissionStates(context: Context): Map<AppPermission, PermissionState> =
     AppPermission.entries.associateWith { it.state(context) }
 
-/**
- * What the permissions page lists on this device. One this Android version has no use for would
- * otherwise spend a row saying so, and the page is long enough without rows that report nothing.
- * The screen and its input handler both count through this, so selection cannot drift off the end.
- */
 fun visiblePermissions(states: Map<AppPermission, PermissionState>): List<AppPermission> =
     AppPermission.entries.filter { states[it] != PermissionState.NOT_REQUIRED }
 

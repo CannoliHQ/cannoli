@@ -73,7 +73,6 @@ class QuickMenuSettingsActionTest {
         assertEquals(LauncherScreen.Settings(QuickMenuRow.SETTINGS), nav.currentScreen)
     }
 
-    // Otherwise the row would push a second Settings screen on top of the one already open.
     @Test fun menu_does_not_open_the_quick_menu_on_the_settings_screen() {
         nav.screenStack.add(LauncherScreen.Settings())
         assertFalse(handler.onMenu())

@@ -68,7 +68,6 @@ class RommDevicePairing(
                 ensureActive()
                 _state.value = PairingState.Failed(
                     when (e.statusCode) {
-                        // A pre-5.0 server has no device auth endpoints at all.
                         404 -> PairingFailure.SERVER_TOO_OLD
                         429 -> PairingFailure.RATE_LIMITED
                         null -> PairingFailure.UNREACHABLE
@@ -118,7 +117,6 @@ class RommDevicePairing(
                     _state.value = PairingState.Failed(PairingFailure.EXPIRED)
                     return
                 }
-                // Anything else is transient; keep polling until the code expires.
                 else -> {}
             }
         }

@@ -257,10 +257,6 @@ class EditButtonsControllerTest {
     }
 
     @Test fun `binding edit promotes source from UNIDENTIFIED to USER_WIZARD`() {
-        // UNIDENTIFIED-sourced mappings are bumped to tier 3 in MappingResolver so a
-        // bundled RA cfg can win for the device. When the user actually customizes a button
-        // binding, the resulting saved mapping must promote to USER_WIZARD so it wins tier 1
-        // and the user's customization is never silently replaced.
         val template = emptyTemplate().copy(source = MappingSource.UNIDENTIFIED)
         controller.startListening(template, CanonicalButton.BTN_SOUTH)
         clockMs = 0

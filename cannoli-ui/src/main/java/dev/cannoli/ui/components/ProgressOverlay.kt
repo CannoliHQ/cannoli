@@ -24,16 +24,6 @@ import dev.cannoli.ui.theme.ErrorText
 import dev.cannoli.ui.theme.LocalCannoliTypography
 import dev.cannoli.ui.theme.Spacing
 
-/**
- * A long job holding the screen: what is happening, how far along, and a way out.
- *
- * [title] is the thing being worked on and [subtitle] the standing beneath it. A null [progress]
- * runs the bar indeterminate, for a phase whose size is not yet known. [error] replaces the bar,
- * since a failed job has no progress to report.
- *
- * Back always cancels. A job that cannot be cancelled should not be using an overlay that offers
- * it, and every job that holds the whole screen for minutes should be cancellable.
- */
 @Composable
 fun ProgressOverlay(
     title: String,

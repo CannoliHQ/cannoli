@@ -11,7 +11,6 @@ import org.junit.Test
 private const val X = 99
 private const val MENU = 82
 
-/** A bridge that records the calls a shortcut is supposed to make. */
 private class RecordingBridge : FakeRetroArchBridge() {
     var resets = 0
     var quits = 0
@@ -33,11 +32,6 @@ private class RecordingBridge : FakeRetroArchBridge() {
     override fun setRewindHeld(held: Boolean) { rewindHeld.add(held) }
 }
 
-/**
- * Chords are matched natively, so these drive the controller the way native does: by action, not by
- * key. Only the menu key still arrives here as a key, because only this side knows which keys open
- * the menu. [ShortcutTableTest] covers what native is handed.
- */
 class ShortcutControllerTest {
 
     private var menusShown = 0
@@ -83,7 +77,6 @@ class ShortcutControllerTest {
         assertEquals(1, bridge.shaderToggles)
     }
 
-    // The hold variant has to stop when the chord breaks, or fast forward sticks on after release.
     @Test fun `held fast forward starts and stops with the chord`() {
         val bridge = RecordingBridge()
         val (shortcuts, _) = build(bridge)
@@ -102,8 +95,6 @@ class ShortcutControllerTest {
         assertTrue("a latch has nothing to release", bridge.ffHeld.isEmpty())
     }
 
-    // The menu has its own bindings for these, and a shortcut firing behind it would act on a game
-    // the user has already stepped away from.
     @Test fun `nothing fires while the menu is open`() {
         val bridge = RecordingBridge()
         val (shortcuts, igm) = build(bridge)
@@ -132,7 +123,6 @@ class ShortcutControllerTest {
         assertFalse(igm.isOpen)
     }
 
-    // A game with no guides should not get a menu it never asked for.
     @Test fun `the guide shortcut stays quiet when there is nothing to open`() {
         val bridge = RecordingBridge()
         val (shortcuts, _) = build(bridge)
@@ -149,8 +139,6 @@ class ShortcutControllerTest {
         assertEquals(0, bridge.quits)
     }
 
-    // The bug this fixes: with the hold gone, the (Hold) variant fired instantly and was a
-    // duplicate of the plain action, despite its label promising a long press.
     @Test fun `an armed hold does not quit until it fires`() {
         val bridge = RecordingBridge()
         val (shortcuts, _) = build(bridge)
@@ -177,7 +165,6 @@ class ShortcutControllerTest {
         assertEquals("the prompt has to come down again", 1, cancels)
     }
 
-    // The prompt tells the user to keep holding, which means nothing behind an open menu.
     @Test fun `no hold prompt while the menu is open`() {
         val bridge = RecordingBridge()
         val (shortcuts, igm) = build(bridge)
@@ -198,8 +185,6 @@ class ShortcutControllerTest {
         assertEquals(listOf(true, false), bridge.rewindHeld)
     }
 
-    // Rewinding does nothing at all without RetroArch's buffer, so the press has to say so rather
-    // than leave the user pressing a shortcut that looks broken.
     @Test fun `rewind reports itself unavailable when the buffer is off`() {
         val bridge = RecordingBridge().apply { rewindOn = false }
         val (shortcuts, _) = build(bridge)
@@ -211,7 +196,6 @@ class ShortcutControllerTest {
         assertTrue("nothing should be asked of the bridge", bridge.rewindHeld.isEmpty())
     }
 
-    // A refusal still has to clear on release, or turning the buffer on later would rewind at once.
     @Test fun `a refused rewind still releases`() {
         val bridge = RecordingBridge().apply { rewindOn = false }
         val (shortcuts, _) = build(bridge)
@@ -220,8 +204,6 @@ class ShortcutControllerTest {
         assertEquals(listOf(false), bridge.rewindHeld)
     }
 
-    // Native only hands the menu key over when a chord uses it, so opening it is this side's job
-    // from then on. It waits for the release, since until then it could still be a modifier.
     @Test fun `the menu key alone still opens the menu, on release`() {
         val bridge = RecordingBridge()
         val (shortcuts, _) = build(bridge, menuKeys = setOf(MENU))
@@ -242,7 +224,6 @@ class ShortcutControllerTest {
         assertEquals("that press was a modifier", 0, menusShown)
     }
 
-    // Otherwise one chord would poison the menu key for the rest of the session.
     @Test fun `the menu opens again on the press after a chord`() {
         val bridge = RecordingBridge()
         val (shortcuts, _) = build(bridge, menuKeys = setOf(MENU))

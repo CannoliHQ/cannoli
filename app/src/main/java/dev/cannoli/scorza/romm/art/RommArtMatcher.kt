@@ -10,10 +10,6 @@ sealed interface ArtOutcome {
 }
 
 object RommArtMatcher {
-    /**
-     * The [decide] name index: each entry's fs name, then its top-level game file, then its hack
-     * files, so a hack takes its parent entry's cover. An earlier key is never displaced.
-     */
     fun byFileName(games: List<RommGame>): Map<String, RommGame> {
         val index = HashMap<String, RommGame>()
         games.forEach { index.putIfAbsent(it.fsName.lowercase(), it) }
@@ -22,10 +18,6 @@ object RommArtMatcher {
         return index
     }
 
-    /**
-     * Decide what to do for one local game. [linkedRommId] is the romm_id linked to the local
-     * file (or null); [byFsName] is keyed by lowercased fs name, [byId] by romm id.
-     */
     fun decide(
         hasArt: Boolean,
         fsName: String,

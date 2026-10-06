@@ -3,10 +3,6 @@ package dev.cannoli.ricotta
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-/**
- * Pins the wire format encodeOverrideKeys produces for nativeRaSaveOverride. The native side splits
- * this string on '\n', so the delimiter and the empty-set case are load-bearing.
- */
 class OverrideKeysEncodeTest {
 
     @Test

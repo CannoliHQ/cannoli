@@ -18,9 +18,6 @@ class ShaderPresetTest {
             writeText(body)
         }
 
-    // A preset names its shaders relative to itself, and a chain is assembled from presets in
-    // different folders, so a path that stays relative points at nothing once it is written
-    // somewhere else. This is the failure that makes a preset load and then render nothing.
     @Test fun `paths resolve against the preset's own folder`() {
         val f = preset(
             "crt", "a.slangp",
@@ -69,8 +66,6 @@ class ShaderPresetTest {
         assertEquals("2.000000", pass.settings["scale_x"])
     }
 
-    // A parameter whose name ends in a digit looks exactly like a pass key. Only the keys a pass
-    // actually owns are treated as pass keys, so "warp2" stays a parameter.
     @Test fun `a parameter ending in a digit is not mistaken for a pass key`() {
         val parsed = ShaderPreset.from(
             """
@@ -123,8 +118,6 @@ class ShaderPresetTest {
         assertNull(ShaderPreset.parse(File(tempFolder.root, "missing.slangp")))
     }
 
-    // The round trip is what makes editing safe: a preset written back out and read again has to
-    // describe the same chain, or every save quietly degrades it.
     @Test fun `a preset survives a round trip`() {
         val original = ShaderPreset.from(
             """
@@ -158,8 +151,6 @@ class ShaderPresetTest {
         assertEquals(listOf("/b.slang", "/a.slang"), a.prepend(b).passes.map { it.shader })
     }
 
-    // Retuning passes that were already chosen because something added later happens to share a
-    // parameter name would be a change nobody asked for.
     @Test fun `the chain already here wins a clash`() {
         val a = ShaderPreset(
             listOf(PresetPass("/a.slang")),

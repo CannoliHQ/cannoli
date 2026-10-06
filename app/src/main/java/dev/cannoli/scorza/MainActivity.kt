@@ -122,14 +122,10 @@ class MainActivity : ComponentActivity(), ActivityActions {
     @Inject lateinit var rommClient: dev.cannoli.scorza.romm.RommClient
     @Inject lateinit var rommDevicePairing: dev.cannoli.scorza.romm.RommDevicePairing
     @Inject lateinit var rommBrowseViewModel: dev.cannoli.scorza.ui.viewmodel.RommBrowseViewModel
-    // Provider because the loader bakes its disk cache dir in at build time, so it must not be
-    // built until the setup flow has settled where Cannoli lives.
     @Inject lateinit var rommImageLoader: Provider<coil.ImageLoader>
     @Inject lateinit var rommDownloader: dev.cannoli.scorza.download.Downloader
     @Inject lateinit var rommArtFetcher: dev.cannoli.scorza.romm.art.RommArtFetcher
     @Inject lateinit var syncScheduler: dev.cannoli.scorza.romm.sync.SyncScheduler
-    // Behind a Provider so the id backfill, and the scan scheduler it listens to, stay out of the
-    // boot graph until the launcher is actually in front with a library to work on.
     @Inject lateinit var sigilBackfill: Provider<dev.cannoli.scorza.sigil.SigilBackfillService>
     @Inject lateinit var saveMigrationSweep: Provider<dev.cannoli.scorza.saves.SaveMigrationSweep>
     @Inject lateinit var saveSyncStatusHolder: dev.cannoli.scorza.romm.sync.SaveSyncStatusHolder
@@ -140,8 +136,6 @@ class MainActivity : ComponentActivity(), ActivityActions {
 
     private val isTv: Boolean by lazy { dev.cannoli.scorza.util.DeviceType.isTv(this) }
 
-    // Not Hilt-injected: it holds only in-memory wizard progress for the Activity's lifetime,
-    // the same shape as EditButtonsController but without that class's repository dependencies.
     private val legendWizardController = dev.cannoli.scorza.input.legend.LegendWizardController(
         object : dev.cannoli.scorza.input.legend.WizardShortcutStore {
             override fun read() =
@@ -152,11 +146,8 @@ class MainActivity : ComponentActivity(), ActivityActions {
         chordStagingDirProvider = { java.io.File(filesDir, "shortcuts") },
     )
 
-    // First run's press run, held for the Activity's lifetime for the same reason.
     private val confirmPressCounter = dev.cannoli.scorza.input.legend.ConfirmPressCounter()
 
-    // Set while a completed run is being held on screen, so presses landing in that window are
-    // swallowed rather than starting a second run or advancing twice.
     private var welcomeAdvancePending = false
     private val welcomeHatSync = dev.cannoli.scorza.input.HatKeySync()
     private val magicXKeyInjection = dev.cannoli.scorza.input.runtime.MagicXKeyInjection()
@@ -165,7 +156,6 @@ class MainActivity : ComponentActivity(), ActivityActions {
 
     private var pairingUiJob: kotlinx.coroutines.Job? = null
     private var coldStart = true
-    // The press that left the welcome step or finished the wizard, held until its key up.
     private var heldAdvanceKey: dev.cannoli.scorza.onboarding.WelcomePress? = null
 
     private val storagePermissionLauncher = registerForActivityResult(
@@ -180,8 +170,6 @@ class MainActivity : ComponentActivity(), ActivityActions {
         bootSequencer.onStoragePermissionResult()
     }
 
-    // Optional, so it never touches boot state: only the onboarding step it was granted from
-    // needs to notice.
     private val overlayPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) {
@@ -201,24 +189,14 @@ class MainActivity : ComponentActivity(), ActivityActions {
         val splash = installSplashScreen()
         splash.setKeepOnScreenCondition {
             if (!::bootSequencer.isInitialized) return@setKeepOnScreenCondition true
-            // Hold the OS splash only until Compose can draw its first frame. From Resolving on, our
-            // own themed logo screen renders under it and covers the mount and DI wait, so we hand
-            // straight to that instead of freezing on the masked OS icon for the whole resolve.
             when (bootSequencer.state.value) {
                 is BootState.Initializing -> !settings.scanLibraryAutomatically
                 else -> false
             }
         }
         super.onCreate(savedInstanceState)
-        // After super.onCreate, which is where Hilt fills the injected fields in: starting this any
-        // earlier reads a lateinit that has not been set and takes the activity down on launch.
         downloadOutcomeReporter.start(lifecycleScope)
 
-        // A launcher intent does not reuse this task when a game is running, it stacks a second
-        // MainActivity on top of the emulator, and every icon tap adds another. Standing aside
-        // when we are not the task root lets the activity underneath resume, which puts the
-        // player back in their game exactly as the task switcher does, and keeps the stack from
-        // growing. Only launcher intents qualify: any other caller has a real reason to be here.
         val fromLauncherIcon = intent?.action == Intent.ACTION_MAIN &&
             (intent.hasCategory(Intent.CATEGORY_LAUNCHER) ||
                 intent.hasCategory(Intent.CATEGORY_LEANBACK_LAUNCHER))
@@ -227,8 +205,6 @@ class MainActivity : ComponentActivity(), ActivityActions {
             return
         }
 
-        // Belt-and-suspenders: ensure the launcher window does not hold FLAG_KEEP_SCREEN_ON,
-        // so the system display timeout applies. The IGM activity manages its own flag.
         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         @Suppress("DEPRECATION")
@@ -259,24 +235,12 @@ class MainActivity : ComponentActivity(), ActivityActions {
 
         bootSequencer.advance()
 
-        // Not on onResume alone: the first resume of a cold start happens while boot is still
-        // preparing, the ready guard there returns, and nothing resumes again until the user
-        // backgrounds the launcher, so the backfill would simply never start. This says what it
-        // means instead, which is active exactly while the launcher is in front and ready.
         lifecycleScope.launch {
             lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
                 bootSequencer.state.first { it is BootState.Ready }
-                // Saves first, and to completion. It decides whether a save is findable at all,
-                // while the id drain only fills a column nothing reads yet, so letting the two
-                // compete for the card would slow the one that matters. Cancelled if the launcher
-                // goes away, and it resumes from the top next time.
                 saveMigrationSweep.get().runOnce()
                 val backfill = sigilBackfill.get()
                 backfill.setActive(true)
-                // An unlock earned offline should reach the server while the player is still on the
-                // game list, so this runs when the launcher comes forward rather than on a timer,
-                // and the listener below covers the rest of that visit: coming back from a game is
-                // a foreground transition, turning wifi on while sitting here is not.
                 ioScope.launch { runCatching { raPendingDrainer.get().drain() } }
                 val reconnectDrain = dev.cannoli.scorza.achievements.RaReconnectDrain(
                     context = this@MainActivity,
@@ -298,9 +262,6 @@ class MainActivity : ComponentActivity(), ActivityActions {
             val themeFont = appSettings?.fontFamily ?: appFonts.mplus1Code
             dev.cannoli.scorza.i18n.ProvideLocalizedResources(appSettings?.languageTag) {
             CannoliTheme(fontFamily = themeFont, iconFontFamily = appFonts.mplus1Code) {
-                // Every boot state renders under this one Surface, so this is the single place
-                // that keeps content out of the display cutout; AppNavGraph used to repeat this
-                // for the Ready path alone, which left the boot-time screens unprotected.
                 Surface(modifier = Modifier.fillMaxSize().displayCutoutPadding()) {
                     val menuGlyphPad by activeMappingHolder.active.collectAsState()
                     val menuGlyphShortcuts by menuShortcutsState.collectAsState()
@@ -321,9 +282,6 @@ class MainActivity : ComponentActivity(), ActivityActions {
                             dev.cannoli.scorza.ui.screens.HousekeepingScreen(
                                 kind = dev.cannoli.scorza.ui.screens.HousekeepingKind.STARTING,
                                 progress = null,
-                                // The title already says what is happening, so a second line
-                                // repeating it is one more thing on a screen that should be almost
-                                // nothing: the logo, a line, and the bar.
                                 statusLabel = "",
                             )
                         }
@@ -382,9 +340,6 @@ class MainActivity : ComponentActivity(), ActivityActions {
         val legendWizardState by legendWizardController.state.collectAsState()
         val confirmPresses by confirmPressCounter.count.collectAsState()
         val portSnapshots by portRouter.entrySnapshots.collectAsState()
-        // Pads are enrolled at connect, so first run can render the confirm button it expects
-        // before any press. Ports are only assigned on activation, hence the enrollment-order
-        // fallback.
         val onboardingMapping = portSnapshots.minByOrNull { it.port ?: Int.MAX_VALUE }?.mapping
         LaunchedEffect(updateInfo) { svm.updateInfo = updateInfo }
         LaunchedEffect(navScreen) {
@@ -394,24 +349,16 @@ class MainActivity : ComponentActivity(), ActivityActions {
             val screen = nav.currentScreen as? LauncherScreen.LegendWizard ?: return@LaunchedEffect
             val base = portRouter.mappingFor(screen.deviceId) ?: return@LaunchedEffect
             val saved = legendWizardController.buildMapping(base)
-            // Lands in app-private staging when first run has not chosen a card yet, and is moved
-            // onto the card by promoteStaging below. Written either way, so a wizard finished during
-            // onboarding is not lost to a process death.
             autoconfigRepository.save(saved)
             portRouter.updateMapping(saved, rebuildEvaluator = true)
             if (activeMappingHolder.active.value?.id == saved.id) activeMappingHolder.set(saved)
             nav.pop()
-            // The wizard is first run's recovery path, so finishing it continues the flow rather
-            // than dropping the user on a launcher they have not set up yet.
             if (nav.currentScreen is LauncherScreen.OnboardingWelcome) {
                 activeMappingHolder.set(saved)
                 legendWizardController.confirmKeyCode()?.let {
                     onboardingCoordinator.onWelcomePress(screen.deviceId, it)
                 }
             }
-            // Around seventeen bindings were just taken on trust, and the tester is where a wrong
-            // one shows up while the user still knows what they pressed. Offered rather than forced:
-            // it is a check, not a twenty-first question.
             activeMappingHolder.set(saved)
             nav.dialogState.value = DialogState.InputTesterOffer(saved.id, screen.deviceId)
         }
@@ -435,9 +382,6 @@ class MainActivity : ComponentActivity(), ActivityActions {
                 if (nav.screenStack.size > 1) nav.screenStack.removeAt(nav.screenStack.lastIndex)
                 if (followUp != null) nav.dialogState.value = DialogState.InputTesterResult(followUp)
             },
-            // Every entry path resets the tester, not just the one from Settings. Without it the
-            // evaluators keep whatever the previous screen left and a stale exit request closes the
-            // tester the moment it opens.
             onEnterInputTester = { inputTesterController.enter() },
             settingsViewModel = svm,
             controllersViewModel = cvm,
@@ -455,7 +399,6 @@ class MainActivity : ComponentActivity(), ActivityActions {
             legendWizardState = legendWizardState,
             onboardingMapping = onboardingMapping,
             onboardingConfirmPresses = confirmPresses,
-            // The welcome step owns the timeout, because it owns the pips that show it running out.
             onOnboardingRunExpired = { confirmPressCounter.reset() },
             nav = nav,
             inputRouter = router,
@@ -469,15 +412,8 @@ class MainActivity : ComponentActivity(), ActivityActions {
         )
     }
 
-    /**
-     * Re-run the storage-backed parts of input setup once MANAGE_EXTERNAL_STORAGE is available:
-     * point the input log at the SD card and re-settle so controllers pick up saved profiles.
-     * The controller bridge itself is started in onCreate (before permission) so the onboarding
-     * wizard is operable. BootSequencer invokes this once, on the edge into Initializing.
-     */
     private val shortcutsSavedListener: () -> Unit = { refreshMenuShortcuts() }
 
-    // Nothing is bound before first run has chosen a card, since there is no shortcuts.ini yet.
     private fun refreshMenuShortcuts() {
         val shortcuts = if (settings.sdCardRootOrNull == null) emptyMap()
         else runCatching { globalOverrides.readShortcuts() }.getOrDefault(emptyMap())
@@ -485,15 +421,12 @@ class MainActivity : ComponentActivity(), ActivityActions {
         menuShortcutsState.value = shortcuts
     }
 
-    // The same bindings for the legends, which draw how the active pad opens the menu.
     private val menuShortcutsState =
         kotlinx.coroutines.flow.MutableStateFlow<Map<dev.cannoli.igm.ShortcutAction, Set<Int>>>(emptyMap())
 
     private fun startStorageDependent() {
         settings.reload()
         settings.sdCardRootOrNull?.let { dev.cannoli.scorza.util.InputLog.init(it) }
-        // The chosen path is real from here, so anything the wizard staged during first run moves
-        // onto the card, and it has to move before the settle below re-resolves.
         autoconfigRepository.promoteStaging()
         legendWizardController.flushMenuChord()
         refreshMenuShortcuts()
@@ -504,8 +437,6 @@ class MainActivity : ComponentActivity(), ActivityActions {
     private fun refreshRommServerVersion() {
         if (!rommStore.isConfigured) return
         lifecycleScope.launch {
-            // The server can be upgraded behind our back; the version cached at pairing time would
-            // otherwise gate save sync forever. Keep the cached value when the server is unreachable.
             val version = withContext(Dispatchers.IO) { rommClient.serverVersion() }
             if (version != null) rommStore.serverVersion = version
             val media = withContext(Dispatchers.IO) { rommClient.scanMedia() }
@@ -513,16 +444,9 @@ class MainActivity : ComponentActivity(), ActivityActions {
         }
     }
 
-    // A press can arrive from a pad's phantom sibling endpoint, which carries no identity of its
-    // own, so resolve the alias before reading the vendor id.
-    /**
-     * One press on the welcome step, whether it arrived as a key or as a hat direction. Returns
-     * true when it completed a run and the step acted on it.
-     */
     private fun onWelcomeControllerPress(androidDeviceId: Int, keyCode: Int): Boolean {
         if (welcomeAdvancePending) return true
         if (!confirmPressCounter.press(androidDeviceId, keyCode)) return false
-        // A device with no mapping has nothing to verify against.
         val mapping = portRouter.mappingFor(androidDeviceId)
         if (mapping == null) {
             confirmPressCounter.reset()
@@ -530,8 +454,6 @@ class MainActivity : ComponentActivity(), ActivityActions {
         }
         welcomeAdvancePending = true
         lifecycleScope.launch {
-            // Let the last pip be seen filled. Acting on this press immediately would clear the run
-            // and change the screen in the same frame that completed it.
             kotlinx.coroutines.delay(dev.cannoli.scorza.input.legend.CONFIRM_RUN_COMPLETE_HOLD_MS)
             if (dev.cannoli.scorza.input.legend.verifyConfirmPress(mapping, keyCode)) {
                 activeMappingHolder.set(mapping)
@@ -550,11 +472,6 @@ class MainActivity : ComponentActivity(), ActivityActions {
         return portRouter.snapshotEntries().firstOrNull { it.androidDeviceId == primary }?.device?.vendorId
     }
 
-    /**
-     * [confirmedKeyCode] is the button the welcome run already settled, so the wizard picks up at
-     * back rather than asking for confirm a second time. Null for a pad that reached the wizard
-     * without a run behind it, which then answers the same three-press question first.
-     */
     private fun startLegendWizard(androidDeviceId: Int, confirmedKeyCode: Int? = null) {
         legendWizardController.start(confirmedKeyCode)
         nav.push(
@@ -568,24 +485,12 @@ class MainActivity : ComponentActivity(), ActivityActions {
     private fun registerControllerOsd() {
         controllerBridge.onDeviceAdded = { device ->
             val mapping = portRouter.mappingFor(device.androidDeviceId)
-            // The curated entry decides. ConnectedDevice.isBuiltIn is a runtime guess from
-            // isExternal plus a Build.MODEL name prefix, and stands in only for a pad the input
-            // DB has no opinion about.
             val builtin = mapping?.match?.builtin ?: device.isBuiltIn
-            // The welcome step owns this pad until its run of presses finishes, and routes to the
-            // wizard itself carrying the confirm button it just established. Opening the wizard here
-            // as well would beat it to the push on the very first press and ask for the same three
-            // presses over again, which is the one thing arriving from welcome should skip.
             val welcomeOwnsIt = nav.currentScreen is LauncherScreen.OnboardingWelcome
             when {
-                // A pad with no profile goes to setup whether or not it is the built-in one. The
-                // built-in case is the one that matters most: there is no second controller to fall
-                // back on, so leaving it unconfigured leaves the handheld unusable.
                 !welcomeOwnsIt && mapping != null &&
                     dev.cannoli.scorza.input.legend.shouldRunLegendWizard(mapping) ->
                     startLegendWizard(device.androidDeviceId)
-                // The connected toast announces a controller arriving, which the built-in one never
-                // does: it is already there every time the launcher starts.
                 !builtin -> {
                     val port = portRouter.portFor(device.androidDeviceId)
                     if (port != null) {
@@ -607,17 +512,11 @@ class MainActivity : ComponentActivity(), ActivityActions {
     @Suppress("DEPRECATION")
     override fun onResume() {
         super.onResume()
-        // Before the dispatcher is wired: on a MagicX the pad reports one press as two keycodes
-        // until this is written, and the first thing the player does is press a button.
         magicXKeyInjection.suppress()
-        // Re-wire the dispatcher to launcher dispatch shape on each resume, so returning from an
-        // emulator always lands on the launcher's wiring.
         router.wire(inputDispatcher)
         refreshMenuShortcuts()
         registerControllerOsd()
         dialogHandler.onSyncSavesNow = { syncScheduler.syncNow() }
-        // Reopened at the last question rather than restarted, so back carries on being back and
-        // the user walks backwards to whichever answer was wrong.
         dialogHandler.onRestartControllerWizard = { deviceId ->
             legendWizardController.resumeAtLastPrompt()
             nav.push(
@@ -629,7 +528,6 @@ class MainActivity : ComponentActivity(), ActivityActions {
         }
         menuNavigationPoller.start()
         bootSequencer.advance()
-        // Optional grants leave boot state untouched, so the wizard step has to reread for itself.
         onboardingCoordinator.refresh()
         launchState.launching = false
         if (nav.dialogState.value is DialogState.Launching) {
@@ -641,11 +539,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
             GuideOverlayService.hide(this)
         }
         if (!isReady) return
-        // Below the ready guard: during first run there is no library, no RomM connection and no
-        // storage root, so nothing the scheduler does is wanted yet. Returning from a game always
-        // resumes into Ready, so the exit sync below still fires.
         syncScheduler.start()
-        // The just-played save is uploaded by the sweep itself; force one so it runs now.
         if (justExited != null) syncScheduler.syncNow()
         if (!coldStart) overridePendingTransition(0, 0)
         coldStart = false
@@ -665,14 +559,10 @@ class MainActivity : ComponentActivity(), ActivityActions {
 
     override fun onPause() {
         super.onPause()
-        // The key up may be delivered elsewhere while backgrounded, which would latch that button
-        // out of the launcher for good.
         heldAdvanceKey = null
         syncScheduler.stop()
         menuNavigationPoller.stop()
         inputTesterMusic.stop()
-        // Cancel any in-flight stick auto-repeat so it does not keep firing dispatcher callbacks
-        // once the launcher is no longer in front.
         stickAutoRepeat.stop()
         controllerBridge.onDeviceAdded = null
         controllerBridge.onDeviceRemoved = null
@@ -712,8 +602,6 @@ class MainActivity : ComponentActivity(), ActivityActions {
                 && AndroidGamepadKeyNames.isGamepadEvent(event)) {
                 bootSequencer.retry()
             }
-            // While in NeedsSetup or NeedsPermission the launcher screen stack drives the wizard
-            // via the normal input pipeline, so fall through; everything else is swallowed.
             val bootVal = bootSequencer.state.value
             if (bootVal !is BootState.NeedsSetup && bootVal !is BootState.NeedsPermission) return true
         }
@@ -723,22 +611,15 @@ class MainActivity : ComponentActivity(), ActivityActions {
             editButtonsController.captureRawKeyEvent(event.keyCode)
             return true
         }
-        // Hold the key that left a first-run screen until it is released, so its repeats and its
-        // key up cannot land on the screen the press just opened.
         heldAdvanceKey?.let { held ->
             if (held.deviceId == event.deviceId && held.keyCode == event.keyCode) {
                 if (event.action == KeyEvent.ACTION_UP) heldAdvanceKey = null
                 return true
             }
         }
-        // No button meaning is known yet during the wizard, so every raw key down is consumed as a
-        // capture attempt rather than falling through to menu/back semantics. Auto-repeats are
-        // dropped: a held button would otherwise answer the confirming second press by itself.
         if (cs is LauncherScreen.LegendWizard && event.action == KeyEvent.ACTION_DOWN) {
             if (event.repeatCount == 0) {
                 legendWizardController.onKeyCaptured(event.keyCode)
-                // The last capture leaves this screen, so hold that press until it comes up: its
-                // key up would otherwise land on whatever the flow moved to.
                 if (legendWizardController.state.value.step ==
                     dev.cannoli.scorza.input.legend.WizardStep.Done
                 ) {
@@ -747,25 +628,14 @@ class MainActivity : ComponentActivity(), ActivityActions {
             }
             return true
         }
-        // First run verifies the pad rather than assuming it: a run of presses of one button has to
-        // be the confirm button the resolved mapping claims, and anything else means that entry is
-        // wrong for this shell. Every press the counter does not see is a press that cannot break a
-        // run, so the whole raw stream feeds it and only system keys are left out, unconsumed, so
-        // the volume still works.
         if (cs is LauncherScreen.OnboardingWelcome && event.action == KeyEvent.ACTION_DOWN
             && event.repeatCount == 0
             && !dev.cannoli.scorza.onboarding.isSystemKey(event.keyCode)) {
-            // Only the press that completes a run leaves the step, so only it needs holding until
-            // its key up. The hat path never sets this: its keycode has no key up to clear it.
             if (onWelcomeControllerPress(event.deviceId, event.keyCode)) {
                 heldAdvanceKey = dev.cannoli.scorza.onboarding.WelcomePress(event.deviceId, event.keyCode)
             }
             return true
         }
-        // The dev keyboard binds BACK to its own back button and needs it to reach the normal
-        // pipeline, so the GPIO menu-button shim below is skipped for that device only. Scoped to
-        // the event's own device rather than the feature flag: a GPIO menu button is not an
-        // enrolled keyboard, so it keeps the shim even if the AVD gate misjudges the host.
         if (!AndroidGamepadKeyNames.isGamepadEvent(event) &&
             !controllerBridge.isDevKeyboardDevice(event.deviceId)) {
             when (event.keyCode) {
@@ -774,10 +644,6 @@ class MainActivity : ComponentActivity(), ActivityActions {
                     if (currentScreenForKey is LauncherScreen.InputTester) {
                         inputTesterController.dispatchKey(event, down = event.action == KeyEvent.ACTION_DOWN)
                     } else if (event.action == KeyEvent.ACTION_DOWN) {
-                        // KEYCODE_BACK is a default BTN_MENU binding, but handhelds that wire the menu
-                        // button to GPIO deliver it keyboard-sourced from a device ControllerBridge never
-                        // routes, so it has no PortRouter entry and can never resolve through the mapping.
-                        // Call onMenu() directly so it behaves like a mapped BTN_MENU. TV keeps back-nav.
                         dev.cannoli.scorza.util.InputLog.write(
                             "back key: isTv=$isTv -> ${if (isTv) "onBack" else "onMenu"}"
                         )
@@ -820,10 +686,6 @@ class MainActivity : ComponentActivity(), ActivityActions {
         if (inputDispatcher.handleKeyEvent(event)) {
             return true
         }
-        // Onboarding wizard fallback: route raw D-pad / button keycodes when no device has been
-        // routed by the v2 bridge yet (e.g. TV remotes that aren't classified as gamepads, or
-        // the brief pre-settle window). Scoped to the wizard so other screens keep using v2
-        // routing as-is.
         if (currentScreenForKey is LauncherScreen.OnboardingScreen) {
             when (keyCode) {
                 KeyEvent.KEYCODE_DPAD_UP -> { inputDispatcher.onUp(); return true }
@@ -894,8 +756,6 @@ class MainActivity : ComponentActivity(), ActivityActions {
             editButtonsController.captureRawAxisEvent(axisValues)
             return true
         }
-        // A D-pad that reports as a hat, and every stick and analog trigger, arrive here rather than
-        // as keycodes, so the wizard cannot capture them from the key path alone.
         if (csForListen is LauncherScreen.LegendWizard) {
             val axes = listOf(0, 1, 11, 14, 15, 16, 17, 18, 22, 23)
             legendWizardController.captureRawAxisEvent(axes.associateWith { event.getAxisValue(it) })
@@ -908,8 +768,6 @@ class MainActivity : ComponentActivity(), ActivityActions {
         if (!isJoystick) return super.dispatchGenericMotionEvent(event)
 
         val currentScreenForMotion = nav.currentScreen
-        // Pads that report the D-pad as hat axes never send a KEYCODE_DPAD_*, so the welcome step's
-        // run of presses would never see the direction that should have broken it.
         if (currentScreenForMotion is LauncherScreen.OnboardingWelcome) {
             welcomeHatSync.sync(
                 event.deviceId,

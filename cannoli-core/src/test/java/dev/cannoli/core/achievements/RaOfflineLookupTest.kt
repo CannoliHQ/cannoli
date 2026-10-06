@@ -57,9 +57,6 @@ class RaOfflineLookupTest {
         assertEquals("""{"Success":true,"HardcoreUnlocks":[]}""", body)
     }
 
-    // A manual Game ID points several ROMs at one game, and each of them asks by its own hash.
-    // Keying the directory on the newest alone let the second preload evict the first, which went
-    // silent: the game that lost simply stopped being recognised offline.
     @Test fun `every rom cached under one game id keeps answering`() {
         val dir = store()
         seed(dir, 42, hash = "a1b2c3d4e5f6")
@@ -69,8 +66,6 @@ class RaOfflineLookupTest {
         assertEquals(42, lookup.gameIdFor("r=startsession&u=player&t=abc&m=f6e5d4c3b2a1"))
     }
 
-    // What an install cached before a game could answer for several ROMs still serves, so an
-    // existing cache does not go quiet until its next preload rewrites it.
     @Test fun `a cache written with a single hash file still answers`() {
         val dir = store()
         seed(dir, 42)

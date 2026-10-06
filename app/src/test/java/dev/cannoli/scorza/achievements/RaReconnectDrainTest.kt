@@ -44,8 +44,6 @@ class RaReconnectDrainTest {
         assertEquals(1, drains)
     }
 
-    // A reconnection reaches both callbacks, and a drain sends the whole queue, so the second must
-    // not start while the first is still going.
     @Test fun `one reconnection seen twice sends the queue once`() = runTest {
         var drains = 0
         val d = RaReconnectDrain(context, CoroutineScope(StandardTestDispatcher(testScheduler))) { drains++ }

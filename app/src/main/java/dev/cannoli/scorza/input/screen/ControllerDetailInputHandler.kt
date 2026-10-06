@@ -29,7 +29,6 @@ class ControllerDetailInputHandler @Inject constructor(
     private fun rowCount(): Int {
         val screen = current() ?: return 0
         resolveMapping(screen) ?: return 0
-        // 0 edit buttons, 1 confirm, 2 glyph, 3 exclude, 4 name
         return 5
     }
 

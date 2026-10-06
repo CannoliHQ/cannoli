@@ -2,14 +2,6 @@ package dev.cannoli.core.achievements
 
 import java.io.File
 
-/**
- * Unlocks the achievement client believed it submitted, kept until the launcher really submits them.
- *
- * One file per unlock rather than one file with many lines: the game process writes these and the
- * launcher deletes them, and two processes editing one file is how a queue loses an entry. The name
- * carries the facts a reader needs, so listing the queue costs no reads, and the body is the request
- * the client built, replayed later rather than rebuilt.
- */
 class RaPendingUnlocks(
     private val dir: File,
     private val writerTag: String = java.util.UUID.randomUUID().toString().take(8),
@@ -29,13 +21,7 @@ class RaPendingUnlocks(
         if (achievementId <= 0 || gameId <= 0) return false
         return try {
             dir.mkdirs()
-            // Named by game and achievement so the same unlock arriving twice overwrites rather than
-            // queueing twice; the server would dedupe it, but the count the user is shown should not
-            // claim two.
             val target = File(dir, "$gameId-$achievementId.req")
-            // Written aside and renamed in: a process death partway through a direct write leaves a
-            // file that parses as nothing, and an unlock nothing can parse is never submitted and
-            // never deleted. The scratch name does not end in .req, so a reader skips it.
             val tmp = File(dir, "$gameId-$achievementId.$writerTag.tmp")
             tmp.writeText("$atMs\n$postData")
             tmp.renameTo(target) || tmp.copyTo(target, overwrite = true).let { tmp.delete(); true }

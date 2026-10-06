@@ -63,9 +63,6 @@ class QuickMenuSyncUnlocksTest {
         coVerify(exactly = 1) { drainer.drain() }
     }
 
-    // The quick menu's other rows leave the menu behind; this one stays and rebuilds, because the
-    // row carries the count and is the only thing that reports what the drain achieved. Asserting
-    // the rebuild rather than merely that a menu is open: the menu was already open.
     @Test fun `confirming the row rebuilds the menu around the emptied queue`() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
         val nav = NavigationController()
@@ -74,7 +71,6 @@ class QuickMenuSyncUnlocksTest {
 
         h.onConfirm()
         advanceUntilIdle()
-        // openQuickMenu publishes on the main dispatcher, which Robolectric holds until idled.
         shadowOf(android.os.Looper.getMainLooper()).idle()
 
         val menu = nav.dialogState.value as DialogState.QuickMenu
@@ -82,8 +78,6 @@ class QuickMenuSyncUnlocksTest {
         assertFalse(menu.rows.contains(QuickMenuRow.UNSYNCED_UNLOCKS))
     }
 
-    // The count alone cannot tell a refusal from never having asked, and only one of those is
-    // something the player can act on.
     @Test fun `a server that could not be reached says so rather than reporting none synced`() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
         val nav = NavigationController()

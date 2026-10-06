@@ -11,8 +11,6 @@ private class CuratedFakeHost : RaSettingsHost {
     var coreOptions: List<CoreOptionRef> = emptyList()
     var systemInfo: List<Pair<String, String>> = emptyList()
     var shadow: Map<String, String> = emptyMap()
-    // RetroArch refuses writes it does not like and answers with the value it kept instead, which
-    // is the case a menu that renders what it asked for gets wrong.
     var refuseWrites: Boolean = false
 
     override fun coreOptions(): List<CoreOptionRef> = coreOptions
@@ -47,7 +45,6 @@ class RaIgmSettingsProviderCuratedTest {
         curated = true,
     )
 
-    /** Seeds every key of [row] with the values of one of its presets. */
     private fun CuratedFakeHost.seed(row: CuratedCatalog.Row, presetIndex: Int) {
         for ((k, v) in row.presets[presetIndex].values) {
             settings[k] = RaSetting(k, k, RaSettingType.STRING_RO, machineValue = MachineValue(v), displayValue = v)
@@ -107,9 +104,6 @@ class RaIgmSettingsProviderCuratedTest {
         assertEquals("Sharp", r.value)
     }
 
-    // A row used to take the first preset when the live values matched none, so that it always had
-    // something to show. Custom is the honest answer, and it means opening a menu never changes the
-    // running game.
     @Test
     fun `a row whose live values match no preset shows Custom`() {
         val h = CuratedFakeHost()
@@ -141,8 +135,6 @@ class RaIgmSettingsProviderCuratedTest {
         assertTrue(p.exitPrompt() is IgmSettingsExit.Prompt)
     }
 
-    // The whole reason RaSetting carries rawValue. aspect_ratio_index reports a translated label in
-    // value and the index in rawValue, so resolution that read value would never match.
     @Test
     fun `resolution reads the raw value, not the display text`() {
         val h = CuratedFakeHost()
@@ -155,10 +147,6 @@ class RaIgmSettingsProviderCuratedTest {
         assertEquals("Core Reported", r.value)
     }
 
-    // The defect this shadow exists for: a live viewport forces aspect_ratio_index to 23
-    // (ASPECT_RATIO_CUSTOM), a value no scaling preset expresses. Reading the live value there
-    // would show the viewport's takeover rather than the mode the user picked, and every visit to
-    // this screen would report their choice as Custom.
     @Test
     fun `a shadowed aspect index resolves against the user's choice, not Cannoli's takeover value`() {
         val h = CuratedFakeHost()
@@ -210,8 +198,6 @@ class RaIgmSettingsProviderCuratedTest {
         assertEquals("Soft", r.value)
     }
 
-    // RetroArch does not register every key on every build. A key that never differs between
-    // presets is normalization only, so losing it must not delete the row.
     @Test
     fun `a row survives a missing key that no preset varies`() {
         val h = CuratedFakeHost()
@@ -231,8 +217,6 @@ class RaIgmSettingsProviderCuratedTest {
         assertTrue(choices(provider(h), listOf("video")).none { it.key == "curated_screen_scaling" })
     }
 
-    // The write is attempted and answered with nothing, which is what the native does for a key
-    // that resolves to no setting. What matters is that it never reaches an override.
     @Test
     fun `a key RetroArch does not expose is never saved`() {
         val h = CuratedFakeHost()
@@ -245,8 +229,6 @@ class RaIgmSettingsProviderCuratedTest {
         assertTrue(h.savedKeys.single().none { it == "video_scale_integer_overscale" })
     }
 
-    // A refused write is the case the menu used to get wrong: it rendered what it asked for, and
-    // only a trip out of the category and back showed that nothing had happened.
     @Test
     fun `a write RetroArch refuses leaves the row showing what RetroArch kept`() {
         val h = CuratedFakeHost()
@@ -261,9 +243,6 @@ class RaIgmSettingsProviderCuratedTest {
         assertEquals("Sharp", choices(p, listOf("video")).first().value)
     }
 
-    // Display text and machine value differ for anything RetroArch renders through its own repr,
-    // and only the machine value may reach a comparison. Trusting the display text made every
-    // keypress on this row resolve to Custom.
     @Test
     fun `a row whose display text differs from its value still resolves after a cycle`() {
         val h = CuratedFakeHost()
@@ -297,8 +276,6 @@ class RaIgmSettingsProviderCuratedTest {
         assertEquals(listOf("Nestopia", "1.52"), rows.map { it.value })
     }
 
-    // Nothing on the Info screen is a setting, so a stray cycle must not reach the RetroArch path
-    // and write something named after a label.
     @Test
     fun `cycling an info row does nothing`() {
         val h = CuratedFakeHost()
@@ -309,7 +286,6 @@ class RaIgmSettingsProviderCuratedTest {
         assertTrue(h.setCalls.isEmpty())
     }
 
-    // Info describes the running core, which is worth having in either menu.
     @Test
     fun `the all-settings menu also offers info`() {
         val h = CuratedFakeHost()

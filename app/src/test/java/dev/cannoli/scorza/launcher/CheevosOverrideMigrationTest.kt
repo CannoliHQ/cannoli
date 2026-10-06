@@ -8,10 +8,6 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
 
-/**
- * The migration is the on-disk half of the fix: the launch config injects the session keys fresh,
- * so every other config has to lose them or a stale copy can layer back over the fresh value.
- */
 class CheevosOverrideMigrationTest {
 
     @get:Rule val tmp = TemporaryFolder()
@@ -95,9 +91,6 @@ class CheevosOverrideMigrationTest {
         migration.scrubIfNeeded()
         assertEquals(emptySet<String>(), keysIn(base))
 
-        // Nothing gates a re-run on having already scrubbed this tree, so a config re-polluted by a
-        // restored backup, an older side-loaded build, or a hand-edit is scrubbed again rather than
-        // being permanently skipped.
         base.writeText(dirtyBlock)
         migration.scrubIfNeeded()
         assertEquals(emptySet<String>(), keysIn(base))

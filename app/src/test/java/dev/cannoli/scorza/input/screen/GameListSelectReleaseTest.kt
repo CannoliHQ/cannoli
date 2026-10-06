@@ -37,8 +37,6 @@ class GameListSelectReleaseTest {
         every { glvm.state } returns MutableStateFlow(GameListViewModel.State(isCollection = true))
     }
 
-    // A dialog consumes the Select press but not the release, so the handler can see a release
-    // whose press it never got. Acting on it silently reorders the list behind the dialog.
     @Test fun select_release_without_a_press_does_not_enter_reorder() {
         handler.onSelectUp()
         verify(exactly = 0) { glvm.enterReorderMode() }

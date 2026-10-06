@@ -12,11 +12,6 @@ import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.LocalCannoliTypography
 import dev.cannoli.ui.theme.Spacing
 
-/**
- * How far through a run of presses or a run of questions the user is. Shared by first run's welcome
- * step and the controller wizard so both read the same. [alpha] applies to the filled pips only,
- * for the welcome step's sanctioned fade; everything else leaves it alone.
- */
 @Composable
 fun ProgressPips(total: Int, filled: Int, modifier: Modifier = Modifier, alpha: Float = 1f) {
     val typo = LocalCannoliTypography.current

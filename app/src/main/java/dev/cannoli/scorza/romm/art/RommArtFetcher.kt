@@ -74,7 +74,6 @@ class RommArtFetcher(
         val downloads = mutableListOf<Job>()
         val processedTags = mutableListOf<String>()
 
-        // Matching is sequential (cheap DB/file work); only the cover downloads run concurrently.
         for (tag in tags) {
             val platform = platformsByTag[tag.lowercase()] ?: continue
             processedTags.add(tag)

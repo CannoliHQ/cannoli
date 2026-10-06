@@ -34,7 +34,6 @@ class RommManualTest {
     )
 
     @Test fun `downloads the copy RomM already fetched, under the resources mount`() {
-        // path_manual comes over the wire relative to the resources base; the resolver adds the mount.
         val source = RommManual.sourceUrl(
             "https://romm.local",
             game(hasManual = true, manualPath = "roms/12/1/manual/1.pdf"),

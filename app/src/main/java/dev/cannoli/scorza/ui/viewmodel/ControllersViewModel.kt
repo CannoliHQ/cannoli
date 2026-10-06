@@ -74,8 +74,6 @@ class ControllersViewModel @Inject constructor(
         _state.value = ControllersUiState(connected = sortedConnected, savedMappings = saved)
     }
 
-    // The importer fills a cfg's gaps from the device it was matched against, but a saved profile
-    // is listed precisely when its pad is absent, so the cfg has to stand in for its own device.
     private fun syntheticDevice(entry: RetroArchCfgEntry): ConnectedDevice = ConnectedDevice(
         androidDeviceId = -1,
         descriptor = "",
@@ -124,12 +122,9 @@ class ControllersViewModel @Inject constructor(
 
     fun resetMapping(mapping: DeviceMapping) {
         repository.delete(mapping.id)
-        // The seeder writes outside the repository, so the cache has to be dropped again.
         if (seeder.reseedSingle("${mapping.id}.cfg")) {
             repository.invalidate()
         } else {
-            // The user's edit is gone either way; a failed restore here means the curated cfg is
-            // gone from disk too, with nothing left to fall back on but the runtime default.
             ErrorLog.write("controller reset: failed to restore ${mapping.id}.cfg after deleting the user cfg")
         }
         val connected = portRouter.snapshotEntries().firstOrNull { it.mapping.id == mapping.id }
@@ -142,8 +137,6 @@ class ControllersViewModel @Inject constructor(
                 activeMappingHolder.set(fresh)
             }
         } else {
-            // Repository changed but the router didn't publish (device wasn't connected),
-            // so re-derive savedMappings from the current router snapshot.
             refreshFromCurrentSnapshots()
         }
     }

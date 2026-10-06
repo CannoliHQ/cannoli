@@ -5,11 +5,6 @@ import dev.cannoli.scorza.romm.RommHacks
 import dev.cannoli.scorza.util.NaturalSort
 import java.io.File
 
-/**
- * The version picker's rows: the sibling entries of [viewed] ([members], present by [presentIds]),
- * then one row per hack file of [viewed], present when a file of that name is in the platform's
- * library ([presentNames], lowercased).
- */
 fun rommVersionEntries(
     viewed: RommGame,
     members: List<RommGame>,

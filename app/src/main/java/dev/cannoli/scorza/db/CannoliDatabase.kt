@@ -15,18 +15,11 @@ class CannoliDatabase(private val pathsProvider: CannoliPathsProvider) {
     private var openConn: SQLiteConnection? = null
     private var openPath: String? = null
 
-    // Open on first access. Hilt eagerly resolves @Singleton injects at MainActivity onCreate,
-    // which is before the user clears the permission gate, so deferring the SQLite open keeps
-    // construction free of file I/O (and lets the SD-card root resolved by setup win).
     val conn: SQLiteConnection get() = synchronized(this) {
-        // Before the path is resolved, not after: the layout migration moves this file and its
-        // -wal, and startStorageDependent() can reach a database before boot's own call runs.
         ConfigLayoutMigration.runOnce(pathsProvider.root)
         val dbFile = databaseFile
         val path = dbFile.absolutePath
         val existing = openConn
-        // An early touch can open the database at the fallback root before setup resolves the real
-        // one, so follow the current path instead of staying pinned to the first one opened.
         if (existing != null && openPath == path) return@synchronized existing
         existing?.close()
         openConn = null
@@ -43,13 +36,6 @@ class CannoliDatabase(private val pathsProvider: CannoliPathsProvider) {
         c
     }
 
-    /**
-     * Serializes access to the underlying connection. BundledSQLiteDriver
-     * connections are not safe for concurrent use across threads, so every
-     * code path that touches [conn] must do so inside this lock (directly or
-     * via the [CannoliDatabase] extension helpers in SqlExt). The monitor is
-     * reentrant, so transactions can call locked helpers without deadlocking.
-     */
     inline fun <T> withConn(block: (SQLiteConnection) -> T): T = synchronized(this) { block(conn) }
 
     fun close() = synchronized(this) {

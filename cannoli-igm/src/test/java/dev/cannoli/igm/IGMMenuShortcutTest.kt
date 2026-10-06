@@ -8,10 +8,6 @@ private const val START = 108
 private const val SOUTH = 96
 private val HOLD = ShortcutAction.OPEN_MENU_HOLD.holdMs.toLong()
 
-/**
- * With the menu up the keys go to the menu's window, not to native, so the menu shortcuts have to
- * be matched here for the menu's own screens to see them.
- */
 class IGMMenuShortcutTest {
 
     private val mapping = IgmInputMapping(
@@ -78,8 +74,6 @@ class IGMMenuShortcutTest {
         assertEquals(0, closes)
     }
 
-    // The hold that opened the menu from the game is still down when the menu arrives, and only
-    // its repeats reach this side. They must not start a second count that closes it again.
     @Test fun `a hold carried over from the game does not close the menu`() {
         val c = controller(mapOf(ShortcutAction.OPEN_MENU_HOLD to setOf(START)))
         c.handleKeyDown(START, isRepeat = true)

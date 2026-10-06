@@ -5,12 +5,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 
-/**
- * The map the IGM actually ships is built in IGMOverlay from string resources, and a key it misses
- * is not an error: the label falls back to the raw identifier and "curated_screen_scaling" appears
- * on the row. RaOptionStrings' defaults are covered by a test in cannoli-igm; this covers the
- * translated map, which is the one users see.
- */
 class CuratedLabelWiringTest {
 
     private val overlay =

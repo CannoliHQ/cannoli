@@ -7,18 +7,6 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-/**
- * Runs the settings sweep when the card asks for it, and writes what it found.
- *
- * Asked for by a marker file rather than a menu row, because this is a diagnostic rather than a
- * feature: it belongs in nobody's in-game menu, and a file can be dropped over adb without a build
- * that has a debug surface in it.
- *
- *     adb shell touch <card>/Config/Internal/State/sweep_settings
- *
- * The marker is deleted as the sweep starts, so a crash mid-sweep does not run it again on the next
- * launch, which is the one behaviour that could make a bad setting stick.
- */
 object RaSweepRunner {
 
     private const val MARKER = "Config/Internal/State/sweep_settings"

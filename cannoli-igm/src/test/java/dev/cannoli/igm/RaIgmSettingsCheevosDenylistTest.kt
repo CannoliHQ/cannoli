@@ -5,12 +5,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/**
- * The RetroAchievements session keys are injected fresh into the per-launch config every launch, so
- * a saved override must never carry one back onto disk. RaOptionCatalog exposes none of them today,
- * so this pins the defence-in-depth guard: even a session key that somehow reached the changed set
- * is dropped before the override is written.
- */
 private class DenylistHost(private val keys: List<String>) : RaSettingsHost {
     val savedKeys = mutableListOf<Set<String>>()
 

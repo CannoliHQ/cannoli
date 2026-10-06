@@ -8,13 +8,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/**
- * fbneo_libretro.info declares database_match_archive_member on the line above its real database
- * field. Matching that key by prefix read the decoy instead, so FinalBurn Neo claimed a database of
- * "false", was offered on no platform at all, and stayed invisible on the two that name it as their
- * default. A core whose database misparses becomes unreachable, so the first test below catches the
- * whole class rather than just this one file.
- */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class CoreInfoParseTest {
@@ -27,8 +20,6 @@ class CoreInfoParseTest {
         assets.list("core_info").orEmpty().filter { it.endsWith(".info") }.map { it.removeSuffix(".info") }
 
     @Test fun `every shipped core is offered on at least one platform`() {
-        // Pinned to arm64-v8a: an arm64-only core is legitimately unreachable on the 32-bit ABI
-        // Robolectric defaults to, and that is a separate, dedicated test's concern, not this one's.
         val repo = CoreInfoRepository(assets, abi = { "arm64-v8a" }).also { it.load() }
         val tags = PlatformConfig(
             java.io.File(

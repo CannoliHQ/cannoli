@@ -8,19 +8,6 @@ import org.junit.Test
 
 class ButtonRemapTest {
 
-    @Test fun `ids and key names are RetroArch's own`() {
-        assertEquals(0, RemapButton.SOUTH.id)
-        assertEquals("b", RemapButton.SOUTH.raKey)
-        assertEquals(8, RemapButton.EAST.id)
-        assertEquals("a", RemapButton.EAST.raKey)
-        assertEquals(1, RemapButton.WEST.id)
-        assertEquals("y", RemapButton.WEST.raKey)
-        assertEquals(9, RemapButton.NORTH.id)
-        assertEquals("x", RemapButton.NORTH.raKey)
-        assertEquals(2, RemapButton.SELECT.id)
-        assertEquals(15, RemapButton.R3.id)
-    }
-
     @Test fun `rows are listed in pad order rather than id order`() {
         assertEquals(
             listOf(

@@ -40,9 +40,6 @@ dependencies {
     implementation(libs.androidx.compose.material3)
 }
 
-// Crowdin can export an untranslated entry as an empty <string></string>. Android treats an
-// empty value as a real (blank) value and does NOT fall back to the base language, so the UI
-// shows a blank. Strip empty string resources before the build so those keys fall back to English.
 val stripEmptyStringResources = tasks.register("stripEmptyStringResources") {
     val resDir = file("src/main/res")
     doLast {

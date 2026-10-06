@@ -1,32 +1,9 @@
 package dev.cannoli.scorza.input.runtime
 
-/**
- * Folds the kernel's multi-endpoint InputDevices for a single physical controller into one logical
- * cluster, so the auxiliary endpoints merge onto the gamepad's logical port (port routing).
- *
- * Background: a physical pad can produce 1-N InputDevices. On a typical host the gamepad is a
- * single endpoint (one InputDevice). On Retroid handhelds the kernel rewrites a paired BT pad's
- * gamepad endpoint into a virtual USB-HID InputDevice with the built-in's vid/pid and an empty
- * uniqueId, while leaving the original BT endpoints (touchpad, IMU) intact with their real Sony
- * vid/pid and a populated uniqueId. Three InputDevices appear for one DualSense. The One35
- * handheld similarly emits "One35 Virtual Gamepad" / "Keyboard" / "Mouse" for one physical pad.
- *
- * We cluster InputDevices using two signals together:
- *   - Shared name prefix at a word boundary (>= [MIN_PREFIX_LEN] characters).
- *   - InputDevice.id contiguity (gap <= [MAX_ID_GAP] between adjacent members).
- * The gamepad-source endpoint in each cluster is the primary; the others are aliases.
- *
- * A gamepad-source endpoint is treated as a cluster terminator: once a group contains a gamepad,
- * no more devices are appended to it. This is what keeps two same-model pads with consecutive
- * IDs (e.g. two DualSenses producing {10,11,12} and {13,14,15}) from merging into one bogus
- * cluster — each gamepad endpoint anchors its own cluster boundary.
- */
 object SiblingFolder {
 
-    /** Minimum shared-prefix length (in characters) for two InputDevices to be considered siblings. */
     private const val MIN_PREFIX_LEN = 5
 
-    /** Maximum InputDevice.id gap between adjacent siblings in the same cluster. */
     private const val MAX_ID_GAP = 1
 
     data class Candidate(
@@ -60,8 +37,6 @@ object SiblingFolder {
             val nameShared = sharedLen >= MIN_PREFIX_LEN
             if (!terminated && idAdjacent && nameShared) {
                 current.add(c)
-                // Tighten the running root to the shared prefix so subsequent matches use the
-                // narrowed root rather than the first device's full name.
                 if (sharedLen < currentRoot.length) {
                     currentRoot = currentRoot.substring(0, sharedLen)
                 }
@@ -82,15 +57,6 @@ object SiblingFolder {
         return out
     }
 
-    /**
-     * Length of the longest common prefix between [a] and [b] that ends at a word boundary. A
-     * boundary exists when:
-     *   - the common prefix's trailing character is whitespace (clean boundary on both sides), or
-     *   - one of the remainders is empty (one name is a prefix of the other), or
-     *   - the remainder begins with whitespace (boundary at the prefix-divergence point).
-     * Returns the length of the common prefix with any trailing whitespace trimmed, so the caller
-     * never sees a root that ends in a space.
-     */
     private fun sharedPrefixLength(a: String, b: String): Int {
         val rawCommon = a.commonPrefixWith(b)
         if (rawCommon.length < MIN_PREFIX_LEN) return 0

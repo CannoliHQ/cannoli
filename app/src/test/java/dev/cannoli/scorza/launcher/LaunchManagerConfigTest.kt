@@ -9,12 +9,6 @@ import org.junit.Assert.assertNotEquals
 import org.junit.Test
 import java.io.File
 
-/**
- * Pins the tier stack buildGameConfig composes over retroarch.cfg before the plumbing band is
- * applied: Games/<tag>/<base>.cfg and Systems/<tag>.cfg are preferences, custom.cfg is the
- * user's own escape hatch and wins among preferences, and the plumbing band still wins over all
- * of them. #36: a custom.cfg cannot smuggle a cheevos or save-dir key into the launch config.
- */
 class LaunchManagerConfigTest : LaunchConfigHarness() {
 
     private fun write(file: File, text: String) {
@@ -32,7 +26,6 @@ class LaunchManagerConfigTest : LaunchConfigHarness() {
         assertEquals("3", cfg["input_max_users"])
     }
 
-    // The point of core-keying: tuning done under one core must not follow the game onto another.
     @Test fun `an override written for a different core is not applied`() {
         val root = tmp.newFolder()
         val paths = CannoliPaths(root.absolutePath)
@@ -43,8 +36,6 @@ class LaunchManagerConfigTest : LaunchConfigHarness() {
         assertNotEquals("true", cfg["rewind_enable"])
     }
 
-    // The whole point of the core-independent tier: an overlay chosen for a platform is the same
-    // choice whichever core runs it, so remapping the core must not silently drop it.
     @Test fun `a shared system override survives a core it was not written under`() {
         val root = tmp.newFolder()
         val paths = CannoliPaths(root.absolutePath)
@@ -70,7 +61,6 @@ class LaunchManagerConfigTest : LaunchConfigHarness() {
         assertEquals("Game Pick", cfg["cannoli_overlay"])
     }
 
-    // Core-specific is the narrower statement, so it wins inside its own scope.
     @Test fun `a core-keyed system override outranks the shared one`() {
         val root = tmp.newFolder()
         val paths = CannoliPaths(root.absolutePath)
@@ -98,7 +88,6 @@ class LaunchManagerConfigTest : LaunchConfigHarness() {
         assertEquals("true", cfg["rewind_enable"])
     }
 
-    // Core options live in their own file; the launch config only points RetroArch at it.
     @Test fun `core options are composed from the tiers with the game winning`() {
         val root = tmp.newFolder()
         val paths = CannoliPaths(root.absolutePath)
@@ -116,7 +105,6 @@ class LaunchManagerConfigTest : LaunchConfigHarness() {
         assertEquals("remove", opts["mgba_idle_opt"])
     }
 
-    // A key dropped from a tier must stop applying, not survive in the file RetroArch flushed last.
     @Test fun `the composed core options file is rewritten whole each launch`() {
         val root = tmp.newFolder()
         val paths = CannoliPaths(root.absolutePath)
@@ -130,7 +118,6 @@ class LaunchManagerConfigTest : LaunchConfigHarness() {
         assertFalse(text.contains("stale_key"))
     }
 
-    // Options tuned under one core must not reach another, same as the cfg tiers.
     @Test fun `core options written for a different core are not composed in`() {
         val root = tmp.newFolder()
         val paths = CannoliPaths(root.absolutePath)
@@ -141,9 +128,6 @@ class LaunchManagerConfigTest : LaunchConfigHarness() {
         assertFalse(paths.coreOptionsLaunchOpt.readText().contains("mgba_idle_opt"))
     }
 
-    // Screen visibility rides RetroArch's own settings_show_ flags rather than a refusal list in
-    // the menu. A typo would be silent: the flag would do nothing and the screen would appear. This
-    // checks each one against the census of what RetroArch actually registers.
     @Test fun `every settings_show flag written is a setting RetroArch registers`() {
         val census = javaClass.classLoader!!.getResourceAsStream("ra-settings-census.tsv")!!
             .bufferedReader().readLines().drop(1)
@@ -162,8 +146,6 @@ class LaunchManagerConfigTest : LaunchConfigHarness() {
         )
     }
 
-    // The launcher default is the weakest tier, so anything chosen for a platform beats it. That is
-    // what makes it a default rather than a setting.
     @Test fun `a platform override beats the launcher default driver`() {
         val root = tmp.newFolder()
         val paths = CannoliPaths(root.absolutePath)
@@ -185,7 +167,6 @@ class LaunchManagerConfigTest : LaunchConfigHarness() {
         assertTrue(CannoliPaths(root.absolutePath).globalOverrideCfg.isFile)
     }
 
-    // Auto writes nothing at all, and a file left by a previous choice has to go with it.
     @Test fun `auto removes the generated global tier`() {
         val root = tmp.newFolder()
         val paths = CannoliPaths(root.absolutePath)

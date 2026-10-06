@@ -29,10 +29,6 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
-/**
- * The five-game system list footer in German on a pad that opens the menu with Select + Start,
- * which overflowed a 640x480 hdpi screen's 387dp bar on a Nova and cut RESUME to "FORTSE...".
- */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = "w640dp-h480dp-hdpi")

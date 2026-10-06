@@ -33,7 +33,6 @@ class ScreenGeometryTest {
 
     @Test
     fun `offset clamped so rect stays on surface`() {
-        // width 60 -> max |x| = 20; x=30 clamps to 20, so x = (1000-600)/2 + 1000*20/100 = 400, x+w = 1000
         assertEquals(
             ScreenRect(400, 200, 600, 600),
             computeScreenGeometryRect(1000, 1000, 60, 60, 30, 0),
@@ -42,7 +41,6 @@ class ScreenGeometryTest {
 
     @Test
     fun `size clamped to range`() {
-        // width 200 clamps to 100, height 10 clamps to 50
         val r = computeScreenGeometryRect(1000, 1000, 200, 10, 0, 0)
         assertEquals(1000, r.w)
         assertEquals(500, r.h)

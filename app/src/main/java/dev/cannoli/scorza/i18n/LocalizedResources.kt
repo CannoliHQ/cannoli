@@ -7,10 +7,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 
-/**
- * Hands the launcher's chosen language to everything below it. [languageTag] is null until settings
- * have loaded, which leaves the platform context and configuration in place.
- */
 @Composable
 fun ProvideLocalizedResources(languageTag: String?, content: @Composable () -> Unit) {
     val baseContext = LocalContext.current

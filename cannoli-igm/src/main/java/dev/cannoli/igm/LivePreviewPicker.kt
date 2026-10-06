@@ -31,17 +31,6 @@ import dev.cannoli.ui.theme.LocalCannoliTypography
 import dev.cannoli.ui.theme.LocalScaleFactor
 import dev.cannoli.ui.theme.Spacing
 
-/**
- * Picks one of a list of visual assets while the game keeps running underneath.
- *
- * Unlike every other IGM screen this one paints no dimming background, because the thing being
- * chosen is the picture on screen: an overlay's artwork sits in the pillars either side of the
- * game, which is exactly where a normal menu panel would be. Chrome collapses to a strip along the
- * bottom so the asset can be judged at full size, and the caller applies each move to the running
- * emulator, which is what makes this a preview rather than a list of names.
- *
- * Nothing here knows what an overlay is, so a shader list works the same way.
- */
 @Composable
 fun LivePreviewPicker(
     title: String,
@@ -62,8 +51,6 @@ fun LivePreviewPicker(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                // The fade carries the strip's text over whatever the game happens to be drawing,
-                // without a hard edge that would read as a panel.
                 .background(
                     Brush.verticalGradient(
                         listOf(Color.Transparent, Color.Black.copy(alpha = 0.94f)),
@@ -99,9 +86,6 @@ fun LivePreviewPicker(
                     labels.back to stringResource(dev.cannoli.ui.R.string.label_back),
                     DPAD_HORIZONTAL to stringResource(dev.cannoli.ui.R.string.label_change),
                 ),
-                // Only ever the one action. A move is already applied and already staged, so Back
-                // is the way out and the save prompt leaving the tree decides the rest; and there
-                // is nothing to configure, because how a bezel looks belongs to the artwork.
                 rightItems = if (!canRestore) emptyList() else listOf(
                     labels.west to stringResource(dev.cannoli.ui.R.string.label_use_platform)
                 ),
@@ -110,7 +94,6 @@ fun LivePreviewPicker(
     }
 }
 
-// Dimmed to nothing at one item so the strip does not advertise a move that cannot happen.
 @Composable
 private fun Arrow(glyph: String, count: Int, fontSize: TextUnit) {
     Text(

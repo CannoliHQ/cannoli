@@ -68,9 +68,6 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     }
 
     private fun loadFromDisk() {
-        // Before the storage step there is no chosen root and nothing on disk to read. Resolving a
-        // path anyway would point settingsFile at internal storage and save there on the first
-        // write; the sdCardRoot setter re-runs this once the real location is known.
         val root = sdCardRootOrNull ?: return
         val file = dev.cannoli.scorza.config.CannoliPaths(root).settingsJson
         settingsFile = file
@@ -122,8 +119,6 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     }
 
     fun reload() {
-        // Un-flushed local edits are newer than disk; persist them rather than letting
-        // loadFromDisk overwrite them. Only re-read external changes when nothing is pending.
         if (pendingSave) flush() else loadFromDisk()
     }
 
@@ -155,19 +150,9 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         get() = prefs.getBoolean(KEY_SETUP_COMPLETED, false)
         set(value) { prefs.edit().putBoolean(KEY_SETUP_COMPLETED, value).apply() }
 
-    /**
-     * The chosen root, or null before first run's storage step resolves. Boot-path code that can run
-     * either side of that step reads this; everything after boot reads [sdCardRoot].
-     */
     val sdCardRootOrNull: String?
         get() = prefs.getString(KEY_SD_ROOT, null)?.takeIf { it.isNotEmpty() }
 
-    /**
-     * Where Cannoli lives. There is deliberately no default: a placeholder here is a real, writable
-     * path, so anything reading before the storage step used to quietly work against internal
-     * storage and orphan whatever it wrote the moment the user picked a card. Reading this too early
-     * is a bug in the caller, and it says so rather than papering over it.
-     */
     var sdCardRoot: String
         get() = sdCardRootOrNull
             ?: error("Cannoli root read before first run's storage step chose one")
@@ -190,11 +175,6 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         get() = jsonRead { optString(KEY_FONT, "default") }
         set(value) = jsonWrite { put(KEY_FONT, value) }
 
-    /**
-     * The video driver every game starts with unless something more specific says otherwise. Empty
-     * is Auto: nothing is written and RetroArch keeps its own choice. Only gl and vulkan are
-     * compiled on Android, so this is not a general driver picker.
-     */
     var defaultVideoDriver: String
         get() = jsonRead { optString(KEY_DEFAULT_VIDEO_DRIVER, "") }
         set(value) {
@@ -323,8 +303,6 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         get() = jsonRead { if (has(KEY_FGH_COLLECTION)) optLong(KEY_FGH_COLLECTION).takeIf { it > 0 } else null }
         set(value) = jsonWrite { if (value == null) remove(KEY_FGH_COLLECTION) else put(KEY_FGH_COLLECTION, value) }
 
-    // Empty is the system list. A tag that stops resolving is kept, not cleared: a card that mounts
-    // after boot would otherwise silently lose the choice.
     var startOnPlatform: String
         get() = jsonRead { optString(KEY_START_ON_PLATFORM, "") }
         set(value) = jsonWrite { put(KEY_START_ON_PLATFORM, value) }
@@ -445,20 +423,14 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         get() = jsonRead { optBoolean(KEY_ALWAYS_SAVE_ON_QUIT, false) }
         set(value) = jsonWrite { put(KEY_ALWAYS_SAVE_ON_QUIT, value) }
 
-    /** When the user last refreshed cores, as an ISO date. Empty means never. */
     var lastCoreUpdate: String
         get() = jsonRead { optString(KEY_LAST_CORE_UPDATE, "") }
         set(value) = jsonWrite { put(KEY_LAST_CORE_UPDATE, value) }
 
-    /**
-     * Whether that run reached the end. A cancelled run still replaced some cores, so it is not
-     * nothing, but reporting it as a refresh would say every core is current when most are not.
-     */
     var lastCoreUpdateCompleted: Boolean
         get() = jsonRead { optBoolean(KEY_LAST_CORE_UPDATE_DONE, true) }
         set(value) = jsonWrite { put(KEY_LAST_CORE_UPDATE_DONE, value) }
 
-    /** When the user last pulled the shader database, as an ISO date. Empty means never. */
     var lastShaderUpdate: String
         get() = jsonRead { optString(KEY_LAST_SHADER_UPDATE, "") }
         set(value) = jsonWrite { put(KEY_LAST_SHADER_UPDATE, value) }
@@ -639,9 +611,6 @@ enum class ContentMode {
 enum class IgmSettingsMode {
     CURATED, ALL_SETTINGS;
     companion object {
-        // ALL_SETTINGS was called EVERYTHING before it had a name in the UI. Anyone who set it on a
-        // v2 build has that spelling on disk, and falling through to CURATED would silently move
-        // them back to the short menu.
         private const val LEGACY_ALL_SETTINGS = "EVERYTHING"
 
         fun fromString(value: String?): IgmSettingsMode = when (value) {

@@ -52,8 +52,6 @@ class OnboardingPermissionsTest {
         assertTrue(screen(permissions = emptyList()).canContinue)
     }
 
-    // The three-way footer rule, one case per line.
-
     @Test fun ungrantedRequiredRowOffersGrant() {
         assertEquals(
             OnboardingPermissionsAction.GRANT,
@@ -86,8 +84,6 @@ class OnboardingPermissionsTest {
         )
     }
 
-    // Deliberate: the highlight sitting on an ungranted optional row reads GRANT even though
-    // continue is available. Moving off that row is how the user advances.
     @Test fun anUngrantedOptionalRowHidesContinueRatherThanShowingBoth() {
         val ready = screen(permissions = dualScreen, granted = setOf(storage), selectedIndex = 1)
         assertTrue(ready.canContinue)

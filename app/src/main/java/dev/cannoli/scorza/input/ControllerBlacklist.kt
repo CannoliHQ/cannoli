@@ -5,11 +5,6 @@ import org.json.JSONObject
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Loads `assets/controller_blacklist.json` and answers whether a device should be ignored as a
- * controller. Consumed by [dev.cannoli.scorza.input.runtime.ControllerBridge] during
- * device identification.
- */
 @Singleton
 class ControllerBlacklist @Inject constructor() {
     private var vendors: Set<Int> = emptySet()

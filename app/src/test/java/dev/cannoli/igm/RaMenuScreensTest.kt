@@ -5,16 +5,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 
-/**
- * Guards the generated screen table the IGM descends through.
- *
- * All Settings defers to RetroArch for structure, which means building a specific displaylist per
- * screen, which needs that screen's DISPLAYLIST_* constant. RetroArch only knows it through four
- * static tables across two files, so scripts/ra-menu-screens.py composes them into
- * ricotta/jni/ricotta_menu_screens.h. That file is checked in and only regenerates when the script
- * is run, so a RetroArch bump can leave it describing a tree that no longer exists. Here it is
- * checked against the current submodule.
- */
 class RaMenuScreensTest {
 
     private val repoRoot: File = generateSequence(File(".").absoluteFile) { it.parentFile }
@@ -40,8 +30,6 @@ class RaMenuScreensTest {
         assertTrue("screen table looks truncated: $rows rows", rows > 40)
     }
 
-    // Without these the IGM cannot open the screens it most needs, and the failure is a row that
-    // does nothing rather than a crash.
     @Test
     fun `the screens All Settings relies on are present`() {
         for (label in listOf(
@@ -58,8 +46,6 @@ class RaMenuScreensTest {
         }
     }
 
-    // The one that catches a bump: RetroArch renamed, moved or removed a screen and the checked-in
-    // table still describes the old tree.
     @Test
     fun `the checked-in table matches what the current RetroArch source generates`() {
         assertEquals(

@@ -20,14 +20,6 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
 
-/**
- * A required BIOS that is absent used to reach the emulator, which then sat on it. FBNeo draws its
- * own error screen and, with no content loaded, RetroArch's menu becomes reachable behind it, so the
- * user ends up somewhere Cannoli never intended. The launch is stopped here instead.
- *
- * Only firmware the platform genuinely requires blocks a launch: optional entries are ignored, which
- * matters because FBNeo marks all 23 of its own entries optional.
- */
 class MissingBiosGateTest {
 
     @get:Rule val tmp = TemporaryFolder()

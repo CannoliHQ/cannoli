@@ -1,9 +1,5 @@
 package dev.cannoli.ricotta
 
-/**
- * Mirrors `enum ricotta_osd_type` in ricotta/jni/ricotta_osd.h. The values cross the JNI boundary,
- * so they are fixed on both sides: change one and you change the other.
- */
 object RicottaOsdEvent {
     const val SAVE_STATE = 0
     const val LOAD_STATE = 1

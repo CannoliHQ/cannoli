@@ -4,11 +4,6 @@ import fi.iki.elonen.NanoHTTPD
 import fi.iki.elonen.NanoHTTPD.Response
 import java.io.File
 
-/** Answers with the canonical spelling of every platform that has a folder, so the dashboard keys
- *  its labels, icons and game requests off the same string the games endpoint accepts, and the
- *  manufacturer grouping alongside them so it does not keep a second list of its own.
- *  Never fails the request: an empty list leaves the dashboard empty, where an error status would
- *  leave it unable to render at all. */
 internal fun KitchenHttpServer.handleTags(): Response {
     val canonical = allPlatformTags()
         .filter { it !in KitchenHttpServer.RESERVED_APP_TAGS }
@@ -36,25 +31,11 @@ internal fun KitchenHttpServer.handleApps(): Response {
 internal fun KitchenHttpServer.handleSettings(): Response =
     jsonResponse(200, SettingsResponse.serializer(), settingsProvider())
 
-/**
- * The controller mappings on the card, so a pad the input database has never seen can be sent to
- * whoever curates it.
- *
- * Lists mappings rather than files. Every candidate is parsed and anything that is not a cfg naming
- * a device is dropped, which is what keeps the seeder's `.seed_version` stamp and RetroArch's
- * `.autoconfig_index` cache out of the list without keeping a blacklist of their names: a file
- * earns a row by being a mapping, not by failing to be on a list.
- *
- * Read only. Deleting a profile from a web page is a different feature with a real cost, since a
- * built-in pad has no second controller to fall back on while it has no mapping.
- */
 internal fun KitchenHttpServer.handleMappings(segments: List<String>): Response {
     val dir = File(cannoliRoot, MAPPINGS_DIR)
     val requested = segments.firstOrNull()
     if (requested != null) {
         val file = File(dir, requested)
-        // The same question the listing asks. Without it a file could be absent from the list and
-        // still fetchable by name, so the two halves would disagree about what a mapping is.
         if (!isSecure(file) || mappingNameFor(file) == null) return errorResponse(404, "not found")
         return fileResponse(file, mimeForPath(file.name))
     }
@@ -65,14 +46,6 @@ internal fun KitchenHttpServer.handleMappings(segments: List<String>): Response 
     return jsonResponse(200, MappingsResponse.serializer(), MappingsResponse(mappings))
 }
 
-/**
- * The name to show for [file], or null when it is not a mapping at all.
- *
- * A curated entry carries a friendly `input_device_display_name`; one the wizard built repeats the
- * pad's reported name, which is the most a device can say about itself. Returning null is what keeps
- * the seeder's stamp and RetroArch's autoconfig cache out of both the listing and the download,
- * without either of them keeping a list of names to exclude.
- */
 private fun mappingNameFor(file: File): String? {
     if (!file.isFile || !file.extension.equals("cfg", ignoreCase = true)) return null
     val entry = runCatching {

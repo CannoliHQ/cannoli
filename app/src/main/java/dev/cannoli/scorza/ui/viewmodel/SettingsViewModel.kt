@@ -78,7 +78,6 @@ class SettingsViewModel @Inject constructor(
     private fun buildFontOptions(): List<FontOption> = buildList {
         add(FontOption("default", "Default", appFonts.mplus1Code, appFonts.mplus1CodeTypeface))
         add(FontOption("the_og", "The OG", appFonts.bpReplay, appFonts.bpReplayTypeface))
-        // Custom fonts live under the chosen root, so before the storage step there are none to find.
         val root = settings.sdCardRootOrNull ?: return@buildList
         val fontsDir = java.io.File(root, "Config/Fonts")
         val exts = setOf("ttf", "otf")
@@ -112,9 +111,6 @@ class SettingsViewModel @Inject constructor(
         @param:StringRes val valueRes: Int? = null,
         val valueText: String? = null,
         val isEditable: Boolean = false,
-        // A row that does something when confirmed, rather than cycling a value or opening a
-        // screen. It can still show a value, which is what distinguishes it: a status the action
-        // acts on, like when cores were last updated.
         val isAction: Boolean = false,
         val canCycle: Boolean = true,
         val swatchColor: Color? = null,
@@ -285,9 +281,6 @@ class SettingsViewModel @Inject constructor(
     fun load() {
         val current = _state.value
         if (current.inSubList) {
-            // Lock/unlock or any onResume mid-settings: refresh values without wiping nav
-            // state. Keep the existing cancel snapshot so revert still points at pre-edit
-            // values rather than the just-resumed state.
             val cat = current.activeCategory ?: return
             val items = buildItemsForCategory(cat)
             _state.update { it.copy(categories = buildCategoryList(), items = items) }
@@ -418,9 +411,6 @@ class SettingsViewModel @Inject constructor(
         _appSettings.value = readAppSettings()
     }
 
-    /** Drops back to the category list outright, however deep the user was. The active category
-     *  outlives the screen, so without this a flow that ends elsewhere leaves settings reopening
-     *  inside whichever sub-list it was abandoned in. */
     fun resetToCategoryList() {
         _state.update {
             it.copy(
@@ -511,7 +501,6 @@ class SettingsViewModel @Inject constructor(
                 settings.contentMode = entries[((cur + direction) % entries.size + entries.size) % entries.size]
             }
             SettingsKey.DEFAULT_VIDEO_DRIVER -> {
-                // Auto first, so cycling from a clean install reaches a real driver in one press.
                 val entries = listOf("", "gl", "vulkan")
                 val cur = entries.indexOf(settings.defaultVideoDriver).coerceAtLeast(0)
                 settings.defaultVideoDriver = entries[((cur + direction) % entries.size + entries.size) % entries.size]
@@ -547,9 +536,6 @@ class SettingsViewModel @Inject constructor(
             SettingsKey.MAIN_MENU_QUIT -> settings.mainMenuQuit = !settings.mainMenuQuit
             SettingsKey.ALWAYS_SAVE_ON_QUIT -> settings.alwaysSaveOnQuit = !settings.alwaysSaveOnQuit
             SettingsKey.PORTRAIT_MARGIN -> {
-                // The D-pad stays precise and the shoulders do the travelling: this is measured in
-                // pixels, so crossing a few hundred of them one repeat at a time is hopeless, and a
-                // ramp fast enough to cover it is too coarse to land on a value.
                 val step = when {
                     coarse -> if (repeatCount == 0) 50 else 100
                     repeatCount == 0 -> 1
@@ -777,7 +763,6 @@ class SettingsViewModel @Inject constructor(
     private fun fghCollections(): List<CollectionsRepository.CollectionRow> =
         collectionsRepository?.fghChoices().orEmpty()
 
-    /** Read on every build, so a card that mounts late shows up the next time Library is opened. */
     private fun startOnPlatforms(): List<dev.cannoli.scorza.model.Platform> =
         platformsProvider?.invoke().orEmpty()
             .filter { it.gameCount > 0 }
@@ -964,12 +949,6 @@ class SettingsViewModel @Inject constructor(
         )
         SettingsCategory.EMULATION -> buildList {
             add(SettingsItem(SettingsKey.CORE_MAPPING.id, R.string.setting_emulator_mapping, isEditable = true))
-            // No RetroArch package row: which RetroArch runs a platform is part of the mapping
-            // itself now, so a global package would only be a second thing claiming that answer.
-            //
-            // Nor is this row gated on one being installed. It used to be, from when RetroArch was
-            // a separate app and its cores were its own; the embedded runner keeps them in
-            // filesDir, so Cannoli always has cores to show and the gate only hid them.
             add(SettingsItem(
                 SettingsKey.UPDATE_CORES.id,
                 R.string.setting_update_cores,

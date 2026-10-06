@@ -7,11 +7,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 
-/**
- * Chords are matched in C, and Kotlin decides what to send it. The two ends have to agree on how
- * much fits: a table encoded past what native allocates is silently dropped on arrival, so a
- * shortcut the user bound simply never fires and nothing says why.
- */
 class ShortcutChordLimitParityTest {
 
     private val source = File("jni/ricotta_bridge.c")
@@ -34,8 +29,6 @@ class ShortcutChordLimitParityTest {
         assertEquals(define("RICOTTA_MAX_CHORDS"), ShortcutTable.MAX_CHORDS)
     }
 
-    // Native derives its key union from the same table, into a fixed array. Every action bound to a
-    // chord of its own must still fit, or the last ones bound would forward no keys at all.
     @Test fun `every action could be bound at once and still fit`() {
         assertTrue(
             "there are ${ShortcutAction.entries.size} actions but room for ${ShortcutTable.MAX_CHORDS} chords",

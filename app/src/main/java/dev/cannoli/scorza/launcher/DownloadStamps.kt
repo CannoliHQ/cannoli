@@ -2,33 +2,10 @@ package dev.cannoli.scorza.launcher
 
 import java.io.File
 
-/**
- * What the buildbot said when we last downloaded something: the build identity, so we can ask
- * whether it changed, and the build date, so we can say which build the user has.
- *
- * There is nothing to pin to. The buildbot keeps dated APKs but a single unversioned `latest`
- * directory of cores, its stable releases carry no cores at all, and RetroArch's own updater points
- * at the same place. So Cannoli tracks build identity rather than build version.
- *
- * The date is deliberately not the core's `display_version`. That field is hand-maintained upstream
- * and moves on a completely different clock: gambatte last changed it in 2022 while the binary is
- * rebuilt nightly, and mGBA declares `0.10-dev`, which is not a release at all. Showing it would
- * tell two users with builds months apart that they have the same thing.
- *
- * Keyed by URL because that is unambiguous across cores, ABIs and system archives alike.
- */
 object DownloadStamps {
 
     private const val FILE = "download_etags.txt"
 
-    /**
-     * [built] is an ISO date, or empty when the server sent no `Last-Modified`. [crc] is the
-     * buildbot's CRC32 of the inner `.so`, lowercase hex, or empty when the index did not name it.
-     *
-     * The etag cannot answer whether a rebuild changed anything: a zip embeds a build timestamp, so
-     * it differs every night whether or not the core did. The CRC covers the binary alone and is
-     * stable across an unchanged rebuild, which is what makes skipping the download safe.
-     */
     data class Stamp(val etag: String, val built: String, val crc: String = "")
 
     fun read(filesDir: File): Map<String, Stamp> = try {
@@ -59,8 +36,6 @@ object DownloadStamps {
     @Synchronized
     fun put(filesDir: File, url: String, etag: String?, built: String?, crc: String? = null) {
         if (etag.isNullOrBlank()) return
-        // A caller with nothing new to say about the CRC keeps whatever is already recorded, so a
-        // 304 that carries no index lookup does not erase it.
         val prior = read(filesDir)
         val keptCrc = crc?.takeIf { it.isNotBlank() } ?: prior[url]?.crc.orEmpty()
         val merged = prior + (url to Stamp(etag, built.orEmpty(), keptCrc))
@@ -74,7 +49,6 @@ object DownloadStamps {
         } catch (_: Exception) {}
     }
 
-    /** Drops one row, so an uninstalled core does not leave a stamp describing a file that is gone. */
     @Synchronized
     fun remove(filesDir: File, url: String) {
         val prior = read(filesDir)
@@ -88,10 +62,6 @@ object DownloadStamps {
         } catch (_: Exception) {}
     }
 
-    /**
-     * `Last-Modified` as an ISO date. The header is RFC 1123 in GMT, and only the day is shown, so
-     * the wall clock and the reader's zone do not matter.
-     */
     fun isoDate(lastModified: String?): String {
         if (lastModified.isNullOrBlank()) return ""
         return try {

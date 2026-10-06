@@ -159,21 +159,11 @@ internal fun DialogInputHandler.onContextMenuConfirm(state: DialogState.ContextM
     }
 }
 
-/**
- * Clears a manual RA Game ID, putting the game back on hash detection.
- *
- * Gated on the row's own [PickerItem.clears] flag rather than on its title or label, so the button
- * does exactly what the legend beside it offered and nothing else. A picker that quietly cleared
- * whatever happened to be selected would be worse than one that ignored the button.
- */
 internal fun DialogInputHandler.clearRaGameId(romId: Long) {
     val rom = romForAchievements(romId) ?: return
     if (effectiveRaGameId(rom) == null) return
     ioScope.launch {
         romsRepository.setRaGameId(rom.id, null)
-        // The recorded cache id came from the override, so it goes with it. Left behind, the row
-        // would keep reading Cached off a set filed under an identity this game no longer claims.
-        // The files stay on the card; only this rom's claim on them is dropped.
         romsRepository.setRaCachedGameId(rom.id, null)
         gameListViewModel.reload {
             launcherActions.scanResumableGames()
@@ -182,7 +172,6 @@ internal fun DialogInputHandler.clearRaGameId(romId: Long) {
     }
 }
 
-/** A return to this group, keeping whatever menu was underneath so it survives one round trip. */
 private fun DialogInputHandler.returnToGroup(romId: Long, row: String) = ContextReturn.Achievements(
     romId = romId,
     selectRow = row,
@@ -198,36 +187,18 @@ internal fun DialogInputHandler.openRaGameIdInput(rom: dev.cannoli.scorza.model.
 }
 
 internal fun DialogInputHandler.preloadAchievementsFor(rom: dev.cannoli.scorza.model.Rom) {
-    // A successful preload writes raCachedGameId, which is what the row reads to say Cached. The
-    // list has to be rebuilt from that or the group reopens holding the rom as it was before, and
-    // a game that cached perfectly well still reads uncached.
     raPreloadController.preloadRom(rom) { gameListViewModel.reload() }
 }
 
-/**
- * The rom this group is bound to, looked up fresh by id.
- *
- * Never the current selection: a reload can move it, because the list restores a position by index
- * when the id it preserved no longer matches. The group would then rebind to a different game while
- * looking identical, and act on it.
- */
 internal fun DialogInputHandler.romForAchievements(romId: Long): dev.cannoli.scorza.model.Rom? =
     gameListViewModel.state.value.items
         .filterIsInstance<ListItem.RomItem>()
         .firstOrNull { it.rom.id == romId }
         ?.rom
 
-/**
- * The game this ROM's achievements live under: the id you gave it, else the one a preload recorded.
- *
- * Both name the same directory in the offline store, so either is enough to find a cached set. Only
- * the recorded one used to be consulted, which made a game cached under a manual override read as
- * uncached even with that override sitting in the row above.
- */
 internal fun effectiveRaGameId(rom: dev.cannoli.scorza.model.Rom): Int? =
     rom.raGameId ?: rom.raCachedGameId
 
-/** The rows inside Achievements, formatted with their values, in a fixed order. */
 internal fun DialogInputHandler.achievementsOptions(rom: dev.cannoli.scorza.model.Rom): List<String> =
     buildList {
         add("$MENU_RA_GAME_ID\t${rom.raGameId?.toString() ?: "Autodetect"}")
@@ -246,12 +217,10 @@ internal fun DialogInputHandler.achievementsOptions(rom: dev.cannoli.scorza.mode
         add("$MENU_ACHIEVEMENTS_MODE\t${achievementsModeValue(rom)}")
     }
 
-/** What the mode row shows: what this game states, or the global it defers to, or the ID's ruling. */
 internal fun DialogInputHandler.achievementsModeValue(rom: dev.cannoli.scorza.model.Rom): String = when {
     rom.raGameId != null -> context.getString(dev.cannoli.ui.R.string.achievements_mode_locked)
     rom.raHardcore == true -> context.getString(dev.cannoli.ui.R.string.achievos_mode_hardcore)
     rom.raHardcore == false -> context.getString(dev.cannoli.ui.R.string.achievos_mode_softcore)
-    // Names the mode it defers to, so choosing it is not a guess about what the global says.
     else -> context.getString(
         dev.cannoli.ui.R.string.achievos_mode_use_global,
         context.getString(
@@ -261,13 +230,6 @@ internal fun DialogInputHandler.achievementsModeValue(rom: dev.cannoli.scorza.mo
     )
 }
 
-/**
- * The Achievements group, opened from the game context menu.
- *
- * A Picker rather than a nested context menu, matching RomM Saves: same shape, and its onBack
- * already returns to the menu that opened it. [selectRow] keeps the cursor where it was when a
- * row rebuilds itself after changing.
- */
 internal fun DialogInputHandler.openAchievementsMenu(romId: Long, selectRow: String? = null) {
     val rom = romForAchievements(romId) ?: run {
         nav.dialogState.value = DialogState.None; return
@@ -276,7 +238,6 @@ internal fun DialogInputHandler.openAchievementsMenu(romId: Long, selectRow: Str
     val idx = selectRow
         ?.let { key -> options.indexOfFirst { it.substringBefore('\t') == key } }
         ?.takeIf { it >= 0 } ?: 0
-    // A Game ID settles the mode, so the row it settles stops offering to change.
     val modeCycles = rom.raGameId == null
     nav.dialogState.value = DialogState.Picker(
         title = MENU_ACHIEVEMENTS,
@@ -287,15 +248,11 @@ internal fun DialogInputHandler.openAchievementsMenu(romId: Long, selectRow: Str
                 label = MENU_LABELS[key]?.let { context.getString(it) } ?: key,
                 value = opt.substringAfter('\t', "").takeIf { it.isNotEmpty() },
                 cycles = key == MENU_ACHIEVEMENTS_MODE && modeCycles,
-                // Any id the row is standing on, whether you set it or a preload recorded it.
-                // Keying this on the override alone stranded a recorded id: with no override to
-                // clear, the row kept reporting a cache nothing could give up.
                 clears = key == MENU_RA_GAME_ID && effectiveRaGameId(rom) != null,
             )
         },
         selectedIndex = idx,
         onBack = { restoreContextMenu() },
-        // Only the mode row declares cycles, so this is only ever called for it.
         onCycle = { _, direction -> cycleAchievementsMode(romId, direction) },
         onNorth = { clearRaGameId(romId) },
     ) { index ->
@@ -312,13 +269,6 @@ internal fun DialogInputHandler.openAchievementsMenu(romId: Long, selectRow: Str
     }
 }
 
-/**
- * Steps this game's achievements mode, on Left and Right like every other value Cannoli shows.
- *
- * Three answers rather than two: null is the game deferring to the global mode, which has to stay
- * reachable or a game could never stop overriding it. A manual Game ID settles the mode on its own,
- * so the row is inert until that is cleared.
- */
 internal fun DialogInputHandler.cycleAchievementsMode(romId: Long, direction: Int) {
     val rom = romForAchievements(romId) ?: return
     if (rom.raGameId != null) return
@@ -329,9 +279,6 @@ internal fun DialogInputHandler.cycleAchievementsMode(romId: Long, direction: In
         romsRepository.setRaHardcore(rom.id, next)
         gameListViewModel.reload {
             launcherActions.scanResumableGames()
-            // Reopened rather than restored, keeping the cursor on the row that changed.
-            // restoreContextMenu answers a return only the confirm path records on its way out to
-            // another screen; cycling never leaves, so it would close the menu instead.
             openAchievementsMenu(romId, selectRow = MENU_ACHIEVEMENTS_MODE)
         }
     }
@@ -520,18 +467,12 @@ fun DialogInputHandler.buildGameContextOptions(item: ListItem, glState: GameList
             if (app?.artFile != null) add(MENU_DELETE_ART)
             add(MENU_REMOVE)
         } else {
-            // Everything RetroAchievements is meaningless logged out: an id identifies a game to
-            // an account that is not connected, and a mode is a property of a session that does
-            // not exist. The whole group goes rather than reading as rows waiting on a login.
             val options =
                 if (settings.raToken.isNotEmpty()) gameContextOptions
                 else gameContextOptions.filterNot { it == MENU_ACHIEVEMENTS }
             addAll(options.map { menuItem ->
                 when {
                     menuItem == MENU_EMULATOR_OVERRIDE && rom != null -> {
-                        // Reads the stored choice directly. Matching it back against a
-                        // generated option list used to blank this row whenever the option
-                        // could no longer be produced, e.g. an undownloaded Ricotta core.
                         val desc = gameOverrideStore.get(rom.id)?.let {
                             platformResolver.describeChoice(it, context.packageManager)
                         } ?: context.getString(dev.cannoli.scorza.R.string.emulator_platform_default)
@@ -583,7 +524,6 @@ fun DialogInputHandler.restoreContextMenu() {
             }
         }
         is ContextReturn.Achievements -> {
-            // Consumed: put the menu underneath back, so the group's own back leaves it.
             pendingContextReturn = ret.parent
             openAchievementsMenu(ret.romId, ret.selectRow)
         }
@@ -642,9 +582,7 @@ private fun DialogInputHandler.deleteRomFiles(rom: dev.cannoli.scorza.model.Rom)
         ?.deleteRecursively()
     val gameDir = romDirectoryWalker.gameDirectory(romFile)
     when {
-        // gameDir covers every organizer bundle shape (m3u, cue, disc-group, stem-matching rom folder).
         gameDir != null -> gameDir.deleteRecursively()
-        // User-authored m3u sitting alongside discs: delete each line and the m3u itself.
         romFile.extension.equals("m3u", ignoreCase = true) -> {
             val parent = romFile.parentFile
             if (parent != null) {

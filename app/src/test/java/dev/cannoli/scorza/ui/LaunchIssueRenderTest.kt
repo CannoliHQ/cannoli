@@ -11,12 +11,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/**
- * The screen measures the space it has so a long subject shrinks rather than pushing the title off
- * a short screen. Measuring meant reading `lineHeight`, and the theme's `titleLarge` leaves that
- * unspecified: `TextUnit.toPx` throws on anything that is not Sp, so the first version crashed the
- * app on every launch failure. Rendering under the real theme is what catches that.
- */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class LaunchIssueRenderTest {
@@ -34,8 +28,6 @@ class LaunchIssueRenderTest {
         compose.onNodeWithText("VIEW BIOS").assertIsDisplayed()
     }
 
-    // Three lines now: the problem, the pairing, and what the core does read. The third is the
-    // longest, so it is the one that would push the title off a short screen if it were not capped.
     @Test fun `the unsupported format screen renders all three lines`() {
         render("Core Does Not Support .zip", "Neo Geo \u00b7 Geolith Supports:\n.neo, .cue, .chd", "CHANGE EMULATOR")
         compose.onNodeWithText("Core Does Not Support .zip").assertIsDisplayed()
@@ -43,7 +35,6 @@ class LaunchIssueRenderTest {
         compose.onNodeWithText("CHANGE EMULATOR").assertIsDisplayed()
     }
 
-    // Six short formats fit, so a list is only trimmed when it genuinely will not.
     @Test fun `a six format list is shown in full`() {
         render(
             "Core Does Not Support .zip",

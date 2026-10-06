@@ -7,11 +7,6 @@ import org.junit.Test
 import java.io.File
 import java.nio.file.Files
 
-/**
- * What the server said when we installed something. Losing it is not a failure, it just means the
- * next check is unconditional and downloads a build we may already have, so every read is written
- * to fail soft rather than throw.
- */
 class DownloadStampsTest {
 
     private fun dir(): File = Files.createTempDirectory("stamps").toFile()
@@ -38,8 +33,6 @@ class DownloadStampsTest {
         assertEquals(1, DownloadStamps.read(d).size)
     }
 
-    // A server that sends no validator must record nothing, so the next check stays unconditional
-    // rather than sending a blank condition the server could match on.
     @Test fun `a missing etag is not recorded`() {
         val d = dir()
         DownloadStamps.put(d, "https://host/a.zip", null, "2026-08-25")
@@ -47,8 +40,6 @@ class DownloadStampsTest {
         assertTrue(DownloadStamps.read(d).isEmpty())
     }
 
-    // The date is what the screen shows. A server that sent no Last-Modified must read as absent
-    // rather than as an empty string rendered into the row.
     @Test fun `a build date is kept beside the etag, and its absence reads as absent`() {
         val d = dir()
         DownloadStamps.put(d, "https://host/a.zip", "\"1\"", "2026-08-25")
@@ -75,7 +66,6 @@ class DownloadStampsTest {
         assertNull(DownloadStamps.etagFor(dir(), "https://host/a.zip"))
     }
 
-    // Etags carry quotes and urls carry query strings; only the first tab separates them.
     @Test fun `a stamp with awkward characters survives`() {
         val d = dir()
         val url = "https://host/path%20with%20space.zip?x=1&y=2"
@@ -102,8 +92,6 @@ class DownloadStampsTest {
         assertEquals("e861a19d", DownloadStamps.crcFor(d, "https://host/core.so.zip"))
     }
 
-    // A 304 knows the etag and the date but says nothing about the binary. Erasing the crc there
-    // would make the next pass download a core it already has, which is the whole thing this avoids.
     @Test fun `a later stamp with no crc keeps the one already recorded`() {
         val d = dir()
         DownloadStamps.put(d, "https://host/core.so.zip", "\"abc\"", "2026-08-26", "e861a19d")
@@ -119,8 +107,6 @@ class DownloadStampsTest {
         assertEquals("7a2a3c39", DownloadStamps.crcFor(d, "https://host/core.so.zip"))
     }
 
-    // Rows written before crcs were recorded are three fields wide. They have to keep answering for
-    // the etag, and report no crc rather than a wrong one.
     @Test fun `a stamp written before crcs existed still reads`() {
         val d = dir()
         File(d, "download_etags.txt").writeText("https://host/core.so.zip\t\"abc\"\t2026-08-25")

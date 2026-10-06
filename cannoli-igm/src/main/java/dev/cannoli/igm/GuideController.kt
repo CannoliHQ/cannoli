@@ -3,13 +3,6 @@ package dev.cannoli.igm
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 
-/**
- * Guide navigation state plus the shared open/save/scroll-signal logic used by every host that
- * shows the Cannoli guide viewer: the in-game menu (IGMController, also consumed by the RicottaArch
- * fork via ricotta/IGMOverlay.kt) and the launcher's browse-time viewer. Host-agnostic: owns no
- * screen type and no RetroArchBridge. Each host keeps page/textZoom/selectedIndex in its own screen
- * data class and maps its input to the neutral methods here.
- */
 class GuideController {
     private var guideManager: GuideManager? = null
 
@@ -53,9 +46,6 @@ class GuideController {
         guidePageJump.intValue = 0
         guideScrollXPos = saved.scrollX
         guideInitialScrollX.intValue = saved.scrollX
-        // Counting pages stays on the platform renderer while PdfTileRenderer draws them. Opening a
-        // pdfium document needs a Context, and this controller is deliberately host-agnostic and
-        // takes none; a page count allocates nothing, so the split costs only this explanation.
         guidePageCount.intValue = if (guide.type == GuideType.PDF) {
             try {
                 val pfd = android.os.ParcelFileDescriptor.open(

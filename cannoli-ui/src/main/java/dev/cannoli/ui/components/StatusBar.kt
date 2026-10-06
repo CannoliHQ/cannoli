@@ -52,7 +52,6 @@ private fun cloudIcon(status: SaveSyncStatus): String? = when (status) {
     SaveSyncStatus.DISABLED -> null
 }
 
-// The RomM cache mirror, kept visually distinct from the cloud glyphs that mean save data.
 private fun cacheSyncIcon(status: RommCacheSyncStatus): String? = when (status) {
     RommCacheSyncStatus.SYNCING -> CannoliIcons.DatabaseSync.glyph
     RommCacheSyncStatus.ERROR -> CannoliIcons.DatabaseAlert.glyph

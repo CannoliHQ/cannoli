@@ -34,7 +34,6 @@ class SaveHasherTest {
     @Test fun hashBundle_sorts_entries_by_name() {
         val a = file("a.mcr", "one".toByteArray())
         val b = file("b.mcr", "two".toByteArray())
-        // Insertion order b,a must not change the result; RomM sorts namelist().
         assertEquals("c065716f579488420c1c940ccafabbb3", SaveHasher.hashBundle(mapOf("b.mcr" to b, "a.mcr" to a)))
     }
 }

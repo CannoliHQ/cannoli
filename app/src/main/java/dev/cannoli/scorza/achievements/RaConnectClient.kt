@@ -25,7 +25,6 @@ open class RaConnectClient(
     fun validateToken(username: String, token: String): RawResponse =
         post(FormBody.Builder().add("r", "login2").add("u", username).add("t", token).build())
 
-    /** Exchanges a password for an account token. The password never leaves this call. */
     fun loginWithPassword(username: String, password: String): LoginResult {
         val res = post(FormBody.Builder().add("r", "login").add("u", username).add("p", password).build())
         if (res.code !in 200..299) {
@@ -55,7 +54,6 @@ open class RaConnectClient(
         post(FormBody.Builder().add("r", "startsession").add("u", username).add("t", token)
             .add("g", gameId.toString()).add("l", RA_CLIENT_VERSION).build())
 
-    /** Returns the RA game id (0 if the hash is unrecognized), or -1 if the server could not be reached. */
     fun resolveGameId(username: String, token: String, hash: String): Int {
         val res = post(FormBody.Builder().add("r", "gameid").add("u", username).add("t", token)
             .add("m", hash).build())
@@ -63,12 +61,6 @@ open class RaConnectClient(
         return try { JSONObject(res.body).optInt("GameID", 0) } catch (_: Exception) { 0 }
     }
 
-    /**
-     * Sends a request body the achievement client built, exactly as it built it.
-     *
-     * Replayed rather than rebuilt: an unlock carries fields only that client can produce, and asking
-     * the server the same question it was asked keeps this a courier rather than a second client.
-     */
     open fun replay(postData: String): RawResponse = postRaw(postData)
 
     private fun post(form: FormBody): RawResponse {
@@ -99,49 +91,24 @@ open class RaConnectClient(
     }
 
     companion object {
-        // Must track RCHEEVOS_VERSION_MAJOR/MINOR/PATCH in
-        // retroarch/deps/rcheevos/src/rc_version.h, the vendored copy RetroArch itself hashes and
-        // caches with, since a launch and its cached session are served by the same rcheevos.
         private const val RA_CLIENT_VERSION = "12.4.0"
 
-        /**
-         * The user agent the embedded RetroArch sends, because the server identifies the client from
-         * it and answers an unrecognised one with a set carrying a "Warning: Unknown Emulator"
-         * achievement that always fires. What this fetches is played by that RetroArch.
-         *
-         * Same shape as `rcheevos_get_user_agent`, with the release parsed the way
-         * `frontend_android_get_version` parses `ro.build.version.release`. The core clause RetroArch
-         * appends once a core is loaded has no counterpart here, which is the shape it sends itself
-         * before one is.
-         */
         fun retroArchUserAgent(retroArchVersion: String, androidRelease: String): String {
             val parts = Regex("\\d+").findAll(androidRelease).map { it.value.toInt() }.toList()
             return "RetroArch/$retroArchVersion (Android ${parts.getOrElse(0) { 0 }}.${parts.getOrElse(1) { 0 }})"
         }
 
-        // The default rather than a value each construction site passes: the site that fetches a
-        // preload is not the site the achievements module builds, and only one of them carried the
-        // agent the server was reading.
         private fun defaultUserAgent(): String = retroArchUserAgent(
             dev.cannoli.scorza.BuildConfig.RETROARCH_VERSION,
             android.os.Build.VERSION.RELEASE.orEmpty(),
         )
 
-        /**
-         * The API's Success flag, or null when the body is not the JSON it promises.
-         *
-         * Null is not false. A 200 carrying a captive portal's HTML says nothing about the
-         * credentials, so the callers that can tell the difference report it as unreachable
-         * rather than accusing the user of a bad token.
-         */
         fun successFlag(body: String): Boolean? = try {
             JSONObject(body).takeIf { it.has("Success") }?.optBoolean("Success", false)
         } catch (_: Exception) {
             null
         }
 
-        /** OkHttp is designed to be shared; one instance reuses the connection pool and dispatcher
-         *  across every request instead of spinning up a new pool per call during bulk preload. */
         private val sharedClient: OkHttpClient by lazy { OkHttpClient() }
     }
 }

@@ -9,12 +9,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-// extractBundledCores re-extracts on every build update (the APK's lastModified stamp changes),
-// which used to delete any previously-recorded core name the new APK no longer bundles. That
-// wiped cores users relied on the moment a build shipped fewer bundled cores than the last one,
-// bundled-originally or re-downloaded under the same name made no difference. These drive the
-// real function against the test APK (which bundles no libretro cores itself) rather than a pure
-// helper, since the bug was in extractBundledCores's own cleanup step, not in a decision function.
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class BundledCoreCleanupTest {

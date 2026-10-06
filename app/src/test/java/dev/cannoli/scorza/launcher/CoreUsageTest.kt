@@ -7,11 +7,6 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/**
- * This decides what a bulk removal deletes. Every case here is written from the same direction:
- * keeping a core that could have gone is a few megabytes, deleting one still in use is a download
- * and a failed launch in between, so anything ambiguous has to count as used.
- */
 class CoreUsageTest {
 
     private fun embedded(core: String) =
@@ -26,9 +21,6 @@ class CoreUsageTest {
         assertEquals(setOf("snes9x_libretro"), used)
     }
 
-    // getCoreMapping folds in the built-in default, so a platform nobody has configured still
-    // names a core. Reading only explicit picks would delete the default core of every platform
-    // the user never opened the picker for, which is most of them.
     @Test fun `a default nobody explicitly picked still counts as used`() {
         val defaults = mapOf("NDS" to "melondsds_libretro")
         val used = CoreUsage.usedCoreIds(
@@ -70,8 +62,6 @@ class CoreUsageTest {
         assertEquals(900_000L, CoreUsage.reclaimableBytes(rows))
     }
 
-    // The removable ones sort last, so the list opens on what is safe to look at rather than on
-    // the row the user is most likely to act on by accident.
     @Test fun `used cores sort before unused ones`() {
         val rows = CoreUsage.rows(
             installed = listOf("aaa_unused", "zzz_used"),

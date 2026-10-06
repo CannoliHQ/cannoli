@@ -21,7 +21,6 @@ class PermissionsInputHandler @Inject constructor(
         nav.push(LauncherScreen.Permissions(states = permissionStates(context)))
     }
 
-    /** Grants land as a return from the system settings page, so the page rereads on resume. */
     fun refresh() {
         val screen = current() ?: return
         nav.replaceTop(screen.copy(states = permissionStates(context)))

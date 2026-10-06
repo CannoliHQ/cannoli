@@ -14,10 +14,6 @@ object DeviceType {
         (context.getSystemService(Context.UI_MODE_SERVICE) as? UiModeManager)
             ?.currentModeType == Configuration.UI_MODE_TYPE_TELEVISION
 
-    // "AVD" here means an Android Virtual Device (the Studio emulator we run the app on), never a
-    // game emulator like RetroArch: "emulator" is already taken by that sense across this
-    // codebase. Build fields are parameters so this stays a pure function under unit test.
-    //
     // Every clause is a positive emulator marker. Deliberately absent: "generic" and "unknown"
     // fingerprint prefixes. Build.getString returns "unknown" for any unset property and
     // Build.FINGERPRINT is composed from ro.product.brand when ro.build.fingerprint is empty, so

@@ -9,8 +9,6 @@ data class BuildIdentityLines(val version: String, val detail: String?)
 
 private const val RELEASE_SEPARATOR = "  •  "
 
-// The release date names when the build was cut, so it has to read the same everywhere. Deriving
-// it in the viewer's zone would slide a near-midnight build onto a different day per device.
 private val BUILD_ZONE: TimeZone = TimeZone.getTimeZone("UTC")
 
 private fun format(pattern: String, millis: Long, zone: TimeZone): String =

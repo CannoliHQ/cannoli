@@ -16,17 +16,12 @@ import org.robolectric.annotation.Config
 import java.io.File
 import java.util.Base64
 
-/** A ROM directory the launcher did not scaffold keeps whatever folder names the user already had,
- *  and the launcher resolves those case-insensitively. The dashboard drives every request off the
- *  tag list, so a tag it is handed has to be one the games endpoint will serve. */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class KitchenPlatformTagTest {
 
     private var server: KitchenHttpServer? = null
     private var root: File? = null
-    // Ephemeral: a fixed port collides with whatever else on the machine happens to
-    // take it, which fails the whole file with a socket error that reads like a bug.
     private var port = 0
 
     @After fun tearDown() {
@@ -88,8 +83,6 @@ class KitchenPlatformTagTest {
         return (0 until array.length()).map { array.getString(it) }
     }
 
-    /** The dashboard reaches the games endpoint through encodeURIComponent, so a tag carrying a
-     *  space or a fragment marker still arrives whole. */
     private fun gamesStatus(tag: String): Int =
         get("/api/games/" + java.net.URLEncoder.encode(tag, "UTF-8").replace("+", "%20")).first
 

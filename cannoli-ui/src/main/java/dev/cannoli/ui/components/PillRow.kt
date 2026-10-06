@@ -46,8 +46,6 @@ import kotlinx.coroutines.delay
 val screenPadding = 20.dp
 val pillInternalH = 14.dp
 
-// Short handhelds (the 3.5" AYANEO Pocket Micro is ~320dp tall) spend over a third of the
-// screen on chrome, which costs a whole list row. Halve the vertical edge padding there.
 private const val CompactScreenHeightDp = 400
 
 @Composable
@@ -59,28 +57,19 @@ fun screenInsets(): PaddingValues {
     )
 }
 
-// Hosts that solve a rhythm reserve exactly what the bar measures plus one gap. The in-game menu
-// does not solve one, so it keeps the reservation it has always had.
 @Composable
 fun footerReservation(): Dp =
     LocalListRhythm.current?.footerReserve ?: (48 * LocalScaleFactor.current).dp
 
-/** The spacer between a [ScreenTitle] and the list below it. */
 @Composable
 fun listTitleSpacing(): Dp = LocalListRhythm.current?.titleSpacer ?: 8.dp
 
-/** Gap between two adjacent row labels when nothing is spread into it. */
 @Composable
 fun pillNominalGap(): Dp = (pillVerticalPadding() + pillInset()) * 2
 
-// Pill geometry is a pure function of the text size so every host derives the same rows.
-// It scales down from the reference size and never up, keeping small text at the reference
-// proportions instead of drowning it in fixed padding.
 const val PillReferenceTextSp = 24f
 private const val PillLineHeightExtraSp = 10f
 private const val PillVerticalPaddingDp = 6f
-// Rows sit flush, so the row pitch is the pill itself and the highlight carries the separation.
-// MinUI lays its list out the same way: `SCALE1(PADDING + (j * PILL_SIZE))`, pills contiguous.
 private const val PillInsetDp = 0f
 
 fun pillScaleFor(textSizeSp: Int): Float = minOf(1f, textSizeSp / PillReferenceTextSp)
@@ -264,8 +253,6 @@ fun PillRowKeyValue(
                 PillCheckGlyph(checked = checkState, style = textStyle, color = labelColor)
             }
             if (leadingIcon != null) {
-                // Styled off the label the way valueIcon is styled off the value, so the glyph
-                // resolves the theme's line metrics rather than the icon font's own.
                 Text(
                     text = leadingIcon,
                     style = textStyle.copy(fontFamily = LocalCannoliIconFont.current),
@@ -300,10 +287,6 @@ fun PillRowKeyValue(
                 Spacer(modifier = Modifier.width(8.dp))
             }
             if (valueIcon != null) {
-                // Same style as the value beside it, differing only in family. Passing fontSize
-                // alone left lineHeight unspecified, so the glyph resolved the icon font's own
-                // metrics while the value used the theme's, and CenterVertically then centred two
-                // boxes of different heights.
                 Text(
                     text = valueIcon,
                     style = valueStyle.copy(fontFamily = LocalCannoliIconFont.current),
@@ -376,7 +359,6 @@ fun PillRowInfo(
     }
 }
 
-/** The shared multi-select checkbox glyph used by every list row. Call inside a [Row]. */
 @Composable
 fun PillCheckGlyph(checked: Boolean, style: TextStyle, color: Color) {
     Text(

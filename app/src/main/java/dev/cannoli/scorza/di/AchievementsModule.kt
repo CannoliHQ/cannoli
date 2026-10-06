@@ -33,9 +33,6 @@ object AchievementsModule {
         return RaPendingDrainer(
             queue = { RaPendingUnlocks(File(CannoliPaths(paths.root).configRetroAchievements, "Pending")) },
             client = client,
-            // Built fresh per call rather than injected as a singleton, so a re-login mid-session
-            // is not stuck refreshing under the account that was current when this was first
-            // resolved. Mirrors RaPreloadController.engine(), which reads settings the same way.
             refreshGame = { gameId ->
                 RaPreloadEngine(
                     store = RaOfflineStore(CannoliPaths(paths.root).configRaOffline),

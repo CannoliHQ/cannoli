@@ -93,8 +93,6 @@ class EditButtonsController @Inject constructor(
             }
         }
 
-        // Promote source to USER_WIZARD on actual binding changes so the resolver can distinguish
-        // "user customized buttons" from "cosmetic edit on an unidentified fallback."
         val saved = mapping.copy(
             bindings = newBindings,
             userEdited = true,

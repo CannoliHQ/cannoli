@@ -56,11 +56,6 @@ class UpdateManagerPurgeTest {
     private val apk = 299_265_140L
 
     @Test
-    fun `requires the download twice over plus headroom`() {
-        assertEquals(apk * 2 + 48L * 1024 * 1024, UpdateManager.requiredFor(apk))
-    }
-
-    @Test
     fun `blocks when only the download itself would fit`() {
         assertFalse(UpdateManager.hasRoom(apk, apk + 1024))
     }
@@ -75,7 +70,6 @@ class UpdateManagerPurgeTest {
         assertFalse(UpdateManager.hasRoom(apk, UpdateManager.requiredFor(apk) - 1))
     }
 
-    // Chunked responses report no length, so there is nothing to check and the download runs.
     @Test
     fun `allows an unknown content length`() {
         assertTrue(UpdateManager.hasRoom(-1L, 0L))

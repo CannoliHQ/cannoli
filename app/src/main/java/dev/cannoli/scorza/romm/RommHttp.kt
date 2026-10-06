@@ -28,8 +28,6 @@ class RommHttp(
         return built
     }
 
-    // Streaming ROM/firmware/manual downloads reuse the base client's pool and auth but need a much
-    // longer read timeout: the server may spend minutes zipping a large ROM before its first byte.
     @Synchronized
     fun downloadClient(): OkHttpClient {
         val base = client()
@@ -43,8 +41,6 @@ class RommHttp(
         return built
     }
 
-    // Drop pooled sockets whose network has gone away. Without this the next request can pick a dead
-    // connection and block until its timeout rather than failing fast onto a fresh one.
     @Synchronized
     fun evictConnections() {
         cached?.connectionPool?.evictAll()

@@ -1,7 +1,6 @@
 package dev.cannoli.igm
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 private const val KEY_WEST = 99
@@ -51,14 +50,5 @@ class IGMAchievementsFilterTest {
         c.handleKeyDown(KEY_WEST)
         c.handleKeyDown(KEY_WEST)
         assertEquals(0, screen(c).filter)
-    }
-
-    @Test fun `the unsynced bucket lists only what is waiting to be submitted`() {
-        val list = listOf(ach(1, true), ach(2, false), ach(3, true, pending = true))
-        val c = controllerWith(list)
-        repeat(3) { c.handleKeyDown(KEY_WEST) }
-        val shown = list.filter { it.pendingSync }
-        assertEquals(1, shown.size)
-        assertTrue(shown.single().id == 3)
     }
 }

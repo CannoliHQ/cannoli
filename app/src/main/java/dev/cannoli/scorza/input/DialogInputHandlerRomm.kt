@@ -33,9 +33,6 @@ internal fun DialogInputHandler.onSaveConflictConfirm(ds: DialogState.SaveSyncCo
         return
     }
     val keepLocal = ds.selectedIndex == 0
-    // Applying a choice is an upload or a download, so the press has to land before the network
-    // does. Leaving the conflict on screen for the whole round trip reads as a button that did
-    // nothing. Same swap the conflicts list already makes for the same reason.
     nav.dialogState.value = DialogState.ConflictsApplying
     ioScope.launch {
         try {
@@ -49,7 +46,6 @@ internal fun DialogInputHandler.onSaveConflictConfirm(ds: DialogState.SaveSyncCo
                 hadError = false,
             )
         } catch (_: Throwable) {
-            // apply failed (offline/IO): never strand the launch; proceed with the local save
         } finally {
             withContext(Dispatchers.Main) {
                 nav.dialogState.value = DialogState.None
@@ -70,12 +66,6 @@ internal fun DialogInputHandler.backToRommSettings(row: dev.cannoli.scorza.ui.co
     )
 }
 
-/**
- * The RomM settings rows, two of which cycle a value rather than opening anything.
- *
- * Rebuilt after every cycle rather than copied with a new value: the row labels read the settings
- * they describe, so building again is what makes the row show what it just changed to.
- */
 internal fun DialogInputHandler.rommSettingsPicker(selectedIndex: Int = 0): DialogState.Picker {
     val rows = dev.cannoli.scorza.ui.components.RommSettingsRow.entries.toList()
     return DialogState.Picker(
@@ -151,7 +141,6 @@ internal fun DialogInputHandler.rommAdvancedPicker(): DialogState.Picker = Dialo
     }
 }
 
-/** Rebuilds itself on every toggle, which is what keeps the highlight on the row that flipped. */
 internal fun DialogInputHandler.rommPlatformTogglePicker(
     items: List<dev.cannoli.scorza.ui.screens.RommPlatformToggleItem>,
     selectedIndex: Int = 0,
@@ -243,10 +232,6 @@ private fun DialogInputHandler.onRommSettingsSelected(row: dev.cannoli.scorza.ui
     }
 }
 
-/**
- * [selectedRow] rather than an index: which rows exist depends on five values this already knows,
- * so a caller working the position out for itself is a second copy of that rule.
- */
 internal fun DialogInputHandler.buildSaveSyncMenu(
     pendingConflicts: Int,
     selectedRow: dev.cannoli.scorza.ui.components.RommSaveSyncRow? = null,
@@ -368,10 +353,6 @@ internal fun DialogInputHandler.returnToSaveSyncMenu(row: dev.cannoli.scorza.ui.
     }
 }
 
-/**
- * One game's backups. Built in three places, so where back goes is stated once here rather than
- * once per caller: the context menu route returns to that menu, everything else to the game list.
- */
 internal fun DialogInputHandler.saveBackupListPicker(
     tag: String,
     base: String,
@@ -410,7 +391,6 @@ internal fun DialogInputHandler.openBackupList(game: dev.cannoli.scorza.romm.syn
     }
 }
 
-// Per-game entry from the game context menu: jump straight to that game's backups.
 private fun DialogInputHandler.openGameBackups(tag: String, base: String, displayName: String) {
     ioScope.launch {
         val backups = saveSyncService.listBackups(tag, base)
@@ -453,8 +433,6 @@ internal fun DialogInputHandler.openSyncErrors(fromSaveSyncMenu: Boolean = false
     )
 }
 
-// Back out of a save-sync child list (history/errors) to whichever menu opened it,
-// rebuilding it so the conflict + error rows stay consistent.
 internal fun DialogInputHandler.returnFromSaveSyncChild(
     fromSaveSyncMenu: Boolean,
     saveSyncRow: dev.cannoli.scorza.ui.components.RommSaveSyncRow,
@@ -514,9 +492,6 @@ internal fun DialogInputHandler.cycleConflictChoice(ds: DialogState.ConflictsMen
     nav.dialogState.value = ds.copy(rows = newRows)
 }
 
-// Each pass downloads or uploads a save per row and takes seconds. The applying state replaces
-// the list so the press has visible feedback and the rows can't be re-applied mid-flight; the
-// guard is the second line of defense on the async boundary.
 internal fun DialogInputHandler.applyAllConflicts(ds: DialogState.ConflictsMenu) {
     if (!applyingConflicts.compareAndSet(false, true)) return
     val fromSaveSyncMenu = ds.fromSaveSyncMenu
@@ -556,7 +531,6 @@ internal fun DialogInputHandler.applyAllConflicts(ds: DialogState.ConflictsMenu)
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (_: Throwable) {
-            // Never strand the user on the applying overlay: it is full screen and eats input.
             withContext(Dispatchers.Main) { nav.dialogState.value = DialogState.None }
         } finally {
             applyingConflicts.set(false)
@@ -599,13 +573,6 @@ internal fun DialogInputHandler.onRommConfirm(ds: DialogState.RommConfirm) {
     }
 }
 
-/**
- * The versions of one RomM game, and downloading the chosen one.
- *
- * Formatting lives here rather than in the picker: the glyph marking the primary variant and the
- * size beside each row are this menu's business, and a row type that knew about either would have
- * to learn every other menu's decoration too.
- */
 internal fun DialogInputHandler.rommVersionPicker(
     tag: String,
     entries: List<dev.cannoli.scorza.ui.screens.RommVariantEntry>,
@@ -682,7 +649,6 @@ private fun DialogInputHandler.openSaveSlotsForRom(rom: dev.cannoli.scorza.model
             ErrorLog.write("save_slots_open: ${e.message}")
         }.getOrDefault(emptyList())
         withContext(Dispatchers.Main) {
-            // Push the screen and drop the submenu together so no frame shows the list in between.
             nav.push(LauncherScreen.SaveSlots(gameKey, tag, base, rom.displayName, romId, emulator, slots))
             nav.dialogState.value = DialogState.None
         }

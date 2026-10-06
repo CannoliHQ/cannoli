@@ -12,7 +12,6 @@ enum class EmulatorSource(val labelRes: Int) {
      */
     Embedded(R.string.value_emulator_source_internal),
 
-    /** A separate emulator app. The choice names which package. */
     Standalone(R.string.value_emulator_source_standalone);
 
     val emptyMessageRes: Int
@@ -22,15 +21,6 @@ enum class EmulatorSource(val labelRes: Int) {
         }
 
     companion object {
-        /**
-         * Migration only. v1 cores.json stored the picker's display caption as the runner, so a
-         * source has to be recovered from it. Nothing at runtime may parse a caption back into a
-         * source: options and choices carry [EmulatorSource] directly.
-         *
-         * "Internal" named the built-in libretro runner, which the embedded RetroArch replaced.
-         * Any other core label named a separately installed RetroArch, a tier that no longer
-         * exists, so it resolves to the runner that can still load the core it chose.
-         */
         fun fromRunnerLabel(label: String?): EmulatorSource? = when (label) {
             RETIRED_INTERNAL_SOURCE -> Embedded
             "Standalone", "App" -> Standalone
@@ -38,14 +28,8 @@ enum class EmulatorSource(val labelRes: Int) {
             else -> Embedded
         }
 
-        /** The source name v1 and early v2 files used for the removed built-in libretro runner. */
         const val RETIRED_INTERNAL_SOURCE = "Internal"
 
-        /**
-         * The source name used for a separately installed RetroArch, a tier that no longer exists.
-         * Every stored occurrence names an external install, since the embedded runner was never
-         * released, and none of them can run anything now.
-         */
         const val RETIRED_EXTERNAL_RA_SOURCE = "RetroArch"
     }
 }

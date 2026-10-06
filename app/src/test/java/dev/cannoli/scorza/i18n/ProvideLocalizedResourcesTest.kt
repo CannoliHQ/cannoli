@@ -14,14 +14,6 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 
-/**
- * MainActivity handles orientation changes itself, so nothing recreates the composition on rotation:
- * the only signal is AndroidComposeView reassigning LocalConfiguration, which these tests stand in
- * for. The configuration this provider hands downstream has to follow that, because screens read the
- * orientation off it to decide whether the portrait margin applies and how much edge padding a short
- * screen gets. Providing a value that is not derived from the live one leaves them pinned to the
- * orientation the launcher started up in.
- */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class ProvideLocalizedResourcesTest {

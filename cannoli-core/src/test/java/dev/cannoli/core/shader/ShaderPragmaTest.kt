@@ -37,22 +37,16 @@ class ShaderPragmaTest {
         assertEquals(0.1f, p.step, 0.001f)
     }
 
-    // The description holds spaces, so the line cannot simply be split on whitespace.
     @Test fun `a multi word description survives`() {
         val pass = shader("a.slang", """#pragma parameter mask "Mask Dot Width" 1.0 1.0 100.0 1.0""")
         assertEquals("Mask Dot Width", ShaderPragma.parameters(listOf(pass)).single().desc)
     }
 
-    // A row that cannot be moved is worse than one that moves in an arbitrary amount.
     @Test fun `a missing step becomes the range in a hundred parts`() {
         val pass = shader("a.slang", """#pragma parameter warp "Warp" 0.5 0.0 1.0""")
         assertEquals(0.01f, ShaderPragma.parameters(listOf(pass)).single().step, 0.0001f)
     }
 
-    /**
-     * VHSPro keeps its whole parameter block in one .inc and includes it from every pass. Without
-     * following includes such a chain looks like it has nothing to tune at all.
-     */
     @Test fun `parameters declared in an include are found`() {
         File(tempFolder.root, "params.inc").writeText(
             """#pragma parameter noise "Noise" 0.2 0.0 1.0 0.05"""
@@ -78,8 +72,6 @@ class ShaderPragmaTest {
         assertEquals(listOf("x"), ShaderPragma.parameters(listOf(pass)).map { it.id })
     }
 
-    // One name, one value, whichever passes use it. A chain that repeats a preset must not show
-    // the same tunable twice.
     @Test fun `a parameter declared by several passes appears once`() {
         val a = shader("a.slang", """#pragma parameter warp "Warp" 0.5 0.0 1.0 0.1""")
         val b = shader("b.slang", """#pragma parameter warp "Warp" 0.9 0.0 1.0 0.1""")

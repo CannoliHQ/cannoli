@@ -19,8 +19,6 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
 
-// A failed launch has to say which mapping supplied the emulator that failed, otherwise recovery
-// rewrites the platform mapping while the per-game override that broke the launch survives.
 class LaunchManagerRecoveryTargetTest {
 
     @get:Rule val tmp = TemporaryFolder()
@@ -99,7 +97,6 @@ class LaunchManagerRecoveryTargetTest {
 
         assertEquals(gc.id, dialog.romId)
         assertEquals("GC", dialog.platformTag)
-        // Pins the core-presence check as the branch under test, not the no-emulator-set fallback.
         assertEquals("dolphin_libretro", dialog.coreId)
     }
 
@@ -119,8 +116,6 @@ class LaunchManagerRecoveryTargetTest {
         assertEquals("dolphin_libretro", dialog.coreId)
     }
 
-    // A standalone platform with nothing to resolve used to report a missing core named "unknown",
-    // which named a core the user never chose. It is a different failure and says so.
     @Test fun `a standalone platform with no app resolved names the platform, not a core`() {
         val root = tmp.newFolder()
         val mgr = manager(root)
@@ -137,7 +132,6 @@ class LaunchManagerRecoveryTargetTest {
         assertEquals("GC", dialog.platformTag)
     }
 
-    // Recovery still has to land somewhere, or the dialog offers a fix that goes nowhere.
     @Test fun `a per game standalone override with no app resolved points recovery at the game`() {
         val root = tmp.newFolder()
         val mgr = manager(root)

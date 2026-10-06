@@ -410,8 +410,6 @@ class SystemListViewModel @Inject constructor(
         scan(config)
     }
 
-    // In Five Game Handheld only the collection's member order is saved, so a folder moved among
-    // the games would not stick, and moving the folders alone would rewrite the platform order.
     private fun ListItem.isReorderable(): Boolean = when (this) {
         is ListItem.ToolsFolder, is ListItem.PortsFolder -> lastScanConfig?.contentMode != ContentMode.FIVE_GAME_HANDHELD
         else -> this is ListItem.PlatformItem || this is ListItem.CollectionItem || this is ListItem.GameItem

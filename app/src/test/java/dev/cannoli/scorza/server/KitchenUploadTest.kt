@@ -64,8 +64,6 @@ class KitchenUploadTest {
         assertEquals("SAVEDATA", dest.readText())
     }
 
-    // A client that dies mid-upload leaves the body short of the length it declared. Writing what
-    // arrived and returning beats blocking for bytes that are never coming.
     @Test fun rawBodyStopsWhenTheStreamEndsEarly() {
         val dest = File(dir, "state.srm")
         KitchenUpload.streamRawBody(ByteArrayInputStream("SHORT".toByteArray()), 4096L, dest)

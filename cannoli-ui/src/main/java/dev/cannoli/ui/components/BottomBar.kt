@@ -56,13 +56,6 @@ private fun barTextStyle(sizeSp: Float, sf: Float, font: FontFamily = LocalCanno
 @Composable
 private fun barGlyphStyle(sf: Float): TextStyle = barTextStyle(GlyphTextSp, sf, LocalCannoliIconFont.current)
 
-/**
- * What the bar actually measures, so the space reserved under a list matches it.
- *
- * The text is measured rather than taken as its line height: both runs set [LineHeightStyle.Trim]
- * to `Both`, which trims the line box back to the glyphs, so a run renders shorter than the line
- * height asks for. Assuming otherwise over-reserved by about 5dp.
- */
 @Composable
 fun bottomBarHeight(): Dp {
     val sf = LocalScaleFactor.current
@@ -97,8 +90,6 @@ fun GlyphPill(content: @Composable () -> Unit) {
 
 @Composable
 fun GlyphPill(button: String) {
-    // The menu glyph means "however this pad opens the menu": on a pad with no menu button that is
-    // the shortcut spelled out in its own pill.
     if (button == dev.cannoli.ui.MENU_GLYPH) {
         val glyphs = dev.cannoli.ui.theme.LocalMenuGlyph.current.glyphs()
         if (glyphs != listOf(button)) {
@@ -133,8 +124,6 @@ fun LegendPill(label: String, glyphs: @Composable () -> Unit) {
     ) {
         glyphs()
 
-        // One line, always: a legend that wraps both breaks mid-word on a narrow screen and renders
-        // taller than bottomBarHeight measured, which is what the list reserves under itself.
         Text(
             text = label,
             style = barTextStyle(LegendTextSp, sf).copy(color = accent),
@@ -167,8 +156,6 @@ fun BottomBar(
     rightItems: List<Pair<String, String>>
 ) {
     val sf = LocalScaleFactor.current
-    // Too wide legends shrink together to a floor; past it the left side ellipsises so the
-    // primary action on the right keeps its text.
     SubcomposeLayout(modifier = modifier.fillMaxWidth()) { constraints ->
         val available = constraints.maxWidth
         val needed = subcompose("probe") {

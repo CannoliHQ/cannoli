@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-"""Tests for the Crowdin contributor sync. Run: python3 -m unittest discover -s scripts -p 'test_*.py'"""
 
 import unittest
 
@@ -11,7 +10,6 @@ from sync_crowdin_contributors import (
     split_languages,
 )
 
-# Crowdin display name -> BCP-47 tag, as derived from the live androidCode field.
 NAME_TO_TAG = {
     "Arabic": "ar-SA",
     "Chinese Simplified": "zh-CN",
@@ -32,7 +30,6 @@ ALLOWED = [
     "ja-JP", "pt-BR", "pt-PT", "es-ES", "uk-UA",
 ]
 
-# Verbatim from the Crowdin top members export.
 REPORT = '''Name,Languages,"Translated (Words)","Target Words","Approved (Words)",Voted,"""+"" votes received","""-"" votes received","Winning (Words)",Joined
 "Christophe Coquelet (pawndev)",French,1369,1635,0,24,0,0,1363,"2026-07-26 05:34:21"
 "Bobby Chiang (detecti1914)","Chinese Simplified",1345,2606,0,0,0,0,1306,"2026-07-25 20:41:56"
@@ -81,7 +78,6 @@ class SplitLanguagesTest(unittest.TestCase):
             split_languages("French; Italian", self.known),
         )
 
-    # Crowdin separates languages with ";" precisely because a name may contain ",".
     def test_comma_inside_a_language_name(self):
         self.assertEqual(
             (["Portuguese, Brazilian"], ""),
@@ -94,7 +90,6 @@ class SplitLanguagesTest(unittest.TestCase):
             split_languages("Portuguese, Brazilian; German", self.known),
         )
 
-    # Verbatim from the export that broke the comma-splitting version.
     def test_every_language_at_once(self):
         cell = (
             "Ukrainian; Portuguese; French; German; Chinese Simplified; "
@@ -149,7 +144,6 @@ class ParseReportTest(unittest.TestCase):
         )
 
     def test_contributors_are_alphabetical_case_insensitively(self):
-        # "ramsay nieve" sorts after "Raadon" only if case is folded.
         self.assertEqual(["Luke Nance", "Raadon", "ramsay nieve"], self.parse()["es-ES"])
 
     def test_languages_with_no_contributors_are_absent(self):

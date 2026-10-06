@@ -54,8 +54,6 @@ class LogSink(private val maxBytes: Long) : LogTarget {
             closeStream()
             return
         }
-        // Log lines are effectively ASCII, so char count stands in for byte count here.
-        // Rotation is a housekeeping threshold, not a hard cap, so the drift is harmless.
         written += line.length
         if (maxBytes > 0 && written > maxBytes) rotate()
     }

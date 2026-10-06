@@ -25,9 +25,6 @@ class RaConnectClientTest {
         assertEquals("RetroArch/1.22.2 (Android 0.0)", RaConnectClient.retroArchUserAgent("1.22.2", ""))
     }
 
-    // The server reads this header to decide whether it knows the client, and answers a client it
-    // does not know with a set carrying a warning achievement that always fires. Every request the
-    // launcher makes is for a set the embedded RetroArch plays, so they all have to say so.
     @Test
     fun everyRequestIdentifiesAsRetroArchByDefault() {
         val server = MockWebServer()
@@ -51,8 +48,6 @@ class RaConnectClientTest {
         server.shutdown()
     }
 
-    // The version is generated from the vendored tree, so an RetroArch bump cannot leave the
-    // launcher claiming a version it no longer ships.
     @Test
     fun theClaimedVersionIsTheOneWeVendor() {
         val here = java.io.File("retroarch/version.all")

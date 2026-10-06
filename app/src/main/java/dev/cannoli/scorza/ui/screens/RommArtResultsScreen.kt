@@ -35,7 +35,6 @@ import dev.cannoli.ui.theme.Spacing
 
 data class RommArtIssueRow(val text: String, val isHeader: Boolean)
 
-/** The scrollable problem-game rows (no-match section then failed section). Shared with input. */
 fun rommArtIssueRows(
     results: ArtFetchResults,
     noMatchHeader: String,

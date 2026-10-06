@@ -6,20 +6,6 @@ import android.view.MotionEvent
 import dagger.hilt.android.scopes.ActivityScoped
 import javax.inject.Inject
 
-/**
- * Stick-axis direction tracker with auto-repeat for menu navigation. Reads `AXIS_X` / `AXIS_Y`
- * from motion events; on a direction transition fires the matching dispatcher callback
- * (`onUp`/`onDown`/`onLeft`/`onRight`) and posts a runnable to re-fire at [REPEAT_INTERVAL_MS]
- * after an [INITIAL_DELAY_MS] hold.
- *
- * Lives outside the dispatcher because a mapping that carries sticks binds them to the
- * ANALOG_STICK role, not to canonical directional buttons -- so the dispatcher's evaluator never produces a
- * Pressed(BTN_DOWN) delta for raw stick motion, and the held-state poller never sees the
- * canonical held. This helper provides the missing stick-to-navigation path.
- *
- * Activities call [handleMotion] from their motion event hook and [stop] from `onPause` so a
- * runnable doesn't keep firing into the other activity's wired callbacks after a transition.
- */
 @ActivityScoped
 class StickAutoRepeat @Inject constructor(
     private val dispatcher: InputDispatcher,
@@ -46,9 +32,6 @@ class StickAutoRepeat @Inject constructor(
         if (newDir != heldDir) {
             handler.removeCallbacks(runnable)
             heldDir = newDir
-            // When the dispatcher already handled this motion (stick is bound as a digital
-            // direction), the canonical's auto-repeat is owned by MenuNavigationPoller. Firing
-            // here would double-scroll, so we only track the transition.
             if (newDir != 0 && !dispatcherHandled) {
                 fireForDir(newDir)
                 handler.postDelayed(runnable, INITIAL_DELAY_MS)

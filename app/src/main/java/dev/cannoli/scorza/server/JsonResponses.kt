@@ -22,11 +22,6 @@ internal data class ErrorResponse(val error: String)
 @Serializable
 internal data class TagsResponse(
     val tags: List<String>,
-    /**
-     * Manufacturer per tag, so the dashboard groups off the launcher's definitions rather than a
-     * second list of its own. Added after tags, and defaulted, so a Kitchen build that predates it
-     * keeps working.
-     */
     val groups: Map<String, String> = emptyMap(),
 )
 
@@ -73,14 +68,6 @@ internal data class DirListResponse(
     val entries: List<DirEntry>,
 )
 
-/**
- * A controller mapping, named the way a person would recognise it.
- *
- * [file] is the cfg's own filename and is what the download asks for, so it stays exactly as it is
- * on the card. [name] is only for reading: a curated entry carries a friendly
- * `input_device_display_name`, while one the wizard built repeats the pad's reported name, which is
- * the best a device can say about itself.
- */
 @Serializable
 internal data class MappingEntry(
     val file: String,

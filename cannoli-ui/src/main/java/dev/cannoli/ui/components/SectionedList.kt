@@ -12,11 +12,6 @@ data class ListSection<T>(val header: String?, val items: List<T>)
 
 fun <T> List<ListSection<T>>.flattenItems(): List<T> = flatMap { it.items }
 
-/**
- * Maps each section's first flat-item index to its header label, skipping empty and headerless
- * sections. Indices are into [flattenItems] (headers are not entries), so a consumer's selection
- * index lines up with the items without having to account for header rows.
- */
 fun <T> List<ListSection<T>>.headerIndices(): Map<Int, String> {
     val result = mutableMapOf<Int, String>()
     var index = 0

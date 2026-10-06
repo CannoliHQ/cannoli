@@ -25,11 +25,6 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.io.File
 
-/**
- * Every legend that names the menu button draws it through [MENU_GLYPH], which the glyph pill and
- * the guide's hint resolve against [LocalMenuGlyph]. These pin both halves: the sites pass the
- * menu glyph, and what they pass is drawn as whatever the pad opens the menu with.
- */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class MenuGlyphRenderTest {
@@ -58,7 +53,6 @@ class MenuGlyphRenderTest {
         }
     }
 
-    // A pill each: what a pad with a menu button reads, and what the two shortcuts read.
     private fun assertPills(menu: Int, selectStart: Int, holdStart: Int) {
         compose.onAllNodesWithText(MENU_GLYPH).assertCountEquals(menu)
         compose.onAllNodesWithText(SELECT_START_GLYPH).assertCountEquals(selectStart)

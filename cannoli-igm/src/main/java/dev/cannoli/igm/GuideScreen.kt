@@ -66,31 +66,18 @@ import java.io.File
 private const val SCROLL_SPEED = 14f
 private const val FRAME_MS = 16L
 
-// Rendered past each edge of the viewport so a small pan lands inside the tile already on screen
-// instead of waiting on pdfium.
 private const val TILE_OVERSCAN = 256
 
-// Only until the real page is measured, and only ever used for one frame.
 private const val DEFAULT_PAGE_ASPECT = 1.4f
 
-/** What a tile was rendered for, so one made for another page or zoom is never mistaken for current. */
 private data class TileKey(val page: Int, val contentWidth: Int, val contentHeight: Int)
 
-// Long enough to notice help exists; a page number only needs a glance.
 private const val HINT_MS = 3000L
 private const val STATE_MS = 1500L
 
-/**
- * The pill shown on entry. Short on purpose: it exists to say that help is a button away, not to be
- * the help. Both hosts bind the menu button to the overlay, so both show the same line.
- */
 @Composable
 fun guideHelpHint(): String = "$MENU_GLYPH ${stringResource(dev.cannoli.ui.R.string.label_help)}"
 
-/**
- * One OSD message on a guide. The help hint leads with the menu glyph, which on a pad with no menu
- * button is spelled as the shortcut that opens it instead.
- */
 @Composable
 fun RowScope.GuideOsdText(message: String, helpHint: String?) {
     val menu = LocalMenuGlyph.current.glyphs().joinToString(" + ")
@@ -102,13 +89,6 @@ fun RowScope.GuideOsdText(message: String, helpHint: String?) {
     OsdPillText(text, OsdPillStyle.Text.fontSize)
 }
 
-/**
- * What a guide answers to, for [HelpOverlay]. Both hosts bind the same keys, so they list the same
- * controls; only the glyphs differ, because only the host knows the pad.
- *
- * The shoulders are the reason this exists. They are how a reader actually moves through a guide,
- * and the legend that used to sit on the page never mentioned them.
- */
 fun guideHelpGroups(guideType: GuideType): List<HelpGroup> {
     val shoulders = if (guideType == GuideType.PDF) {
         dev.cannoli.ui.R.string.guide_help_page
@@ -118,7 +98,6 @@ fun guideHelpGroups(guideType: GuideType): List<HelpGroup> {
     val view = buildList {
         add(HelpEntry(listOf(HelpGlyph.NORTH), dev.cannoli.ui.R.string.guide_help_zoom_in))
         add(HelpEntry(listOf(HelpGlyph.WEST), dev.cannoli.ui.R.string.guide_help_zoom_out))
-        // Text reflows to the width instead of overflowing it, so there is nothing to pan across.
         if (guideType != GuideType.TXT) {
             add(HelpEntry(listOf(HelpGlyph.DPAD), dev.cannoli.ui.R.string.guide_help_pan))
         }
@@ -158,14 +137,12 @@ fun GuideScreen(
 ) {
     val zoomIndex = (textZoom - 1).coerceIn(0, GuideZoom.pdfScales.lastIndex)
 
-    // A PDF page goes edge to edge; text still wants its margin.
     val inset = if (guideType == GuideType.PDF) 0.dp else 12.dp
 
     val osd = remember { OsdController(defaultDurationMs = HINT_MS, defaultPosition = OsdPosition.TopEnd) }
 
     LaunchedEffect(filePath) { helpHint?.let { osd.show(it) } }
 
-    // Only on a change, so opening a guide shows the help hint rather than the page it opened on.
     var shownPage by remember(filePath) { mutableIntStateOf(page) }
     LaunchedEffect(page) {
         if (page != shownPage) {
@@ -174,9 +151,6 @@ fun GuideScreen(
         }
     }
 
-    // Reading is its own mode, so a guide never wears the colour picked for Cannoli's own screens:
-    // that colour tinted the space around a page, and a light one left white paper with no edge.
-    // Text is paper too, so it reads white on black whatever the theme is doing elsewhere.
     ScreenBackground(backgroundImagePath = null, backgroundAlpha = 1f, backgroundColor = Color.Black) {
         Box(modifier = Modifier.fillMaxSize().padding(inset)) {
             when (guideType) {
@@ -224,9 +198,6 @@ fun GuideScreen(
                 )
             }
 
-            // Nothing here stays on the page. A pill brings its own background, so it reads on
-            // white paper or black without a scrim darkening what you came to read, and it leaves
-            // once it has said its piece, which is how every other message over a game behaves.
             OsdHost(osd) { message -> GuideOsdText(message, helpHint) }
         }
     }
@@ -303,9 +274,6 @@ private fun PdfContent(
     ) {
         val viewportW = with(density) { maxWidth.roundToPx() }
         val viewportH = with(density) { maxHeight.roundToPx() }
-        // The width always follows the zoom and the height follows the page, so even at zoom 1 the
-        // page spans the screen and is read by scrolling down it. Fitting the whole page instead
-        // would letterbox a portrait page against a landscape screen, which is most of a handheld.
         val contentW = (viewportW * scale).toInt()
         val contentH = (contentW * aspect).toInt()
 
@@ -316,8 +284,6 @@ private fun PdfContent(
                 if (contentW <= 0 || contentH <= 0) return@collectLatest
                 if (page < 0 || page >= r.pageCount) return@collectLatest
                 val current = tile
-                // A tile drawn for another page or another zoom can still span the viewport, so the
-                // rect alone would keep a stale one on screen. It has to match what it was made for.
                 val covers = current != null && tileKey == key &&
                     x >= tileX && y >= tileY &&
                     x + viewportW <= tileX + current.width &&
@@ -525,8 +491,6 @@ private fun Modifier.guideGestures(
     val currentOnZoom by rememberUpdatedState(onZoomLevelChanged)
     val currentOnPage by rememberUpdatedState(onPageStep)
     val currentOnTap by rememberUpdatedState(onTapped)
-    // PDF is the only type with a page model, and a zoomed PDF already pans horizontally through
-    // horizontalScroll, so paging there would fight it.
     val pageable = guideType == GuideType.PDF &&
         GuideGestures.horizontalGesture(guideType, textZoom) == HorizontalGesture.PAGE
 
@@ -535,8 +499,6 @@ private fun Modifier.guideGestures(
             detectTapGestures(onTap = { currentOnTap() })
         }
         .pointerInput(Unit) {
-            // Claimed on the Initial pass and only for two or more pointers, so the inner
-            // verticalScroll never sees a pinch and single-finger drags fall through to it.
             awaitPointerEventScope {
                 while (true) {
                     var event = awaitPointerEvent(PointerEventPass.Initial)
@@ -558,8 +520,6 @@ private fun Modifier.guideGestures(
         }
         .then(
             if (!pageable) Modifier else Modifier.pointerInput(Unit) {
-                // detectHorizontalDragGestures waits for horizontal slop, so a vertical drag is
-                // never claimed here and reaches verticalScroll intact.
                 var dragX = 0f
                 detectHorizontalDragGestures(
                     onDragStart = { dragX = 0f },

@@ -10,8 +10,6 @@ import dev.cannoli.core.shader.ShaderPreset
 private const val EMULATOR_CATEGORY = "emulator"
 private const val INFO_ROW_PREFIX = "info_"
 
-// The pipeline tree's own path segments and row keys. Prefixed so nothing here can collide with a
-// RetroArch setting key, which shares the same namespace once a row reaches cycle().
 private const val SHADER_LOAD = "load"
 private const val SHADER_ENABLED = "enabled"
 private const val SHADER_SAVE = "save"
@@ -20,8 +18,6 @@ private const val SHADER_PREPEND = "prepend"
 private const val SHADER_PARAMS = "params"
 private const val SHADER_BROWSE = "browse"
 
-// Preset keys a pass owns that the menu shows. Scale is four keys because a size means nothing
-// without saying what it is relative to.
 private const val KEY_FILTER = "filter_linear"
 private const val KEY_SCALE_X = "scale_x"
 private const val KEY_SCALE_Y = "scale_y"
@@ -32,43 +28,24 @@ private const val SHADER_PARAM_PREFIX = "shader_param:"
 private const val SHADER_FILTER_PREFIX = "shader_filter:"
 private const val SHADER_SCALE_PREFIX = "shader_scale:"
 
-// Cannoli's own key for the shader in force, staged so a pipeline edit reaches the save prompt.
 private val SHADER_KEY_CANNOLI = dev.cannoli.core.config.OverrideTiers.KEY_SHADER
 
-// A scale row has to be walkable with a D-pad, and past this it is a preset's business rather
-// than something set by hand. The pass count has no such limit here: it follows from what is
-// loaded, and RetroArch caps it at GFX_MAX_SHADERS.
 private const val MAX_SHADER_SCALE = 8
 
-// What RetroArch has a settings_show_ flag for is turned off in the launch config instead, where
-// the decision rides stable config keys rather than menu label strings. What is left is sub-screens
-// with no flag of their own, which is the only place Cannoli still refuses anything by name.
-//
-// The cost of a wrong entry here is small and visible: a screen we meant to hide simply appears.
 internal val HIDDEN_SCREENS = setOf(
-    // No mixer and nothing to make menu sounds for.
     "audio_mixer_settings",
     "menu_sounds",
-    // No MIDI path on these devices.
     "midi_settings",
-    // Desktop concepts. Android is always fullscreen, and video_fullscreen off mid-game would
-    // leave the player with nothing to look at.
     "video_fullscreen_mode_settings",
     "video_windowed_mode_settings",
-    // Inert: the HDR enable key has no _STR define, so menu_setting_find can never resolve it.
     "video_hdr_settings",
-    // Cannoli owns core delivery; this is buildbot URLs and updater backups.
     "updater_settings",
-    // Android owns the radios, and disconnect_wifi from a game menu could drop the session.
     "wifi_settings",
     "wifi_network_scan",
     "bluetooth_settings",
     "lakka_services",
 )
 
-// The one place All Settings adds a row RetroArch did not put there. Both live on RetroArch's Core
-// screen, which Cannoli hides, and both are about video rather than core management, so Video is
-// where they belong. Keyed by screen so a promoted row lands somewhere a player would look for it.
 internal val PROMOTED_KEYS = mapOf(
     "video_settings" to listOf("video_shared_context", "video_allow_rotate"),
 )
@@ -78,12 +55,9 @@ internal val HIDDEN_KEYS = setOf(
     "input_joypad_driver",
     "menu_driver",
     "audio_mixer_mute_enable",
-    // Both are PATH rows, which RaValueCycler cannot cycle, so they render as a value that does
-    // nothing. filter_enable only matters when video_filter names a filter, which it cannot here.
     "audio_dsp_plugin",
     "video_filter",
     "filter_enable",
-    // Cannoli decides cutout handling from the launch config.
     "video_notch_write_over",
 )
 
@@ -96,44 +70,23 @@ class RaIgmSettingsProvider(
     private var onChanged: (() -> Unit)? = null
     private var dirty = false
 
-    // RA setting keys the user changed this session, saved as the override. Local toggles never
-    // land here (they write straight to SharedPreferences); core-option keys may, and the native
-    // side drops any key that is not a live RA setting. Cleared whenever the dirty flag is.
     private val changedKeys = mutableSetOf<String>()
 
-    // Marks a browser row as a preset rather than a folder, since both are just names.
     private val SHADER_PRESET_PREFIX = "shader_preset:"
 
-    // What each changed key held before the first edit of this visit, so Discard can put it back.
-    // Captured before the write, since afterwards the old value is gone, and first capture wins,
-    // so cycling a row four times still restores what it held on the way in.
-    //
-    // Not a copy of state: it is the one thing here RetroArch cannot be asked for, because it is a
-    // record of what Discard promised rather than of what is true now.
-    /** What Discard puts back, so it is the machine value and cannot be anything else. */
     private val priorValues = mutableMapOf<String, MachineValue>()
 
     private class InFlight(val value: MachineValue, val seq: Int)
 
-    // A write the run loop has not answered yet, one per key and gone with its answer. The only
-    // value here RetroArch has not confirmed, and it lives for one loop iteration.
     private val inFlight = mutableMapOf<String, InFlight>()
     private var writeSeq = 0
 
-    // Bumped when a save or discard ends the visit, so an answer arriving after it cannot record
-    // collateral against edits that no longer exist.
     private var visit = 0
 
-    // The rows of the screen being shown, read from the host on every render rather than
-    // remembered. Nothing here is predicted or kept: a value the host was never asked for cannot
-    // reach a row, and a value something else changed cannot go unnoticed. Held between renders
-    // only so cycle() has the rich RaSetting that the row it is given does not carry.
     private var currentSettings: List<RaSetting> = emptyList()
 
     override fun setOnChanged(callback: () -> Unit) { onChanged = callback }
 
-    // The level the navigator last asked for. activate() is told only a row key, and a shader
-    // preset means nothing without the folder it was listed from.
     private var currentPath: List<String> = emptyList()
 
     override fun screen(path: List<String>): GenericIgmSettingsScreen {
@@ -144,15 +97,9 @@ class RaIgmSettingsProvider(
     private fun screenFor(path: List<String>): GenericIgmSettingsScreen = when {
         path.isEmpty() -> if (curated) curatedRoot() else root()
         path.first() == EMULATOR_CATEGORY -> emulatorScreen(path.getOrNull(1))
-        // Info describes the running core rather than any setting, so it belongs in both menus.
         path.first() == CuratedCatalog.CATEGORY_INFO -> infoScreen()
-        // Cannoli's own screen, so the row only marks the way in: the controller swaps to the
-        // live preview picker on seeing this path and never renders what is returned here.
         path.first() == CuratedCatalog.CATEGORY_OVERLAY ->
             GenericIgmSettingsScreen(curatedTitle(CuratedCatalog.CATEGORY_OVERLAY), emptyList())
-        // Controller Type rows, then the rows that hand off to Cannoli's own Button Overrides and
-        // Shortcuts screens. The category exists so these sit where the rest of a platform's
-        // settings sit.
         path.first() == CuratedCatalog.CATEGORY_INPUT && path.size == 1 ->
             GenericIgmSettingsScreen(
                 curatedTitle(CuratedCatalog.CATEGORY_INPUT),
@@ -173,13 +120,9 @@ class RaIgmSettingsProvider(
         path.first() == CuratedCatalog.CATEGORY_SHADER ->
             if (curated) shaderScreen(path.drop(1)) else shaderPipelineScreen(path.drop(1))
         curated -> curatedCategoryScreen(path.first())
-        // RetroArch's tree is arbitrarily deep, so the screen is whatever the path last entered.
         else -> raScreen(path.last())
     }
 
-    // A curated row is reachable only when every RetroArch key it writes exists on this build, and
-    // a category with no reachable row is left out rather than shown empty, the same way the
-    // Emulator row is omitted for a core that exposes no options.
     private fun reachableRows(category: CuratedCatalog.Category): List<CuratedCatalog.Row> =
         category.rows.filter { row -> row.discriminatingKeys.all { host.raGetSetting(it) != null } }
 
@@ -188,9 +131,6 @@ class RaIgmSettingsProvider(
             for (cat in CuratedCatalog.categories) {
                 if (reachableRows(cat).isEmpty()) continue
                 add(GenericIgmSettingsItem.Category(cat.key, curatedTitle(cat.key)))
-                // Beside Video rather than after everything: a bezel and a shader are how the
-                // picture looks, which is what the rows above them are, and they are the two people
-                // come here for. Below Video, so the size and shape of the image is settled first.
                 if (cat.key == CuratedCatalog.CATEGORY_VIDEO) {
                     addOverlayCategory()
                     addShaderCategory()
@@ -213,22 +153,12 @@ class RaIgmSettingsProvider(
         return GenericIgmSettingsScreen(strings.rootTitle, items)
     }
 
-    /** The scopes holding something to drop, nearest first, so the narrower answer is the default. */
     private fun resetScopes(): List<RaOverrideScope> =
         listOf(RaOverrideScope.GAME, RaOverrideScope.SYSTEM).filter { host.hasOverrides(it) }
 
-    // The root only. Deeper levels are one category of a scope, and a scope is stored whole, so
-    // offering it from inside Video would throw away Input as well without saying so. Both roots
-    // qualify: they write the same two tiers, so undoing them is one question from either.
     override fun canReset(path: List<String>): Boolean =
         path.isEmpty() && resetScopes().isNotEmpty()
 
-    /**
-     * Undoes exactly what the save prompt does, one scope at a time.
-     *
-     * A scope with nothing stored is left off rather than shown doing nothing, which is the failure
-     * this exists to fix rather than repeat.
-     */
     override fun resetPrompt(path: List<String>): IgmSettingsExit.Prompt? {
         if (!canReset(path)) return null
         return IgmSettingsExit.Prompt(
@@ -240,21 +170,11 @@ class RaIgmSettingsProvider(
         )
     }
 
-    // Dropped rather than kept: this visit's edits were to the tier that just went, so saving them
-    // afterwards would write it straight back.
     private fun reset(scope: RaOverrideScope) {
         host.resetOverrides(scope)
         clearDirty()
     }
 
-    /**
-     * One level of the shader browser. Folders are Category rows, so descending and backing out ride
-     * the path stack every other category already uses; presets are Action rows, because choosing
-     * one hands off to the picker rather than opening another screen.
-     *
-     * The title is the folder rather than a fixed word, so a browser several levels into a pack
-     * still says where it is.
-     */
     private fun shaderScreen(relative: List<String>): GenericIgmSettingsScreen {
         val title = relative.lastOrNull() ?: curatedTitle(CuratedCatalog.CATEGORY_SHADER)
         val applied = host.appliedShaderPreset()
@@ -263,9 +183,6 @@ class RaIgmSettingsProvider(
             host.shaderEntries(relative).map { entry ->
                 when {
                     entry.isFolder -> GenericIgmSettingsItem.Category(entry.name, entry.name)
-                    // Only in the picker, where the list is the answer and has to say which one is
-                    // in force. In the chain tree the browser is a question you leave once it is
-                    // answered, so marking one is both wrong and never seen.
                     curated && entry.path == applied ->
                         GenericIgmSettingsItem.Choice(
                             SHADER_PRESET_PREFIX + entry.name,
@@ -278,25 +195,17 @@ class RaIgmSettingsProvider(
         )
     }
 
-    /**
-     * The shader chain All Settings edits, held here rather than in RetroArch's live shader.
-     *
-     * RetroArch is handed the result once, when the chain is applied or saved.
-     */
     private fun shaderPipelineScreen(relative: List<String>): GenericIgmSettingsScreen = when {
         relative.isEmpty() -> shaderPipelineRoot()
         relative.first() == SHADER_LOAD -> shaderScreen(relative.drop(1))
         relative.first() == SHADER_APPEND -> shaderScreen(relative.drop(1))
         relative.first() == SHADER_PREPEND -> shaderScreen(relative.drop(1))
-        // Save is Cannoli's own screen: the controller swaps to the keyboard on seeing this path
-        // and never renders what is returned here, the same way the overlay row works.
         relative.first() == SHADER_SAVE -> GenericIgmSettingsScreen(strings.shaderSave, emptyList())
         relative.first() == SHADER_PARAMS -> shaderParametersScreen()
         relative.first().startsWith(SHADER_PASS_PREFIX) -> shaderPassScreen(relative)
         else -> GenericIgmSettingsScreen(curatedTitle(CuratedCatalog.CATEGORY_SHADER), emptyList())
     }
 
-    /** Seeded from the preset in force, so entering the tree shows what is already running. */
     private fun chain(): ShaderPreset {
         chain?.let { return it }
         val seeded = host.appliedShaderPreset()
@@ -316,7 +225,6 @@ class RaIgmSettingsProvider(
         stageChainEdit()
     }
 
-    // A file read per pass, and the root asks how many there are on every render.
     private var parameterCache: List<PresetParameter>? = null
 
     private fun parameters(): List<PresetParameter> =
@@ -325,9 +233,6 @@ class RaIgmSettingsProvider(
     private fun shaderPipelineRoot(): GenericIgmSettingsScreen {
         val title = curatedTitle(CuratedCatalog.CATEGORY_SHADER)
         val chain = chain()
-        // Only once there is something to switch, which is also the case that needs it: a shader
-        // turned off by the shortcut leaves an empty chain, and without this row the screen offers
-        // nothing but Load Preset and no way back to what was already set up.
         val applied = host.appliedShaderPreset() != null
         val toggle = if (applied || host.shaderToRestore() != null) {
             GenericIgmSettingsItem.Choice(
@@ -337,27 +242,22 @@ class RaIgmSettingsProvider(
             )
         } else null
 
-        // Switched off, the switch is the whole screen. Everything below it describes a chain the
-        // game is not running, so loading into it or tuning its passes would edit nothing visible.
         if (toggle != null && !applied) return GenericIgmSettingsScreen(title, listOf(toggle))
 
         val items = buildList {
             toggle?.let { add(it) }
             add(GenericIgmSettingsItem.Category(SHADER_LOAD, strings.shaderLoad))
-            // With no chain these are Load Preset by another name.
             if (chain.passes.isNotEmpty()) {
                 add(GenericIgmSettingsItem.Category(SHADER_PREPEND, strings.shaderAddStart))
                 add(GenericIgmSettingsItem.Category(SHADER_APPEND, strings.shaderAddEnd))
                 add(GenericIgmSettingsItem.Category(SHADER_SAVE, strings.shaderSave))
             }
-            // Named, or a chain of four is four rows saying only their position.
             chain.passes.forEachIndexed { i, pass ->
                 add(GenericIgmSettingsItem.Category(
                     SHADER_PASS_PREFIX + i,
                     strings.shaderPassNamed(i, passName(pass)),
                 ))
             }
-            // Absent rather than empty, which would read as the tunables having failed to load.
             if (parameters().isNotEmpty()) {
                 add(GenericIgmSettingsItem.Category(SHADER_PARAMS, strings.shaderParameters))
             }
@@ -381,11 +281,9 @@ class RaIgmSettingsProvider(
             },
         )
 
-    /** What the chain says, or the shader author's default. */
     private fun parameterValue(p: PresetParameter): Float =
         chain().parameters[p.id]?.toFloatOrNull() ?: p.default
 
-    // A parameter stepping by 1 reads as 2, not 2.00; one stepping by 0.05 keeps its digits.
     private fun formatParameter(value: Float): String =
         if (value == value.toInt().toFloat()) value.toInt().toString()
         else "%.2f".format(value).trimEnd('0').trimEnd('.')
@@ -393,7 +291,6 @@ class RaIgmSettingsProvider(
     private fun shaderPassScreen(relative: List<String>): GenericIgmSettingsScreen {
         val index = relative.first().removePrefix(SHADER_PASS_PREFIX).toIntOrNull()
             ?: return GenericIgmSettingsScreen(strings.shaderPreset, emptyList())
-        // Under the pass, so picking sets this pass rather than replacing the chain.
         if (relative.getOrNull(1) == SHADER_BROWSE) return shaderScreen(relative.drop(2))
         val pass = chain().passes.getOrNull(index)
             ?: return GenericIgmSettingsScreen(strings.shaderPass(index), emptyList())
@@ -415,7 +312,6 @@ class RaIgmSettingsProvider(
         )
     }
 
-    // Absent is a third state: the preset leaving the choice alone.
     private fun filterLabel(value: String?): String = when (value) {
         "true" -> strings.shaderFilterLinear
         "false" -> strings.shaderFilterNearest
@@ -427,14 +323,10 @@ class RaIgmSettingsProvider(
         return if (scale <= 0) strings.shaderUnspecified else strings.shaderScaleX(scale)
     }
 
-    /** True when [itemKey] is the chain's rather than a RetroArch setting's. */
     private fun cyclePipeline(itemKey: String, direction: Int): Boolean {
         when {
             itemKey == SHADER_ENABLED -> {
                 host.toggleShader()
-                // The chain is seeded from whatever is applied, so it no longer describes what is
-                // running. Dropped rather than edited: turning the shader back on restores a whole
-                // preset, which is a chain this never built.
                 chain = null
                 parameterCache = null
                 chain()
@@ -458,7 +350,6 @@ class RaIgmSettingsProvider(
                 val pass = chain().passes.getOrNull(i) ?: return true
                 val now = pass.settings[KEY_SCALE_X]?.toFloatOrNull()?.toInt() ?: 0
                 val next = (now + direction).coerceIn(0, MAX_SHADER_SCALE)
-                // A size means nothing without its type, so both go together or neither does.
                 var edited = chain()
                 for (key in listOf(KEY_SCALE_TYPE_X, KEY_SCALE_TYPE_Y)) {
                     edited = edited.withPassSetting(i, key, if (next <= 0) null else "source")
@@ -473,8 +364,6 @@ class RaIgmSettingsProvider(
         return true
     }
 
-    // Absent when nothing under it can load, which is the same rule the overlay row follows and
-    // also covers the case of the database never having been downloaded.
     private fun MutableList<GenericIgmSettingsItem>.addShaderCategory() {
         if (!host.hasShaders()) return
         add(GenericIgmSettingsItem.Category(
@@ -483,9 +372,6 @@ class RaIgmSettingsProvider(
         ))
     }
 
-    // Absent rather than empty when the platform has no overlay folders, the same rule the core
-    // options and info rows follow. Called from both roots so the two menus cannot drift.
-    // Always present: shortcuts are bindable whatever this platform has installed.
     private fun MutableList<GenericIgmSettingsItem>.addInputCategory() {
         add(GenericIgmSettingsItem.Category(
             CuratedCatalog.CATEGORY_INPUT,
@@ -501,7 +387,6 @@ class RaIgmSettingsProvider(
         ))
     }
 
-    // Read-only rows: nothing here is a setting, so the keys are positional and cycle() ignores them.
     private fun infoScreen(): GenericIgmSettingsScreen = GenericIgmSettingsScreen(
         curatedTitle(CuratedCatalog.CATEGORY_INFO),
         host.systemInfo().mapIndexed { i, (label, value) ->
@@ -529,16 +414,12 @@ class RaIgmSettingsProvider(
 
     private fun curatedTitle(key: String) = strings.curatedCategoryTitles[key] ?: key
 
-    // Every key the rows beside this one own, so a preset that moves one of them is noticed. The
-    // rest of the category rather than the whole menu: a curated screen is what is on screen.
     private fun curatedScreenKeys(row: CuratedCatalog.Row): Set<String> =
         CuratedCatalog.categories
             .firstOrNull { cat -> cat.rows.any { it.key == row.key } }
             ?.let { cat -> reachableRows(cat).flatMapTo(mutableSetOf()) { it.settingKeys } }
             ?: row.settingKeys
 
-    // A shadowed key holds the value Cannoli overwrote it with rather than the user's choice, so
-    // it is read from the shadow instead of the live host.
     private fun valuesFor(row: CuratedCatalog.Row): Map<String, String> {
         val shadow = host.shadowedSettings()
         return row.settingKeys.mapNotNull { key ->
@@ -562,8 +443,6 @@ class RaIgmSettingsProvider(
         }
     }
 
-    // A core that declares categories gets a screen of them; one that does not gets its options
-    // straight away, so a flat core is never a menu that leads to a single menu.
     private fun emulatorScreen(categoryKey: String?): GenericIgmSettingsScreen {
         val options = host.coreOptions()
         val cats = options.filter { it.categoryKey.isNotEmpty() }
@@ -587,15 +466,12 @@ class RaIgmSettingsProvider(
 
     private fun root(): GenericIgmSettingsScreen {
         val items = buildList {
-            // Only cores that expose options get the row, so it is absent rather than empty.
             if (host.coreOptions().isNotEmpty()) {
                 add(GenericIgmSettingsItem.Category(
                     EMULATOR_CATEGORY,
                     strings.emulator,
                 ))
             }
-            // Ahead of RetroArch's own list rather than buried under it: these are Cannoli's
-            // screens, and the list below them is long enough to hide anything at its foot.
             addOverlayCategory()
             addShaderCategory()
             addInputCategory()
@@ -610,39 +486,23 @@ class RaIgmSettingsProvider(
         return GenericIgmSettingsScreen(strings.rootTitle, items)
     }
 
-    // Titles come from the parent row that led here, which is the only place RetroArch names a
-    // screen. A screen is only reachable through its parent, so this is always populated first.
     private val screenTitles = mutableMapOf<String, String>()
 
     private fun raScreen(label: String): GenericIgmSettingsScreen =
         GenericIgmSettingsScreen(screenTitles[label] ?: label, raRows(label))
 
-    /**
-     * One RetroArch settings screen, rendered in RetroArch's own order. RetroArch decides which
-     * rows exist right now, so the conditional ones it hides (video_aspect_ratio unless the aspect
-     * index is Config, the integer-scaling rows unless integer scaling is on) are hidden here too,
-     * without Cannoli modelling any of those conditions.
-     *
-     * Values are still read through the host, not from the row: both menu modes share one read
-     * path, one write path and one changed-key set.
-     */
     private fun raRows(label: String): List<GenericIgmSettingsItem> {
         val rows = host.raScreenRows(label)
             .filterNot { it.key in HIDDEN_SCREENS || it.key in HIDDEN_KEYS }
         rows.filter { it.isMenu }.forEach { screenTitles[it.key] = it.label }
         val promoted = PROMOTED_KEYS[label].orEmpty()
         loadKeys(rows.filterNot { it.isMenu }.map { it.key } + promoted)
-        // Walked in RetroArch's order rather than settings-then-submenus, because the order is part
-        // of what we are deferring to it.
         return rows.mapNotNull { row ->
             if (row.isMenu) GenericIgmSettingsItem.Category(row.key, row.label)
             else currentSettings.firstOrNull { it.key == row.key }?.let(::rowFor)
         } + promoted.mapNotNull { key -> currentSettings.firstOrNull { it.key == key }?.let(::rowFor) }
     }
 
-    // Read every time. A read costs one value lookup now that the host keeps the descriptions, so
-    // the rows are a projection of what RetroArch holds rather than a copy of it, and a value
-    // something else changed shows up without anyone having to know it happened.
     private fun loadKeys(keys: List<String>) {
         currentSettings = keys.mapNotNull { key -> read(key)?.let(::withRestartHint) }
     }
@@ -709,19 +569,10 @@ class RaIgmSettingsProvider(
         onChanged?.invoke()
     }
 
-    /**
-     * Records what a change handler moved, so Discard can put those back too.
-     *
-     * Only into [priorValues], never into the changed set: Discard owes the player the game they
-     * came in with, while a save owes them the choices they made, and a value RetroArch moved on
-     * its own is neither of those. Writing it into an override would save a decision nobody took.
-     */
     private fun rememberCollateral(moved: Map<String, MachineValue>) {
         for ((key, was) in moved) if (!priorValues.containsKey(key)) priorValues[key] = was
     }
 
-    // One row per player holding a pad, or one row for Player 1 with at most one pad. Read on every
-    // visit, so a pad connected mid-game gets its row the next time the screen opens.
     private fun controllerTypeRows(): List<GenericIgmSettingsItem> {
         val padded = host.players().filter { it.hasPad && it.player < PortDevices.PLAYER_ROWS }.map { it.player }
         val ports = if (padded.size <= 1) listOf(0) else padded
@@ -735,7 +586,6 @@ class RaIgmSettingsProvider(
         }
     }
 
-    // A raw write would store a number the core never sees, so the type goes through the port.
     private fun cyclePortDevice(port: Int, direction: Int) {
         val devices = host.portDeviceTypes(port)?.takeIf { it.hasChoice } ?: return
         val choices = devices.choices
@@ -750,10 +600,8 @@ class RaIgmSettingsProvider(
         onChanged?.invoke()
     }
 
-    /** Whether the chain has been edited since it was last compiled. */
     private var chainEdited = false
 
-    /** Staged like any other setting, so leaving the tree offers to keep it. */
     private fun stageChainEdit() {
         chainEdited = true
         markChangedExternally(setOf(SHADER_KEY_CANNOLI))
@@ -765,7 +613,6 @@ class RaIgmSettingsProvider(
         host.applyShaderChain()
     }
 
-    // Only pass rows, and only on the chain root.
     override fun canReorder(path: List<String>, index: Int): Boolean =
         passIndexAtRow(path, index) != null
 
@@ -777,7 +624,6 @@ class RaIgmSettingsProvider(
         return index + delta
     }
 
-    // The rows above the passes come and go, so the offset is counted rather than assumed.
     private fun passIndexAtRow(path: List<String>, index: Int): Int? {
         if (curated || path != listOf(CuratedCatalog.CATEGORY_SHADER)) return null
         val key = shaderPipelineRoot().items.getOrNull(index)?.key ?: return null
@@ -785,8 +631,6 @@ class RaIgmSettingsProvider(
         return key.removePrefix(SHADER_PASS_PREFIX).toIntOrNull()
     }
 
-    // A pass is the only row with a place in a sequence.
-    // Every browser here picks one shader, so all of them end at the chain root.
     override fun returnPathAfter(itemKey: String, path: List<String>): List<String>? =
         if (!curated && itemKey.startsWith(SHADER_PRESET_PREFIX) &&
             path.firstOrNull() == CuratedCatalog.CATEGORY_SHADER
@@ -818,33 +662,22 @@ class RaIgmSettingsProvider(
         return null
     }
 
-    /**
-     * Writes the chain as [name] and stages it, so leaving the tree offers to keep it.
-     *
-     * Saving is what makes a hand-built chain into something that can be chosen again: it is a file
-     * in the browser afterwards, indistinguishable from any other preset.
-     */
     fun saveShaderPresetAs(name: String) {
         host.applyShaderChain(saveAs = name) ?: return
-        // Saving writes and loads it, so nothing is left waiting.
         chainEdited = false
         markChangedExternally(setOf(SHADER_KEY_CANNOLI))
     }
 
     private fun activateShaderPreset(name: String) {
-        // Under a pass, the pick is that pass's shader. Anywhere else it replaces the whole chain.
         val passIndex = currentPath.takeIf { it.getOrNull(2) == SHADER_BROWSE }
             ?.getOrNull(1)?.removePrefix(SHADER_PASS_PREFIX)?.toIntOrNull()
         if (passIndex != null) {
             val preset = host.shaderPresetPath(currentPath.drop(3), name) ?: return
-            // The pass keeps its filter and scale; only its shader is being answered.
             val replaced = chain().passes.toMutableList()
             replaced[passIndex] = replaced[passIndex].copy(shader = preset)
             editChain(chain().copy(passes = replaced))
             return
         }
-        // Append and prepend combine with the chain instead of replacing it, so they go through
-        // RetroArch's own combiner rather than through the picker's apply.
         val combine = currentPath.getOrNull(1)?.takeIf { !curated }
         if (combine == SHADER_APPEND || combine == SHADER_PREPEND) {
             val preset = host.shaderPresetPath(currentPath.drop(2), name) ?: return
@@ -854,24 +687,15 @@ class RaIgmSettingsProvider(
             )
             return
         }
-        // In the chain tree a load replaces the chain without compiling it, so the rows redraw
-        // from what was just loaded rather than from what RetroArch had a moment ago. The picker
-        // applies instead, because there the list is the whole answer.
         if (!curated && currentPath.getOrNull(1) == SHADER_LOAD) {
             val preset = host.shaderPresetPath(currentPath.drop(2), name) ?: return
             editChain(ShaderPreset.parse(java.io.File(preset)) ?: return)
             return
         }
-        // The path this row was listed from is the level the navigator is on, minus the category
-        // key that led into the tree. The list stays put: choosing another preset is a press away,
-        // which is the point of applying in place.
         markChangedExternally(host.applyShaderPreset(currentPath.drop(1), name))
     }
 
 
-    // The live preview picker writes its setting straight to RetroArch, so nothing here saw the
-    // change. Joining the same changed set is what puts an overlay in the save prompt beside the
-    // rows, and is what gives it the per-game scope it would not otherwise have.
     override fun markChangedExternally(keys: Set<String>) {
         if (keys.isEmpty()) return
         // Called before the caller applies its change, which is what makes this the value from
@@ -900,9 +724,6 @@ class RaIgmSettingsProvider(
         clearDirty()
     }
 
-    // Discard puts the running game back as it was. Without this it only dropped the write, so a
-    // change stayed live until the next launch recomposed the config from tiers it had never
-    // reached, which reads as the button having done nothing.
     private fun discardChanges() {
         restorePriorValues()
         host.revertCannoliOverride()
@@ -915,8 +736,6 @@ class RaIgmSettingsProvider(
     // depth, dropping any that reached the changed set before it crosses to the native writer.
     private fun overrideKeys(): Set<String> = changedKeys - CheevosSessionKeys.ALL
 
-    // A shadowed key reads as the value Cannoli overwrote it with, and putting that back on Discard
-    // would restore Cannoli's own value over the one the user came in with.
     private fun snapshot(key: String) {
         if (priorValues.containsKey(key)) return
         val before = host.shadowedSettings()[key]?.let(::MachineValue)
@@ -944,9 +763,6 @@ class RaIgmSettingsProvider(
     }
 }
 
-// Cores put the restart notice in the option description themselves, which eats row width and
-// repeats on every affected row. The flag drives the hint the screen already shows for the
-// selected row, so the words come off the label.
 private val RESTART_SUFFIX = Regex("""[\s\-–—]*\(\s*(?:restart|reboot)\s*\)\s*$""", RegexOption.IGNORE_CASE)
 
 internal fun withRestartHint(s: RaSetting): RaSetting =

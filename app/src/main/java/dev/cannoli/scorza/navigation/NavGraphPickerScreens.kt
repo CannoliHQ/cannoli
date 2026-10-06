@@ -94,8 +94,6 @@ internal fun PickerScreens(
                 if (currentScreen.collectionIds.isEmpty()) {
                     Text(
                         text = stringResource(R.string.no_collections),
-                        // bodyLarge carries a fixed 22sp, so an empty state left on it ignored
-                        // the text size the user chose and sat dimmer than every row around it.
                         style = MaterialTheme.typography.bodyLarge.copy(
                             fontSize = listFontSize,
                             lineHeight = listLineHeight,
@@ -144,8 +142,6 @@ internal fun PickerScreens(
                 if (currentScreen.collectionIds.isEmpty()) {
                     Text(
                         text = stringResource(R.string.no_collections),
-                        // bodyLarge carries a fixed 22sp, so an empty state left on it ignored
-                        // the text size the user chose and sat dimmer than every row around it.
                         style = MaterialTheme.typography.bodyLarge.copy(
                             fontSize = listFontSize,
                             lineHeight = listLineHeight,
@@ -235,8 +231,6 @@ internal fun PickerScreens(
                     scrollTarget = currentScreen.scrollTarget,
                     onListStateChanged = onListStateChanged
                 ) { _, icon, isSelected ->
-                    // The glyph sits immediately left of the name it claims to be, so a
-                    // codepoint that resolves to the wrong glyph is visible at a glance.
                     PillRowKeyValue(
                         label = "${icon.constantName}: ${icon.purpose}",
                         value = icon.glyphName,

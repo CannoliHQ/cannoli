@@ -36,8 +36,6 @@ class ConfirmPressCounterTest {
         assertEquals(1, counter.count.value)
     }
 
-    // The wizard's second trigger depends on this: a pad whose confirm is wrong is found by the
-    // user pressing what they believe is confirm three times.
     @Test fun `three presses of a button that is not confirm still complete a run`() {
         assertFalse(counter.press(PAD, 97))
         assertFalse(counter.press(PAD, 97))
@@ -66,8 +64,6 @@ class ConfirmPressCounterTest {
         assertEquals(0, counter.count.value)
     }
 
-    // What the decay does when the presses stop: the count and the pad and button it was counting
-    // all go, so the next press begins a run rather than extending a stale one.
     @Test fun `reset clears the run and the pad and button it was counting`() {
         counter.press(PAD, 96)
         counter.press(PAD, 96)

@@ -7,7 +7,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
-/** Pins the pair layout nativePortDeviceTypes and nativePlayers build with ricotta_fields_to_array. */
 class PortPayloadDecodeTest {
 
     @Test

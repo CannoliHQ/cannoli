@@ -5,8 +5,6 @@ import android.os.Parcelable
 import dev.cannoli.ui.ButtonLabelSet
 import dev.cannoli.ui.ConfirmButton
 
-// The host's IGM display settings, forwarded from the launcher so ricotta renders
-// the IGM identically. (Excludes keyCodeName, which is a function each host supplies.)
 data class IgmDisplaySettings(
     val fontSizeSp: Int,
     val portraitMarginPx: Int,
@@ -54,8 +52,6 @@ data class IgmDisplaySettings(
             showBluetooth = p.readInt() != 0,
             showVpn = p.readInt() != 0,
             showClock = p.readInt() != 0,
-            // By name, and defaulting rather than throwing: the sender is a separate build, so it
-            // can hold a value this one has never heard of.
             batteryDisplay = BatteryDisplayMode.fromString(p.readString()),
             timeFormat = TimeFormatMode.fromString(p.readString()),
             buttonLabelSet = ButtonLabelSet.fromString(p.readString()),

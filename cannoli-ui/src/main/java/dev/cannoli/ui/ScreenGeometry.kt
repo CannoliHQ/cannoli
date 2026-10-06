@@ -27,15 +27,6 @@ fun computeScreenGeometryRect(
     return ScreenRect(x, y, w, h)
 }
 
-/**
- * Turns the Screen Geometry region into padding around an overlay's content, so the overlay's
- * own edges line up with the game's rather than the panel's. Computed at pixel scale, matching
- * the game viewport: computeScreenGeometryRect divides with integer truncation, and dividing at
- * dp scale rounds to a different pixel than dividing at pixel scale, leaving a sliver of gap at
- * the region's edge. Falls back to the dp-derived region when the surface's pixel size isn't
- * available yet (an early composition pass, before the view is laid out), so a zero-sized surface
- * can't produce a garbage region.
- */
 fun computeScreenGeometryPadding(
     surfaceWidthPx: Int,
     surfaceHeightPx: Int,

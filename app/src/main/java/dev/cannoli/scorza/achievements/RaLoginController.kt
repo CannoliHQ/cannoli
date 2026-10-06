@@ -27,8 +27,6 @@ class RaLoginController(
     private val clientProvider: () -> RaConnectClient = ::defaultClient,
 ) {
 
-    // Dagger cannot bind the clientProvider lambda, so injection goes through a constructor that
-    // omits it and the tests use the primary one to swap in a client aimed at a local server.
     @Inject constructor(
         nav: NavigationController,
         @IoScope ioScope: CoroutineScope,
@@ -52,7 +50,6 @@ class RaLoginController(
         }
     }
 
-    /** Opens the post-login account screen and confirms the stored token still works. */
     fun openAccountMenu() {
         nav.push(
             LauncherScreen.RetroAchievements(
@@ -65,9 +62,6 @@ class RaLoginController(
         if (user.isEmpty() || token.isEmpty()) return
         ioScope.launch {
             val res = runCatching { clientProvider().validateToken(user, token) }.getOrNull()
-            // A network failure is not evidence the token is bad, so only a reachable server
-            // that rejects it flips the row to invalid. A 200 that is not the API's JSON is the
-            // same kind of non-answer: a proxy or portal reply, not a rejection.
             val state = when {
                 res == null || res.code !in 200..299 -> RaTokenState.UNREACHABLE
                 else -> when (RaConnectClient.successFlag(res.body)) {
@@ -77,8 +71,6 @@ class RaLoginController(
                 }
             }
             withContext(Dispatchers.Main) {
-                // The token check can land after the user has moved deeper (into Offline Sets), so
-                // the screen is found wherever it sits on the stack rather than assuming it is on top.
                 val idx = nav.screenStack.indexOfLast { it is LauncherScreen.RetroAchievements }
                 if (idx >= 0) {
                     val screen = nav.screenStack[idx] as LauncherScreen.RetroAchievements
@@ -89,9 +81,6 @@ class RaLoginController(
     }
 
     private fun apply(result: RaConnectClient.LoginResult) {
-        // Backing out of the progress dialog abandons the wait, not the request, which cannot be
-        // recalled anyway. A login that already succeeded is still kept, so a correct password is
-        // never typed for nothing, but no dialog is written over whatever the user opened instead.
         val stillWaiting = nav.dialogState.value is DialogState.RALoggingIn
         when (result) {
             is RaConnectClient.LoginResult.Success -> {
@@ -99,7 +88,6 @@ class RaLoginController(
                 settings.raToken = result.token
                 settings.raPassword = ""
                 if (!stillWaiting) return
-                // The token is freshly minted, so it goes straight to VALID without a second check.
                 nav.dialogState.value = DialogState.None
                 nav.push(
                     LauncherScreen.RetroAchievements(

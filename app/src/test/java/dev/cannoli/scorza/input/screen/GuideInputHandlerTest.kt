@@ -34,8 +34,6 @@ class GuideInputHandlerTest {
     }
 
     @Test fun startGuidesResolvesTheSameDirForAnNfdRomPathAsItsNfcBaseName() {
-        // "e" (U+0065) followed by a combining acute accent (U+0301) is NFD; the guide dir on
-        // disk is keyed by the NFC base name, same as the IGM's romBaseName.
         val decomposed = "Poke\u0301mon Red (USA)"
         val precomposed = "Pok\u00e9mon Red (USA)"
         val guideDir = File(tmp.root, "Guides/gb/$precomposed").apply { mkdirs() }

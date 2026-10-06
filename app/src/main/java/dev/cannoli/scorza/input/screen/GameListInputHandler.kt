@@ -156,7 +156,6 @@ class GameListInputHandler @Inject constructor(
                 val glState = gameListViewModel.state.value
                 if (!gameListViewModel.exitSubfolder()) {
                     if (gameListViewModel.exitChildCollection { launcherActions.scanResumableGames() }) {
-                        // navigated back to parent collection
                     } else if (settings.contentMode == ContentMode.PLATFORMS
                         && glState.isCollection && glState.collectionId != null
                         && !glState.isFavorites) {
@@ -275,8 +274,6 @@ class GameListInputHandler @Inject constructor(
 
     override fun onSelectUp() {
         cancelSelectHoldTimer()
-        // gameSelectDown gates the action: an open dialog consumes the press but not the release,
-        // so a release can arrive here with no press behind it. Flags below still reset either way.
         if (gameSelectDown && !nav.selectHeld && !collectionSelectHeld && !selectHandled) {
             val glState = gameListViewModel.state.value
             val isApkList = VirtualPlatformTags.isAppList(glState.platformTag)

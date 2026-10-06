@@ -4,7 +4,6 @@ import dev.cannoli.igm.ShortcutAction
 import dev.cannoli.igm.menuGlyphFor
 import dev.cannoli.ui.theme.MenuGlyph
 
-/** [menuGlyphFor] for the launcher, which knows the active pad by its [DeviceMapping]. */
 fun launcherMenuGlyph(mapping: DeviceMapping?, shortcuts: Map<ShortcutAction, Set<Int>>): MenuGlyph {
     if (mapping == null) return MenuGlyph.Menu
     fun keys(button: CanonicalButton) =

@@ -79,9 +79,6 @@ internal fun reloadPosition(
     prevCount: Int,
 ): Pair<Int, Int> {
     if (items.isEmpty()) return 0 to 0
-    // Found the same item again (e.g. after a rename re-sorts the list): keep it selected but
-    // do NOT force a scroll position. A forced scrollTarget would slam the item to the top of
-    // the viewport; -1 lets the selection effect keep it on screen only if it actually moved off.
     findIndexById(items, preserveId)?.let { return it to -1 }
     val maxIdx = items.lastIndex
     val sameSize = prevCount >= 0 && items.size == prevCount && prevCount > 0

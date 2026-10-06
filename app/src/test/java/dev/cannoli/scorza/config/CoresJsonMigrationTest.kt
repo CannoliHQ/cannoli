@@ -27,8 +27,6 @@ class CoresJsonMigrationTest {
         return PlatformConfig(root, ctx.assets, nativeLibDir = bundledDir).also { it.load() }
     }
 
-    // The built-in libretro runner is gone. A v1 platform mapped to it has to land on the embedded
-    // RetroArch, keeping its core, rather than on a source that no longer exists.
     @Test fun `explicit Internal migrates to Embedded and keeps the core`() = assertEquals(
         EmulatorChoice(EmulatorSource.Embedded, "nestopia_libretro"),
         load("m-int", """{"cores":{"NES":"nestopia_libretro"},"runners":{"NES":"Internal"}}""")
@@ -70,8 +68,6 @@ class CoresJsonMigrationTest {
         load("m-nolib", """{"cores":{"NES":"nestopia_libretro"}}""").getPlatformChoice("NES")?.source,
     )
 
-    // v1 re-derived the source from a bundled .so on every read. With no runner to load one, a
-    // runnerless core resolves to RetroArch whether or not the .so is there.
     @Test fun `a runnerless core with a bundled so migrates to Embedded`() {
         val libs = File(tmp.root, "m-libs").apply { mkdirs() }
         File(libs, "nestopia_libretro_android.so").writeText("stub")
@@ -88,16 +84,12 @@ class CoresJsonMigrationTest {
             .getPlatformChoice("NES"),
     )
 
-    // A v2 file written before the runner was removed still names Internal as its source.
     @Test fun `a stored v2 Internal source migrates to Embedded`() = assertEquals(
         EmulatorChoice(EmulatorSource.Embedded, "nestopia_libretro"),
         load("m-v2-int", """{"v":2,"platforms":{"NES":{"source":"Internal","core":"nestopia_libretro"}}}""")
             .getPlatformChoice("NES"),
     )
 
-    // The external RetroArch source is retired. Which install a choice named no longer matters,
-    // because none of them run anything now, so both readings of a packageless choice land on the
-    // one runner that is left. The core is the part the user picked and it survives.
     @Test fun `a packageless RetroArch choice migrates to Embedded`() = assertEquals(
         EmulatorChoice(EmulatorSource.Embedded, "nestopia_libretro"),
         load("m-v2-ra-emb", RA_JSON).getPlatformChoice("NES"),
@@ -112,7 +104,6 @@ class CoresJsonMigrationTest {
             ).getPlatformChoice("NES"),
         )
 
-    // The retired name must not survive a save, or the fold runs again on every load forever.
     @Test fun `a folded choice is written back as Embedded`() {
         val config = load("m-v2-ra-save", RA_JSON)
         config.setPlatformChoice("MD", EmulatorChoice(EmulatorSource.Embedded, "genesis_plus_gx_libretro"))
@@ -126,9 +117,6 @@ class CoresJsonMigrationTest {
             .getPlatformChoice("PS2"),
     )
 
-    // v1 setCoreMapping dropped the core when the pick equalled the platform default but kept
-    // the runner, so this shape is what an explicit "use the default core" pick looked like.
-    // Migrating it to an empty core produced a blank, permanently not-installed row.
     @Test fun `a runner with no core resolves to the platform default core`() = assertEquals(
         EmulatorChoice(EmulatorSource.Embedded, "mgba_libretro"),
         load("m-nocore", """{"cores":{},"runners":{"GBA":"Internal"}}""").getPlatformChoice("GBA"),
@@ -138,7 +126,6 @@ class CoresJsonMigrationTest {
         assertNull(load("m-nocore-nodef", """{"cores":{},"runners":{"NOSUCHTAG":"Internal"}}""")
             .getPlatformChoice("NOSUCHTAG"))
 
-    // The broken shape above already reached real devices as v2, so it has to self-heal on read.
     @Test fun `a v2 core choice with no core is dropped rather than rendered blank`() =
         assertNull(load("m-v2-nocore", """{"v":2,"platforms":{"GBA":{"source":"Internal"}}}""")
             .getPlatformChoice("GBA"))

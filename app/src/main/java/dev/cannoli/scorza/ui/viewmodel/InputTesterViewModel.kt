@@ -47,7 +47,6 @@ data class InputTesterUiState(
     val axisDumpEnabled: Boolean = false,
 )
 
-// ControllerDiagram keys its pressed set by the lowercased canonical name.
 private val CanonicalButton.diagramKey: String get() = name.lowercase()
 
 @ActivityScoped

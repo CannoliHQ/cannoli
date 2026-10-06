@@ -51,11 +51,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/**
- * Lays out the real title / list / footer stack and measures what a reader sees. The footer is a
- * plain box of [bottomBarHeight] rather than a live BottomBar because Robolectric's stub font does
- * not measure the legend pills the way a device does; the bar's own height is verified separately.
- */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34], qualifiers = "w640dp-h480dp-xhdpi")
 class ListRhythmLayoutTest {
@@ -165,7 +160,6 @@ class ListRhythmLayoutTest {
         }
         val lastRow = compose.onNodeWithTag("row$last").getUnclippedBoundsInRoot()
 
-        // Ink to ink, which is what a reader compares.
         val titleGap = (row0.top.value + edge + aboveInk) - (title.bottom.value - titleBelowInk)
         val rowGap = (row1.top.value + edge + aboveInk) -
             (row0.top.value + edge + lineHeight - belowInk)
@@ -175,21 +169,12 @@ class ListRhythmLayoutTest {
         val onePixel = with(compose.density) { 1.toDp().value }
         val label = "textSize=$textSize (title=$titleGap row=$rowGap footer=$footerGap)"
 
-        // The title spacer and the footer reservation come from one value, so those two agree to
-        // within the pixel each was rounded down by. Row spacing is quantised too, and the leftover
-        // lands in the other two, which bounds the drift at a pixel per row it was taken from.
-        // Spacer, reservation and the balance shifted between them each round to a pixel of their own.
         assertEquals("$label title vs footer", titleGap, footerGap, onePixel * 3 + 0.05f)
         val slack = onePixel * (rhythm.rows + 1) / 2f * 1.5f + 0.05f
         assertEquals("$label title vs row", rowGap, titleGap, slack)
         assertEquals("$label footer vs row", rowGap, footerGap, slack)
     }
 
-    /**
-     * The rows the rhythm promises have to actually fit. One pixel over and the bottom row is
-     * clipped, which drops it out of the fully-visible set PageJump reads, so the first page-down
-     * stops on the second-to-last row on screen instead of the last.
-     */
     private fun assertPageDownReachesTheBottomRow(textSize: Int) {
         compose.setContent { Screen(textSize) }
         compose.waitForIdle()

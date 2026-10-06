@@ -26,9 +26,6 @@ internal fun testDialogInputHandler(
     rommDownloader: Downloader = emptyQueueDownloader(),
     gameListViewModel: GameListViewModel = mockk(relaxed = true),
     romsRepository: RomsRepository = mockk(relaxed = true),
-    // A relaxed SettingsRepository answers every String with "", so the default here is logged
-    // out of RetroAchievements. Rows that only exist for a connected account are absent unless a
-    // test says otherwise.
     raToken: String = "",
     raPreloadController: dev.cannoli.scorza.achievements.RaPreloadController = mockk(relaxed = true),
     raPendingDrainer: dev.cannoli.scorza.achievements.RaPendingDrainer = mockk(relaxed = true),
@@ -80,8 +77,6 @@ internal fun testDialogInputHandler(
     shaderUpdateController = mockk(relaxed = true),
 )
 
-// A relaxed mock answers queue.state.value with a bare Object, which blows up on the List cast the
-// moment anything builds the quick menu. Stub it so the rebuild path is reachable from tests.
 private fun emptyQueueDownloader(): Downloader = mockk(relaxed = true) {
     every { state } returns MutableStateFlow(emptyList())
 }

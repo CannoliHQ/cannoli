@@ -23,7 +23,6 @@ class DevKeyboardMappingTest {
 
     @Test
     fun every_canonical_button_is_reachable_from_the_keyboard() {
-        // Analog sticks have no physical keyboard equivalent, so they are excluded here.
         val stickCanonicals = setOf(
             CanonicalButton.BTN_LSTICK_X,
             CanonicalButton.BTN_LSTICK_Y,

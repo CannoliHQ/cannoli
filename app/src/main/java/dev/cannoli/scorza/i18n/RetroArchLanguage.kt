@@ -1,10 +1,5 @@
 package dev.cannoli.scorza.i18n
 
-// RetroArch picks its own language: user_language defaults to frontend_driver_get_user_language(),
-// which on Android reads the device locale. Cannoli does not follow the device, it renders in
-// English until told otherwise, so without this the All Settings menu comes out in the device's
-// language while the launcher around it is in Cannoli's. Values are enum retro_language from
-// libretro.h.
 object RetroArchLanguage {
 
     private val byTag = mapOf(
@@ -48,17 +43,10 @@ object RetroArchLanguage {
         "th" to 36,
     )
 
-    /**
-     * The retro_language for a BCP-47 tag, or null for a language RetroArch does not ship. Null
-     * leaves RetroArch detecting from the device, which beats pinning it to a language the user did
-     * not pick.
-     */
     fun forTag(tag: String): Int? {
         val normalized = tag.trim().lowercase().replace('_', '-')
         if (normalized.isEmpty()) return null
         byTag[normalized]?.let { return it }
-        // es-419 and friends: the region carries no RetroArch distinction, so fall back to the
-        // base language rather than to English.
         val base = normalized.substringBefore('-')
         return byTag[base]
     }

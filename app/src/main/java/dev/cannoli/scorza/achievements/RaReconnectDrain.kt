@@ -8,18 +8,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicBoolean
 
-/**
- * Sends the unlocks earned offline when a network arrives, rather than waiting for the launcher to
- * come forward again.
- *
- * The drain otherwise runs on the launcher being resumed, which is every case but the one a player
- * actually hits: turning wifi back on while already looking at the game list produced nothing until
- * the next foreground transition.
- *
- * Registered only while the launcher is resumed. A game writes to this queue from the other
- * process, and the launcher is backgrounded for all of that, so listening through a session would
- * mean draining a queue while it is being written.
- */
 class RaReconnectDrain(
     private val context: Context,
     private val scope: CoroutineScope,
@@ -36,8 +24,6 @@ class RaReconnectDrain(
             override fun onAvailable(network: Network) = trigger()
 
             override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {
-                // The transition only. This fires repeatedly for a network whose capabilities have
-                // not changed in any way this cares about.
                 val validated = caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
                 if (validated && !wasValidated) trigger()
                 wasValidated = validated
@@ -58,10 +44,6 @@ class RaReconnectDrain(
         runCatching { cm?.unregisterNetworkCallback(cb) }
     }
 
-    /**
-     * One reconnection reaches both callbacks, and a drain sends the whole queue, so a second pass
-     * started while the first is in flight would be replaying what that one is already sending.
-     */
     private fun trigger() {
         if (!draining.compareAndSet(false, true)) return
         scope.launch {

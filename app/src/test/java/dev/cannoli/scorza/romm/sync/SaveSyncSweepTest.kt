@@ -74,9 +74,6 @@ class SaveSyncSweepTest {
         File(sd, "Saves/SNES/Zelda.srm").writeBytes(content.toByteArray())
     }
 
-    // Seed the anchor row so the auto-resolver has both anchors to compare.
-    // serverAnchor = lastUploadedHash = "server-hash-unchanged"
-    // localAnchor = localContentHash = "old-local-hash"
     private fun seedAnchor(lastUploadedHash: String, localContentHash: String) {
         store.upsert(
             SaveSyncRow(
@@ -96,7 +93,6 @@ class SaveSyncSweepTest {
     @Test fun `sweep auto-resolves one-sided conflict and does not escalate`() = runBlocking {
         writeSave("NEW-LOCAL")
         val localHash = SaveHasher.hashFile(File(sd, "Saves/SNES/Zelda.srm"))
-        // server unchanged: serverContentHash == lastUploadedHash; local changed: localHash != localContentHash
         val serverHash = "server-hash-unchanged"
         seedAnchor(lastUploadedHash = serverHash, localContentHash = "old-local-hash")
 
@@ -126,7 +122,6 @@ class SaveSyncSweepTest {
 
     @Test fun `sweep escalates a true conflict`() = runBlocking {
         writeSave("NEW-LOCAL")
-        // both local and server changed from their anchors -> ESCALATE
         seedAnchor(lastUploadedHash = "old-server-hash", localContentHash = "old-local-hash")
 
         every { client.negotiateSync(any()) } returns SyncNegotiateResponse(
@@ -197,16 +192,6 @@ class SaveSyncSweepTest {
         assertEquals(0, summary.uploaded)
     }
 
-    /**
-     * RomM's negotiate already skips a save this device untracked. The other route into a download
-     * is this one, and without the same rule it pulls back the save the user told this device to
-     * leave alone.
-     */
-    /**
-     * Same mistake as the launch path had, and worse here: the sweep runs unattended. Reporting the
-     * last uploaded hash for a save the user has since played matches the server's unchanged copy,
-     * answers no_op, and the newer save is never pushed.
-     */
     @Test fun `the sweep reports the save on disk, not the last uploaded hash`() = runBlocking {
         writeSave("PLAYED SINCE UPLOAD")
         seedAnchor(lastUploadedHash = "stale-upload-hash", localContentHash = "stale-upload-hash")
@@ -239,7 +224,6 @@ class SaveSyncSweepTest {
     }
 
     @Test fun `sweep pulls server save when local missing and no anchor`() = runBlocking {
-        // no local save, no anchor: the server copy should still be pulled down.
         every { client.getSaves(42, "dev-1", any()) } returns listOf(
             RommSaveDto(id = 77, romId = 42, slot = "autosave", contentHash = "srv", updatedAt = "2026-06-26T01:00:00Z")
         )
@@ -261,7 +245,6 @@ class SaveSyncSweepTest {
             operations = listOf(SyncOperationDto(action = "download", romId = 42, saveId = 100, fileName = "Zelda.srm", slot = "autosave", serverUpdatedAt = "t", serverContentHash = "abc")),
             totalDownload = 1,
         )
-        // relaxed downloadSaveContent writes nothing -> empty temp file
         val summary = service.sweep(resolveGame = { Triple("SNES", "Zelda", "snes9x") })
 
         assertEquals(0, summary.downloaded)
@@ -305,7 +288,6 @@ class SaveSyncSweepTest {
     @Test fun `sweep escalates a non-convergent upload instead of looping`() = runBlocking {
         writeSave("LOCAL")
         val localHash = SaveHasher.hashFile(File(sd, "Saves/SNES/Zelda.srm"))
-        // We already uploaded exactly this content, but the server's newest is different -> stuck.
         seedAnchor(lastUploadedHash = localHash, localContentHash = localHash)
         every { client.negotiateSync(any()) } returns SyncNegotiateResponse(
             sessionId = 1,
@@ -335,7 +317,6 @@ class SaveSyncSweepTest {
     @Test fun `sweep still uploads when an upload verdict is genuinely new content`() = runBlocking {
         writeSave("BRAND-NEW")
         val localHash = SaveHasher.hashFile(File(sd, "Saves/SNES/Zelda.srm"))
-        // local differs from what we last uploaded -> real new content, upload converges normally.
         seedAnchor(lastUploadedHash = "old-uploaded", localContentHash = "old-local")
         every { client.negotiateSync(any()) } returns SyncNegotiateResponse(
             sessionId = 1,
@@ -363,7 +344,7 @@ class SaveSyncSweepTest {
 
     @Test fun `upload 409 with a different server save escalates a conflict`() = runBlocking {
         writeSave("LOCAL")
-        seedAnchor(lastUploadedHash = "old", localContentHash = "old") // local changed -> plan UPLOAD
+        seedAnchor(lastUploadedHash = "old", localContentHash = "old")
         every { client.negotiateSync(any()) } returns SyncNegotiateResponse(sessionId = 1, operations = emptyList())
         every { client.uploadSave(any(), any(), any(), any(), any(), any(), any(), any(), any()) } throws dev.cannoli.scorza.romm.RommException(409, "HTTP 409 Conflict")
         every { client.getSaves(42, "dev-1", any()) } returns listOf(
@@ -379,7 +360,7 @@ class SaveSyncSweepTest {
     @Test fun `upload 409 with an identical server save reconciles without conflict`() = runBlocking {
         writeSave("LOCAL")
         val localHash = SaveHasher.hashFile(File(sd, "Saves/SNES/Zelda.srm"))
-        seedAnchor(lastUploadedHash = "old", localContentHash = "old") // local changed -> plan UPLOAD
+        seedAnchor(lastUploadedHash = "old", localContentHash = "old")
         every { client.negotiateSync(any()) } returns SyncNegotiateResponse(sessionId = 1, operations = emptyList())
         every { client.uploadSave(any(), any(), any(), any(), any(), any(), any(), any(), any()) } throws dev.cannoli.scorza.romm.RommException(409, "HTTP 409 Conflict")
         every { client.getSaves(42, "dev-1", any()) } returns listOf(
@@ -464,7 +445,6 @@ class SaveSyncSweepTest {
     }
 
     @Test fun `sweep pulls the newest server save when the rom has several`() = runBlocking {
-        // RomM keeps every save as its own row; the newest one is the head, not the first returned.
         every { client.getSaves(42, "dev-1", any()) } returns listOf(
             RommSaveDto(id = 70, romId = 42, slot = "autosave", contentHash = "stale", updatedAt = "2026-07-16T11:47:38+00:00"),
             RommSaveDto(id = 77, romId = 42, slot = "autosave", contentHash = "head", updatedAt = "2026-07-19T01:54:32+00:00"),
@@ -480,7 +460,7 @@ class SaveSyncSweepTest {
     }
 
     @Test fun `regenerate pulls the newest server save when the rom has several`() = runBlocking {
-        seedAnchor(lastUploadedHash = "gone", localContentHash = "gone") // anchor without a local file
+        seedAnchor(lastUploadedHash = "gone", localContentHash = "gone")
         every { client.getSaves(42, "dev-1", any()) } returns listOf(
             RommSaveDto(id = 70, romId = 42, slot = "autosave", contentHash = "stale", updatedAt = "2026-07-16T11:47:38+00:00"),
             RommSaveDto(id = 77, romId = 42, slot = "autosave", contentHash = "head", updatedAt = "2026-07-19T01:54:32+00:00"),
@@ -492,8 +472,6 @@ class SaveSyncSweepTest {
         verify { client.downloadSaveContent(77, "dev-1", any()) }
     }
 
-    // A save that hashes empty is impossible, so an anchor holding that hash was written from a bad
-    // read: never push the file sitting next to it over the server head.
     @Test fun `sweep escalates when the anchor records an impossible empty save`() = runBlocking {
         writeSave("ON-DISK")
         seedAnchor(lastUploadedHash = "server-head", localContentHash = SaveHasher.EMPTY_MD5)

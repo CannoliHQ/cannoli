@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-"""Sync credits.json to CreditsData.kt, taskfile.yml, and release.yml."""
 
 import json
 import re

@@ -22,8 +22,6 @@ class AtomicRename(private val cannoliRoot: () -> File, private val walker: RomD
 
     data class RenameResult(val success: Boolean, val error: RenameError? = null, val newPrimary: File? = null)
 
-    // Carries a structured error through the throw/catch so the raw exception text can be
-    // logged (not surfaced) while the UI maps the code to a localized message.
     private class RenameFailure(val error: RenameError) : Exception()
 
     fun rename(romFile: File, newBaseName: String, platformTag: String): RenameResult {
@@ -34,8 +32,6 @@ class AtomicRename(private val cannoliRoot: () -> File, private val walker: RomD
         val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
         val backupTagDir = File(backupDir, "$platformTag/${oldBaseName}-$timestamp")
 
-        // Only save data is backed up: the ROM and art are renamed in place (reversible by
-        // renaming back), so copying them would just churn gigabytes of SD I/O for nothing.
         try {
             backupTagDir.mkdirs()
             backupSaveData(backupTagDir, platformTag, oldBaseName)
@@ -64,14 +60,11 @@ class AtomicRename(private val cannoliRoot: () -> File, private val walker: RomD
                 if (artFile.renameTo(newArtFile)) artMoved = artFile to newArtFile
             }
             moveSaveData(platformTag, oldBaseName, newBaseName)
-            // Cheats/guides/config are keyed by RomKey.baseName, not the raw file base name used
-            // above for saves - that's where the content actually lives.
             val oldContentKey = RomKey.baseName(romFile)
             val newContentKey = RomKey.baseName(newPrimary)
             if (oldContentKey != newContentKey) {
                 relocatePerGameContent(backupTagDir, platformTag, oldContentKey, newContentKey)
             }
-            // Arcade map.txt applies to loose files; folder games already moved with their parent dir.
             if (gameDirBefore == null) {
                 updateMapFile(romDir, romFile.name, newPrimary.name)
             }
@@ -88,10 +81,6 @@ class AtomicRename(private val cannoliRoot: () -> File, private val walker: RomD
         return RenameResult(true, newPrimary = newPrimary)
     }
 
-    // Reconciles a game's save data to a new base name without touching the ROM file or
-    // art (used to heal saves written under the wrong name). Assumes the target base name
-    // is unoccupied (the caller skips when destination save data already exists); rollback
-    // clears any newBase artifacts on failure.
     fun relocateSaveData(platformTag: String, oldBaseName: String, newBaseName: String): RenameResult {
         if (oldBaseName == newBaseName) return RenameResult(true)
         if (!hasSaveData(platformTag, oldBaseName)) return RenameResult(true)
@@ -167,11 +156,6 @@ class AtomicRename(private val cannoliRoot: () -> File, private val walker: RomD
         }
     }
 
-    /**
-     * The per-game save folder, moved the way the per-game state folder already is. The files
-     * inside carry whatever name the emulator wrote, so the ones named after the old base follow
-     * the folder; anything else keeps its name because it was never ours to rename.
-     */
     private fun moveSaveDir(savesTagDir: File, oldBaseName: String, newBaseName: String) {
         val from = File(savesTagDir, oldBaseName)
         if (!from.isDirectory) return
@@ -258,12 +242,6 @@ class AtomicRename(private val cannoliRoot: () -> File, private val walker: RomD
         restorePerGameContent(backupTagDir, tag)
     }
 
-    // Moves the cheats dir, guides dir, and per-game override cfg from oldKey to newKey. Checks
-    // for a newKey collision first and refuses to clobber it, without touching or backing up
-    // anything - the caller's catch block rolls the whole rename back in that case, and since
-    // nothing here was ever moved there is nothing for that rollback to restore. Only once the
-    // collision check passes does it back up the old-key content (so a failed move can be
-    // restored) and perform the move.
     private fun relocatePerGameContent(backupTagDir: File, tag: String, oldKey: String, newKey: String) {
         val targetCheats = paths.cheatDir(tag, newKey)
         val targetGuides = paths.guideDir(tag, newKey)
@@ -295,8 +273,6 @@ class AtomicRename(private val cannoliRoot: () -> File, private val walker: RomD
                 moved.add(cfgSrc to targetCfg)
             }
         } catch (e: Exception) {
-            // Undo whatever already moved in this call before the outer catch rolls the rest
-            // of the rename back too.
             moved.asReversed().forEach { (from, to) -> to.renameTo(from) }
             throw e
         }

@@ -45,10 +45,6 @@ data class RommGame(
     val isMainSibling: Boolean = false,
 )
 
-/**
- * Paths to the media RomM stores and serves itself. The provider's own urls are deliberately not
- * modelled: media is only ever read back from the RomM instance, never from ScreenScraper.
- */
 data class RommSsMedia(
     val box3dPath: String? = null,
     val mixPath: String? = null,

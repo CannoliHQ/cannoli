@@ -38,10 +38,6 @@ object LogWriter {
         dropped.computeIfAbsent(target) { AtomicLong() }.incrementAndGet()
     }
 
-    /**
-     * Queues work for the writer thread. Used for opening and closing files, which is rare
-     * enough to be worth waiting briefly on a full queue rather than dropping.
-     */
     fun post(task: () -> Unit) {
         start()
         try {
@@ -51,11 +47,6 @@ object LogWriter {
         }
     }
 
-    /**
-     * Blocks the caller until everything queued so far has reached the filesystem, or
-     * until [timeoutMs] elapses. The timeout covers waiting for room in a full queue as
-     * well as the drain itself, so a stalled card bounds this at [timeoutMs] either way.
-     */
     fun flush(timeoutMs: Long): Boolean {
         if (worker == null) return true
         val deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMs)

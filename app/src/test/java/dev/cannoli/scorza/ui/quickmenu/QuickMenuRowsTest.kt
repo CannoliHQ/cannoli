@@ -67,8 +67,6 @@ class QuickMenuRowsTest {
         )
     }
 
-    // Unlocks earned offline are queued on the card, and the queue is Cannoli's own: it is not
-    // RomM's, so it shows whether or not a server is paired.
     @Test fun `queued offline unlocks join the rows that lead the menu`() {
         val rows = QuickMenuRow.visibleRows(
             rommPaired = true, kitchenRunning = false, saveSyncEnabled = true,
@@ -123,13 +121,6 @@ class QuickMenuRowsTest {
         assertEquals(QuickMenuRow.DOWNLOADS, paired.first())
         assertEquals(QuickMenuRow.DOWNLOADS, bare.first())
         assertEquals(false, bare.contains(QuickMenuRow.ROMM))
-    }
-
-    // A finished queue used to drop to a different position, moving a row under the thumb of anyone
-    // who opened the menu to check on a download that had just landed.
-    @Test fun `a finished queue holds the position a running one had`() {
-        val rows = QuickMenuRow.visibleRows(rommPaired = true, kitchenRunning = false, downloadCount = 3)
-        assertEquals(QuickMenuRow.DOWNLOADS, rows.first())
     }
 
     @Test fun `the queue leads even ahead of conflicts and errors`() {

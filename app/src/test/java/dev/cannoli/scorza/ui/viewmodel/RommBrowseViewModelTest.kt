@@ -83,7 +83,6 @@ class RommBrowseViewModelTest {
 
     @Test fun `openPlatform folds siblings and marks the group present via a downloaded member`() = runTest {
         val lib = mockk<RommLibrary>()
-        // Representative is the USA sibling; the present filename belongs to the Japan sibling.
         coEvery { lib.foldedGames(platform, null) } returns fakeFold(listOf(
             game(1, "Zelda", "zelda-usa.sfc", 1L).copy(groupKey = 1, regions = listOf("USA")),
             game(2, "Zelda", "zelda-jp.sfc", 1L).copy(groupKey = 1, regions = listOf("Japan")),

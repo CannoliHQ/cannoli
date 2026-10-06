@@ -54,10 +54,6 @@ private fun glyphLabel(glyph: HelpGlyph, buttonStyle: ButtonStyle): String = whe
     HelpGlyph.DPAD -> ""
 }
 
-/**
- * What a screen answers to, as glyph and description. The keyboard and the guide viewer both use
- * this; each supplies its own [groups], since only the screen knows what its buttons do.
- */
 @Composable
 fun HelpOverlay(
     @StringRes titleRes: Int,
@@ -91,8 +87,6 @@ fun HelpOverlay(
                     .align(Alignment.CenterHorizontally),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // One group to a column while there are two, so a screen with a single group does
-                // not leave half the width empty.
                 if (groups.size > 1) {
                     HelpColumn(groups.take(1), buttonStyle)
                     HelpColumn(groups.drop(1), buttonStyle)

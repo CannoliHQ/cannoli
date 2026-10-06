@@ -7,10 +7,6 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/**
- * CheevosConfigTest pins the emitted keys; this pins the wiring, so a launch that never reads the
- * account, or a hardcore launch that still writes the auto slot, fails here.
- */
 class CheevosLaunchConfigTest : LaunchConfigHarness() {
 
     private fun loggedIn(hardcore: Boolean = false) {
@@ -41,11 +37,6 @@ class CheevosLaunchConfigTest : LaunchConfigHarness() {
         assertEquals("", cfg["cheevos_password"])
     }
 
-    /**
-     * Seeds a stale cheevos block into the base config. writeRunnerConfig now regenerates the
-     * base every launch, so the seed is overwritten before buildGameConfig reads it; these cases
-     * therefore duplicate the plain logged-in/out cases and simply reconfirm the plumbing wins.
-     */
     private fun seedInheritedCheevosBlock(root: java.io.File) {
         val cfg = java.io.File(
             dev.cannoli.scorza.config.CannoliPaths(root.absolutePath).configRetroArch,
@@ -72,7 +63,6 @@ class CheevosLaunchConfigTest : LaunchConfigHarness() {
         assertEquals("", cfg["cheevos_username"])
         assertEquals("", cfg["cheevos_token"])
         assertEquals("", cfg["cheevos_password"])
-        // Not hardcore, so the save state rows and the auto slot stay.
         assertTrue(cfg.containsKey("savestate_auto_save"))
     }
 
@@ -113,8 +103,6 @@ class CheevosLaunchConfigTest : LaunchConfigHarness() {
         assertEquals("true", cfg["cheevos_hardcore_mode_enable"])
     }
 
-    // A manual Game ID forces softcore even when the game asks for nothing: the association is
-    // unofficial, so hardcore would be invalid, and it must not depend on the game's own mode.
     @Test fun `a game id forces softcore under global hardcore`() {
         val root = tmp.newFolder()
         loggedIn(hardcore = true)
@@ -149,8 +137,6 @@ class CheevosLaunchConfigTest : LaunchConfigHarness() {
         assertEquals(setOf(rom.path.absolutePath), mgr.findResumableRoms(listOf(rom)))
     }
 
-    // The IGM gates its save state rows on this parcel flag, so a force-softcore game under global
-    // hardcore must launch with the flag off (rows shown) even though global hardcore is on.
     @Test fun `a force softcore launch carries a softcore flag to the igm`() {
         val root = tmp.newFolder()
         loggedIn(hardcore = true)

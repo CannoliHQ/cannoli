@@ -159,8 +159,6 @@ private fun DialogInputHandler.onRenameConfirm(state: DialogState.RenameInput) {
                 nav.dialogState.value = DialogState.None
                 return
             }
-            // Keep the keyboard up until results are ready so the screen underneath never flashes,
-            // then dismiss it and reveal the populated results in the same frame.
             nav.navigating = true
             gameListViewModel.loadGlobalSearch(dev.cannoli.scorza.model.GameSearchQuery(term)) {
                 launcherActions.scanResumableGames()
@@ -203,8 +201,6 @@ private fun DialogInputHandler.onRenameConfirm(state: DialogState.RenameInput) {
             val gameId = state.currentName.trim().toIntOrNull()
             ioScope.launch {
                 romsRepository.gameByPath(target.romPath)?.let { romsRepository.setRaGameId(it.id, gameId) }
-                // Inside the reload, not beside it: restoring immediately rebuilt the row from the
-                // rom this write had not reached yet, so a freshly set id still read Autodetect.
                 gameListViewModel.reload { restoreContextMenu() }
             }
         }

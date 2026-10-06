@@ -21,8 +21,6 @@ class CuratedCatalogTest {
         )
     }
 
-    // A preset that leaves a key out would keep whatever the previous preset wrote, so switching
-    // presets would land on a combination no preset describes.
     @Test
     fun `every preset of a row sets exactly the keys the row owns`() {
         for (cat in CuratedCatalog.categories) {
@@ -55,8 +53,6 @@ class CuratedCatalogTest {
         assertNull(CuratedCatalog.resolve(scaling, scaling.settingKeys.associateWith { "-999" }))
     }
 
-    // A key absent from the map is one RetroArch does not expose on this build, so it cannot
-    // disagree with anything. Treating it as a mismatch would make the row read Custom forever.
     @Test
     fun `resolve ignores a key the host does not report`() {
         val first = scaling.presets.first()
@@ -74,8 +70,6 @@ class CuratedCatalogTest {
         assertEquals(setOf("aspect_ratio_index", "video_scale_integer"), scaling.discriminatingKeys)
     }
 
-    // RetroArch renders floats with %g, so a ratio of 2.0 arrives as "2". A preset written as "2.0"
-    // must still match, or the row reads Custom for a value the user just set from this menu.
     @Test
     fun `resolve compares numbers numerically rather than as text`() {
         val ff = row("advanced", "curated_max_ff_speed")
@@ -102,8 +96,6 @@ class CuratedCatalogTest {
         assertEquals(scaling.presets.last(), CuratedCatalog.nextPreset(scaling, scaling.presets.first().values, -1))
     }
 
-    // Custom has no position in the list, so cycling off it must land somewhere defined rather than
-    // on an arbitrary neighbour of an index that does not exist.
     @Test
     fun `nextPreset from Custom lands on the first preset in either direction`() {
         val bogus = scaling.settingKeys.associateWith { "-999" }
@@ -132,8 +124,6 @@ class CuratedCatalogTest {
         }
     }
 
-    // Cannoli writes input_driver = "android" into every controller cfg it generates. A curated row
-    // that touched either driver key would break every controller mapping in game.
     @Test
     fun `no curated row touches a driver key`() {
         val all = CuratedCatalog.categories.flatMap { it.rows }.flatMap { it.settingKeys }

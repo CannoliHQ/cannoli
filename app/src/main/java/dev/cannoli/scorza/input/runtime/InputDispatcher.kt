@@ -17,20 +17,16 @@ class InputDispatcher @Inject constructor(
     private val screenInputRegistry: ScreenInputRegistry = ScreenInputRegistry(),
 ) {
 
-    /** Overridable for tests; production calls System.currentTimeMillis. */
     internal var clock: () -> Long = { System.currentTimeMillis() }
 
-    // The menu shortcuts bound in shortcuts.ini, so a pad with no menu button still has one here.
     private val menuShortcuts = dev.cannoli.igm.MenuShortcutGate()
 
     private val mainHandler by lazy { android.os.Handler(android.os.Looper.getMainLooper()) }
 
-    /** Overridable for tests; production posts to the main looper, as the other held-key timers do. */
     internal var schedule: (delayMs: Long, block: () -> Unit) -> Unit = { delayMs, block ->
         mainHandler.postDelayed(block, delayMs)
     }
 
-    /** What shortcuts.ini binds now. Called at start and again whenever the shortcuts are saved. */
     fun setMenuShortcuts(shortcuts: Map<dev.cannoli.igm.ShortcutAction, Set<Int>>) {
         menuShortcuts.setShortcuts(shortcuts)
         heldBackOn.clear()
@@ -61,19 +57,12 @@ class InputDispatcher @Inject constructor(
     var onNorth: () -> Unit = {}
     var onMenu: () -> Unit = {}
 
-    // When set, resolves the active screen handler synchronously from nav state instead of the
-    // recompose-lagging registry. Set per wiring via wireToRegistry: the launcher passes one, the
-    // IGM passes null so it falls back to registry top. Reset on every wireToRegistry call so the
-    // last activity to wire wins (the IGM clears the launcher's resolver when it takes over).
     private var screenResolver: (() -> dev.cannoli.scorza.input.ScreenInputHandler)? = null
 
     private fun activeScreen(): dev.cannoli.scorza.input.ScreenInputHandler =
         screenResolver?.invoke() ?: screenInputRegistry.top
 
     fun handleKeyEvent(event: KeyEvent): Boolean {
-        // Raw event hook: screens that need keycode/deviceId/repeatCount (binding capture,
-        // shortcut chord capture) override onRawKeyDown/onRawKeyUp and can short-circuit before
-        // canonical dispatch.
         val handler = activeScreen()
         if (handler !== dev.cannoli.scorza.input.screen.EmptyScreenInputHandler) {
             val consumed = when (event.action) {
@@ -136,10 +125,6 @@ class InputDispatcher @Inject constructor(
                         dev.cannoli.scorza.util.InputLog.write("key id=$deviceId code=$keyCode -> unbound")
                     }
                     if (deltas.isEmpty()) {
-                        // A pad with no profile has no bindings to produce a delta, so an unbound
-                        // press is the only way it can announce itself and reach the setup wizard.
-                        // Identified pads keep the older rule, where only a bound press claims a
-                        // port, so a stray media key cannot take one.
                         if (mapping.source == MappingSource.UNIDENTIFIED) maybeActivate(deviceId)
                         return false
                     }
@@ -177,11 +162,6 @@ class InputDispatcher @Inject constructor(
         }
     }
 
-    /**
-     * The menu shortcuts' say over a key, before it means anything else. Null lets the key through
-     * to its usual handling. A key a shortcut takes still goes through the evaluator, so the pad's
-     * held state stays true to the buttons.
-     */
     private fun menuShortcutKey(
         deviceId: Int,
         keyCode: Int,
@@ -215,7 +195,6 @@ class InputDispatcher @Inject constructor(
                         onMenu()
                         true
                     }
-                    // Only ever answers a release.
                     dev.cannoli.igm.MenuShortcutGate.Result.REPLAY_PRESS -> null
                 }
             }
@@ -224,14 +203,11 @@ class InputDispatcher @Inject constructor(
                 gate.takeReplays().forEach(::replayPress)
                 return when (result) {
                     dev.cannoli.igm.MenuShortcutGate.Result.PASS -> null
-                    // Its press never reached a screen, so neither does its release.
                     dev.cannoli.igm.MenuShortcutGate.Result.CONSUME -> {
                         heldBackOn.remove(keyCode)
                         evaluator.evaluateKeyUp(keyCode)
                         true
                     }
-                    // Let go while held back: the press happens now, and the release goes on as
-                    // usual below.
                     dev.cannoli.igm.MenuShortcutGate.Result.REPLAY_PRESS -> {
                         replayPress(keyCode)
                         null
@@ -243,7 +219,6 @@ class InputDispatcher @Inject constructor(
         }
     }
 
-    // Which pad a held-back key came from, so its press is replayed as that pad's button.
     private val heldBackOn = mutableMapOf<Int, Int>()
 
     private fun menuShortcutTick() {
@@ -304,8 +279,6 @@ class InputDispatcher @Inject constructor(
     }
 
     private fun dispatchPressed(canonical: CanonicalButton, mapping: DeviceMapping): Boolean {
-        // Resolved through the same function the in-game menu uses, so the two processes cannot
-        // disagree about which face button this profile calls confirm.
         val action = dev.cannoli.igm.menuActionFor(canonical, mapping.menuConfirm, mapping.menuBack)
             ?: return false
         when (action) {
@@ -330,19 +303,6 @@ class InputDispatcher @Inject constructor(
         return true
     }
 
-    /**
-     * Wires the dispatcher's canonical-event callbacks to its [ScreenInputRegistry]. Every
-     * subscriber Activity (MainActivity for the launcher, LibretroActivity for the IGM) calls
-     * this once during initialization so the two contexts share one wiring path and cannot drift.
-     *
-     * [dialogHandler] is consulted before the registry's top handler. Pass null on the IGM
-     * (no dialog layer) and the launcher's DialogInputHandler on the launcher. The handler
-     * returns true to consume the event; on false, dispatch falls through to the screen handler.
-     *
-     * The launcher passes [onSelectUpOverride] because it owns select-hold nav-flag state that
-     * the generic helper cannot know about; on the IGM and in tests the override stays null and
-     * the helper's default body (cancel-hold then dialog-or-screen) is used.
-     */
     fun wireToRegistry(
         dialogHandler: dev.cannoli.scorza.input.DialogPrecedence? = null,
         onSelectUpOverride: (() -> Unit)? = null,

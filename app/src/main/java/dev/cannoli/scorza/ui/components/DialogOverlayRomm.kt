@@ -101,8 +101,6 @@ internal fun RommDialogs(
                 rightBottomItems = buildList {
                     if (confirmLabel != null) add(buttonStyle.confirm to stringResource(confirmLabel))
                     if (activeCount >= 2) add(buttonStyle.north to stringResource(R.string.label_cancel_all))
-                    // Its own button rather than sharing north: a queue can hold finished rows and
-                    // active ones at the same time, so clearing and cancelling have to coexist.
                     if (ordered.any { it.status == DownloadStatus.Done || it.status is DownloadStatus.Failed }) {
                         add(buttonStyle.west to stringResource(R.string.label_clear))
                     }
@@ -165,9 +163,6 @@ private fun DownloadRow(item: DownloadItem, isSelected: Boolean, fontSize: TextU
                 is DownloadStatus.Failed -> stringResource(R.string.romm_art_failed)
                 else -> ""
             }
-            // Same colour as the label it sits beside, and the row's own lineHeight: without it the
-            // smaller type falls back to its own default and rides high in the pill instead of
-            // centring against the name.
             Text(
                 right,
                 color = text,

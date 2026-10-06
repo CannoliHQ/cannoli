@@ -75,13 +75,10 @@ class PlatformsJsonAssetTest {
         assertEquals("{rom_id}", localGameId.value)
         assertEquals(setOf("localgameid", "txt"), localGameId.whenExtension)
 
-        // GameHub opens the game's detail page without this and waits for a tap on Play Now.
         val autoStart = hub.extras.single { it.key == "autoStartGame" }
         assertEquals(ExtraValueKind.BOOL, autoStart.kind)
         assertEquals("true", autoStart.value)
 
-        // NO_HISTORY drops the detail activity once it hands off to the emulator, so quitting the
-        // game empties GameHub's task and falls back to the launcher rather than its detail page.
         assertEquals(
             Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_NO_HISTORY,
             hub.intentFlags,

@@ -122,24 +122,15 @@ class DialogInputHandler @Inject constructor(
         )
     }
 
-    // Read from the card each time the menu is built, like the conflict count above it: the game
-    // process writes this queue while the launcher is not looking.
     internal fun pendingUnlocks() = dev.cannoli.core.achievements.RaPendingUnlocks(
         File(dev.cannoli.scorza.config.CannoliPaths(settings.sdCardRoot).configRetroAchievements, "Pending")
     )
 
-    // Single-flight: held Back / Menu key-repeat re-enters these branches before the
-    // coroutine below completes. Without this guard a second rebuild can win the race
-    // and overwrite fresher badge counts with stale ones (or, for Kitchen, double-rescan).
-    // [beforeShow] runs in the same main-thread step that shows the menu, so a caller that has to
-    // leave a screen first never draws the frame in between with neither the screen nor the menu.
     fun openQuickMenu(
         selected: dev.cannoli.scorza.ui.quickmenu.QuickMenuRow? = null,
         beforeShow: (() -> Unit)? = null,
     ) {
         if (!quickMenuRebuild.compareAndSet(false, true)) {
-            // A rebuild already in flight will show the menu, but only this call knows how to leave
-            // the screen behind it, so Back never strands the user on it.
             beforeShow?.invoke()
             return
         }
@@ -177,7 +168,6 @@ class DialogInputHandler @Inject constructor(
         return true
     }
 
-    // Screens that mean something else by the menu button, so it has to reach their own handler.
     private fun isQuickMenuBlockedScreen(): Boolean = when (nav.currentScreen) {
         is LauncherScreen.Settings,
         is LauncherScreen.InputTester,
@@ -190,8 +180,6 @@ class DialogInputHandler @Inject constructor(
 
     internal var pendingContextReturn: ContextReturn? = null
     var openGuides: ((dev.cannoli.scorza.model.Rom) -> Unit)? = null
-    // The RetroAchievements screen owns the credential-clearing and its own pop, so the confirm
-    // dialog delegates back to it rather than duplicating that navigation here.
     var onRetroAchievementsLogout: (() -> Unit)? = null
     var onControllerReset: ((String) -> Unit)? = null
 
@@ -229,7 +217,6 @@ class DialogInputHandler @Inject constructor(
         return true
     }
 
-    /** The one place that knows how many rows a [ListDialog] has; some counts are not its to own. */
     private fun listSize(ds: ListDialog): Int = when (ds) {
         is DialogState.Picker -> ds.items.size
         is DialogState.SyncHistory -> ds.entries.size
@@ -351,10 +338,8 @@ class DialogInputHandler @Inject constructor(
         return true
     }
 
-    /** Set by MainActivity, which owns the wizard controller. Reopens setup for a device. */
     var onRestartControllerWizard: ((Int) -> Unit)? = null
 
-    /** Set by MainActivity, which owns the sync scheduler. */
     var onSyncSavesNow: (() -> Unit)? = null
 
     override fun onNorth(): Boolean {
@@ -367,15 +352,11 @@ class DialogInputHandler @Inject constructor(
             return false
         }
         when (ds) {
-            // Gated on the Sync History row so the legend and the row agree on whether sync exists.
             is DialogState.QuickMenu -> if (dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.SYNC_HISTORY in ds.rows) {
                 nav.dialogState.value = DialogState.None
                 onSyncSavesNow?.invoke()
             }
-            // Skip: the mapping stands, the check is declined, and the flow is finished.
             is DialogState.InputTesterOffer -> nav.dialogState.value = DialogState.None
-            // Only where the selected row declared it clears, so the button does what the legend
-            // beside it offered and the picker keeps hold of what it is acting on.
             is DialogState.Picker ->
                 if (ds.items.getOrNull(ds.selectedIndex)?.clears == true) {
                     ds.onNorth?.invoke(ds.selectedIndex)
@@ -415,8 +396,6 @@ class DialogInputHandler @Inject constructor(
         when (ds) {
             is DialogState.RommDownloads -> {
                 rommDownloader.clearFinished()
-                // The selection can be past the end once the finished rows go, and an empty queue
-                // has nothing left to show.
                 val left = rommDownloader.state.value
                 if (left.isEmpty()) {
                     if (ds.fromQuickMenu) openQuickMenu(dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.DOWNLOADS)
@@ -557,14 +536,6 @@ internal sealed interface ContextReturn {
     data class Single(val gameName: String, val options: List<String>, val selectedOption: Int = 0) : ContextReturn
     data class Bulk(val gamePaths: List<String>, val options: List<String>) : ContextReturn
 
-    /**
-     * A submenu of the context menu rather than the menu itself.
-     *
-     * Its rows open a keyboard and run a job, and both used to land back on the parent menu or the
-     * game list, because the only returns that existed described those. [selectRow] puts the cursor
-     * back on the row that left, and [parent] is the menu underneath, restored as this one is
-     * consumed so that backing out of the group leaves it rather than reopening it.
-     */
     data class Achievements(
         val romId: Long,
         val selectRow: String? = null,

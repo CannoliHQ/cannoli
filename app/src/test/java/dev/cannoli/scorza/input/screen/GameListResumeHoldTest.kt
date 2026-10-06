@@ -54,9 +54,9 @@ class GameListResumeHoldTest {
     @Test fun confirm_tap_on_resumable_resumes_latest_when_swap_on() {
         every { settings.swapPlayResume } returns true
         every { glvm.state } returns MutableStateFlow(GameListViewModel.State())
-        handler.onConfirm()              // arm (no launch yet)
+        handler.onConfirm()
         verify(exactly = 0) { actions.launchSelected(any(), any()) }
-        handler.onConfirmUp()            // release before timeout = tap
+        handler.onConfirmUp()
         verify { actions.launchSelected(romItem, true) }
     }
 
@@ -64,8 +64,8 @@ class GameListResumeHoldTest {
         every { settings.swapPlayResume } returns true
         every { actions.buildSaveStatePicker(rom, any()) } returns
             LauncherScreen.SaveStatePicker(rom, "/x/base", List(11) { false }, 0, awaitConfirmRelease = true)
-        handler.onConfirm()              // arm
-        handler.resumeHoldRunnable.run() // simulate 400ms elapse
+        handler.onConfirm()
+        handler.resumeHoldRunnable.run()
         assertTrue(nav.currentScreen is LauncherScreen.SaveStatePicker)
         verify(exactly = 0) { actions.launchSelected(any(), any()) }
         verify { actions.buildSaveStatePicker(rom, true) }
@@ -75,11 +75,11 @@ class GameListResumeHoldTest {
         every { settings.swapPlayResume } returns true
         every { actions.buildSaveStatePicker(rom, any()) } returns
             LauncherScreen.SaveStatePicker(rom, "/x/base", List(11) { false }, 0, awaitConfirmRelease = true)
-        handler.onConfirm()              // arm
-        handler.onConfirm()              // auto-repeat while held: must not re-arm
+        handler.onConfirm()
+        handler.onConfirm()
         val depthBefore = nav.screenStack.size
-        handler.resumeHoldRunnable.run() // timer fires -> push once
-        handler.resumeHoldRunnable.run() // any stale scheduled copy -> no-op
+        handler.resumeHoldRunnable.run()
+        handler.resumeHoldRunnable.run()
         assertEquals(depthBefore + 1, nav.screenStack.size)
     }
 
@@ -87,7 +87,6 @@ class GameListResumeHoldTest {
         every { settings.swapPlayResume } returns false
         every { glvm.state } returns MutableStateFlow(GameListViewModel.State())
         handler.onConfirm()
-        // swap off: confirm is Play fresh, launches immediately on press
         verify { actions.launchSelected(romItem, false) }
     }
 
@@ -96,7 +95,7 @@ class GameListResumeHoldTest {
         every { glvm.state } returns mockk(relaxed = true)
         every { actions.buildSaveStatePicker(rom, any()) } returns
             LauncherScreen.SaveStatePicker(rom, "/x/base", List(11) { false }, 0)
-        handler.onNorth()                // arm (north is Resume when swap off)
+        handler.onNorth()
         handler.resumeHoldRunnable.run()
         assertTrue(nav.currentScreen is LauncherScreen.SaveStatePicker)
         verify { actions.buildSaveStatePicker(rom, false) }

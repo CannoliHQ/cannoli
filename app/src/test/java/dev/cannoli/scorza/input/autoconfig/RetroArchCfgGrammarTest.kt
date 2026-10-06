@@ -13,18 +13,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
 
-// RetroArchCfgWriter's output is read by RetroArch, not by Cannoli's own parser, so a value that
-// satisfies RetroArchCfgParser can still be rejected or silently misread by RetroArch. This test
-// checks the writer against RetroArch's actual grammar, verified in the vendored source:
-//
-// - retroarch/configuration.c:7781, input_config_parse_joy_button, reads "<base>_btn" and accepts
-//   ONLY: the literal "nul"; a hat of the form "h<digits><up|down|left|right>"; or an integer
-//   parsed with strtoull, which is UNSIGNED, so a leading minus is not a valid button value.
-// - retroarch/configuration.c:7694, input_config_parse_joy_axis, reads "<base>_axis" and accepts
-//   ONLY: the literal "nul"; or a leading '+' or '-' followed by an axis index.
-// - retroarch/input/input_driver.c:5915-5916 calls both parsers on the same base key, so
-//   "input_<x>_btn" and "input_<x>_axis" are independent keys and either may be present
-//   without the other.
 class RetroArchCfgGrammarTest {
 
     private val hatBtnPattern = Regex("""^h\d+(up|down|left|right)$""")
@@ -32,8 +20,6 @@ class RetroArchCfgGrammarTest {
     private val signedAxisPattern = Regex("""^[+-]\d+$""")
     private val linePattern = Regex("""^(input_[a-z0-9_]+|cannoli_[a-z0-9_]+) = "(.*)"$""")
 
-    // These describe the device, not a binding, so RetroArch never reads them as a joy button
-    // or axis key.
     private val nonBindingInputKeys = setOf(
         "input_driver",
         "input_device",
@@ -53,9 +39,9 @@ class RetroArchCfgGrammarTest {
             }
             val (key, value) = match.destructured
             when {
-                key.startsWith("cannoli_") -> Unit // RetroArch skips keys it does not know.
+                key.startsWith("cannoli_") -> Unit
                 key in nonBindingInputKeys -> Unit
-                key.endsWith("_btn_label") || key.endsWith("_axis_label") -> Unit // Free text.
+                key.endsWith("_btn_label") || key.endsWith("_axis_label") -> Unit
                 key.endsWith("_btn") -> assertValidBtnValue(key, value)
                 key.endsWith("_axis") -> assertValidAxisValue(key, value)
                 else -> fail(
@@ -67,9 +53,6 @@ class RetroArchCfgGrammarTest {
     }
 
     private fun assertValidBtnValue(key: String, value: String) {
-        // The exact bug that shipped: a signed value on a _btn key. input_config_parse_joy_button
-        // reads it with strtoull, which is unsigned, so this is called out explicitly rather than
-        // folded into the pattern check below.
         assertFalse(
             "$key = \"$value\" is signed, but input_config_parse_joy_button reads _btn values " +
                 "with strtoull (unsigned) -- this is the exact bug that shipped",
@@ -92,9 +75,6 @@ class RetroArchCfgGrammarTest {
         )
     }
 
-    // RetroArch's android_joypad_axis_state (retroarch/input/drivers_joypad/android_joypad.c)
-    // bounds-checks the axis slot against MAX_AXIS(10) before reading android->analog_state, so
-    // any slot >= 10 written into a cfg is a dead binding in native RetroArch.
     private fun assertAxisSlotsInBounds(cfg: String) {
         for (rawLine in cfg.lineSequence()) {
             val line = rawLine.trim()
@@ -121,9 +101,6 @@ class RetroArchCfgGrammarTest {
         ),
     )
 
-    // Digital buttons, both analog triggers, and both left/right sticks reported on the RA-known
-    // axes (0/1 and 11/14, the Z/RZ convention RaAxisSlots.kt maps to slots 2/3). The d-pad is
-    // supplied separately below since one d-pad cannot be both hat-bound and axis-bound at once.
     private fun baseMapping(dpad: Map<CanonicalButton, List<InputBinding>>) = DeviceMapping(
         id = "Grammar_Test_Pad",
         displayName = "Grammar Test Pad",
@@ -147,7 +124,6 @@ class RetroArchCfgGrammarTest {
             CanonicalButton.BTN_START to listOf(InputBinding.Button(108)),
             CanonicalButton.BTN_SELECT to listOf(InputBinding.Button(109)),
             CanonicalButton.BTN_MENU to listOf(InputBinding.Button(318)),
-            // AXIS_LTRIGGER(17)/AXIS_RTRIGGER(18) -> RA slots 6/7.
             CanonicalButton.BTN_L2 to listOf(
                 InputBinding.Axis(
                     axis = 17, restingValue = -1f, activeMin = 0f, activeMax = 1f,
@@ -181,7 +157,6 @@ class RetroArchCfgGrammarTest {
         CanonicalButton.BTN_RIGHT to listOf(InputBinding.Hat(15, HatDirection.RIGHT)),
     )
 
-    // A pad whose d-pad reports as a plain digital push on AXIS_X/AXIS_Y rather than a hat.
     private val axisDpad: Map<CanonicalButton, List<InputBinding>> = mapOf(
         CanonicalButton.BTN_UP to listOf(
             InputBinding.Axis(
@@ -229,10 +204,6 @@ class RetroArchCfgGrammarTest {
         assertAxisSlotsInBounds(RetroArchCfgWriter.write(baseMapping(axisDpad)))
     }
 
-    // RA's Android driver never reads AXIS_RX(12)/AXIS_RY(13) into analog_state, so a right stick
-    // captured on that convention (some pads report it this way instead of AXIS_Z/AXIS_RZ) has no
-    // RA slot at all. It must be left out rather than named by its raw android id, which would
-    // write slot 12/13 and be rejected as >= MAX_AXIS(10).
     @Test
     fun `a right stick reported on AXIS_RX or AXIS_RY writes no key at all`() {
         val cfg = RetroArchCfgWriter.write(mappingWithRightStickOn(12, 13))
@@ -241,10 +212,6 @@ class RetroArchCfgGrammarTest {
         assertNoKeyStartingWith(cfg, "input_r_y_")
     }
 
-    // The failure mode that does not announce itself. Android axes 2..9 are pressure, size and
-    // touch axes rather than joystick axes, so passing one through unchanged yields an IN-RANGE
-    // slot naming a different control: android axis 8 would write slot 8, which RA reads as
-    // AXIS_BRAKE. A wrong binding is worse than a missing one, so nothing is written.
     @Test
     fun `an axis with no RA slot never borrows an in-range slot from another control`() {
         val cfg = RetroArchCfgWriter.write(mappingWithRightStickOn(8, 9))
@@ -252,8 +219,6 @@ class RetroArchCfgGrammarTest {
         assertNoKeyStartingWith(cfg, "input_r_y_")
     }
 
-    // The skip must not consume the key: a pad reporting one stick axis on an unmappable axis and
-    // another on a real one still writes the one RA can use.
     @Test
     fun `an unmappable binding does not suppress a mappable one on the same key`() {
         val mapping = baseMapping(hatDpad).let {

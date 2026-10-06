@@ -8,10 +8,6 @@ enum class OnboardingPermission(val required: Boolean) {
     STORAGE(required = true),
     OVERLAY(required = false);
 
-    /**
-     * The catalogue entry this row presents. Storage is a different manifest permission below
-     * API 30, where all files access does not exist, so the row names whichever one is real here.
-     */
     val appPermission: AppPermission
         get() = when (this) {
             STORAGE ->
@@ -21,11 +17,6 @@ enum class OnboardingPermission(val required: Boolean) {
         }
 }
 
-/**
- * The overlay permission only buys anything on a dual-screen device, so a single-screen device is
- * never offered it. Guides fall back to the main screen when it is missing, which is why it is
- * optional rather than a second required grant.
- */
 fun onboardingPermissions(hasSecondDisplay: Boolean): List<OnboardingPermission> =
     OnboardingPermission.entries.filter { it != OnboardingPermission.OVERLAY || hasSecondDisplay }
 

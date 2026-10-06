@@ -23,7 +23,6 @@ class GlobalOverridesManager(private val sdCardRoot: () -> String) {
 
     private val savedListeners = java.util.concurrent.CopyOnWriteArrayList<() -> Unit>()
 
-    /** Told after every save, so a reader holding the bindings in memory picks the change up. */
     fun addShortcutsSavedListener(listener: () -> Unit) {
         savedListeners += listener
     }

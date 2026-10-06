@@ -4,7 +4,6 @@ import dev.cannoli.core.SaveSlotStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 
-/** An IGMController whose slot refresh runs inline; a JVM test has no main dispatcher. */
 fun testController(
     bridge: RetroArchBridge,
     gameTitle: String = "Game",
@@ -18,12 +17,9 @@ fun testController(
         Dispatchers.Unconfined,
     )
 
-/** A base path nothing was ever saved under, for tests that do not care about slots. */
 const val NO_SAVES = "/nonexistent/cannoli-test/Game.state"
 
 open class FakeRetroArchBridge : RetroArchBridge {
-    /** Records the order [quit] and [dropHeldCommands] land relative to each other and to
-     * [IGMController.onClose], which the test wires into the same list. */
     val callOrder = mutableListOf<String>()
 
     override fun reset() {}
@@ -93,7 +89,6 @@ open class FakeRetroArchBridge : RetroArchBridge {
 
     private var cheatsLoadedCallback: ((List<RetroArchBridge.CheatRow>) -> Unit)? = null
 
-    /** Holds every snapshot back until [deliverCheats], reproducing the real load window. */
     var deferCheatLoads = false
     private val undeliveredCheatLoads = mutableListOf<String>()
 
@@ -101,8 +96,6 @@ open class FakeRetroArchBridge : RetroArchBridge {
         cheatsLoadedCallback = callback
     }
 
-    // The real bridge queues the load and calls back from the emulator thread. Tests want the
-    // deterministic version, so the fake calls back inline.
     override fun loadCheatFile(path: String) {
         loadedCheatPaths += path
         if (deferCheatLoads) undeliveredCheatLoads += path
@@ -114,7 +107,6 @@ open class FakeRetroArchBridge : RetroArchBridge {
         cheatsLoadedCallback?.invoke(cheatRowsByPath[path].orEmpty())
     }
 
-    /** A load the queue never ran: no snapshot will ever arrive for it. */
     fun dropPendingCheatLoads() = undeliveredCheatLoads.clear()
 
     override fun toggleCheat(index: Int) { toggledCheatIndexes += index }

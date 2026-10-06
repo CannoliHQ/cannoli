@@ -11,8 +11,6 @@ class ViewportControllerTest {
 
     private class FakeBridge(
         var geometry: IntArray? = intArrayOf(320, 240, 13333, 10000),
-        // Mutable so a test can change what these read back between two refresh() calls, the way
-        // a successful apply forces both to Cannoli's takeover values on the native side.
         var aspectIdx: Int = 22,
         var integerScale: Boolean = false,
         var aspectValue: Float = 0f,
@@ -93,21 +91,11 @@ class ViewportControllerTest {
         assertEquals(1280, b.applied!![2])
     }
 
-    // The previous version of this test forced "active with nothing wanted" via markActive() on a
-    // fresh controller, which leaves shadowedAspectIdx unset even though active is true - a
-    // combination refresh() can never produce. ViewportSettings is fixed per controller instance,
-    // so geometryWanted never changes within one instance's lifetime; the only way a live controller
-    // actually sees both marginWanted and geometryWanted go false is rotating out of portrait when
-    // only the margin wanted a viewport. That is what actually drives the clear branch in
-    // production, and the clear must hand back what was captured before the apply, not RetroArch's
-    // live (forced-to-custom) values.
     @Test fun `rotating out of portrait clears a margin-only viewport with the captured values`() {
         val b = FakeBridge()
         val c = controller(b, marginPx = 200, aspectIdx = 24, integer = true)
         assertEquals(RefreshResult.APPLIED, c.refresh(1080, 1920))
 
-        // The apply just ran forces these on the native side; the fake has to be told explicitly
-        // since it does not simulate the native force itself.
         b.aspectIdx = 23
         b.integerScale = false
 
@@ -136,9 +124,6 @@ class ViewportControllerTest {
         assertEquals(true, b.clearedIntegerScale)
     }
 
-    // A successful apply forces aspect_ratio_index to ASPECT_RATIO_CUSTOM (23) on the native
-    // side, so a naive re-derivation on the next refresh would lose the user's chosen mode.
-
     @Test fun `a fullscreen user stays fullscreen once the apply forces the index to custom`() {
         val b = FakeBridge()
         val c = controller(b, wPct = 50, aspectIdx = 24)
@@ -163,19 +148,12 @@ class ViewportControllerTest {
         assertEquals(1280, b.applied!![2])
     }
 
-    // The launcher writes the scaling row through a queued command while this reads settings
-    // synchronously, so a refresh fired on menu dismissal can read the value from before the
-    // change. Once a viewport is live the index reads as custom and the remembered mode wins on
-    // every later refresh, so a stale latch never corrects itself. What rescues it is refreshing
-    // again once the write has actually landed, which is when the index reflects the new choice.
     @Test fun `a refresh after the write lands replaces a mode latched from a stale read`() {
         val b = FakeBridge()
-        // The user picked fullscreen, but the queued write has not drained: the read still says 22.
         val c = controller(b, wPct = 50, aspectIdx = 22)
         assertEquals(RefreshResult.APPLIED, c.refresh(1920, 1080))
         val coreReported = b.applied!!.toList()
 
-        // The write lands, so the index now says what the user chose, and the echo drives a refresh.
         b.aspectIdx = 24
         assertEquals(RefreshResult.APPLIED, c.refresh(1920, 1080))
         val afterEcho = b.applied!!.toList()
@@ -196,10 +174,6 @@ class ViewportControllerTest {
         assertEquals(reported.applied!!.toList(), b.applied!!.toList())
     }
 
-    // Region: wPct 50 on 1920x1080 -> 960x1080. Index 0 (4:3) is neither 22 nor 24, so the fit
-    // must use the LUT's 16:9 rather than the core's own ~4:3 (13333/10000): screenAspect is
-    // 960/1080 = 0.89, narrower than 16:9, so w = effW = 960, h = 960 / (16/9) = 540. The core's
-    // own aspect would instead give h = 720.
     @Test fun `an index outside 22 and 24 uses the LUT value instead of the core's own aspect`() {
         val b = FakeBridge()
         b.aspectValue = 16f / 9f
@@ -214,9 +188,6 @@ class ViewportControllerTest {
         assertEquals(emptyMap<String, String>(), controller(b, wPct = 80).shadowedSettings())
     }
 
-    // The apply forces aspect_ratio_index to ASPECT_RATIO_CUSTOM (23) on the native side, so what
-    // shadowedSettings() hands back has to be captured from the read that happened before that,
-    // not read back afterwards.
     @Test fun `shadowedSettings returns the pre-apply index and integer-scale values while active`() {
         val b = FakeBridge()
         val c = controller(b, wPct = 80, aspectIdx = 22, integer = true)
@@ -227,9 +198,6 @@ class ViewportControllerTest {
         )
     }
 
-    // Mirrors `rotating out of portrait clears a margin-only viewport with the captured values`:
-    // a second controller stands in for the same session after Screen Geometry settings changed
-    // back to defaults.
     @Test fun `shadowedSettings is empty again once the viewport clears`() {
         val b = FakeBridge()
         controller(b, wPct = 80).refresh(1920, 1080)

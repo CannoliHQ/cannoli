@@ -5,13 +5,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 
-/**
- * A setting crosses as name/value pairs from one encoder, so the two describers cannot drift.
- *
- * They did, when the array was positional: the core option branch allocated eight where the
- * RetroArch branch allocated ten, so core options arrived with no machine value, nothing was
- * recorded when the menu snapshotted one, and Discard silently left the change applied.
- */
 class RicottaRaSettingFieldParityTest {
 
     private val bridge = File("jni/ricotta_bridge.c")
@@ -49,10 +42,6 @@ class RicottaRaSettingFieldParityTest {
         }
     }
 
-    /**
-     * A field name is the contract, so a typo on either side drops that field in silence. Every
-     * name the decoder reads has to be one C actually emits.
-     */
     @Test fun `every field the decoder reads is one C emits`() {
         val emitted = Regex("fields\\[n\\]\\.name = \"([a-z]+)\"")
             .findAll(source()).map { it.groupValues[1] }.toSet()

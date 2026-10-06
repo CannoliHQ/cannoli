@@ -83,8 +83,6 @@ class RaPendingUnlocksTest {
     @Test fun `an unlock that cannot use its temporary file is not left half written`() {
         val dir = File(tmp.root, "Pending").also { it.mkdirs() }
         val q = RaPendingUnlocks(dir, writerTag = "w")
-        // A directory where the scratch file must go. A writer that wrote straight to the target
-        // would instead leave whatever it managed before the process died.
         File(dir, "42-7.w.tmp").mkdirs()
         assertFalse(q.write(award(7), gameId = 42, atMs = 1000L))
         assertTrue(q.list().isEmpty())

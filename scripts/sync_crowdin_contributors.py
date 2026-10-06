@@ -21,8 +21,6 @@ API = "https://api.crowdin.com/api/v2"
 CATALOG = os.path.join(ROOT, "app/src/main/java/dev/cannoli/scorza/i18n/LanguageCatalog.kt")
 CREDITS = os.path.join(ROOT, "credits.json")
 
-# Crowdin credits pre-translated strings to whoever applied them. Lowercase handles, matched
-# on the handle rather than the display name so a rename cannot smuggle anyone back in.
 EXCLUDED_HANDLES = {"brandonkowalski"}
 
 
@@ -40,7 +38,6 @@ def request(url, token=None, method="GET", payload=None):
 
 
 def catalog_tags():
-    """Ordered BCP-47 tags offered by LanguageCatalog, minus English."""
     text = open(CATALOG, encoding="utf-8").read()
     tags = re.findall(r'LanguageOption\("([^"]+)"', text)
     if not tags:
@@ -49,7 +46,6 @@ def catalog_tags():
 
 
 def language_map():
-    """Crowdin display name -> BCP-47 tag, derived from Crowdin's own androidCode."""
     mapping = {}
     offset = 0
     while True:
@@ -90,11 +86,6 @@ def download_report(token, project_id, report_id):
 
 
 def split_languages(cell, known_names):
-    """Split a Languages cell into Crowdin language names, plus whatever went unrecognized.
-
-    Crowdin separates with ";" because a name may contain a comma of its own
-    ("Portuguese, Brazilian", "Spanish, Latin America").
-    """
     found, unknown = [], []
     for part in (piece.strip() for piece in cell.split(";")):
         if not part:
@@ -104,12 +95,10 @@ def split_languages(cell, known_names):
 
 
 def display_name(raw):
-    """Real name when Crowdin has one, otherwise the bare handle."""
     return raw.split(" (")[0].strip() if " (" in raw else raw.strip()
 
 
 def crowdin_handle(raw):
-    """The Crowdin username, lowercased: the parenthesized half, or the whole cell without a real name."""
     handle = raw.split(" (", 1)[1].rsplit(")", 1)[0] if " (" in raw else raw
     return handle.strip().lower()
 
@@ -169,7 +158,6 @@ def render_block(localization):
 
 
 def update_credits(localization):
-    """Rewrite only the localization block so the hand-formatted file keeps its shape."""
     text = open(CREDITS, encoding="utf-8").read()
     block = render_block(localization)
     updated, count = re.subn(

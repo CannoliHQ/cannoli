@@ -38,8 +38,6 @@ class CollectionsRepository(private val db: CannoliDatabase) {
         return rows.filter { it.type == CollectionType.FAVORITES } + rows.filter { it.type == CollectionType.STANDARD }
     }
 
-    /** A missing pick falls back to the first standard collection, as it did before Favorites was
-     *  offered, and to Favorites only when there is no standard collection at all. */
     fun resolveFghCollection(currentId: Long?, choices: List<CollectionRow> = fghChoices()): CollectionRow? =
         choices.firstOrNull { it.id == currentId }
             ?: choices.firstOrNull { it.type == CollectionType.STANDARD }

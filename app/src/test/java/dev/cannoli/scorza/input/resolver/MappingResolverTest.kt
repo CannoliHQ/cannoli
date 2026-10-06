@@ -103,9 +103,6 @@ class MappingResolverTest {
 
     @Test
     fun two_colliding_user_cfgs_resolve_deterministically_by_filename() {
-        // Per-model scoping means two user files describing the same make and model are no
-        // longer told apart by physical unit, so the tie is broken by filename, giving a
-        // deterministic pick rather than one that depends on filesystem listing order.
         writeCfg(
             "other_pad_user.cfg",
             """
@@ -156,9 +153,6 @@ class MappingResolverTest {
 
     @Test
     fun disk_entry_resolves_without_ever_considering_a_matching_bundled_entry() {
-        // Disk being non-empty excludes bundled entries from the candidate set entirely (see
-        // non_empty_disk_set_with_no_match_does_not_fall_back_to_bundled_assets), so this only
-        // proves a disk match resolves -- there is no priority contest against the bundled entry.
         writeCfg(
             "disk_wins.cfg",
             """
@@ -180,10 +174,6 @@ class MappingResolverTest {
 
     @Test
     fun non_empty_disk_set_with_no_match_does_not_fall_back_to_bundled_assets() {
-        // Ruling: falling back to assets when disk is non-empty would resurrect profiles the
-        // seeder deliberately did not materialise for this handheld. The disk set here has an
-        // entry, just not one for this device, and a bundled entry that would match is never
-        // consulted.
         writeCfg(
             "other_pad.cfg",
             """
@@ -203,10 +193,6 @@ class MappingResolverTest {
         assertEquals(MappingSource.UNIDENTIFIED, resolved.source)
     }
 
-    // Retroid handhelds rewrite a paired BT pad's gamepad endpoint to report the built-in's
-    // VID/PID while keeping the BT pad's actual name. The cfg whose name matches the device must
-    // win over the cfg whose VID/PID happens to match -- otherwise the DualSense inherits the
-    // built-in's button layout and the saved file's [match] block gets the built-in's identity.
     @Test
     fun phantom_rewrite_prefers_name_matching_cfg_over_vidpid_matching_cfg() {
         val phantomDualSense = device(
@@ -238,9 +224,6 @@ class MappingResolverTest {
 
     @Test
     fun user_cfg_still_wins_when_descriptor_changes_across_reconnect() {
-        // First connect: the user's edits are written under the descriptor of that session. Later,
-        // Android rotates the descriptor (BT nonce flip, phantom rewrite, or simply a fresh
-        // InputDevice id for the same physical pad). The user's file must still resolve.
         writeCfg(
             "stadia_user.cfg",
             """
@@ -261,8 +244,6 @@ class MappingResolverTest {
 
     @Test
     fun two_same_model_pads_both_resolve_to_same_user_cfg() {
-        // Two physically distinct Pro pads of the same make/model. The file names one pad's
-        // descriptor, so the other pad falls back to name + VID/PID and lands on the same file.
         writeCfg(
             "switch_pro_user.cfg",
             """
@@ -289,8 +270,6 @@ class MappingResolverTest {
 
     @Test
     fun user_cfg_resolves_for_bluetooth_pad_with_zero_vid_pid() {
-        // Common BT controller failure mode: kernel reports VID 0, PID 0. The user's file must
-        // still resolve via name alone.
         writeCfg(
             "bt_pad_user.cfg",
             """
@@ -316,9 +295,6 @@ class MappingResolverTest {
 
     @Test
     fun user_cfg_on_disk_resolves_even_though_a_bundled_entry_also_matches() {
-        // The user's edits survive a bundled cfg update, but not because the user entry outranks
-        // it in a comparison -- disk being non-empty excludes the bundled entry from the
-        // candidate set before any ranking happens.
         writeCfg(
             "stadia_user_custom.cfg",
             """
@@ -344,11 +320,6 @@ class MappingResolverTest {
 
     @Test
     fun cfg_vid_pid_drives_hint_lookup_over_phantom_device_identity() {
-        // Phantom-rewrite hosts (Retroid family) report a BT pad's gamepad endpoint with the
-        // built-in's VID/PID while keeping the pad's real name. The bundled cfg matches by
-        // name, but its header carries the pad's true VID. Hint lookup must prefer the cfg's
-        // VID/PID over the device's reported (phantom) VID/PID so a DualSense connected via
-        // such a host doesn't inherit the host's hint (e.g. Nintendo BTN_EAST/PLUMBER).
         val raEntry = RetroArchCfgEntry(
             deviceName = "DualSense Wireless Controller",
             vendorId = 1356,
@@ -359,7 +330,6 @@ class MappingResolverTest {
             androidDeviceId = 11,
             descriptor = "phantom-bt",
             name = "DualSense Wireless Controller",
-            // Phantom-rewritten to the Retroid built-in's VID/PID instead of Sony's.
             vendorId = 8226,
             productId = 12289,
             androidBuildModel = "Retroid Pocket Classic",
@@ -375,9 +345,6 @@ class MappingResolverTest {
 
     @Test
     fun user_cfg_cosmetic_choices_survive_when_no_bundled_cfg_matches() {
-        // The user's cosmetic toggles (glyph style, menu confirm side, display name) live in the
-        // same file as their bindings, so they come back on the next resolve without a bundled
-        // cfg being involved at all.
         writeCfg(
             "stadia_user_cosmetic.cfg",
             """
@@ -398,9 +365,6 @@ class MappingResolverTest {
         assertEquals(GlyphStyle.REDMOND, resolved.glyphStyle)
     }
 
-    // Some shared-identity pads (e.g. the AYN Thor / Portal / Odin 3 all reporting "Odin
-    // Controller" 0x2020:0x0111) cannot be told apart by name+vid/pid at all. A cfg pinned to
-    // Build.MODEL disambiguates them: it is exclusive to that one device.
     @Test
     fun `build model cfg wins over a same name vid pid cfg when device model matches`() {
         writeCfg(
@@ -481,8 +445,6 @@ class MappingResolverTest {
         assertEquals(MappingSource.UNIDENTIFIED, resolved.source)
     }
 
-    // The build-model tier applies to bundled entries too, so a shared-identity pad (AYN Thor)
-    // resolves correctly even before disk seeding lands.
     @Test
     fun `bundled build model cfg resolves when nothing is on disk`() {
         val ra = listOf(
@@ -507,9 +469,6 @@ class MappingResolverTest {
         assertEquals(listOf(InputBinding.Button(97)), resolved.bindings[CanonicalButton.BTN_SOUTH])
     }
 
-    // A build-model cfg is the built-in pad's, not the handheld's: an external controller plugged
-    // into that handheld reports the host Build.MODEL but its own vid/pid, and must not inherit
-    // the built-in cfg.
     @Test
     fun `build model cfg does not match an external pad that only shares the host model`() {
         writeCfg(
@@ -583,9 +542,6 @@ class MappingResolverTest {
     }
 
     @Test fun `user provenance outranks input db even at a worse match rank`() {
-        // The realistic case on the affected handhelds: a wizard-made USER cfg carries no model
-        // pin (NAME_AND_VID_PID), while the curated INPUT_DB cfg is pinned to this device's model
-        // (NAME_AND_MODEL, the better rank). Provenance must still decide it, not rank.
         writeCfg(
             "sony_ds4.cfg",
             """
@@ -612,9 +568,6 @@ class MappingResolverTest {
     }
 
     @Test fun `builtin agreement wins the tiebreak over an unfavorable filename`() {
-        // Same provenance (neither is user-owned) and same rank (both NAME_AND_VID_PID), so only
-        // builtin agreement can decide it. The agreeing entry's filename sorts after the
-        // disagreeing one's, so a filename-only tiebreak would pick the wrong entry.
         val ra = listOf(
             RetroArchCfgEntry(
                 deviceName = "Stadia Controller", vendorId = 6353, productId = 37888,
@@ -634,9 +587,6 @@ class MappingResolverTest {
     }
 
     @Test fun `filename tiebreak picks the alphabetically first bundled entry regardless of list order`() {
-        // Both entries are bundled, not on disk, so AutoconfigRepository's own filename sort
-        // cannot be doing this work. The list itself is in the wrong order, so only the
-        // resolver's own tiebreak can produce the alphabetically first result.
         val ra = listOf(
             RetroArchCfgEntry(
                 deviceName = "Stadia Controller", vendorId = 6353, productId = 37888,
@@ -690,9 +640,6 @@ class MappingResolverTest {
 
     @Test
     fun `a staged cfg does not hide the shipped database from another pad`() {
-        // Staging holds the one pad configured before the storage grant. Folding it into the disk
-        // set would read as "the seeded database answers for everything" and send every other pad
-        // to the unknown path with its own entry sitting unread in the assets.
         val staging = tmp.newFolder("staging")
         java.io.File(staging, "PadA.cfg").writeText(
             "input_device = \"Pad A\"\ninput_vendor_id = \"1\"\ninput_product_id = \"2\"\ninput_b_btn = \"96\"\ncannoli_user = \"true\"\n"

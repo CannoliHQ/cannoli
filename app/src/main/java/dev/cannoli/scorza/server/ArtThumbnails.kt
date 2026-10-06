@@ -7,17 +7,10 @@ import java.io.File
 import java.security.MessageDigest
 import java.util.concurrent.Semaphore
 
-/** Downscaled copies of box art, cached on internal storage. Full-size art runs to a couple of MB
- *  per file, so a grid of them saturates the connection and the decode congests the browser's main
- *  thread; the cards only ever need a few hundred pixels. */
 internal class ArtThumbnails(private val cacheDir: File) {
 
-    // A full-size decode is far larger in memory than the file on disk, and the server can run many
-    // requests at once, so generation is throttled independently of request concurrency.
     private val decodePermits = Semaphore(MAX_CONCURRENT_DECODES, true)
 
-    /** A cached thumbnail of [source] at [width], or null when one cannot or need not be made, in
-     *  which case the caller should serve the original. */
     fun thumbnail(source: File, width: Int): File? {
         if (width !in MIN_WIDTH..MAX_WIDTH) return null
         val cached = File(cacheDir, "${cacheKey(source, width)}.webp")
@@ -35,7 +28,6 @@ internal class ArtThumbnails(private val cacheDir: File) {
     private fun generate(source: File, width: Int, dest: File): File? {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeFile(source.absolutePath, bounds)
-        // Nothing to gain from upscaling, and a source we cannot measure is one we should not touch.
         if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
         if (bounds.outWidth <= width) return null
 
@@ -56,7 +48,6 @@ internal class ArtThumbnails(private val cacheDir: File) {
 
         return try {
             dest.parentFile?.mkdirs()
-            // Written aside and moved so a concurrent reader never sees a half-written file.
             val temp = File(dest.parentFile, "${dest.name}.${Thread.currentThread().id}.tmp")
             temp.outputStream().use { out -> scaled.compress(webpFormat(), QUALITY, out) }
             if (temp.renameTo(dest)) dest else { temp.delete(); null }
@@ -69,8 +60,6 @@ internal class ArtThumbnails(private val cacheDir: File) {
     }
 
     private fun cacheKey(source: File, width: Int): String {
-        // Size and mtime in the key mean replacing the art file yields a different key, so a stale
-        // thumbnail can never be served and nothing has to be actively evicted.
         val raw = "${source.absolutePath}|${source.length()}|${source.lastModified()}|$width"
         return MessageDigest.getInstance("SHA-256")
             .digest(raw.toByteArray())

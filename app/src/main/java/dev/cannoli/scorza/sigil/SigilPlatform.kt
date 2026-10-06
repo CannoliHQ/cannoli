@@ -3,10 +3,6 @@ package dev.cannoli.scorza.sigil
 /**
  * The platforms sigil extracts that Cannoli also has a tag for. Ordinals are the wire format the
  * JNI shim switches on, so entries are appended, never reordered.
- *
- * Sigil also reads Switch, PS3, Xbox and Xbox 360. Switch needs a header key out of prod.keys that
- * Cannoli has nowhere to store and no way to ask for; PS3 wants a game folder or a PARAM.SFO while
- * Cannoli's PS3 rows are ISOs for aps3e; and neither Xbox has a Cannoli tag.
  */
 enum class SigilPlatform {
     PSX,

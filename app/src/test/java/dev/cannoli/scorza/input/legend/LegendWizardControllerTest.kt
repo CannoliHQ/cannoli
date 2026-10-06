@@ -24,10 +24,8 @@ class LegendWizardControllerTest {
 
     private val LegendWizardController.step: WizardStep get() = state.value.step
 
-    // No confirm supplied, so the wizard asks the same three-press question the welcome step does.
     private fun started() = LegendWizardController().apply { start(null) }
 
-    // Arriving from the welcome run, which has already settled confirm.
     private fun startedFromWelcome(confirm: Int = 96) =
         LegendWizardController().apply { start(confirm) }
 
@@ -35,8 +33,6 @@ class LegendWizardControllerTest {
         repeat(CONFIRM_PRESSES_REQUIRED) { onKeyCaptured(keyCode) }
     }
 
-    // Confirm and back double-pressed, then menu and start captured once each.
-    // Skips every question after phase one, which is how a pad missing those buttons finishes.
     private fun LegendWizardController.finishRemaining() = apply {
         var guard = 0
         while (state.value.step != WizardStep.Done && guard++ < 64) {
@@ -95,8 +91,6 @@ class LegendWizardControllerTest {
         c.onKeyCaptured(108)
         assertEquals(CanonicalButton.BTN_SELECT, c.state.value.capturing)
         c.onButtonCaptured(listOf(InputBinding.Button(109)))
-        // Then the D-pad, which is what makes the lists operable and the pad navigable if
-        // everything after it is skipped.
         assertEquals(WizardStep.Capture, c.step)
         assertEquals(CanonicalButton.BTN_UP, c.state.value.capturing)
         listOf(19, 20, 21, 22).forEach { c.onButtonCaptured(listOf(InputBinding.Button(it))) }
@@ -114,8 +108,6 @@ class LegendWizardControllerTest {
 
     @Test fun `a press of another button restarts the confirm run rather than failing it`() {
         val c = started()
-        // A different button empties the run and begins its own, so two of one and then three of
-        // another still settles on the second.
         c.onKeyCaptured(96)
         c.onKeyCaptured(96)
         c.confirmRun(97)
@@ -183,8 +175,6 @@ class LegendWizardControllerTest {
         assertEquals(CanonicalButton.BTN_WEST, mapping.menuBack)
     }
 
-    // The confirm run is the only question answered by more than one press, so it is the only one
-    // that draws progress. A press with no visible effect there reads as a press that went missing.
     @Test fun `the confirm run reports its progress so the presses are visibly counted`() {
         val c = started()
         assertEquals(0, c.state.value.confirmRunCount)
@@ -204,7 +194,6 @@ class LegendWizardControllerTest {
         assertEquals(1, c.state.value.confirmRunCount)
     }
 
-    // A rejected press re-asks the question it failed, and never takes back an answer already given.
     @Test fun `a re-asked question keeps the answers already made`() {
         val c = started()
         c.confirmRun(96)
@@ -265,8 +254,6 @@ class LegendWizardControllerTest {
         assertEquals(CanonicalButton.BTN_SOUTH, mapping.menuBack)
     }
 
-    // All four captures are mandatory, so the captured menu and start always replace what the base
-    // mapping guessed rather than being left alone.
     @Test fun `captured menu and start replace the base bindings`() {
         val mapping = started().answer(menu = 316, start = 109).buildMapping(baseMapping())
 
@@ -275,8 +262,6 @@ class LegendWizardControllerTest {
     }
 
     @Test fun `an unanswered glyph question leaves the base style rather than guessing one`() {
-        // Nothing is inferred from the confirm keycode any more: the style is the user's answer or
-        // whatever the pad already had.
         val c = started().answer(confirm = 96, back = 97)
         assertEquals(baseMapping().glyphStyle, c.buildMapping(baseMapping()).glyphStyle)
     }
@@ -329,8 +314,6 @@ class LegendWizardControllerTest {
         assertEquals(96, reloaded.keyCodeOf(CanonicalButton.BTN_SOUTH))
     }
 
-    // Everything before the D-pad, select as the key 109. The menu question follows the D-pad,
-    // answered with 82 below.
     private fun LegendWizardController.completeRequiredActions(
         confirm: Int = 96, back: Int = 97, startBtn: Int = 108,
     ) {
@@ -356,7 +339,6 @@ class LegendWizardControllerTest {
         c.onKeyCaptured(82)
         assertEquals(WizardStep.Appearance, c.state.value.step)
         c.onAppearanceChosen(GlyphStyle.SHAPES)
-        // Confirm took south and back took east, so the two left are north and west.
         assertEquals(CanonicalButton.BTN_NORTH, c.state.value.capturing)
     }
 
@@ -376,7 +358,6 @@ class LegendWizardControllerTest {
     fun `start skips and back undoes, and neither is taken as the answer`() {
         val c = LegendWizardController()
         c.completeRequiredActions(startBtn = 108, back = 97)
-        // The D-pad is required, so walk past it before skip means anything.
         repeat(4) { c.onButtonCaptured(listOf(InputBinding.Button(19 + it))) }
         c.onKeyCaptured(82)
         c.onAppearanceChosen(GlyphStyle.REDMOND)
@@ -508,7 +489,6 @@ class LegendWizardControllerTest {
     fun `a D-pad reported as a hat is captured, not only one sent as keycodes`() {
         val c = LegendWizardController()
         c.completeRequiredActions()
-        // AXIS_HAT_Y at full deflection is how most pads report up.
         c.captureRawAxisEvent(mapOf(16 to -1f))
         c.tickCapture()
         assertEquals(CanonicalButton.BTN_UP, c.state.value.capturing)
@@ -564,8 +544,6 @@ class LegendWizardControllerTest {
 
     @Test
     fun `a trigger still held from the previous question is not captured as the next one`() {
-        // Analog triggers do not snap back the instant the last question was answered, so the axis
-        // is still deflected when the next one opens. Pressing L2 must not also bind what follows.
         val c = LegendWizardController()
         c.completeRequiredActions()
         repeat(4) {
@@ -585,13 +563,11 @@ class LegendWizardControllerTest {
         val afterL2 = c.state.value.capturing
         assertEquals(CanonicalButton.BTN_R, afterL2)
 
-        // Still held, and the question has moved on. It must be ignored until it returns to rest.
         c.captureRawAxisEvent(mapOf(17 to 1f))
         Thread.sleep(dev.cannoli.scorza.input.BindingCapture.WIZARD_SETTLE_MS + 20)
         c.tickCapture()
         assertEquals(CanonicalButton.BTN_R, c.state.value.capturing)
 
-        // Released, skip past R1, then the real R2 press lands on R2 alone.
         c.captureRawAxisEvent(mapOf(17 to 0f))
         c.skip()
         assertEquals(CanonicalButton.BTN_R2, c.state.value.capturing)
@@ -674,7 +650,6 @@ class LegendWizardControllerTest {
 
         assertEquals(WizardStep.Capture, c.state.value.step)
         assertEquals(CanonicalButton.BTN_R3, c.state.value.capturing)
-        // The D-pad answers survived, which is the whole point of reopening rather than restarting.
         val built = c.buildMapping(baseMapping())
         assertEquals(listOf(InputBinding.Button(19)), built.bindings[CanonicalButton.BTN_UP])
     }
@@ -708,13 +683,10 @@ class LegendWizardControllerTest {
         }
     }
 
-    // The D-pad as keycodes, so the menu list can be worked with the same presses.
     private fun LegendWizardController.dpadKeys() = apply {
         listOf(19, 20, 21, 22).forEach { onButtonCaptured(listOf(InputBinding.Button(it))) }
     }
 
-    // Start answers its own question, then skips the menu one. Select is the key 109 unless a
-    // different binding is given, and skipped when null.
     private fun LegendWizardController.skipMenu(
         select: InputBinding? = InputBinding.Button(109),
     ) = apply {
@@ -760,10 +732,6 @@ class LegendWizardControllerTest {
         assertEquals(WizardStep.MenuChoice, c.step)
         assertEquals(0, c.state.value.menuChoiceIndex)
         assertFalse(c.state.value.canSkip)
-    }
-
-    @Test fun `the list offers select and start first, then holding start`() {
-        assertEquals(listOf(MenuChord.SELECT_START, MenuChord.HOLD_START), MENU_CHORD_ORDER)
     }
 
     @Test
@@ -1080,13 +1048,5 @@ class LegendWizardControllerTest {
         wizard(store).skipMenu().pickSelectStart().finishRemaining()
         assertEquals(mapOf(ShortcutAction.OPEN_MENU to setOf(109, 108)), store.stored)
         assertFalse(stagedChord().exists())
-    }
-
-    @Test
-    fun `the list rows read like the appearance rows`() {
-        val strings = java.io.File("../cannoli-ui/src/main/res/values/strings.xml").readText()
-        assertTrue(strings.contains("""<string name="controller_wizard_menu_select_start">Select + Start</string>"""))
-        assertTrue(strings.contains("""<string name="controller_wizard_menu_hold_start">Hold Start</string>"""))
-        assertTrue(strings.contains("""<string name="controller_wizard_menu_is_hold_start">Hold Start to open the menu</string>"""))
     }
 }

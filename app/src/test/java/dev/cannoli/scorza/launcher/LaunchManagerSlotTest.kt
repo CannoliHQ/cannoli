@@ -46,7 +46,6 @@ class LaunchManagerSlotTest {
         val mgr = manager(root)
         val r = rom(root)
         val base = mgr.saveStateBasePath(r)
-        // slot index 1 == base with no suffix; slot index 3 == base + "2"
         File(base).apply { parentFile!!.mkdirs(); writeText("s") }
         File(base + "2").writeText("s")
 

@@ -31,7 +31,6 @@ import dev.cannoli.ui.theme.Spacing
 sealed interface CheatListItem {
     data class Restore(val label: String) : CheatListItem
     data class Cheat(val label: String, val value: String, val supported: Boolean) : CheatListItem
-    /** Stands in for a section whose rows the filter hid, so its header still draws. */
     data class EmptySection(val header: String) : CheatListItem
 }
 

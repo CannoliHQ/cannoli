@@ -58,7 +58,6 @@ class RaPendingDrainerTest {
         val result = RaPendingDrainer({ q }, client).drain()
         assertEquals(0, result.submitted)
         assertEquals(2, result.left)
-        // What the OSD reads to say the server was never asked rather than that it took none.
         assertFalse(result.reached)
         assertEquals(1, client.sent.size)
         assertEquals(2, q.list().size)
@@ -73,7 +72,6 @@ class RaPendingDrainerTest {
         val result = RaPendingDrainer({ q }, client).drain()
         assertEquals(1, result.submitted)
         assertEquals(1, result.left)
-        // The server answered and refused one, which is not the same as being unreachable.
         assertTrue(result.reached)
         assertEquals(listOf(7), q.list().map { it.achievementId })
     }
@@ -88,9 +86,6 @@ class RaPendingDrainerTest {
         assertTrue(client.sent.isEmpty())
     }
 
-    // Hilt builds this while injecting MainActivity, which on a clean install is before first run
-    // has chosen a Cannoli root. Resolving the queue's directory there threw, and the launcher
-    // could not start far enough to ask for one.
     @Test fun `constructing it never asks where the queue lives`() {
         RaPendingDrainer({ error("the queue was resolved at construction") }, FakeClient(mutableListOf()))
     }

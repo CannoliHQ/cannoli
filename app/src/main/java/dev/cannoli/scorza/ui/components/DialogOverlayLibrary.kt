@@ -42,7 +42,6 @@ internal fun LibraryDialogs(
             val selectedLabel = selected?.substringBefore('\t')
             val modeLocked = stringResource(dev.cannoli.ui.R.string.achievements_mode_locked)
             val rightBottomItems = when {
-                // A Game ID settles the mode, so its row offers no primary action.
                 selectedLabel == MENU_ACHIEVEMENTS_MODE && selected.substringAfter('\t', "") == modeLocked ->
                     emptyList()
                 selectedLabel == MENU_ACHIEVEMENTS_MODE ->
@@ -184,16 +183,8 @@ internal fun LibraryDialogs(
 
         is DialogState.UnsupportedContent -> LaunchIssue(
             title = stringResource(R.string.launch_issue_unsupported, ".${dialogState.extension}"),
-            // A third line says what the core does read, so the answer to "then what do I need" is
-            // on the screen rather than left to the picker. Trimmed by line length rather than by
-            // a count, because formats are short: six of them still fit, while the wide computer
-            // cores that declare twenty would not. Those are also the cores this gate almost never
-            // fires for, since they read nearly everything. The order is the core's own, which
-            // leads with the format it is actually for.
             subject = buildList {
                 val all = dialogState.supported.map { ".$it" }
-                // The pairing line carries the label, so the formats below it read as the answer to
-                // the title rather than as a loose list.
                 add(stringResource(
                     if (all.isEmpty()) R.string.launch_issue_subject else R.string.launch_issue_supports,
                     dialogState.platformName,
@@ -238,9 +229,6 @@ internal fun LibraryDialogs(
 
         is DialogState.MissingBios -> LaunchIssue(
             title = stringResource(R.string.launch_issue_bios_missing),
-            // The only case whose subject is a list, so the files get a line each rather than a
-            // run-on that wraps mid-filename. Capped because the screen does not scroll: past the
-            // cap the count stands in, and the BIOS screen behind the remedy has the full set.
             subject = buildList {
                 add(dialogState.platformName)
                 val shown = if (dialogState.files.size > BIOS_FILES_SHOWN) BIOS_FILES_SHOWN - 1
@@ -291,22 +279,12 @@ internal fun LibraryDialogs(
     }
 }
 
-// Four filenames plus the platform is the tallest subject the screen holds at the largest text size
-// on a 320dp handheld. Amiga's four Kickstart ROMs are the worst real case, so nothing is truncated
-// today; the cap is a guard for a core that declares more.
 private const val BIOS_FILES_SHOWN = 4
 
-// Roughly one line of the subject at its usual size. The screen shrinks a long subject rather
-// than clipping it, so this only decides where a list stops being worth reading.
 private const val FORMAT_LINE_CHARS = 40
 
-/**
- * How many formats to name before "and N more" is the better use of the room. Returns every one of
- * them when they all fit, so a short list is never truncated just for having several entries.
- */
 private fun formatsThatFit(all: List<String>, budget: Int): Int {
     if (all.joinToString(", ").length <= budget) return all.size
-    // Room kept for the longest " and NN more" this can append.
     val reserved = 12
     for (n in all.size - 1 downTo 2) {
         if (all.take(n).joinToString(", ").length + reserved <= budget) return n
@@ -314,11 +292,6 @@ private fun formatsThatFit(all: List<String>, budget: Int): Int {
     return 1
 }
 
-/**
- * The label for a context menu row. Options carry a stable key so the handlers can compare them, so
- * this is where the key becomes words. Anything with no entry is passed through: menus that build
- * their own rows from already-translated text share this renderer.
- */
 @Composable
 private fun menuOptionLabel(key: String): String =
     dev.cannoli.scorza.input.MENU_LABELS[key]?.let { stringResource(it) } ?: key

@@ -138,8 +138,6 @@ class InputTesterController(
             hatButtons = hatButtons,
         )
 
-        // Most pads report the d-pad here rather than as key events, so the code has to be watched
-        // on both paths or it can never be entered at all.
         (hatButtons - hatHeld[port].orEmpty()).forEach { feedKonami(port, it) }
         hatHeld[port] = hatButtons
 
@@ -257,14 +255,6 @@ internal val HAT_CANONICALS = listOf(
     CanonicalButton.BTN_RIGHT,
 )
 
-/**
- * The d-pad reads through the mapping like the sticks and triggers do, so the tester reports the
- * binding rather than the hardware. Reading the hat sign directly agrees with the physical pad no
- * matter which direction the mapping names it, which hides a swapped binding.
- *
- * Returns null when the mapping carries no hat bindings at all, so the caller can fall back to the
- * raw hat and still show something for an unmapped pad.
- */
 internal fun mappingHatButtons(mapping: DeviceMapping?, axisValue: (Int) -> Float): Set<CanonicalButton>? {
     var bound = false
     val pressed = buildSet {
@@ -278,24 +268,13 @@ internal fun mappingHatButtons(mapping: DeviceMapping?, axisValue: (Int) -> Floa
     return pressed.takeIf { bound }
 }
 
-/** The axis this mapping reads [canonical] from, if it names one at all. */
 internal fun boundTriggerAxis(mapping: DeviceMapping?, canonical: CanonicalButton): InputBinding.Axis? =
     mapping?.bindings?.get(canonical)
         ?.firstNotNullOfOrNull { it as? InputBinding.Axis }
         ?.takeIf { it.analogRole == AnalogRole.DIGITAL_BUTTON }
 
-// Past this a trigger is pulled rather than resting, matching where syncAxisTrigger reports a press.
 private const val TRIGGER_ACTIVE = 0.5f
 
-/**
- * Whether the trigger that just moved reached the mapping.
- *
- * The tester reads a trigger off the raw axes as well as the bound one, so its bar fills whether or
- * not the mapping names what the pad reports, which is exactly the case worth flagging: a pad on
- * AXIS_BRAKE whose mapping names AXIS_LTRIGGER looks healthy here and does nothing in a game. So the
- * question is not whether a binding exists but whether the axis that moved is the bound one. A pad
- * reporting one trigger on both axes stays quiet, because the bound axis moves too.
- */
 internal fun triggerUnbound(
     mapping: DeviceMapping?,
     canonical: CanonicalButton,

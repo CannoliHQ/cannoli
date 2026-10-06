@@ -34,8 +34,6 @@ class KitchenApkTest {
     private lateinit var root: File
     private lateinit var fake: FakeInstalls
     private var server: KitchenHttpServer? = null
-    // Ephemeral: a fixed port collides with whatever else on the machine happens to
-    // take it, which fails the whole file with a socket error that reads like a bug.
     private var port = 0
 
     @Before fun setUp() {
