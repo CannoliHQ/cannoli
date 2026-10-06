@@ -1012,8 +1012,13 @@ void ricotta_bridge_poll_commands(void)
           * so appending combines with nothing and leaving recompiles the stale one over the top.
           * An empty path clears the passes, which is how the chain is emptied. */
          const char *path = entry.ra_key ? entry.ra_key : "";
-         menu_shader_manager_set_preset(menu_shader_get(),
-               video_shader_parse_type(path), path, true);
+         enum rarch_shader_type type = video_shader_parse_type(path);
+         if (*path && !video_driver_test_all_flags(video_shader_type_to_flag(type)))
+         {
+            free(entry.ra_key);
+            continue;
+         }
+         menu_shader_manager_set_preset(menu_shader_get(), type, path, true);
          free(entry.ra_key);
          continue;
       }
