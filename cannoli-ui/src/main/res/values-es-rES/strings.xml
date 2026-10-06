@@ -3,7 +3,7 @@
     <!-- Bottom bar labels -->
     <string name="label_back">Atrás</string>
     <string name="label_cancel" tools:ignore="ButtonCase">CANCELAR</string>
-    <string name="label_select">SELEECIONAR</string>
+    <string name="label_select">SELECCIONAR</string>
     <string name="label_play">JUGAR</string>
     <string name="label_launch">LANZAR</string>
     <string name="label_open">ABRIR</string>
