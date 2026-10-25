@@ -1,9 +1,59 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Bottom bar labels -->
+    <string name="label_back">VOLVER</string>
+    <string name="label_cancel" tools:ignore="ButtonCase">CANCELAR</string>
+    <string name="label_select">SELECCIONAR</string>
+    <string name="label_play">JUGAR</string>
+    <string name="label_launch">INICIAR</string>
+    <string name="label_open">ABRIR</string>
+    <string name="label_save">GUARDAR</string>
+    <string name="label_load">CARGAR</string>
+    <string name="label_change">CAMBIAR</string>
+    <string name="label_firmware">FIRMWARE</string>
+    <string name="label_choose">ELEGIR</string>
+    <string name="label_close">CERRAR</string>
+    <string name="label_help">AYUDA</string>
+    <string name="label_remove">QUITAR ACCESO DIRECTO</string>
+    <string name="label_change_emulator">CAMBIAR EMULADOR</string>
+    <string name="label_delete">BORRAR</string>
+    <string name="label_confirm">CONFIRMAR</string>
+    <string name="label_proceed">CONTINUAR</string>
+    <string name="label_toggle">ALTERNAR</string>
+    <string name="label_new">NUEVO</string>
+    <string name="label_settings">AJUSTES</string>
+    <string name="label_resume">REANUDAR</string>
+    <string name="label_continue">CONTINUAR</string>
+    <string name="label_new_folder">NUEVO</string>
+    <string name="label_parent">PARENT</string>
+    <string name="label_slot">SLOT</string>
+    <string name="label_disc">DISCO</string>
+    <string name="label_use_location">USAR ESTA UBICACIÓN</string>
+    <string name="label_quit">SALIR</string>
+    <string name="label_stop">DETENER</string>
+    <string name="label_interface">INTERFAZ</string>
+    <string name="label_credits">CRÉDITOS</string>
+    <string name="label_update">ACTUALIZAR</string>
+    <string name="label_logout">DEJAR SESION</string>
     <!-- Bottom-bar button opening cached RetroAchievements sets for offline play. RA = RetroAchievements. -->
+    <string name="label_offline_sets">AJUSTES OFFLINE</string>
+    <string name="label_hex">HEX</string>
+    <string name="label_rename">RENOMBRAR</string>
+    <string name="label_set">DEFINIR</string>
+    <string name="label_clear">LIMPIAR</string>
+    <string name="label_press">PESIONAR</string>
     <!-- Bottom-bar button; opens Nonna's Kitchen. -->
+    <string name="label_kitchen">COCINA</string>
+    <string name="label_hold_buttons" tools:ignore="TypographyEllipsis">MANTEN UNO O MAS BOTONES...</string>
+    <string name="label_info">INFO</string>
     <!-- Bottom-bar button. RA = RetroAchievements. -->
+    <string name="label_ra_settings">AJUSTES RA</string>
+    <string name="label_details">DETALLES</string>
+    <string name="label_all">TODO</string>
+    <string name="label_unlocked">DESBLOQUEADOS</string>
+    <string name="label_locked">BLOQUEADOS</string>
+    <string name="label_reset_all">RESETEAR TODO</string>
+    <string name="label_remap">REASIGNAR</string>
     <!-- In-game menu action: reassign connected controllers to player slots. -->
     <!-- In-game shortcut actions -->
     <!-- In-game shortcut action. "(Hold)" means it triggers on a long-press of the shortcut. -->
@@ -164,6 +214,7 @@
     <!-- Screen title. %s = platform name. -->
     <!-- Screen title for the per-game emulator picker. %s = game name. -->
     <!-- Screen title. %s = platform name. -->
+    <string name="filter_all">TODO</string>
     <!-- OSD toast. %1$s = core name. -->
     <!-- OSD toast. %1$s = core name. -->
     <!-- OSD toast. %1$s = core name or error detail. -->
@@ -172,6 +223,7 @@
     <!-- %d = number of items. -->
     <!-- OSD toast. %d = number of cheats restored. -->
     <!-- %d = number of system folders created. -->
+    <string name="label_clear_override">LIMPIAR</string>
     <!-- %1$s = platform name. -->
     <!-- RA achievement preload. %1$s = game name. -->
     <!-- %1$d = achievements cached, %2$d = points. -->
@@ -179,6 +231,8 @@
     <!-- %1$d = achievement count, %2$s = set name. -->
     <!-- Save Slots screen -->
     <!-- Screen title. %1$s = game name. -->
+    <string name="save_slots_rename">RENOMBRAR</string>
+    <string name="save_slots_delete">BORRAR</string>
     <!-- %1$s = slot name. -->
     <!-- Conflicts resolution screen -->
     <!-- Shown while saves are checked against the server before a game launches. -->
@@ -188,4 +242,5 @@
     <!-- %1$d = number of backups. -->
     <!-- Label marking the older save in a conflict. -->
     <!-- On-screen keyboard help overlay -->
+    <string name="kbd_help_cancel">CANCELAR</string>
 </resources>
