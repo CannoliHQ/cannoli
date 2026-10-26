@@ -70,25 +70,55 @@
     <!-- Controller setting: which face button acts as confirm/OK. -->
     <!-- Controller setting: which face-button glyph set to display (letters like A/B versus shapes). -->
     <!-- Controller toggle: ignore this controller during gameplay (e.g. a media remote). -->
+    <string name="controllers_exclude_from_gameplay">Excluir del gameplay</string>
+    <string name="controllers_reset_defaults">Reestablecer predeterminados</string>
     <!-- Shown when a button has no assigned binding. -->
+    <string name="controllers_not_bound">Sin asignar</string>
     <!-- Confirm button values -->
     <!-- Canonical button labels -->
+    <string name="canonical_dpad_up">D-Pad arriba</string>
+    <string name="canonical_dpad_down">D-Pad abajo</string>
+    <string name="canonical_dpad_left">D-Pad izquierda</string>
+    <string name="canonical_dpad_right">D-Pad derecha</string>
+    <string name="canonical_start">Iniciar</string>
+    <string name="canonical_select">Seleccionar</string>
+    <string name="canonical_menu">Menú</string>
     <!-- Face-button position, not a compass direction: the bottom face button (South/East/West/North layout). -->
+    <string name="canonical_south">Sur</string>
     <!-- Face-button position (not compass): the right face button. -->
+    <string name="canonical_east">Este</string>
     <!-- Face-button position (not compass): the left face button. -->
+    <string name="canonical_west">Oeste</string>
     <!-- Face-button position (not compass): the top face button. -->
+    <string name="canonical_north">Norte</string>
     <!-- Glyph face button labels -->
     <!-- Hat directions -->
+    <string name="hat_up">Arriba</string>
+    <string name="hat_down">Abajo</string>
+    <string name="hat_left">Izquierda</string>
+    <string name="hat_right">Derecha</string>
     <!-- Binding formatters -->
     <!-- Input binding label. %1$d is the numeric key code. -->
+    <string name="binding_key">Tecla %1$d</string>
     <!-- Input binding label. %1$s is the hat (D-pad) direction. -->
+    <string name="binding_hat">Sombrero %1$s</string>
     <!-- Input binding label. %1$d is the joystick axis index; + is the positive direction. -->
+    <string name="binding_axis_pos">Eje %1$d+</string>
     <!-- Input binding label. %1$d is the joystick axis index; - is the negative direction. -->
+    <string name="binding_axis_neg">Eje %1$d-</string>
+    <string name="setting_shortcuts">Atajos</string>
     <!-- Input setting toggle: swap the on-screen positions of the Play and Resume actions. -->
+    <string name="setting_swap_play_resume">Intercambiar Jugar y Reanudar</string>
     <!-- Input setting toggle: controls whether the in-game Quit returns to the main menu. -->
+    <string name="setting_main_menu_quit">Devolver Salir al Menú</string>
     <!-- Input toggle: automatically save a state when quitting a game. -->
+    <string name="setting_always_save_on_quit">Guardar estado al salir</string>
     <!-- Advanced setting toggle: skip the passcode gate for Nonna's Kitchen. Keep "Kitchen" consistent with the feature name. -->
+    <string name="setting_kitchen_code_bypass">Saltear código de la cocina</string>
+    <string name="setting_experimental_features">Funciones experimentales</string>
+    <string name="setting_set_default_launcher">Definir como iniciador predeterminado</string>
     <!-- Same row as setting_set_default_launcher, shown when Cannoli is already the default launcher and the user wants to pick another one. -->
+    <string name="setting_change_default_launcher">Usar un iniciador diferente</string>
     <!-- Advanced action: recreate the standard platform/system folders. -->
     <!-- Library setting: which content layout to show (platforms, collections only, or Five Game Handheld). -->
     <!-- Library setting for the Five Game Handheld collection. Keep "5GH" as-is. -->
@@ -185,6 +215,7 @@
     <!-- RA login OSD. %1$s = username, %2$s = display name, %3$d/%4$d = unlocked/total achievements. -->
     <!-- Credits -->
     <!-- Core picker / nav -->
+    <string name="title_shortcuts">Atajos</string>
     <!-- Update download -->
     <!-- Shown before the ROM directory is changed or cleared, since the rescan that follows prunes
          database entries for every ROM that is not at the same relative path under the new
