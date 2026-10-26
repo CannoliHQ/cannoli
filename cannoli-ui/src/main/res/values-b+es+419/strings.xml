@@ -55,18 +55,40 @@
     <string name="label_reset_all">RESETEAR TODO</string>
     <string name="label_remap">REASIGNAR</string>
     <!-- In-game menu action: reassign connected controllers to player slots. -->
+    <string name="igm_reassign_players">Reasignar Jugadores</string>
     <!-- In-game shortcut actions -->
+    <string name="shortcut_action_reset_game">Reiniciar el Juego</string>
+    <string name="shortcut_action_save_and_quit">Guardar y Salir</string>
     <!-- In-game shortcut action. "(Hold)" means it triggers on a long-press of the shortcut. -->
     <!-- In-game shortcut action: cycle through the video scaling modes. -->
     <!-- In-game shortcut action: cycle through the shader presets. -->
+    <string name="settings_title">Ajustes</string>
     <!-- Settings categories -->
+    <string name="settings_general">General</string>
+    <string name="settings_display">Aspecto</string>
+    <string name="settings_status_bar">Barra de Estado</string>
+    <string name="settings_emulation">Emulación</string>
+    <string name="settings_integrations">Integraciones</string>
+    <string name="settings_advanced">Avanzadas</string>
+    <string name="settings_about">Acerca de</string>
     <!-- Setting: which update channel to follow (e.g. stable versus test builds). -->
     <!-- Settings items -->
+    <string name="setting_colors">Colores</string>
+    <string name="setting_text_size">Tamaño del Texto</string>
+    <string name="setting_font">Fuente</string>
     <!-- Settings row label: opens the app language picker. -->
+    <string name="setting_language">Idioma</string>
     <!-- Appearance setting: shows or hides the title-bar heading text. "Title" here is the heading, not color or box art. -->
+    <string name="setting_title">Título</string>
+    <string name="setting_bg_image">Imagen de Fondo</string>
+    <string name="setting_vpn">VPN</string>
+    <string name="setting_clock">Reloj</string>
+    <string name="setting_battery">Batería</string>
     <!-- Status-bar indicator toggle: show when Nonna's Kitchen (file server) is running. -->
     <!-- Status-bar indicator toggle for active RomM downloads. -->
+    <string name="setting_downloads_running">Descargas</string>
     <!-- Status-bar indicator toggle: show when an app update is available. -->
+    <string name="setting_updater">Actualización disponible</string>
     <!-- Controller setting: which face button acts as confirm/OK. -->
     <!-- Controller setting: which face-button glyph set to display (letters like A/B versus shapes). -->
     <!-- Controller toggle: ignore this controller during gameplay (e.g. a media remote). -->
@@ -126,7 +148,9 @@
     <!-- Opens the Tools manager (sideloaded utility apps). -->
     <!-- Opens the Ports manager. "Ports" means standalone native game ports. -->
     <!-- Theme color for the title heading text. -->
+    <string name="setting_color_title">Título</string>
     <!-- Theme color: text drawn on the highlighted/selected row. -->
+    <string name="setting_color_status_bar">Barra de Estado</string>
     <!-- Settings row. %s is the emulator app name (e.g. RetroArch). -->
     <!-- Screen title. %s is the emulator app name (e.g. RetroArch). -->
     <!-- Setting: the app's root storage folder on the SD card. -->
@@ -144,9 +168,11 @@
     <!-- Cache-building status. %1$s is the platform name. -->
     <!-- Toast. %1$d = number added to the download queue. -->
     <!-- Notification. %1$d is the number of active downloads. -->
+    <string name="romm_settings_advanced">Avanzadas</string>
     <!-- Screen title. %1$s is the platform name. -->
     <!-- Art type: a composite/mixed artwork image. -->
     <!-- Art type: the game's title-screen image, not a text title. -->
+    <string name="romm_art_title">Título</string>
     <!-- Art type: the arcade marquee image. -->
     <!-- RomM "Virtual" collections (auto-grouped, e.g. by franchise or genre). -->
     <!-- RomM "Smart" collections (rule-based, auto-updating). -->
@@ -221,8 +247,11 @@
          database entries for every ROM that is not at the same relative path under the new
          directory. Cannoli and RetroAchievements are product names; leave them untranslated. -->
     <!-- IGM screen titles -->
+    <string name="igm_settings">Ajustes</string>
+    <string name="igm_advanced">Avanzadas</string>
     <!-- D-Pad Mode value: 8 directions. -->
     <!-- D-Pad Mode value: 4 directions. -->
+    <string name="igm_save_and_quit">Guardar y Salir</string>
     <!-- IGM info labels -->
     <!-- Info label: whether the ROM was extracted from an archive. -->
     <!-- IGM dialogs -->
