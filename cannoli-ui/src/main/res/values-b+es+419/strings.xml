@@ -1,44 +1,146 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Bottom bar labels -->
+    <string name="label_back">VOLVER</string>
+    <string name="label_cancel" tools:ignore="ButtonCase">CANCELAR</string>
+    <string name="label_select">SELECCIONAR</string>
+    <string name="label_play">JUGAR</string>
+    <string name="label_launch">INICIAR</string>
+    <string name="label_open">ABRIR</string>
+    <string name="label_save">GUARDAR</string>
+    <string name="label_load">CARGAR</string>
+    <string name="label_change">CAMBIAR</string>
+    <string name="label_firmware">FIRMWARE</string>
+    <string name="label_choose">ELEGIR</string>
+    <string name="label_close">CERRAR</string>
+    <string name="label_help">AYUDA</string>
+    <string name="label_remove">QUITAR ACCESO DIRECTO</string>
+    <string name="label_change_emulator">CAMBIAR EMULADOR</string>
+    <string name="label_delete">BORRAR</string>
+    <string name="label_confirm">CONFIRMAR</string>
+    <string name="label_proceed">CONTINUAR</string>
+    <string name="label_toggle">ALTERNAR</string>
+    <string name="label_new">NUEVO</string>
+    <string name="label_settings">AJUSTES</string>
+    <string name="label_resume">REANUDAR</string>
+    <string name="label_continue">CONTINUAR</string>
+    <string name="label_new_folder">NUEVO</string>
+    <string name="label_parent">PARENT</string>
+    <string name="label_slot">SLOT</string>
+    <string name="label_disc">DISCO</string>
+    <string name="label_use_location">USAR ESTA UBICACIÓN</string>
+    <string name="label_quit">SALIR</string>
+    <string name="label_stop">DETENER</string>
+    <string name="label_interface">INTERFAZ</string>
+    <string name="label_credits">CRÉDITOS</string>
+    <string name="label_update">ACTUALIZAR</string>
+    <string name="label_logout">DEJAR SESION</string>
     <!-- Bottom-bar button opening cached RetroAchievements sets for offline play. RA = RetroAchievements. -->
+    <string name="label_offline_sets">AJUSTES OFFLINE</string>
+    <string name="label_hex">HEX</string>
+    <string name="label_rename">RENOMBRAR</string>
+    <string name="label_set">DEFINIR</string>
+    <string name="label_clear">LIMPIAR</string>
+    <string name="label_press">PESIONAR</string>
     <!-- Bottom-bar button; opens Nonna's Kitchen. -->
+    <string name="label_kitchen">COCINA</string>
+    <string name="label_hold_buttons" tools:ignore="TypographyEllipsis">MANTEN UNO O MAS BOTONES...</string>
+    <string name="label_info">INFO</string>
     <!-- Bottom-bar button. RA = RetroAchievements. -->
+    <string name="label_ra_settings">AJUSTES RA</string>
+    <string name="label_details">DETALLES</string>
+    <string name="label_all">TODO</string>
+    <string name="label_unlocked">DESBLOQUEADOS</string>
+    <string name="label_locked">BLOQUEADOS</string>
+    <string name="label_reset_all">RESETEAR TODO</string>
+    <string name="label_remap">REASIGNAR</string>
     <!-- In-game menu action: reassign connected controllers to player slots. -->
+    <string name="igm_reassign_players">Reasignar Jugadores</string>
     <!-- In-game shortcut actions -->
+    <string name="shortcut_action_reset_game">Reiniciar el Juego</string>
+    <string name="shortcut_action_save_and_quit">Guardar y Salir</string>
     <!-- In-game shortcut action. "(Hold)" means it triggers on a long-press of the shortcut. -->
     <!-- In-game shortcut action: cycle through the video scaling modes. -->
     <!-- In-game shortcut action: cycle through the shader presets. -->
+    <string name="settings_title">Ajustes</string>
     <!-- Settings categories -->
+    <string name="settings_general">General</string>
+    <string name="settings_display">Aspecto</string>
+    <string name="settings_status_bar">Barra de Estado</string>
+    <string name="settings_emulation">Emulación</string>
+    <string name="settings_integrations">Integraciones</string>
+    <string name="settings_advanced">Avanzadas</string>
+    <string name="settings_about">Acerca de</string>
     <!-- Setting: which update channel to follow (e.g. stable versus test builds). -->
     <!-- Settings items -->
+    <string name="setting_colors">Colores</string>
+    <string name="setting_text_size">Tamaño del Texto</string>
+    <string name="setting_font">Fuente</string>
     <!-- Settings row label: opens the app language picker. -->
+    <string name="setting_language">Idioma</string>
     <!-- Appearance setting: shows or hides the title-bar heading text. "Title" here is the heading, not color or box art. -->
+    <string name="setting_title">Título</string>
+    <string name="setting_bg_image">Imagen de Fondo</string>
+    <string name="setting_vpn">VPN</string>
+    <string name="setting_clock">Reloj</string>
+    <string name="setting_battery">Batería</string>
     <!-- Status-bar indicator toggle: show when Nonna's Kitchen (file server) is running. -->
     <!-- Status-bar indicator toggle for active RomM downloads. -->
+    <string name="setting_downloads_running">Descargas</string>
     <!-- Status-bar indicator toggle: show when an app update is available. -->
+    <string name="setting_updater">Actualización disponible</string>
     <!-- Controller setting: which face button acts as confirm/OK. -->
     <!-- Controller setting: which face-button glyph set to display (letters like A/B versus shapes). -->
     <!-- Controller toggle: ignore this controller during gameplay (e.g. a media remote). -->
+    <string name="controllers_exclude_from_gameplay">Excluir del gameplay</string>
+    <string name="controllers_reset_defaults">Reestablecer predeterminados</string>
     <!-- Shown when a button has no assigned binding. -->
+    <string name="controllers_not_bound">Sin asignar</string>
     <!-- Confirm button values -->
     <!-- Canonical button labels -->
+    <string name="canonical_dpad_up">D-Pad arriba</string>
+    <string name="canonical_dpad_down">D-Pad abajo</string>
+    <string name="canonical_dpad_left">D-Pad izquierda</string>
+    <string name="canonical_dpad_right">D-Pad derecha</string>
+    <string name="canonical_start">Iniciar</string>
+    <string name="canonical_select">Seleccionar</string>
+    <string name="canonical_menu">Menú</string>
     <!-- Face-button position, not a compass direction: the bottom face button (South/East/West/North layout). -->
+    <string name="canonical_south">Sur</string>
     <!-- Face-button position (not compass): the right face button. -->
+    <string name="canonical_east">Este</string>
     <!-- Face-button position (not compass): the left face button. -->
+    <string name="canonical_west">Oeste</string>
     <!-- Face-button position (not compass): the top face button. -->
+    <string name="canonical_north">Norte</string>
     <!-- Glyph face button labels -->
     <!-- Hat directions -->
+    <string name="hat_up">Arriba</string>
+    <string name="hat_down">Abajo</string>
+    <string name="hat_left">Izquierda</string>
+    <string name="hat_right">Derecha</string>
     <!-- Binding formatters -->
     <!-- Input binding label. %1$d is the numeric key code. -->
+    <string name="binding_key">Tecla %1$d</string>
     <!-- Input binding label. %1$s is the hat (D-pad) direction. -->
+    <string name="binding_hat">Sombrero %1$s</string>
     <!-- Input binding label. %1$d is the joystick axis index; + is the positive direction. -->
+    <string name="binding_axis_pos">Eje %1$d+</string>
     <!-- Input binding label. %1$d is the joystick axis index; - is the negative direction. -->
+    <string name="binding_axis_neg">Eje %1$d-</string>
+    <string name="setting_shortcuts">Atajos</string>
     <!-- Input setting toggle: swap the on-screen positions of the Play and Resume actions. -->
+    <string name="setting_swap_play_resume">Intercambiar Jugar y Reanudar</string>
     <!-- Input setting toggle: controls whether the in-game Quit returns to the main menu. -->
+    <string name="setting_main_menu_quit">Devolver Salir al Menú</string>
     <!-- Input toggle: automatically save a state when quitting a game. -->
+    <string name="setting_always_save_on_quit">Guardar estado al salir</string>
     <!-- Advanced setting toggle: skip the passcode gate for Nonna's Kitchen. Keep "Kitchen" consistent with the feature name. -->
+    <string name="setting_kitchen_code_bypass">Saltear código de la cocina</string>
+    <string name="setting_experimental_features">Funciones experimentales</string>
+    <string name="setting_set_default_launcher">Definir como iniciador predeterminado</string>
     <!-- Same row as setting_set_default_launcher, shown when Cannoli is already the default launcher and the user wants to pick another one. -->
+    <string name="setting_change_default_launcher">Usar un iniciador diferente</string>
     <!-- Advanced action: recreate the standard platform/system folders. -->
     <!-- Library setting: which content layout to show (platforms, collections only, or Five Game Handheld). -->
     <!-- Library setting for the Five Game Handheld collection. Keep "5GH" as-is. -->
@@ -46,7 +148,9 @@
     <!-- Opens the Tools manager (sideloaded utility apps). -->
     <!-- Opens the Ports manager. "Ports" means standalone native game ports. -->
     <!-- Theme color for the title heading text. -->
+    <string name="setting_color_title">Título</string>
     <!-- Theme color: text drawn on the highlighted/selected row. -->
+    <string name="setting_color_status_bar">Barra de Estado</string>
     <!-- Settings row. %s is the emulator app name (e.g. RetroArch). -->
     <!-- Screen title. %s is the emulator app name (e.g. RetroArch). -->
     <!-- Setting: the app's root storage folder on the SD card. -->
@@ -64,9 +168,11 @@
     <!-- Cache-building status. %1$s is the platform name. -->
     <!-- Toast. %1$d = number added to the download queue. -->
     <!-- Notification. %1$d is the number of active downloads. -->
+    <string name="romm_settings_advanced">Avanzadas</string>
     <!-- Screen title. %1$s is the platform name. -->
     <!-- Art type: a composite/mixed artwork image. -->
     <!-- Art type: the game's title-screen image, not a text title. -->
+    <string name="romm_art_title">Título</string>
     <!-- Art type: the arcade marquee image. -->
     <!-- RomM "Virtual" collections (auto-grouped, e.g. by franchise or genre). -->
     <!-- RomM "Smart" collections (rule-based, auto-updating). -->
@@ -135,10 +241,17 @@
     <!-- RA login OSD. %1$s = username, %2$s = display name, %3$d/%4$d = unlocked/total achievements. -->
     <!-- Credits -->
     <!-- Core picker / nav -->
+    <string name="title_shortcuts">Atajos</string>
     <!-- Update download -->
+    <!-- Shown before the ROM directory is changed or cleared, since the rescan that follows prunes
+         database entries for every ROM that is not at the same relative path under the new
+         directory. Cannoli and RetroAchievements are product names; leave them untranslated. -->
     <!-- IGM screen titles -->
+    <string name="igm_settings">Ajustes</string>
+    <string name="igm_advanced">Avanzadas</string>
     <!-- D-Pad Mode value: 8 directions. -->
     <!-- D-Pad Mode value: 4 directions. -->
+    <string name="igm_save_and_quit">Guardar y Salir</string>
     <!-- IGM info labels -->
     <!-- Info label: whether the ROM was extracted from an archive. -->
     <!-- IGM dialogs -->
@@ -154,8 +267,14 @@
     <!-- The core is not bundled with the app. -->
     <!-- %d = number of required BIOS files missing. -->
     <!-- Distinguishes platforms sharing a display name. %1$s = platform name, %2$s = platform tag. -->
+    <!-- Shown above the RetroArch core list when the installed build predates the receiver that answers core queries. -->
+    <!-- Shown when RetroArch has the receiver but did not answer the query. -->
+    <!-- Shown above the core list when the configured RetroArch package is not installed at all. -->
+    <!-- Debug builds only: a gallery of every Nerd Font glyph the launcher draws. Never shipped to users, so not sent to translators. -->
     <!-- Screen title. %s = platform name. -->
+    <!-- Screen title for the per-game emulator picker. %s = game name. -->
     <!-- Screen title. %s = platform name. -->
+    <string name="filter_all">TODO</string>
     <!-- OSD toast. %1$s = core name. -->
     <!-- OSD toast. %1$s = core name. -->
     <!-- OSD toast. %1$s = core name or error detail. -->
@@ -164,6 +283,7 @@
     <!-- %d = number of items. -->
     <!-- OSD toast. %d = number of cheats restored. -->
     <!-- %d = number of system folders created. -->
+    <string name="label_clear_override">LIMPIAR</string>
     <!-- %1$s = platform name. -->
     <!-- RA achievement preload. %1$s = game name. -->
     <!-- %1$d = achievements cached, %2$d = points. -->
@@ -171,12 +291,16 @@
     <!-- %1$d = achievement count, %2$s = set name. -->
     <!-- Save Slots screen -->
     <!-- Screen title. %1$s = game name. -->
+    <string name="save_slots_rename">RENOMBRAR</string>
+    <string name="save_slots_delete">BORRAR</string>
     <!-- %1$s = slot name. -->
     <!-- Conflicts resolution screen -->
+    <!-- Shown while saves are checked against the server before a game launches. -->
     <!-- %1$d = number of saves that could not be applied. -->
     <!-- %1$d = number of sync conflicts. -->
     <!-- %1$d = number of sync errors. -->
     <!-- %1$d = number of backups. -->
     <!-- Label marking the older save in a conflict. -->
     <!-- On-screen keyboard help overlay -->
+    <string name="kbd_help_cancel">CANCELAR</string>
 </resources>

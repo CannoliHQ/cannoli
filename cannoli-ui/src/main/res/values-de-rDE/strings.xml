@@ -84,7 +84,6 @@
     <string name="settings_emulation">Emulation</string>
     <string name="settings_integrations">Integrationen</string>
     <string name="settings_advanced">Erweitert</string>
-    <string name="settings_debug">Debug</string>
     <string name="settings_about">Über</string>
     <!-- Setting: which update channel to follow (e.g. stable versus test builds). -->
     <string name="settings_release_channel">Release-Kanal</string>
@@ -168,6 +167,7 @@
     <string name="setting_experimental_features">Experimentelle Funktionen</string>
     <string name="setting_set_default_launcher">Als Standard-Launcher festlegen</string>
     <!-- Same row as setting_set_default_launcher, shown when Cannoli is already the default launcher and the user wants to pick another one. -->
+    <string name="setting_change_default_launcher">Verwende einen anderen Launcher</string>
     <!-- Advanced action: recreate the standard platform/system folders. -->
     <string name="setting_regenerate_system_folders">Systemordner neu generieren</string>
     <!-- Library setting: which content layout to show (platforms, collections only, or Five Game Handheld). -->
@@ -344,7 +344,6 @@
     <string name="romm_vtype_mode">Spielmodus</string>
     <string name="setting_logging">Protokollierung</string>
     <!-- Advanced toggle: log the intents used to launch external emulators. -->
-    <string name="setting_audit_emulator_intents">Audit-Emulator-Eintragungen</string>
     <string name="logging_title">Protokollierung</string>
     <string name="logging_rom_scan">ROM-Scan</string>
     <string name="logging_input">Input</string>
@@ -391,6 +390,7 @@
     <!-- Shown in place of an emulator name when a platform has no emulator mapped yet. -->
     <string name="value_needs_setup">Benötigt Einrichtung</string>
     <string name="emulator_platform_setting">Plattform-Einstellung</string>
+    <string name="emulator_platform_default">Plattformstandard</string>
     <!-- %1$s = the emulator name the platform is mapped to. -->
     <string name="emulator_platform_setting_named">Plattform-Einstellung (%1$s)</string>
     <string name="rename_error_directory">Verzeichnis konnte nicht umbenannt werden</string>
@@ -425,6 +425,7 @@
     <string name="launch_error_extract">Archiv konnte nicht extrahiert werden</string>
     <string name="launch_error_generic">Spiel konnte nicht gestartet werden</string>
     <!-- %1$s = file name. -->
+    <string name="launch_error_bad_game_file">Konnte Spiel-ID von %1$s nicht lesen</string>
     <string name="launch_error_update_ricotta">RicottaArch aktualisieren, um fortzufahren</string>
     <string name="launch_error_update_cannoli">Cannoli aktualisieren um fortzufahren</string>
     <!-- %1$s = core name, %2$s = emulator app. -->
@@ -528,6 +529,7 @@
     <string name="ra_status_online">Online</string>
     <string name="ra_status_offline">Offline</string>
     <!-- %1$d = achievements awaiting sync. -->
+    <string name="ra_status_offline_pending">Offline • %1$d Ausstehende Synchronisierung</string>
     <string name="ra_detect_not_logged_in">Nicht angemeldet</string>
     <string name="ra_detect_identifying">Spiel… wird identifiziert</string>
     <string name="ra_detect_not_recognized">Spiel nicht erkannt</string>
@@ -535,6 +537,10 @@
     <string name="ra_detect_initializing">Initialisiere…</string>
     <string name="ra_detect_mem_failed">Speicherinit fehlgeschlagen</string>
     <!-- %d = achievement count. -->
+    <plurals name="ra_detect_active">
+        <item quantity="one">Aktiv • %d Erfolg</item>
+        <item quantity="other">Aktiv • %d Erfolge</item>
+    </plurals>
     <!-- %d = number of achievements synced. -->
     <plurals name="ra_sync_done">
         <item quantity="one">%d Erfolge synchronisiert</item>
@@ -594,6 +600,11 @@
     <string name="ra_load_offline_pending">RA: Offline (Spieldaten nicht verfügbar)</string>
     <!-- Credits -->
     <string name="credits_title">Credits und Lizenzen</string>
+    <string name="credits_cores">Emulatorkerne</string>
+    <string name="credits_shaders">Shaders</string>
+    <string name="credits_fonts">Schriftarten</string>
+    <string name="credits_libraries">Bibliotheken</string>
+    <string name="credits_localization">Lokalisierungsmitwirkende</string>
     <!-- Core picker / nav -->
     <string name="no_compatible_cores">Keine kompatiblen Kerne gefunden</string>
     <string name="no_collections">Keine Sammlungen</string>
@@ -603,6 +614,9 @@
     <!-- Update download -->
     <string name="update_retry">WIEDERHOLEN</string>
     <string name="restart_required">Neustart erforderlich, um die Änderungen zu übernehmen.</string>
+    <!-- Shown before the ROM directory is changed or cleared, since the rescan that follows prunes
+         database entries for every ROM that is not at the same relative path under the new
+         directory. Cannoli and RetroAchievements are product names; leave them untranslated. -->
     <!-- IGM screen titles -->
     <string name="igm_settings">Einstellungen</string>
     <string name="igm_video">Video</string>
@@ -669,8 +683,15 @@
     <!-- %d = number of required BIOS files missing. -->
     <string name="mapping_required_missing">%d erforderlich</string>
     <!-- Distinguishes platforms sharing a display name. %1$s = platform name, %2$s = platform tag. -->
+    <string name="mapping_platform_name_with_tag">%1$s (%2$s)</string>
+    <!-- Shown above the RetroArch core list when the installed build predates the receiver that answers core queries. -->
+    <!-- Shown when RetroArch has the receiver but did not answer the query. -->
+    <!-- Shown above the core list when the configured RetroArch package is not installed at all. -->
+    <!-- Debug builds only: a gallery of every Nerd Font glyph the launcher draws. Never shipped to users, so not sent to translators. -->
     <!-- Screen title. %s = platform name. -->
     <string name="title_platform_mapping">%s Zuordnung</string>
+    <!-- Screen title for the per-game emulator picker. %s = game name. -->
+    <string name="title_game_mapping">%s Emulator</string>
     <!-- Screen title. %s = platform name. -->
     <string name="title_platform_bios">%s BIOS</string>
     <string name="filter_all">ALLE</string>
@@ -716,7 +737,7 @@
     <string name="value_no_cores_found">Keine Kerne gefunden</string>
     <string name="label_clear_override">LEEREN</string>
     <!-- %1$s = platform name. -->
-    <string name="dialog_reset_platform_confirm">%1$szurücksetzen? Dies löscht Ihre Emulator-Auswahl für diese Plattform und stellt den gebündelten Standard wieder her.</string>
+    <string name="dialog_reset_platform_confirm">%1$szurücksetzen? Ihre Auswahl wird durch Cannolis Standard ersetzt oder gelöscht, wenn keine vorhanden ist.</string>
     <!-- RA achievement preload. %1$s = game name. -->
     <string name="ra_preload_progress">Vorladen %1$s</string>
     <string name="ra_preload_none">Keine Erfolge für dieses Spiel gefunden</string>
@@ -746,6 +767,7 @@
     <!-- Conflicts resolution screen -->
     <string name="conflicts_title">Sync-Konflikte</string>
     <string name="conflicts_applying">Konflikte werden angewendet...</string>
+    <!-- Shown while saves are checked against the server before a game launches. -->
     <!-- %1$d = number of saves that could not be applied. -->
     <plurals name="conflicts_apply_failed">
         <item quantity="one">%1$d Speicherplatz konnte nicht angewendet werden</item>
